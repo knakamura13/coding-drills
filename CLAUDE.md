@@ -20,6 +20,7 @@ SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. No ba
 ## Railway
 
 - `.railway/railway.ts` is the source of truth for the Railway project and manages it as a whole. Anything missing from the file is planned for deletion on apply. `railway.toml` and `railway.json` are deprecated (Railway stops reading them on 2026-12-01). Do not add either.
+- Edits to `.railway/railway.ts` are not live until `railway config apply` runs (Railway never reads the file at deploy time). Plan before every apply, and apply right after merging a change to the file. Dashboard-only changes are not copied into the file and can be overwritten or deleted by the next apply.
 - `railway config plan` is read-only. Do not run `railway config apply` or create Railway resources without the owner's explicit go-ahead.
 - The generated `*.up.railway.app` domain cannot be expressed in the file. Generate it once with `railway domain`.
 - The build comes from `Dockerfile`. CI builds the image and smoke-tests `/healthz`.

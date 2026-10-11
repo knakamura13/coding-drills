@@ -7,6 +7,10 @@ import { defineRailway, github, project, service } from 'railway/iac';
  * One service, no database: decks are compiled into the bundle and progress
  * lives in the browser. The build comes from `Dockerfile` at the repo root.
  *
+ * Railway never reads this file during a deploy. Editing or merging it changes
+ * nothing live until `railway config apply` runs, so run the read-only
+ * `railway config plan` first and apply right after merging any change here.
+ *
  * `railway config apply` manages the whole project, so anything created in the
  * dashboard that is missing from this file is a deletion candidate. Add new
  * services here instead of in the dashboard.

@@ -58,7 +58,9 @@ railway domain                      # generates the public *.up.railway.app doma
 
 The service deploys from the `main` branch of this repo, so the Railway GitHub app needs access to it. After the first apply, every push to `main` redeploys. `railway link` attaches an existing project instead of creating one.
 
-`railway config apply` manages the whole project, so a resource missing from `.railway/railway.ts` is planned for deletion. Add new services there rather than in the dashboard.
+Railway never reads `.railway/railway.ts` during a deploy. Pushing or merging an edit changes nothing live until `railway config apply` runs, so the file and the project can quietly disagree. Run the read-only `railway config plan` before each apply, and apply right after merging any change to the file.
+
+`railway config apply` also manages the whole project: a resource missing from the file is planned for deletion, and settings changed only in the dashboard can be overwritten by the next apply. Add new services and settings to the file rather than the dashboard.
 
 ## Roadmap
 
