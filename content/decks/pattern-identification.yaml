@@ -1,0 +1,373 @@
+id: pattern-identification
+title: Pattern identification
+description: Name the technique that fits each problem, then show why the tempting alternatives do not.
+heading: Which pattern best fits?
+
+questions:
+  - id: window-max-sum-k
+    tags: [sliding-window]
+    prompt: Find the maximum sum of any contiguous subarray of exactly size `k`.
+    options:
+      - id: prefix-sum
+        text: Prefix Sum
+        explanation: >-
+          Prefix sums would work, since a window sum is `P[i + k] - P[i]`. But they build an O(n)
+          array to answer a question about one fixed width. A sliding window keeps a single running
+          sum and needs O(1) extra space.
+      - id: two-pointers
+        text: Two Pointers
+        explanation: >-
+          Two pointers compare the values at two positions, such as a pair that sums to a target.
+          Here the answer comes from everything between the boundaries, so the boundaries are the
+          edges of a window, not two values to compare.
+      - id: top-k
+        text: Top K Elements
+        explanation: >-
+          Top K keeps the `k` largest or smallest values, usually in a heap, and ignores where they
+          sit in the array. Here `k` is the width of a contiguous window, and position matters.
+      - id: sliding-window
+        text: Sliding Window
+        explanation: >-
+          The window has a fixed width. Each step adds the element that enters and subtracts the one
+          that leaves, so the sum updates in O(1) and the whole scan is O(n).
+    correct: sliding-window
+    followUps:
+      prefix-sum:
+        prompt: When would a prefix sum beat a sliding window?
+        options:
+          - id: many-ranges
+            text: When you must answer many range-sum queries over arbitrary start and end positions
+          - id: fixed-width
+            text: When the window width is fixed in advance
+          - id: all-positive
+            text: When every number in the array is positive
+        correct: many-ranges
+        explanation: >-
+          A prefix array pays O(n) once, then answers any range sum in O(1). That wins when the
+          ranges vary. For one fixed width, a window gets the same answers in a single pass with no
+          extra array.
+      two-pointers:
+        prompt: Which detail points to a sliding window instead of two pointers?
+        options:
+          - id: sum-between
+            text: The result depends on every element between the two boundaries
+          - id: opposite-ends
+            text: The boundaries start at opposite ends and move toward each other
+          - id: needs-sorted
+            text: The array must be sorted before either boundary can move
+        correct: sum-between
+        explanation: >-
+          Two pointers read the elements under the pointers and ignore what lies between them. This
+          problem sums the whole range, so you keep a running total as the window slides: add the
+          entering element, subtract the leaving one.
+      top-k:
+        prompt: What does `k` mean here, compared with a top-k problem?
+        options:
+          - id: window-width
+            text: The number of consecutive elements in each candidate window
+          - id: keep-count
+            text: The number of largest values to keep
+          - id: sorted-index
+            text: The position of the answer after sorting
+        correct: window-width
+        explanation: >-
+          In a top-k problem, `k` counts how many best values to keep, wherever they sit. In this
+          problem, `k` fixes the width of a contiguous stretch, so elements cannot be picked
+          independently.
+
+  - id: sorted-pair-sum
+    tags: [two-pointers]
+    prompt: Given a sorted array of integers, find two numbers that add up to a target value.
+    options:
+      - id: two-pointers
+        text: Two Pointers
+        explanation: >-
+          Start one pointer at each end. If the sum is too small, move the left pointer right. If it
+          is too large, move the right pointer left. Every move discards one candidate for good, so
+          the scan is O(n) time and O(1) extra space.
+      - id: binary-search
+        text: Binary Search
+        explanation: >-
+          Searching for `target - x` for each `x` works because the array is sorted, but it costs
+          O(n log n). Two pointers use the same sorted order to finish in O(n).
+      - id: hash-set
+        text: Hash Set
+        explanation: >-
+          A set of seen values finds the pair in O(n) time and works on unsorted input too, but it
+          stores up to n values. The sorted order lets two pointers do the same job with O(1) extra
+          space.
+      - id: sliding-window
+        text: Sliding Window
+        explanation: >-
+          A window covers one contiguous stretch. The two numbers can sit anywhere in the array, so
+          there is no stretch to track.
+    correct: two-pointers
+    followUps:
+      binary-search:
+        prompt: Why do two pointers beat a binary search for every element?
+        options:
+          - id: discard-per-move
+            text: Each pointer move discards a candidate for good, so the whole scan takes at most n steps
+          - id: binary-needs-unsorted
+            text: Binary search only works when the array is unsorted
+          - id: skips-sorting
+            text: Two pointers skip a sorting step that binary search needs
+        correct: discard-per-move
+        explanation: >-
+          One binary search costs O(log n), and you would run it n times. The two-pointer scan never
+          revisits a pair it has ruled out, so it makes at most n moves in total. Both approaches
+          rely on the array already being sorted.
+      hash-set:
+        prompt: What does the sorted order give two pointers that a hash set cannot use?
+        options:
+          - id: direction-rule
+            text: A rule for which end to move, so no extra memory is needed
+          - id: unique-values
+            text: A guarantee that every value appears only once
+          - id: faster-lookups
+            text: Faster lookups than a hash set
+        correct: direction-rule
+        explanation: >-
+          A sum that is too small says to move the left pointer, and one that is too large says to
+          move the right pointer. That rule replaces the set of seen values. Hash lookups are already
+          O(1) on average, so sorting does not make them faster.
+      sliding-window:
+        prompt: Why can't a sliding window find this pair?
+        options:
+          - id: not-contiguous
+            text: The two numbers can be anywhere in the array, not in one contiguous stretch
+          - id: needs-non-negative
+            text: A window needs every number to be non-negative
+          - id: fixed-size-only
+            text: A window's size must be fixed in advance
+        correct: not-contiguous
+        explanation: >-
+          A window tracks a contiguous stretch. The pair here is two separate elements with no
+          relationship between their positions, so there is no stretch to track. Window size and the
+          sign of the numbers are not the obstacle.
+
+  - id: subarray-sum-k
+    tags: [prefix-sum, hash-map]
+    prompt: >-
+      Count the contiguous subarrays whose elements add up to exactly `k`. The array can contain
+      negative numbers.
+    options:
+      - id: sliding-window
+        text: Sliding Window
+        explanation: >-
+          A window works when growing it moves the sum one way and shrinking it moves the sum the
+          other way. Negative numbers break that, so a sum above `k` no longer tells you to shrink.
+      - id: two-pointers
+        text: Two Pointers
+        explanation: >-
+          Two pointers need the same predictability: moving a pointer must change the sum in a known
+          direction. Negative numbers remove it.
+      - id: sort-sweep
+        text: Sort and Sweep
+        explanation: >-
+          Sorting scrambles the order of the elements, and a subarray must be contiguous in the
+          original array.
+      - id: prefix-hash
+        text: Prefix Sums with a Hash Map
+        explanation: >-
+          Let `P[j]` be the running total up to `j`. A subarray ending at `j` sums to `k` when an
+          earlier running total equals `P[j] - k`. Counting earlier totals in a hash map finds every
+          such subarray in O(n) time and O(n) space. Negative numbers do not matter, because nothing
+          relies on the sum moving in one direction.
+    correct: prefix-hash
+    followUps:
+      sliding-window:
+        prompt: Why does a sliding window fail when the array has negative numbers?
+        options:
+          - id: sum-not-monotonic
+            text: Adding an element can lower the sum, so a sum above `k` does not mean the window should shrink
+          - id: width-cap
+            text: The window can never be wider than `k` elements
+          - id: needs-sorted
+            text: Negative numbers make the array unsorted, and windows need sorted input
+        correct: sum-not-monotonic
+        explanation: >-
+          A variable-size window relies on a signal: too big means shrink, too small means grow.
+          With negatives, extending the window can lower the sum, so the signal disappears. Sorted
+          input is not required.
+      two-pointers:
+        prompt: What must be true for two pointers to solve a subarray-sum problem?
+        options:
+          - id: sum-moves-one-way
+            text: Advancing the right pointer must never lower the sum, so a too-large sum tells you to move the left pointer
+          - id: known-length
+            text: The subarray length must be known in advance
+          - id: no-duplicates
+            text: The array must contain no duplicate values
+        correct: sum-moves-one-way
+        explanation: >-
+          Two pointers need each move to push the sum in a known direction. With only non-negative
+          numbers that holds. With negative numbers a pointer move can raise or lower the sum, so
+          the rule stops working.
+      sort-sweep:
+        prompt: What does sorting destroy that this problem depends on?
+        options:
+          - id: adjacency
+            text: The original adjacency of elements, which defines a contiguous subarray
+          - id: total-sum
+            text: The total sum of the array
+          - id: value-of-k
+            text: The value of `k`
+        correct: adjacency
+        explanation: >-
+          A subarray is a run of neighbors in the original order. After sorting, neighbors are
+          different elements, so the sums you count no longer correspond to subarrays. Sorting
+          leaves the total sum and `k` unchanged.
+
+  - id: min-eating-speed
+    tags: [binary-search]
+    prompt: >-
+      You must finish every pile of fruit within `h` hours. Each hour you pick one pile and eat up
+      to `s` pieces from it. Find the smallest whole `s` that finishes in time.
+    options:
+      - id: binary-search-answer
+        text: Binary Search on the Answer
+        explanation: >-
+          If speed `s` finishes in time, any faster speed does too. That yes-or-no check is
+          monotonic, so you can binary search the speed between 1 and the largest pile. Each check
+          costs O(n), so the total is O(n log m), where `m` is the largest pile.
+      - id: sort-greedy
+        text: Sort and Greedy
+        explanation: >-
+          Sorting the piles does not change how many hours a given speed takes, because each pile is
+          eaten separately and the hours add up in any order. It also does not tell you which speed
+          to try.
+      - id: heap
+        text: Heap
+        explanation: >-
+          A heap answers "which remaining item is largest right now?". This problem never asks that.
+          The unknown is a speed, and you test whole speeds against the deadline.
+      - id: sliding-window
+        text: Sliding Window
+        explanation: >-
+          A window slides over contiguous positions in the input. The unknown here is a speed, not a
+          stretch of piles.
+    correct: binary-search-answer
+    followUps:
+      sort-greedy:
+        prompt: Does the order of the piles change the hours needed at a fixed speed?
+        options:
+          - id: order-irrelevant
+            text: No. The hours are a sum over piles, and a sum does not depend on order
+          - id: big-first
+            text: Yes. Eating the biggest piles first always saves hours
+          - id: small-last
+            text: Yes. Small piles waste hours unless they come last
+        correct: order-irrelevant
+        explanation: >-
+          At speed `s`, a pile of `p` pieces takes `ceil(p / s)` hours, and the total is the sum over
+          piles. Reordering the terms of a sum never changes it, so sorting cannot reduce the hours.
+      heap:
+        prompt: Why does a heap not help pick the speed?
+        options:
+          - id: no-extreme-queries
+            text: The problem never asks for the largest or smallest remaining pile. It asks which speed works
+          - id: heap-needs-sorted
+            text: Heaps only work on sorted input
+          - id: heap-too-slow
+            text: Building a heap costs O(n^2)
+        correct: no-extreme-queries
+        explanation: >-
+          A heap pays off when you repeatedly need the current largest or smallest item. Here you
+          test whole speeds against the deadline, so there is no such query. Building a heap costs
+          O(n) and does not need sorted input.
+      sliding-window:
+        prompt: Why is a sliding window the wrong shape for this problem?
+        options:
+          - id: unknown-is-speed
+            text: The unknown is a speed, not a contiguous stretch of piles
+          - id: strings-only
+            text: Sliding windows only work on strings
+          - id: needs-sorted-piles
+            text: A window needs the piles sorted first
+        correct: unknown-is-speed
+        explanation: >-
+          A sliding window searches over positions in the input. This problem searches over a
+          number, the speed, so you binary search the range of possible speeds instead.
+
+  - id: cost-nested-slice-sum
+    tags: [complexity, python]
+    heading: What is the time complexity?
+    prompt: |-
+      Let `n = len(nums)`.
+
+      ```python
+      def max_subarray_sum(nums):
+          best = float("-inf")
+          for i in range(len(nums)):
+              for j in range(i, len(nums)):
+                  best = max(best, sum(nums[i:j + 1]))
+          return best
+      ```
+    options:
+      - id: linear
+        text: "`O(n)`"
+        explanation: >-
+          One pass would be O(n). This function has two nested loops, so it visits about `n^2 / 2`
+          pairs `(i, j)` before counting the work done for each pair.
+      - id: quadratic
+        text: "`O(n^2)`"
+        explanation: >-
+          Two nested loops give about `n^2 / 2` pairs `(i, j)`, but that counts only the loops. For
+          each pair, `nums[i:j + 1]` copies the slice and `sum` adds it up, which costs up to `n`
+          more steps.
+      - id: cubic
+        text: "`O(n^3)`"
+        explanation: >-
+          Two loops give about `n^2 / 2` pairs `(i, j)`. For each pair, the slice copies and `sum`
+          adds up to `n` elements, so the total work is about `n^3 / 6`. The slice also needs O(n)
+          extra space.
+      - id: exponential
+        text: "`O(2^n)`"
+        explanation: >-
+          A subarray is fixed by its start and end, so an array of `n` elements has only
+          `n(n + 1) / 2` of them. `2^n` counts subsets, where the elements do not have to be
+          adjacent.
+    correct: cubic
+    followUps:
+      linear:
+        prompt: How many `(i, j)` pairs do the two loops visit?
+        options:
+          - id: about-n-squared-over-two
+            text: "About `n^2 / 2`, because for each `i` the inner loop runs from `i` to the end"
+          - id: n-pairs
+            text: "`n`, one per value of `i`"
+          - id: n-log-n
+            text: "About `n log n`, because the inner loop shrinks as `i` grows"
+        correct: about-n-squared-over-two
+        explanation: >-
+          The inner loop runs `n - i` times for each `i`, which sums to `n(n + 1) / 2` pairs.
+          Shrinking by one each time gives a quadratic count, not `n log n`.
+      quadratic:
+        prompt: Which cost does `O(n^2)` leave out?
+        options:
+          - id: slice-and-sum
+            text: "`sum(nums[i:j + 1])` copies and adds up to `n` elements on every pass"
+          - id: max-scan
+            text: "`max` scans the whole array on every pass"
+          - id: range-builds-list
+            text: "`range` builds a list of `n` numbers on every pass"
+        correct: slice-and-sum
+        explanation: >-
+          The loops only count the pairs. Inside, the slice copies `j - i + 1` elements and `sum`
+          adds them, so each pair costs up to `n` steps. `max` compares two numbers, and `range` in
+          Python 3 produces numbers lazily without building a list.
+      exponential:
+        prompt: How many different subarrays does a list of `n` elements have?
+        options:
+          - id: start-and-end
+            text: "`n(n + 1) / 2`, because a subarray is fixed by its start and end"
+          - id: subsets
+            text: "`2^n`, because each element is either in or out"
+          - id: permutations
+            text: "`n!`, because order matters"
+        correct: start-and-end
+        explanation: >-
+          A subarray is a run of neighbors, so choosing where it starts and ends determines it. That
+          gives a quadratic number of subarrays. Counting subsets (`2^n`) or orderings (`n!`) allows
+          elements that are not adjacent.
