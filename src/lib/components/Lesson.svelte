@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { tick, untrack } from 'svelte';
-	import type { Deck } from '$lib/content/schema';
-	import { createLessonController } from '$lib/lesson/controller.svelte';
+	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
 	import Button from './Button.svelte';
 	import FeedbackSheet from './FeedbackSheet.svelte';
@@ -16,10 +15,10 @@
 	import SeeWhySheet from './SeeWhySheet.svelte';
 	import Summary from './Summary.svelte';
 
-	let { deck }: { deck: Deck } = $props();
+	let { source }: { source: LessonSource } = $props();
 
-	// The route re-creates this component per deck, so the initial value is the one that matters.
-	const lesson = createLessonController(untrack(() => deck));
+	// The route re-creates this component per lesson, so the initial value is the one that matters.
+	const lesson = createLessonController(untrack(() => source));
 
 	let seeWhyOpen = $state(false);
 	let flagOpen = $state(false);

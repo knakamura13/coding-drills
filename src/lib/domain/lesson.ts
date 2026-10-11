@@ -17,6 +17,10 @@ import { shuffled, type Rng } from './shuffle';
 export type Stage = 'question' | 'followUp';
 
 export interface PlannedQuestion {
+	/** The deck the question belongs to. A review lesson mixes decks. */
+	deckId: string;
+	/** The deck's default heading, used when the question has none. */
+	heading?: string;
 	question: Question;
 	/** Option ids in the order the learner sees them. */
 	optionOrder: string[];
@@ -25,6 +29,7 @@ export interface PlannedQuestion {
 }
 
 export interface Completed {
+	deckId: string;
 	questionId: string;
 	/** The option picked on the main question. */
 	pickedId: string;
@@ -45,8 +50,18 @@ export interface LessonState {
 	readonly completed: readonly Completed[];
 }
 
-export function createLesson(deck: Deck, rng: Rng = Math.random): LessonState {
-	const plan = shuffled(deck.questions, rng).map((question) => ({
+/** A question and where it came from, so lessons can mix decks. */
+export interface LessonEntry {
+	deckId: string;
+	/** The deck's default heading. */
+	heading?: string;
+	question: Question;
+}
+
+function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonState {
+	const planned = shuffled(entries, rng).map(({ deckId, heading, question }) => ({
+		deckId,
+		heading,
 		question,
 		optionOrder: shuffled(
 			question.options.map((option) => option.id),
@@ -63,8 +78,8 @@ export function createLesson(deck: Deck, rng: Rng = Math.random): LessonState {
 		)
 	}));
 	return {
-		deckId: deck.id,
-		plan,
+		deckId: id,
+		plan: planned,
 		cursor: 0,
 		stage: 'question',
 		selected: null,
@@ -72,6 +87,19 @@ export function createLesson(deck: Deck, rng: Rng = Math.random): LessonState {
 		mainPick: null,
 		completed: []
 	};
+}
+
+export function createLesson(deck: Deck, rng: Rng = Math.random): LessonState {
+	return plan(
+		deck.id,
+		deck.questions.map((question) => ({ deckId: deck.id, heading: deck.heading, question })),
+		rng
+	);
+}
+
+/** One lesson over questions from any decks, such as today's review. */
+export function createReviewLesson(entries: readonly LessonEntry[], rng: Rng = Math.random): LessonState {
+	return plan('review', entries, rng);
 }
 
 export function isFinished(state: LessonState): boolean {
@@ -131,6 +159,7 @@ export function advance(state: LessonState): LessonState {
 	if (state.stage === 'question') {
 		if (state.selected === question.correct) {
 			return finishQuestion(state, {
+				deckId: planned.deckId,
 				questionId: question.id,
 				pickedId: state.selected,
 				correct: true
@@ -142,6 +171,7 @@ export function advance(state: LessonState): LessonState {
 	const followUp = currentFollowUp(state);
 	if (!followUp || state.mainPick === null) return state;
 	return finishQuestion(state, {
+		deckId: planned.deckId,
 		questionId: question.id,
 		pickedId: state.mainPick,
 		correct: false,
@@ -220,7 +250,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 		stage: state.stage,
 		position: state.cursor + 1,
 		total: state.plan.length,
-		heading: question.heading ?? deckHeading,
+		heading: question.heading ?? planned.heading ?? deckHeading,
 		prompt: question.prompt,
 		canCheck: !state.checked && state.selected !== null
 	};
@@ -289,7 +319,9 @@ export interface Summary {
 }
 
 export function summarize(state: LessonState): Summary {
-	const byQuestion = new Map(state.plan.map((planned) => [planned.question.id, planned.question]));
+	const byQuestion = new Map(
+		state.plan.map((planned) => [`${planned.deckId}/${planned.question.id}`, planned.question])
+	);
 	const missed: MissedQuestion[] = [];
 	let correctFirstTry = 0;
 	let followUpsCorrect = 0;
@@ -298,7 +330,7 @@ export function summarize(state: LessonState): Summary {
 			correctFirstTry += 1;
 			continue;
 		}
-		const question = byQuestion.get(done.questionId)!;
+		const question = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
 		const followUpCorrect = done.followUp?.correct ?? false;
 		if (followUpCorrect) followUpsCorrect += 1;
 		missed.push({

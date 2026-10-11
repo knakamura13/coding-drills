@@ -9,6 +9,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 const ORIGIN = `http://localhost:${PORT}`;
+// The app runs against an in-process Postgres so sign-in and sync are tested for real.
+const PG_PORT = 54329;
+export const DATABASE_URL = `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres`;
 const channel = process.env.PW_CHANNEL || undefined;
 
 export default defineConfig({
@@ -31,11 +34,22 @@ export default defineConfig({
 		// WebKit is the engine behind iPhone Safari and home-screen apps.
 		{ name: 'iphone', use: { ...devices['iPhone 16 Pro'] } }
 	],
-	webServer: {
-		command: 'pnpm build && node build/index.js',
-		url: `${ORIGIN}/healthz`,
-		reuseExistingServer: !process.env.CI,
-		timeout: 120_000,
-		env: { PORT: String(PORT) }
-	}
+	webServer: [
+		{
+			command: 'node e2e/pg-server.mjs',
+			port: PG_PORT,
+			reuseExistingServer: !process.env.CI,
+			env: { PG_PORT: String(PG_PORT) }
+		},
+		{
+			command: 'pnpm build && node build/index.js',
+			url: `${ORIGIN}/healthz`,
+			reuseExistingServer: !process.env.CI,
+			timeout: 120_000,
+			// Allowed email for the test accounts the specs create. No Google client is set,
+			// so the real sign-in hop is never exercised; specs mint sessions directly.
+			// ORIGIN: adapter-node assumes https without it, which the API's origin check would reject.
+			env: { PORT: String(PORT), ORIGIN, DATABASE_URL, ALLOWED_EMAILS: 'me@example.com' }
+		}
+	]
 });

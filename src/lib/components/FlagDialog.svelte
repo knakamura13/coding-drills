@@ -34,7 +34,7 @@
 		<label for="flag-note">What looks wrong? <span class="optional">(optional)</span></label>
 		<textarea id="flag-note" bind:value={note} rows="4" maxlength={MAX_NOTE_LENGTH}></textarea>
 		<p class="hint">
-			Saved on this device. The summary screen can turn flags into GitHub issues on the public repo.
+			Saved on this device, and synced when you are signed in. The summary screen can turn flags into GitHub issues on the public repo.
 		</p>
 		<div class="actions">
 			<Button type="submit">Save flag</Button>

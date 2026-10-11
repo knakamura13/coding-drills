@@ -3,17 +3,20 @@
 	import FlagList from '$lib/components/FlagList.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { getRepository, type Flag } from '$lib/storage';
+	import { initSync, syncSoon } from '$lib/sync/store.svelte';
 
 	let flags = $state<Flag[]>([]);
 
 	onMount(() => {
 		flags = getRepository().flags();
+		void initSync();
 	});
 
 	function remove(id: string) {
 		const repository = getRepository();
 		repository.removeFlag(id);
 		flags = repository.flags();
+		syncSoon();
 	}
 </script>
 
@@ -25,7 +28,7 @@
 	<a class="back" href="/">← Decks</a>
 	<h1>Flagged questions</h1>
 	<p class="lede">
-		Saved on this device. Each flag can be opened as an issue on the public GitHub repo.
+		Saved on this device, and synced when you are signed in. Each flag can be opened as an issue on the public GitHub repo.
 	</p>
 
 	{#if flags.length === 0}

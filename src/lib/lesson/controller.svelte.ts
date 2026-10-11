@@ -1,8 +1,6 @@
-import type { Deck } from '$lib/content/schema';
 import {
 	advance,
 	check,
-	createLesson,
 	isFinished,
 	isPristine,
 	progress,
@@ -13,16 +11,23 @@ import {
 } from '$lib/domain/lesson';
 import type { Rng } from '$lib/domain/shuffle';
 import { getRepository, type Flag } from '$lib/storage';
+import { syncSoon } from '$lib/sync/store.svelte';
+
+/** Where a lesson's questions come from: one deck, or today's review across decks. */
+export interface LessonSource {
+	create(rng: Rng): LessonState;
+}
 
 /**
  * Wraps the pure lesson state machine in Svelte state and writes the side
- * effects the machine does not own: attempts and flags go to browser storage.
+ * effects the machine does not own: attempts and flags go to browser storage,
+ * and a signed-in device then syncs them.
  */
-export function createLessonController(deck: Deck, rng: Rng = Math.random) {
-	let state = $state.raw<LessonState>(createLesson(deck, rng));
+export function createLessonController(source: LessonSource, rng: Rng = Math.random) {
+	let state = $state.raw<LessonState>(source.create(rng));
 	let sessionFlags = $state.raw<Flag[]>([]);
 
-	const screen = $derived(view(state, deck.heading));
+	const screen = $derived(view(state));
 	const finished = $derived(isFinished(state));
 	const summary = $derived(isFinished(state) ? summarize(state) : null);
 
@@ -30,7 +35,7 @@ export function createLessonController(deck: Deck, rng: Rng = Math.random) {
 		const planned = state.plan[state.cursor];
 		if (!planned) return null;
 		const optionId = state.stage === 'followUp' ? (state.mainPick ?? undefined) : undefined;
-		return { questionId: planned.question.id, stage: state.stage, optionId };
+		return { deckId: planned.deckId, questionId: planned.question.id, stage: state.stage, optionId };
 	}
 
 	return {
@@ -76,7 +81,7 @@ export function createLessonController(deck: Deck, rng: Rng = Math.random) {
 				.flags()
 				.find(
 					(flag) =>
-						flag.deckId === deck.id &&
+						flag.deckId === target.deckId &&
 						flag.questionId === target.questionId &&
 						flag.stage === target.stage &&
 						flag.optionId === target.optionId
@@ -93,24 +98,26 @@ export function createLessonController(deck: Deck, rng: Rng = Math.random) {
 			const before = state.completed.length;
 			state = advance(state);
 			if (state.completed.length > before) {
-				getRepository().recordAttempt({ deckId: deck.id, ...state.completed[state.completed.length - 1] });
+				getRepository().recordAttempt(state.completed[state.completed.length - 1]);
+				syncSoon();
 			}
 		},
 		restart() {
-			state = createLesson(deck, rng);
+			state = source.create(rng);
 			sessionFlags = [];
 		},
 		flag(note: string): Flag | null {
 			const target = flagTarget();
 			if (!target) return null;
 			const saved = getRepository().upsertFlag({
-				deckId: deck.id,
+				deckId: target.deckId,
 				questionId: target.questionId,
 				stage: target.stage,
 				optionId: target.optionId,
 				note
 			});
 			sessionFlags = [...sessionFlags.filter((flag) => flag.id !== saved.id), saved];
+			syncSoon();
 			return saved;
 		}
 	};

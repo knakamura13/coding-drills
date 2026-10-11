@@ -5,6 +5,7 @@ import {
 	advance,
 	check,
 	createLesson,
+	createReviewLesson,
 	isFinished,
 	isPristine,
 	progress,
@@ -181,7 +182,7 @@ describe('select and check', () => {
 describe('a correct answer', () => {
 	it('completes the question without a follow-up', () => {
 		const next = advance(answer(start(), 'right'));
-		expect(next.completed).toEqual([{ questionId: 'q1', pickedId: 'right', correct: true }]);
+		expect(next.completed).toEqual([{ deckId: 'tiny', questionId: 'q1', pickedId: 'right', correct: true }]);
 		expect(next.cursor).toBe(1);
 		expect(next.stage).toBe('question');
 		expect(next.selected).toBeNull();
@@ -234,7 +235,13 @@ describe('a wrong answer', () => {
 	it('completes with the follow-up result, right or wrong', () => {
 		const rightFollowUp = advance(answer(advance(answer(start(), 'a')), 'fa-good'));
 		expect(rightFollowUp.completed).toEqual([
-			{ questionId: 'q1', pickedId: 'a', correct: false, followUp: { pickedId: 'fa-good', correct: true } }
+			{
+				deckId: 'tiny',
+				questionId: 'q1',
+				pickedId: 'a',
+				correct: false,
+				followUp: { pickedId: 'fa-good', correct: true }
+			}
 		]);
 		const wrongFollowUp = advance(answer(advance(answer(start(), 'b')), 'fb-bad'));
 		expect(wrongFollowUp.completed[0].followUp).toEqual({ pickedId: 'fb-bad', correct: false });
@@ -282,10 +289,12 @@ describe('view', () => {
 
 	it('resolves the heading from the question, then the deck, then nothing', () => {
 		const first = start();
-		expect(view(first, 'Deck heading')!.heading).toBe('Deck heading');
-		expect(view(first)!.heading).toBeUndefined();
+		expect(view(first)!.heading).toBe('Deck heading');
 		const second = advance(answer(first, 'right'));
-		expect(view(second, 'Deck heading')!.heading).toBe('Question heading');
+		expect(view(second)!.heading).toBe('Question heading');
+
+		const noHeading = { ...tinyDeck(), heading: undefined };
+		expect(view(start(noHeading))!.heading).toBeUndefined();
 	});
 
 	it('reports position and total', () => {
@@ -393,5 +402,48 @@ describe('random play over the shipped decks', () => {
 				expect(lastProgress).toBe(1);
 			}
 		}
+	});
+});
+
+describe('createReviewLesson', () => {
+	const alpha = { ...tinyDeck(), id: 'alpha', heading: 'Alpha heading' };
+	const beta = { ...tinyDeck(), id: 'beta', heading: undefined };
+	const entries = [
+		{ deckId: 'alpha', heading: alpha.heading, question: alpha.questions[0] },
+		{ deckId: 'beta', heading: beta.heading, question: beta.questions[0] }
+	];
+
+	it('plans questions from several decks, even when their ids collide', () => {
+		const state = createReviewLesson(entries, seededRng(1));
+		expect(state.deckId).toBe('review');
+		expect(state.plan.map((planned) => `${planned.deckId}/${planned.question.id}`).sort()).toEqual([
+			'alpha/q1',
+			'beta/q1'
+		]);
+	});
+
+	it('records the deck each question came from and keeps a deck heading per question', () => {
+		let state = createReviewLesson(entries, seededRng(1));
+		const headings: Record<string, string | undefined> = {};
+		while (!isFinished(state)) {
+			const current = view(state)!;
+			headings[state.plan[state.cursor].deckId] = current.heading;
+			state = advance(answer(state, state.plan[state.cursor].question.correct));
+		}
+		expect(headings).toEqual({ alpha: 'Alpha heading', beta: undefined });
+		expect(state.completed.map((done) => done.deckId).sort()).toEqual(['alpha', 'beta']);
+	});
+
+	it('summarizes a miss on each deck separately', () => {
+		let state = createReviewLesson(entries, seededRng(1));
+		while (!isFinished(state)) {
+			const { question } = state.plan[state.cursor];
+			state = advance(answer(state, question.options.find((o) => o.id !== question.correct)!.id));
+			const followUp = question.followUps[state.mainPick!];
+			state = advance(answer(state, followUp.correct));
+		}
+		const summary = summarize(state);
+		expect(summary.missed).toHaveLength(2);
+		expect(summary.followUpsCorrect).toBe(2);
 	});
 });

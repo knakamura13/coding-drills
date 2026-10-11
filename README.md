@@ -6,7 +6,7 @@ Each question asks for a pattern, a complexity, or an output. Pick wrongly and t
 
 Live: https://coding-drills.up.railway.app
 
-Status: MVP. One deck of five questions, progress stored on the device, no accounts.
+Status: early. One deck of five questions, spaced review, and optional Google sign-in that syncs progress between devices automatically.
 
 ## The lesson loop
 
@@ -14,7 +14,41 @@ Status: MVP. One deck of five questions, progress stored on the device, no accou
 2. Right: a green sheet explains why. **Continue**.
 3. Wrong: a red sheet shows the right answer. **See why again** opens the explanation for the option you picked and for the right one. **Continue** opens the follow-up written for the option you picked, with the original problem pinned above it.
 4. The follow-up gets the same Check and feedback. A missed follow-up shows the answer and its explanation and moves on. Follow-ups do not have follow-ups.
-5. The summary lists misses and follow-up results. The flag icon on any feedback sheet saves a bad question on the device, and the summary links flags to prefilled GitHub issues.
+5. The summary lists misses and follow-up results. The flag icon on any feedback sheet saves a bad question, and the summary links flags to prefilled GitHub issues.
+
+## Spaced review
+
+Every question you answer enters a schedule, and the home screen shows a **Review** card with what is due today (the ten most overdue per sitting). A review runs through the same lesson loop, follow-ups included.
+
+- **Grading is by outcome.** Right first try is *good*. Wrong, then the follow-up right, is *hard*. Wrong twice is *again*. Speed is ignored.
+- **The first attempt of the day counts.** Retaking a deck the same day is logged but does not move the schedule.
+- **Intervals** follow the SM-2 family from learning-korean: 1 day, 3 days, then growing by the question's ease, capped at a year. *Again* resets to tomorrow.
+- **The schedule is derived, never stored.** `src/lib/domain/srs.ts` replays the attempt log, so every device that holds the same attempts shows the same Review card. It is pure and takes the clock as a parameter.
+- The home screen also shows a day streak and per-deck progress, and the summary says when the next review is due.
+
+## Accounts and sync
+
+Signed out, the app is fully local: attempts and flags live in `localStorage`. Signing in with Google makes progress follow you between devices with no save step. It syncs on load, shortly after each answer, when the tab becomes visible, and when the connection returns.
+
+- **Append-only attempt log.** Each answer is an event with a unique id. Devices exchange events and take the union, so two devices can never conflict, and a retried request stores nothing twice. Attempts recorded before signing in are uploaded on first sync.
+- **Flags** merge by id, newest edit wins, and deletions sync as tombstones.
+- **The server only stores events** (Postgres). It never computes schedules.
+- **Access is one allow-listed Google account.** `ALLOWED_EMAILS` holds the comma-separated addresses that may sign in, and an empty value allows nobody. Sessions are opaque random tokens whose SHA-256 is stored, in an httpOnly cookie. The OAuth flow is authorization code with PKCE, written by hand in `src/lib/server/googleOauth.ts`.
+- **Without `DATABASE_URL`** every `/api/*` route answers "unavailable" and the app stays local-only.
+
+### Setting it up
+
+1. `railway config apply` creates the Postgres service and wires `DATABASE_URL` (see below).
+2. In Google Cloud console, create an OAuth client (type **Web application**) and add the authorized redirect URIs `https://<your-domain>/api/auth/google/callback` and `http://localhost:5173/api/auth/google/callback`. While the consent screen is in Testing mode, add your account as a test user.
+3. Set these on the Railway service. They are never committed:
+
+   | Variable | Value |
+   | --- | --- |
+   | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | from the OAuth client |
+   | `ALLOWED_EMAILS` | your Google address, comma-separated for several |
+   | `ORIGIN` | the public origin, for example `https://coding-drills.up.railway.app` |
+
+Local development with accounts: put the same variables in `.env` plus a `DATABASE_URL`. `node e2e/pg-server.mjs` starts a throwaway Postgres engine (PGlite) on port 54329, so Docker is not needed.
 
 ## Run it
 
@@ -26,8 +60,8 @@ pnpm dev      # http://localhost:5173, also reachable on your LAN for phone test
 | Command                      | What it does                                                            |
 | ---------------------------- | ----------------------------------------------------------------------- |
 | `pnpm check`                 | svelte-check, plus a type-check of `.railway/railway.ts`                |
-| `pnpm test`                  | vitest: lesson rules, schema, storage, Markdown, deck validation        |
-| `pnpm test:e2e`              | builds the app and runs Playwright on desktop, Android, and iPhone viewports       |
+| `pnpm test`                  | vitest: lesson rules, scheduling, sync, schema, storage, deck validation, and the SQL against a real Postgres engine (PGlite) |
+| `pnpm test:e2e`              | builds the app, starts an in-process Postgres, and runs Playwright on desktop, Android, and iPhone, including two-device sync       |
 | `pnpm build` / `pnpm start`  | production build, then the Node server on `$PORT`                       |
 
 `pnpm test:e2e` runs desktop and Android (Chromium) and iPhone (WebKit) projects. Install the browsers with `pnpm exec playwright install chromium webkit`. With Chrome installed, `PW_CHANNEL=chrome pnpm test:e2e` reuses it for the Chromium projects.
@@ -41,13 +75,13 @@ Decks are YAML files in `content/decks/`. The build validates them, and a deck w
 - SvelteKit 2, Svelte 5, TypeScript, pnpm. Plain CSS with design tokens. No runtime dependencies in the client bundle beyond the framework.
 - A Vite plugin compiles `content/decks/*.yaml` into a typed virtual module and validates it with zod at build time.
 - The lesson is a pure state machine (`src/lib/domain/lesson.ts`) with unit tests, including randomized play over every shipped deck. Svelte wraps it in `src/lib/lesson/controller.svelte.ts`.
-- Attempts and flags are stored in `localStorage`. There is no backend and no sync between devices.
+- Attempts and flags are stored in `localStorage` first, so the app works offline and signed out. A signed-in device also syncs them to Postgres through `/api/sync`.
 - `/play/[deckId]` renders on the client because option order is shuffled each run. Other pages are prerendered.
 - Accessibility: options are native radio buttons, dialogs are native `<dialog>` elements, and axe scans run in the e2e suite.
 
 ## Deploy on Railway
 
-The Railway project is described in code in [`.railway/railway.ts`](.railway/railway.ts) ([Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)). The service builds from the `Dockerfile` and is health-checked on `/healthz`.
+The Railway project is described in code in [`.railway/railway.ts`](.railway/railway.ts) ([Infrastructure as Code](https://docs.railway.com/infrastructure-as-code)): the app service (built from the `Dockerfile`, health-checked on `/healthz`), a Postgres database with a volume, and the variables the app reads. Variable values stay in Railway; the file only declares them with `preserve()`, and `DATABASE_URL` is a reference to the database's private hostname.
 
 First deploy of a new Railway project:
 
@@ -66,7 +100,7 @@ Railway never reads `.railway/railway.ts` during a deploy. Pushing or merging an
 
 ## Roadmap
 
-Not in the MVP: spaced repetition from the attempt log, more decks, streaks and XP, offline support, and syncing progress between devices.
+Not built yet: more decks following the curriculum in py-coding-challenges, XP, and an offline service worker.
 
 ## License
 
