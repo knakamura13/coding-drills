@@ -1,11 +1,21 @@
-import { defineRailway, github, preserve, project, service } from 'railway/iac';
+import { defineRailway, github, postgres, preserve, project, service, volume } from 'railway/iac';
 
 /**
  * Railway infrastructure for coding-drills, as code.
  * See https://docs.railway.com/infrastructure-as-code
  *
- * One service, no database: decks are compiled into the bundle and progress
- * lives in the browser. The build comes from `Dockerfile` at the repo root.
+ * Two resources: the app and a Postgres database for cross-device sync. Decks
+ * are compiled into the bundle, and the database holds each signed-in
+ * learner's attempts and flags. The app reaches it over Railway's private
+ * network through the DATABASE_URL reference below. The build comes from
+ * `Dockerfile` at the repo root.
+ *
+ * Variable values stay in Railway (`preserve()`):
+ * - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: the Google OAuth client.
+ * - ALLOWED_EMAILS: comma-separated Google accounts that may sign in. Empty
+ *   means nobody can, so a missing value fails closed.
+ * - ORIGIN: the public origin, for example https://coding-drills.up.railway.app.
+ *   Needed because the Google redirect URI and the API's origin check use it.
  *
  * Railway never reads this file during a deploy. Editing or merging it changes
  * nothing live until `railway config apply` runs, so run the read-only
@@ -19,6 +29,17 @@ import { defineRailway, github, preserve, project, service } from 'railway/iac';
  * it once after the first apply with `railway domain`.
  */
 export default defineRailway(() => {
+	const database = postgres('Postgres', { region: 'us-west2' });
+	database.networking = { privateNetworkEndpoint: 'postgres' };
+
+	const databaseVolume = volume('postgres-volume', {
+		alerts: { usage: { '100': {}, '80': {}, '95': {} } },
+		allowOnlineResize: true,
+		region: 'us-west2',
+		// Attempts are a few hundred bytes each. A year of daily use fits in a few megabytes.
+		sizeMB: 500
+	});
+
 	const app = service('Coding Drills App', {
 		source: github('knakamura13/coding-drills', { branch: 'main' }),
 		build: {
@@ -48,10 +69,14 @@ export default defineRailway(() => {
 		// Values live in Railway. `preserve()` keeps them, because a variable that is
 		// missing from this file is planned for deletion on apply.
 		env: {
+			// Resolves to the private hostname (postgres.railway.internal), never the public proxy.
+			DATABASE_URL: database.env.DATABASE_URL,
 			GOOGLE_CLIENT_ID: preserve(),
-			GOOGLE_CLIENT_SECRET: preserve()
+			GOOGLE_CLIENT_SECRET: preserve(),
+			ALLOWED_EMAILS: preserve(),
+			ORIGIN: preserve()
 		}
 	});
 
-	return project('coding-drills', { resources: [app] });
+	return project('coding-drills', { resources: [database, app, databaseVolume] });
 });

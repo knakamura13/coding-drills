@@ -14,6 +14,11 @@ import { REPO_URL } from '../config';
 
 const root = process.cwd();
 
+/** The app service among the resources. */
+function appOf(resources: { type: string }[]): ServiceNode {
+	return resources.find((resource) => resource.type === 'service') as ServiceNode;
+}
+
 async function evaluate() {
 	const definition = await program(
 		createRailwayContext({ command: 'plan', environment: 'production', projectName: 'coding-drills' }),
@@ -24,14 +29,18 @@ async function evaluate() {
 }
 
 describe('.railway/railway.ts', () => {
-	it('defines one project with a single app service and no database', async () => {
+	it('defines the app, its Postgres database, and the database volume', async () => {
 		const { definition, resources } = await evaluate();
 		expect(definition.name).toBe('coding-drills');
-		expect(resources.map((resource) => `${resource.type}.${resource.name}`)).toEqual(['service.Coding Drills App']);
+		expect(resources.map((resource) => `${resource.type}.${resource.name}`).sort()).toEqual([
+			'database.Postgres',
+			'service.Coding Drills App',
+			'volume.postgres-volume'
+		]);
 	});
 
 	it('deploys the main branch of this repository', async () => {
-		const web = (await evaluate()).resources[0] as ServiceNode;
+		const web = appOf((await evaluate()).resources);
 		expect(web.source).toEqual({
 			type: 'github',
 			repo: REPO_URL.replace('https://github.com/', ''),
@@ -40,19 +49,19 @@ describe('.railway/railway.ts', () => {
 	});
 
 	it('builds from a Dockerfile that exists', async () => {
-		const web = (await evaluate()).resources[0] as ServiceNode;
+		const web = appOf((await evaluate()).resources);
 		expect(web.build?.builder).toBe('DOCKERFILE');
 		expect(existsSync(join(root, web.build?.dockerfilePath ?? 'missing'))).toBe(true);
 	});
 
 	it('health-checks a route that exists', async () => {
-		const web = (await evaluate()).resources[0] as ServiceNode;
+		const web = appOf((await evaluate()).resources);
 		expect(web.deploy?.healthcheckPath).toBe('/healthz');
 		expect(existsSync(join(root, 'src/routes/healthz/+server.ts'))).toBe(true);
 	});
 
 	it('only watches paths that exist', async () => {
-		const web = (await evaluate()).resources[0] as ServiceNode;
+		const web = appOf((await evaluate()).resources);
 		const patterns = web.build?.watchPatterns ?? [];
 		expect(patterns.length).toBeGreaterThan(0);
 		for (const pattern of patterns) {
@@ -61,8 +70,20 @@ describe('.railway/railway.ts', () => {
 		}
 	});
 
-	it('keeps the Google OAuth variables that live in Railway', async () => {
-		const app = (await evaluate()).resources[0] as ServiceNode;
-		expect(Object.keys(app.variables ?? {}).sort()).toEqual(['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']);
+	it('points DATABASE_URL at the database and keeps the variables whose values live in Railway', async () => {
+		const app = appOf((await evaluate()).resources);
+		const variables = app.variables ?? {};
+		expect(Object.keys(variables).sort()).toEqual([
+			'ALLOWED_EMAILS',
+			'DATABASE_URL',
+			'GOOGLE_CLIENT_ID',
+			'GOOGLE_CLIENT_SECRET',
+			'ORIGIN'
+		]);
+		// Everything but DATABASE_URL is a secret or a per-deployment value that only Railway holds.
+		for (const [name, value] of Object.entries(variables)) {
+			if (name !== 'DATABASE_URL') expect(value, name).toEqual({ type: 'preserve' });
+		}
+		expect(variables.DATABASE_URL).toMatchObject({ type: 'reference' });
 	});
 });
