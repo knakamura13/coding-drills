@@ -24,10 +24,10 @@ async function evaluate() {
 }
 
 describe('.railway/railway.ts', () => {
-	it('defines one project with a single web service and no database', async () => {
+	it('defines one project with a single app service and no database', async () => {
 		const { definition, resources } = await evaluate();
 		expect(definition.name).toBe('coding-drills');
-		expect(resources.map((resource) => `${resource.type}.${resource.name}`)).toEqual(['service.web']);
+		expect(resources.map((resource) => `${resource.type}.${resource.name}`)).toEqual(['service.Coding Drills App']);
 	});
 
 	it('deploys the main branch of this repository', async () => {
@@ -59,5 +59,10 @@ describe('.railway/railway.ts', () => {
 			const path = pattern.replace(/^\//, '').replace(/\/\*\*$/, '');
 			expect(existsSync(join(root, path)), `watch pattern ${pattern}`).toBe(true);
 		}
+	});
+
+	it('keeps the Google OAuth variables that live in Railway', async () => {
+		const app = (await evaluate()).resources[0] as ServiceNode;
+		expect(Object.keys(app.variables ?? {}).sort()).toEqual(['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']);
 	});
 });

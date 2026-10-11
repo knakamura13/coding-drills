@@ -1,4 +1,4 @@
-import { defineRailway, github, project, service } from 'railway/iac';
+import { defineRailway, github, preserve, project, service } from 'railway/iac';
 
 /**
  * Railway infrastructure for coding-drills, as code.
@@ -19,7 +19,7 @@ import { defineRailway, github, project, service } from 'railway/iac';
  * it once after the first apply with `railway domain`.
  */
 export default defineRailway(() => {
-	const web = service('web', {
+	const app = service('Coding Drills App', {
 		source: github('knakamura13/coding-drills', { branch: 'main' }),
 		build: {
 			builder: 'DOCKERFILE',
@@ -44,8 +44,14 @@ export default defineRailway(() => {
 			healthcheckTimeout: 30,
 			restartPolicyType: 'ON_FAILURE',
 			restartPolicyMaxRetries: 3
+		},
+		// Values live in Railway. `preserve()` keeps them, because a variable that is
+		// missing from this file is planned for deletion on apply.
+		env: {
+			GOOGLE_CLIENT_ID: preserve(),
+			GOOGLE_CLIENT_SECRET: preserve()
 		}
 	});
 
-	return project('coding-drills', { resources: [web] });
+	return project('coding-drills', { resources: [app] });
 });
