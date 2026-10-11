@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # The pnpm version comes from "packageManager" in package.json.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level=high
+      - run: pnpm audit
+        continue-on-error: true
+      # Unit tests also validate every deck and evaluate .railway/railway.ts.
+      - run: pnpm exec vitest run --coverage
+      - run: pnpm check
+      - run: pnpm exec playwright install --with-deps chromium
+      # Builds the app, serves build/, and runs desktop and mobile suites with axe scans.
+      - run: pnpm test:e2e
+
+  docker:
+    # The Railway service builds from the Dockerfile, so build it here and smoke-test the image.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build -t coding-drills .
+      - name: Smoke test
+        run: |
+          docker run -d --rm -p 3000:3000 --name app coding-drills
+          for i in $(seq 1 30); do curl -fsS http://localhost:3000/healthz && break || sleep 1; done
+          test "$(curl -fsS http://localhost:3000/healthz)" = "ok"
+          curl -fsS http://localhost:3000/ | grep -q "Coding Drills"
+          curl -fsS http://localhost:3000/manifest.webmanifest | grep -q '"standalone"'
+          docker stop app
