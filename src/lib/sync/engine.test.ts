@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { replay } from '$lib/domain/srs';
 import { createMemoryRepo } from '$lib/testing/memoryRepo';
-import { Repository, type KeyValueStore } from '$lib/storage/repository';
+import { KEYS, Repository, type KeyValueStore } from '$lib/storage/repository';
+import type { Attempt } from '$lib/storage/types';
 import type { SyncApi, SyncResult } from './api';
 import { runSync } from './engine';
 import { SYNC_BATCH, SYNC_PAGE, type SyncRequest } from './protocol';
 
-function memoryStore(): KeyValueStore {
-	const data = new Map<string, string>();
+function memoryStore(initial: Record<string, string> = {}): KeyValueStore {
+	const data = new Map<string, string>(Object.entries(initial));
 	return { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => void data.set(key, value) };
 }
 
 /** A device: its own storage and clock, talking to a shared server. */
-function device(now: string, counterPrefix: string) {
+function device(now: string, counterPrefix: string, history: Attempt[] = []) {
 	let n = 0;
 	const clock = { now: new Date(now) };
-	const repo = new Repository(memoryStore(), () => clock.now, () => `${counterPrefix}${String(++n).padStart(6, '0')}`);
+	// A long history is written straight into storage: recording it one answer at a time is quadratic.
+	const store = memoryStore(history.length > 0 ? { [KEYS.attempts]: JSON.stringify(history) } : {});
+	const repo = new Repository(store, () => clock.now, () => `${counterPrefix}${String(++n).padStart(6, '0')}`);
 	return { repo, clock };
 }
 
@@ -38,7 +41,19 @@ async function server() {
 		},
 		async signOut() {}
 	};
-	return { api, calls, state };
+	return { api, calls, state, repo, userId: user.id };
+}
+
+function bulk(count: number, prefix: string): Attempt[] {
+	return Array.from({ length: count }, (_, i) => ({
+		id: `${prefix}${String(i).padStart(6, '0')}`,
+		at: new Date(Date.UTC(2026, 9, 1, 0, 0, 0, i)).toISOString(),
+		day: '2026-10-01',
+		deckId: 'deck',
+		questionId: `q${i}`,
+		pickedId: 'a',
+		correct: true
+	}));
 }
 
 const answer = (questionId: string, correct = true) => ({ deckId: 'deck', questionId, pickedId: 'a', correct, ...(correct ? {} : { followUp: { pickedId: 'f', correct: true } }) });
@@ -121,20 +136,16 @@ describe('runSync', () => {
 
 	it('uploads a long history in batches', async () => {
 		const { api, calls } = await server();
-		const a = device('2026-10-10T10:00:00.000Z', 'a');
-		const total = SYNC_BATCH * 2 + 7;
-		for (let i = 0; i < total; i++) a.repo.recordAttempt(answer(`q${i}`));
+		const a = device('2026-10-10T10:00:00.000Z', 'a', bulk(SYNC_BATCH * 2 + 7, 'h'));
 		expect(await runSync(a.repo, api)).toMatchObject({ status: 'ok' });
 		expect(calls.map((call) => call.attempts.length)).toEqual([SYNC_BATCH, SYNC_BATCH, 7]);
 		expect(a.repo.syncState().pending).toEqual([]);
 	});
 
 	it('downloads a long history across pages', async () => {
-		const { api, calls } = await server();
-		const a = device('2026-10-10T10:00:00.000Z', 'a');
+		const { api, calls, repo, userId } = await server();
 		const total = SYNC_PAGE + 11;
-		for (let i = 0; i < total; i++) a.repo.recordAttempt(answer(`q${i}`));
-		await runSync(a.repo, api);
+		await repo.sync(userId, { cursor: 0, attempts: bulk(total, 'h'), flags: [] });
 
 		const b = device('2026-10-11T10:00:00.000Z', 'b');
 		calls.length = 0;
