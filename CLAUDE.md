@@ -5,7 +5,7 @@ SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. No ba
 ## Commands
 
 - `pnpm dev` serves on 5173 and on the LAN. `pnpm check` runs svelte-check plus a type-check of `.railway/railway.ts`. `pnpm test` runs vitest, which also validates every deck and evaluates `.railway/railway.ts`.
-- `PW_CHANNEL=chrome pnpm test:e2e` builds the app, serves `build/`, and runs desktop and mobile suites with axe scans. `PW_CHANNEL=chrome` reuses the installed Chrome. CI installs Chromium instead.
+- `PW_CHANNEL=chrome pnpm test:e2e` builds the app, serves `build/`, and runs desktop, Android (Chromium), and iPhone (WebKit) suites with axe scans. `PW_CHANNEL=chrome` only affects the Chromium projects, and WebKit needs `pnpm exec playwright install webkit`. `PW_CHANNEL=chrome` reuses the installed Chrome. CI installs Chromium instead.
 - Use `pnpm`, never npm. Use `fd` and `rg`.
 
 ## Rules that are not obvious from the code

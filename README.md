@@ -4,6 +4,8 @@ Quiz drills for coding-interview topics, built around one rule: **a wrong answer
 
 Each question asks for a pattern, a complexity, or an output. Pick wrongly and the lesson does not stop at showing the answer. It asks a second question aimed at the misconception behind your pick. Choose Two Pointers for a fixed-width window sum and the follow-up asks which detail points to a sliding window instead.
 
+Live: https://web-production-c52a6.up.railway.app
+
 Status: MVP. One deck of five questions, progress stored on the device, no accounts.
 
 ## The lesson loop
@@ -25,10 +27,10 @@ pnpm dev      # http://localhost:5173, also reachable on your LAN for phone test
 | ---------------------------- | ----------------------------------------------------------------------- |
 | `pnpm check`                 | svelte-check, plus a type-check of `.railway/railway.ts`                |
 | `pnpm test`                  | vitest: lesson rules, schema, storage, Markdown, deck validation        |
-| `pnpm test:e2e`              | builds the app and runs Playwright on desktop and phone viewports       |
+| `pnpm test:e2e`              | builds the app and runs Playwright on desktop, Android, and iPhone viewports       |
 | `pnpm build` / `pnpm start`  | production build, then the Node server on `$PORT`                       |
 
-`pnpm test:e2e` needs Chromium (`pnpm exec playwright install chromium`). With Chrome installed, `PW_CHANNEL=chrome pnpm test:e2e` reuses it.
+`pnpm test:e2e` runs desktop and Android (Chromium) and iPhone (WebKit) projects. Install the browsers with `pnpm exec playwright install chromium webkit`. With Chrome installed, `PW_CHANNEL=chrome pnpm test:e2e` reuses it for the Chromium projects.
 
 ## Decks
 

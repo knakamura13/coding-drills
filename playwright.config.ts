@@ -1,7 +1,8 @@
 /**
  * End-to-end tests against the real production build: `pnpm build`, then the
  * adapter-node server. Locally, `PW_CHANNEL=chrome pnpm test:e2e` reuses the
- * installed Chrome instead of downloading Chromium. CI installs Chromium.
+ * installed Chrome instead of downloading Chromium. The iphone project needs
+ * WebKit: `pnpm exec playwright install webkit`. CI installs both.
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -20,14 +21,15 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	use: {
 		baseURL: ORIGIN,
-		channel,
 		// Slide and fade animations would otherwise make color-contrast scans race the final state.
 		reducedMotion: 'reduce',
 		trace: 'retain-on-failure'
 	},
 	projects: [
-		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
-		{ name: 'mobile', use: { ...devices['Pixel 7'] } }
+		{ name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 }, channel } },
+		{ name: 'mobile', use: { ...devices['Pixel 7'], channel } },
+		// WebKit is the engine behind iPhone Safari and home-screen apps.
+		{ name: 'iphone', use: { ...devices['iPhone 16 Pro'] } }
 	],
 	webServer: {
 		command: 'pnpm build && node build/index.js',
