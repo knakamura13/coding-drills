@@ -18,12 +18,12 @@ test.describe('accounts and sync', () => {
 		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
 	});
 
-	test('the sign-in hop reports a setup problem instead of failing silently', async ({ page }) => {
-		// The e2e server has no Google client, so the hop returns straight to the app.
+	test('a client ID that is not a Google client ID is reported instead of failing at Google', async ({ page }) => {
+		// The e2e server is configured with a bogus ID, so the hop returns straight to the app.
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Sign in with Google to sync' }).click();
-		await expect(page).toHaveURL('/?auth=failed');
-		await expect(page.getByText('Sign-in did not complete. Try again.')).toBeVisible();
+		await expect(page).toHaveURL('/?auth=misconfigured');
+		await expect(page.getByText(/GOOGLE_CLIENT_ID should be the Client ID/)).toBeVisible();
 	});
 
 	test('answers made on one device show up on another with no save step', async ({ browser, page, request, baseURL }) => {

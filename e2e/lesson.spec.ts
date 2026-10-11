@@ -22,8 +22,9 @@ test.describe('the lesson loop', () => {
 	test('starts from the home screen', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Coding Drills', level: 1 })).toBeVisible();
-		await expect(page.getByText(`${deck.questions.length} questions`)).toBeVisible();
-		await page.getByRole('link', { name: 'Start' }).click();
+		const card = page.getByRole('article', { name: deck.title });
+		await expect(card.getByText(`${deck.questions.length} questions`)).toBeVisible();
+		await card.getByRole('link', { name: 'Start' }).click();
 		await expect(page).toHaveURL(DECK_URL);
 		await expect(page.getByRole('progressbar', { name: 'Lesson progress' })).toHaveAttribute(
 			'aria-valuenow',

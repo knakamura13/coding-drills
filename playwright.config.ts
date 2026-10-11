@@ -46,10 +46,18 @@ export default defineConfig({
 			url: `${ORIGIN}/healthz`,
 			reuseExistingServer: !process.env.CI,
 			timeout: 120_000,
-			// Allowed email for the test accounts the specs create. No Google client is set,
-			// so the real sign-in hop is never exercised; specs mint sessions directly.
+			// Allowed email for the test accounts the specs create. The Google client ID is
+			// deliberately not a real one, so the real sign-in hop is never exercised (the app
+			// reports the misconfiguration instead); specs mint sessions directly.
 			// ORIGIN: adapter-node assumes https without it, which the API's origin check would reject.
-			env: { PORT: String(PORT), ORIGIN, DATABASE_URL, ALLOWED_EMAILS: 'me@example.com' }
+			env: {
+				PORT: String(PORT),
+				ORIGIN,
+				DATABASE_URL,
+				ALLOWED_EMAILS: 'me@example.com',
+				GOOGLE_CLIENT_ID: 'not-a-client-id',
+				GOOGLE_CLIENT_SECRET: 'not-a-secret'
+			}
 		}
 	]
 });

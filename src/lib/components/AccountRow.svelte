@@ -9,7 +9,9 @@
 			? 'That Google account is not allowed to sync.'
 			: notice === 'failed'
 				? 'Sign-in did not complete. Try again.'
-				: ''
+				: notice === 'misconfigured'
+					? 'Google sign-in is not set up correctly on the server: GOOGLE_CLIENT_ID should be the Client ID, which ends in .apps.googleusercontent.com.'
+					: ''
 	);
 </script>
 

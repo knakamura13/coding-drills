@@ -7,7 +7,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { googleAuthorizeUrl, randomToken } from '$lib/server/googleOauth';
+import { googleAuthorizeUrl, isGoogleClientId, randomToken } from '$lib/server/googleOauth';
 
 export const prerender = false;
 
@@ -16,6 +16,11 @@ const TEN_MINUTES = 600;
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
 		redirect(302, '/?auth=failed');
+	}
+	if (!isGoogleClientId(env.GOOGLE_CLIENT_ID)) {
+		// Say what is wrong without echoing the value, which may be a secret pasted in the wrong slot.
+		console.error('[auth] GOOGLE_CLIENT_ID does not end in .apps.googleusercontent.com');
+		redirect(302, '/?auth=misconfigured');
 	}
 
 	const state = randomToken();

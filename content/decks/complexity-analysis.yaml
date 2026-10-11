@@ -1,0 +1,358 @@
+id: complexity-analysis
+title: Complexity analysis
+description: Read the running time or memory use off a short piece of code, then show why the nearby answers are off.
+heading: What is the time complexity?
+
+questions:
+  - id: binary-search-lookup
+    tags: [binary-search]
+    prompt: >-
+      Find a target in a sorted array of `n` numbers by checking the middle element and discarding
+      half of the range each time. What is the worst-case time?
+    options:
+      - id: constant
+        text: O(1)
+        explanation: >-
+          Constant time means the work does not grow with `n`. Doubling `n` gives binary search one
+          more step, so it keeps growing, just slowly. Reading `nums[i]` is O(1), but finding a value
+          is not.
+      - id: logarithmic
+        text: O(log n)
+        explanation: >-
+          Each check discards half of the remaining range, so after `k` checks about `n / 2^k` items
+          are left. The range reaches one item after about log₂ n checks.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          Linear time is a scan that looks at every item. Binary search skips whole halves because
+          the array is sorted, so it looks at only about log₂ n items.
+      - id: linearithmic
+        text: O(n log n)
+        explanation: >-
+          n log n is the cost of a comparison sort, or of log n work done for each of n items. Here
+          there is one search of log n steps and no loop over `n`.
+    correct: logarithmic
+    followUps:
+      constant:
+        prompt: What happens to the number of checks when `n` doubles?
+        options:
+          - id: one-more
+            text: It grows by one more check
+          - id: same
+            text: It stays exactly the same
+          - id: doubles
+            text: It doubles
+        correct: one-more
+        explanation: >-
+          Doubling `n` lets you halve one more time before reaching the old size, so the count rises
+          by one. Growing slowly is still growing, which is why the answer is not O(1).
+      linear:
+        prompt: What lets binary search skip half of the array at each step?
+        options:
+          - id: sorted-order
+            text: The array is sorted, so one comparison rules out a whole half
+          - id: unique-values
+            text: The values are all different
+          - id: fast-indexing
+            text: Indexing takes O(1), so it can jump straight to the target
+        correct: sorted-order
+        explanation: >-
+          Comparing with the middle tells you which side the target must be on only because the order
+          is known. Constant-time indexing lets you reach the middle, but the sorted order is what
+          makes the comparison informative.
+      linearithmic:
+        prompt: Where does an n log n running time usually come from?
+        options:
+          - id: log-per-item
+            text: About log n work for each of n items, as in a comparison sort
+          - id: one-search
+            text: One search that halves the range each step
+          - id: two-passes
+            text: Two separate passes over the array
+        correct: log-per-item
+        explanation: >-
+          n log n is `n` items times log n work each. Merge sort, for example, splits log n times and
+          does n work at each level. A single binary search has no loop over `n`, so it is just log n.
+
+  - id: triangle-loops
+    tags: [nested-loops]
+    prompt: |-
+      What is the time complexity of this code?
+
+      ```python
+      total = 0
+      for i in range(n):
+          for j in range(i, n):
+              total += nums[j]
+      ```
+    options:
+      - id: linear
+        text: O(n)
+        explanation: >-
+          The inner loop does not run once per outer step. It runs `n - i` times, so the total is
+          about `n + (n - 1) + ... + 1`, which is far more than `n`.
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          A log n factor needs the inner work to shrink by a constant fraction each time. Here it
+          shrinks by only one per outer step, so the counts add up to n(n + 1) / 2.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          The inner loop runs `n`, `n - 1`, ..., 1 times, which adds up to n(n + 1) / 2. Big-O drops
+          the constant 1/2 and the lower-order term, leaving O(n²).
+      - id: exponential
+        text: O(2^n)
+        explanation: >-
+          Exponential time means the work doubles with each extra item, as when trying every subset.
+          Two nested loops of at most `n` steps each cap the work at n².
+    correct: quadratic
+    followUps:
+      linear:
+        prompt: How many times does the inner loop body run in total when `n = 4`?
+        options:
+          - id: four
+            text: 4 times
+          - id: ten
+            text: 10 times
+          - id: sixteen
+            text: 16 times
+        correct: ten
+        explanation: >-
+          The inner loop runs 4, 3, 2, and 1 times, which is 10 in all. That is n(n + 1) / 2, which
+          grows with the square of `n`, not with `n`.
+      n-log-n:
+        prompt: What kind of loop produces a log n factor?
+        options:
+          - id: halving
+            text: A loop that halves or doubles its remaining range each step
+          - id: start-later
+            text: An inner loop that starts one step later each time
+          - id: fixed-count
+            text: A loop that runs a fixed number of times
+        correct: halving
+        explanation: >-
+          A log n factor appears when the remaining work is cut by a constant fraction each step.
+          Starting one item later removes only one item per round, which still sums to about n² / 2.
+      exponential:
+        prompt: What does an O(2^n) algorithm typically do?
+        options:
+          - id: every-subset
+            text: Considers every subset, or branches twice at each of n levels
+          - id: every-pair
+            text: Considers every pair of items
+          - id: sort-and-scan
+            text: Sorts the input and scans it once
+        correct: every-subset
+        explanation: >-
+          Exponential growth comes from doubling the work with each added item, such as trying every
+          subset. Looking at every pair is only n² work.
+
+  - id: frequency-count
+    tags: [hash-map]
+    prompt: >-
+      Count how many times each value appears in a list of `n` items, using a dictionary and one
+      pass over the list. What is the time complexity?
+    options:
+      - id: constant
+        text: O(1)
+        explanation: >-
+          A single dictionary update is O(1) on average, but the pass does one for each of the `n`
+          items, so the total grows with `n`.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          One pass touches each item once, and each lookup and update takes constant time on average,
+          so the total is O(n).
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          n log n would be right if you sorted the list first and counted runs of equal values. A
+          dictionary skips the sort by finding each key directly through its hash.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Quadratic time means each item triggers a scan of the other items, as when counting with
+          `nums.count(x)` for every `x`. A dictionary finds a key without scanning.
+    correct: linear
+    followUps:
+      constant:
+        prompt: A dictionary update is O(1). Why is the whole pass not O(1)?
+        options:
+          - id: repeated-per-item
+            text: The update runs once for each of the n items, so the constant cost is paid n times
+          - id: slows-down
+            text: The dictionary gets slower as it grows
+          - id: first-only
+            text: Only the first update is O(1) and later ones cost more
+        correct: repeated-per-item
+        explanation: >-
+          Total time is the cost per step times the number of steps. Constant work repeated `n`
+          times is O(n).
+      n-log-n:
+        prompt: Which way of counting costs n log n?
+        options:
+          - id: sort-then-count
+            text: Sort the list, then count runs of equal values
+          - id: dictionary-pass
+            text: Update a dictionary while scanning the list once
+          - id: scan-per-item
+            text: For each item, scan the whole list to count its matches
+        correct: sort-then-count
+        explanation: >-
+          The sort costs n log n and counting the runs is one more pass. The dictionary avoids the
+          sort, and the scan per item would be O(n²).
+      quadratic:
+        prompt: What makes a counting approach quadratic?
+        options:
+          - id: scan-per-item
+            text: Scanning the list again for every item to count its matches
+          - id: one-pass
+            text: Reading each item once
+          - id: hash-lookup
+            text: Looking up a key in a dictionary
+        correct: scan-per-item
+        explanation: >-
+          An O(n) scan done `n` times is O(n²), as in `[nums.count(x) for x in nums]`. A dictionary
+          lookup does not scan, so a single pass stays O(n).
+
+  - id: sort-then-scan
+    tags: [sorting]
+    prompt: >-
+      To check whether a list of `n` numbers contains a duplicate, you sort it and then compare each
+      item with its neighbor in one pass. What is the time complexity?
+    options:
+      - id: linear
+        text: O(n)
+        explanation: >-
+          The scan is O(n), but the sort comes first and costs more. The total is set by the most
+          expensive step.
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          Comparison sorting takes O(n log n) and the neighbor scan adds O(n). The larger term wins,
+          so the total is O(n log n).
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Comparing every pair with a double loop would be quadratic. Sorting first puts duplicates
+          next to each other, so no pair loop is needed, and a comparison sort runs in n log n.
+      - id: logarithmic
+        text: O(log n)
+        explanation: >-
+          Even reading every number once takes `n` steps, so the total cannot be smaller than `n`.
+    correct: n-log-n
+    followUps:
+      linear:
+        prompt: >-
+          Two steps run one after the other: an O(n log n) sort, then an O(n) scan. Which cost sets
+          the total?
+        options:
+          - id: larger
+            text: The larger one, O(n log n)
+          - id: product
+            text: Their product, O(n² log n)
+          - id: smaller
+            text: The smaller one, O(n)
+        correct: larger
+        explanation: >-
+          Steps that run in sequence add, and big-O keeps the fastest-growing term. n log n + n is
+          O(n log n).
+      quadratic:
+        prompt: How does sorting first avoid comparing every pair?
+        options:
+          - id: neighbors-only
+            text: Equal values end up next to each other, so only neighbors need checking
+          - id: removes-duplicates
+            text: Sorting removes the duplicates
+          - id: half-the-pairs
+            text: Sorting lets you check only half of the pairs
+        correct: neighbors-only
+        explanation: >-
+          After sorting, any duplicate sits beside its twin, so one pass over adjacent pairs is
+          enough. That replaces about n² / 2 comparisons with `n - 1`.
+      logarithmic:
+        prompt: Why can this problem not be solved in O(log n) time?
+        options:
+          - id: read-everything
+            text: Any item might be the duplicate, so every item has to be read at least once
+          - id: sorting-is-slow
+            text: Sorting is always slower than log n
+          - id: slow-indexing
+            text: Python lists do not support fast indexing
+        correct: read-everything
+        explanation: >-
+          One unread item could be the duplicate, so a correct algorithm reads all `n`. Sublinear
+          time is possible only with extra structure, such as binary search on data that is already
+          sorted.
+
+  - id: reverse-extra-space
+    heading: How much extra space does it use?
+    tags: [space-complexity]
+    prompt: >-
+      A function takes a list of `n` numbers and returns a new list holding the same numbers in
+      reverse order. It builds the result with a loop that appends to an empty list. Apart from the
+      input, how much memory does it use?
+    options:
+      - id: constant
+        text: O(1)
+        explanation: >-
+          O(1) extra space means a fixed number of variables, as when you reverse the list in place
+          by swapping from both ends. Building a new list stores `n` more items.
+      - id: logarithmic
+        text: O(log n)
+        explanation: >-
+          log n extra space shows up in things like the call stack of a recursion that halves the
+          problem each call. A loop that appends has no recursion, and the new list holds all `n`
+          items.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          The new list has `n` items, so its size grows with the input. The loop variables add only a
+          constant, which big-O ignores.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Quadratic space needs about n² stored values, such as a table with an entry for every pair
+          of items. One list of `n` items is only O(n).
+    correct: linear
+    followUps:
+      constant:
+        prompt: How could you reverse the list using O(1) extra space?
+        options:
+          - id: swap-in-place
+            text: Swap the first and last items, then move inward, changing the list in place
+          - id: slice-copy
+            text: Return `nums[::-1]`
+          - id: append-new
+            text: Append each item to a new list, starting from the end
+        correct: swap-in-place
+        explanation: >-
+          Swapping in place needs only a couple of index variables, so the extra space is constant.
+          A slice or an appended list each create a new list of `n` items.
+      logarithmic:
+        prompt: When does extra space grow like log n?
+        options:
+          - id: recursion-depth
+            text: When recursion halves the problem each call and every call stays on the stack
+          - id: any-loop
+            text: Whenever a loop runs
+          - id: any-copy
+            text: Whenever a list is copied
+        correct: recursion-depth
+        explanation: >-
+          Each active recursive call holds stack space. If the problem halves per call, the depth is
+          about log n. A plain loop reuses its variables, and a copy costs `n`.
+      quadratic:
+        prompt: How many values does a table with one entry for every pair of the `n` items store?
+        options:
+          - id: about-n-squared
+            text: About n²
+          - id: about-n
+            text: About n
+          - id: about-two-n
+            text: About 2n
+        correct: about-n-squared
+        explanation: >-
+          `n` items form about n² pairs, so such a table is O(n²). A list with one slot per item is
+          only O(n).

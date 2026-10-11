@@ -33,6 +33,15 @@ export function isAllowedEmail(email: string, allowList: string | undefined): bo
 	return allowed.includes(email.trim().toLowerCase());
 }
 
+/**
+ * Google client IDs end in `.apps.googleusercontent.com`. Pasting the client
+ * secret (or anything else) into the ID slot is an easy setup mistake, and
+ * Google's own error for it ("OAuth client was not found") does not say why.
+ */
+export function isGoogleClientId(value: string | undefined): value is string {
+	return typeof value === 'string' && /^[\w-]+\.apps\.googleusercontent\.com$/.test(value);
+}
+
 export function randomToken(): string {
 	return randomBytes(32).toString('base64url');
 }

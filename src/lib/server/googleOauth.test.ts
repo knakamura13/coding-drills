@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { decodeIdToken, exchangeGoogleCode, googleAuthorizeUrl, isAllowedEmail, pkceChallenge } from './googleOauth';
+import {
+	decodeIdToken,
+	exchangeGoogleCode,
+	googleAuthorizeUrl,
+	isAllowedEmail,
+	isGoogleClientId,
+	pkceChallenge
+} from './googleOauth';
 
 function idToken(payload: unknown): string {
 	const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -21,6 +28,20 @@ describe('isAllowedEmail', () => {
 	it('does not match on a substring or a different domain', () => {
 		expect(isAllowedEmail('me@example.com.evil.io', 'me@example.com')).toBe(false);
 		expect(isAllowedEmail('xme@example.com', 'me@example.com')).toBe(false);
+	});
+});
+
+describe('isGoogleClientId', () => {
+	it('accepts a Google client ID', () => {
+		expect(isGoogleClientId('example-client.apps.googleusercontent.com')).toBe(true);
+	});
+
+	it('rejects a client secret pasted into the ID slot, and other wrong values', () => {
+		expect(isGoogleClientId('a-client-secret-in-the-id-slot')).toBe(false);
+		expect(isGoogleClientId('123456789012')).toBe(false);
+		expect(isGoogleClientId('example-client.apps.googleusercontent.com.evil.io')).toBe(false);
+		expect(isGoogleClientId('')).toBe(false);
+		expect(isGoogleClientId(undefined)).toBe(false);
 	});
 });
 
