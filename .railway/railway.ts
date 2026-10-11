@@ -36,8 +36,9 @@ export default defineRailway(() => {
 		alerts: { usage: { '100': {}, '80': {}, '95': {} } },
 		allowOnlineResize: true,
 		region: 'us-west2',
-		// Attempts are a few hundred bytes each. A year of daily use fits in a few megabytes.
-		sizeMB: 500
+		// Railway creates volumes at 5 GB and cannot shrink them, and billing follows usage, not size.
+		// Attempts are a few hundred bytes each, so a year of daily use fits in a few megabytes.
+		sizeMB: 5000
 	});
 
 	const app = service('Coding Drills App', {
