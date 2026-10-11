@@ -22,8 +22,9 @@ test.describe('accounts and sync', () => {
 		// The e2e server is configured with a bogus ID, so the hop returns straight to the app.
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Sign in with Google to sync' }).click();
-		await expect(page).toHaveURL('/?auth=misconfigured');
 		await expect(page.getByText(/GOOGLE_CLIENT_ID should be the Client ID/)).toBeVisible();
+		// The message is shown once and the URL is cleaned.
+		await expect(page).toHaveURL('/');
 	});
 
 	test('answers made on one device show up on another with no save step', async ({ browser, page, request, baseURL }) => {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AccountRow from '$lib/components/AccountRow.svelte';
+	import AuthNotice from '$lib/components/AuthNotice.svelte';
 	import DeckCard from '$lib/components/DeckCard.svelte';
 	import ReviewCard from '$lib/components/ReviewCard.svelte';
 	import { APP_NAME } from '$lib/config';
@@ -38,6 +39,8 @@
 
 	onMount(() => {
 		notice = new URLSearchParams(location.search).get('auth') ?? '';
+		// The message is shown once. Keep the URL clean so a reload or a shared link does not repeat it.
+		if (notice) history.replaceState(history.state, '', location.pathname);
 		void initSync();
 	});
 
@@ -60,6 +63,8 @@
 		{/if}
 	</header>
 
+	<AuthNotice {notice} />
+
 	{#if review}
 		<div class="review"><ReviewCard dueCount={review.dueCount} sitting={REVIEW_SIZE} nextInDays={review.nextInDays} /></div>
 	{/if}
@@ -76,7 +81,7 @@
 		</p>
 	{/if}
 
-	<footer><AccountRow {notice} /></footer>
+	<footer><AccountRow /></footer>
 </main>
 
 <style>

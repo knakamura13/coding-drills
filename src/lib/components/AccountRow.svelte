@@ -1,18 +1,6 @@
 <script lang="ts">
 	import { account, signOut } from '$lib/sync/store.svelte';
 
-	/** Set from the sign-in redirect, for example "denied". */
-	let { notice = '' }: { notice?: string } = $props();
-
-	const message = $derived(
-		notice === 'denied'
-			? 'That Google account is not allowed to sync.'
-			: notice === 'failed'
-				? 'Sign-in did not complete. Try again.'
-				: notice === 'misconfigured'
-					? 'Google sign-in is not set up correctly on the server: GOOGLE_CLIENT_ID should be the Client ID, which ends in .apps.googleusercontent.com.'
-					: ''
-	);
 </script>
 
 {#if account.status === 'signedIn'}
@@ -35,9 +23,6 @@
 		<a href="/api/auth/google" data-sveltekit-reload>Sign in with Google to sync</a>
 	</p>
 {/if}
-{#if message}
-	<p class="notice" role="status">{message}</p>
-{/if}
 
 <style>
 	.account {
@@ -51,8 +36,12 @@
 		text-align: center;
 	}
 
+	/* A 44px tap target, with the text kept where it was. */
 	button,
 	a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 		font: inherit;
 		font-weight: 700;
 		color: var(--accent-glow);
@@ -63,10 +52,4 @@
 		text-decoration: underline;
 	}
 
-	.notice {
-		margin-top: 8px;
-		color: var(--wrong-text);
-		font-size: 13px;
-		text-align: center;
-	}
 </style>

@@ -12,15 +12,14 @@
 
 	let { id, title, description, count, progress }: Props = $props();
 
+	const kicker = $derived(
+		`${count} ${count === 1 ? 'question' : 'questions'}${progress && progress.due > 0 ? ` · ${progress.due} due` : ''}`
+	);
 	const learnedPercent = $derived(progress ? Math.round((progress.learned / count) * 100) : 0);
 </script>
 
 <article class="deck" aria-labelledby="deck-{id}">
-	<p class="kicker">
-		{count}
-		{count === 1 ? 'question' : 'questions'}{#if progress && progress.due > 0}
-			· {progress.due} due{/if}
-	</p>
+	<p class="kicker">{kicker}</p>
 	<h2 id="deck-{id}">{title}</h2>
 	<p class="description">{description}</p>
 	{#if progress && progress.seen > 0}
