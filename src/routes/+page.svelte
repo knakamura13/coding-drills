@@ -83,16 +83,17 @@
 				title="{weakCount} {weakCount === 1 ? 'question' : 'questions'} you have missed"
 				description="Practice the ones you fail most often, whether or not they are due."
 				href="/weak"
-				action="Practice {Math.min(weakCount, WEAK_SIZE)}"
+				action="Drill {Math.min(weakCount, WEAK_SIZE)} weak {Math.min(weakCount, WEAK_SIZE) === 1 ? 'spot' : 'spots'}"
 			/>
 		</div>
 	{/if}
+
+	<div class="review"><PracticeCard topics={data.topics} total={data.totalQuestions} /></div>
 
 	<section class="decks" aria-label="Decks">
 		{#each data.decks as deck (deck.id)}
 			<DeckCard {...deck} progress={progress.get(deck.id)} />
 		{/each}
-		<PracticeCard topics={data.topics} total={data.totalQuestions} />
 	</section>
 
 	<nav class="links" aria-label="More">

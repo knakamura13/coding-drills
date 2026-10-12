@@ -23,7 +23,7 @@ test.describe('weak spots', () => {
 		await seed(page, failedHistory(3));
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: `${deck.questions.length} questions you have missed` })).toBeVisible();
-		await page.getByRole('link', { name: `Practice ${deck.questions.length}`, exact: true }).first().click();
+		await page.getByRole('link', { name: `Drill ${deck.questions.length} weak spots` }).click();
 		await expect(page).toHaveURL('/weak');
 
 		await playDeck(page, () => ({ main: 'right' }));

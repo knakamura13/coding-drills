@@ -56,9 +56,7 @@
 
 	{#if ready && summary.answered === 0}
 		<p class="empty">Nothing to show yet. Answer a few questions and your history will appear here.</p>
-	{/if}
-
-	{#if ready}
+	{:else if ready}
 		<section class="stats" aria-label="Totals">
 			<div class="stat"><span class="value">{streakDays}</span><span class="label">day streak</span></div>
 			<div class="stat"><span class="value">{summary.daysPracticed}</span><span class="label">days practiced</span></div>
@@ -155,6 +153,7 @@
 
 	.stat {
 		display: grid;
+		align-content: start;
 		gap: 2px;
 		padding: 14px 10px;
 		border: 2px solid var(--line);

@@ -53,6 +53,7 @@ describe('practiceEntries', () => {
 describe('tagLabel', () => {
 	it('turns a kebab-case tag into a readable label', () => {
 		expect(tagLabel('sliding-window')).toBe('Sliding window');
-		expect(tagLabel('bfs')).toBe('Bfs');
+		expect(tagLabel('bfs')).toBe('BFS');
+		expect(tagLabel('dfs')).toBe('DFS');
 	});
 });

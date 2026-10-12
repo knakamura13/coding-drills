@@ -36,8 +36,11 @@ export function practiceEntries(
 	return shuffled(pool, rng).slice(0, size);
 }
 
-/** "sliding-window" as "Sliding window". */
+const ACRONYMS = new Set(['bfs', 'dfs']);
+
+/** "sliding-window" as "Sliding window", and acronyms in capitals. */
 export function tagLabel(tag: string): string {
+	if (ACRONYMS.has(tag)) return tag.toUpperCase();
 	const text = tag.replace(/-/g, ' ');
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }

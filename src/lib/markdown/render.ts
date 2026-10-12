@@ -77,7 +77,15 @@ export function renderMarkdown(source: string): string {
 export function plainText(markdown: string, max = 120): string {
 	const text = markdown
 		.replace(/```[\s\S]*?(```|$)/g, ' ')
-		.replace(/[`*]/g, '')
+		.split(/(`[^`\n]+`)/g)
+		// Inline code keeps every character it holds, such as the `*` in `a*b`. Elsewhere only
+		// emphasis markers that the renderer would act on are removed, so "O(R*C)" stays as written.
+		.map((part, index) =>
+			index % 2 === 1
+				? part.slice(1, -1)
+				: part.replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/(^|[^\w*])\*(?=\S)([^*\n]*?\S)\*(?![\w*])/g, '$1$2')
+		)
+		.join('')
 		.replace(/\s+/g, ' ')
 		.trim();
 	return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;

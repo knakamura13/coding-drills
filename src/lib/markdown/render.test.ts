@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { loadDecks } from '../content/loadDecks.ts';
 import { escapeHtml, plainText, renderInline, renderMarkdown } from './render';
 
 describe('escapeHtml', () => {
@@ -84,6 +85,13 @@ describe('plainText', () => {
 	it('strips code fences, backticks, and asterisks', () => {
 		expect(plainText('Let `n = len(nums)`.\n\n```python\nx = 1\n```')).toBe('Let n = len(nums).');
 		expect(plainText('Find the **maximum** sum.')).toBe('Find the maximum sum.');
+		expect(plainText('A *careful* reader.')).toBe('A careful reader.');
+	});
+
+	it('keeps asterisks that are not emphasis, matching what the renderer shows', () => {
+		expect(plainText('DFS is O(R*C) here')).toBe('DFS is O(R*C) here');
+		expect(plainText('Use `a*b` and **bold**')).toBe('Use a*b and bold');
+		expect(plainText('2 * 3 * 4')).toBe('2 * 3 * 4');
 	});
 
 	it('truncates long text with an ellipsis', () => {
@@ -94,5 +102,29 @@ describe('plainText', () => {
 
 	it('drops an unterminated fence', () => {
 		expect(plainText('Intro ```python\nx = 1')).toBe('Intro');
+	});
+});
+
+describe('plainText and renderInline agree on every shipped option', () => {
+	// Screen-reader announcements and the e2e suite use plainText, while the page shows renderInline.
+	// If they disagree, an option reads one way and is announced another.
+	const decks = loadDecks('content/decks');
+	const visible = (html: string) =>
+		html
+			.replace(/<[^>]+>/g, '')
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&quot;/g, '"')
+			.replace(/&#39;/g, "'")
+			.replace(/&amp;/g, '&');
+
+	it.each(decks.map((deck) => [deck.id, deck] as const))('%s', (_id, deck) => {
+		for (const question of deck.questions) {
+			const options = [
+				...question.options.map((option) => option.text),
+				...Object.values(question.followUps).flatMap((followUp) => followUp.options.map((option) => option.text))
+			];
+			for (const text of options) expect(plainText(text, 1000), text).toBe(visible(renderInline(text)));
+		}
 	});
 });

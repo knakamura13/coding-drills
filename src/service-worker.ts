@@ -56,11 +56,16 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
+/** `AbortSignal.timeout` is missing in older Safari. Without it a request just waits for the network. */
+function timeoutSignal(ms: number): AbortSignal | undefined {
+	return typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(ms) : undefined;
+}
+
 async function page(request: Request): Promise<Response> {
 	const cache = await caches.open(CACHE);
 	const { pathname } = new URL(request.url);
 	try {
-		const response = await fetch(request, { signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS) });
+		const response = await fetch(request, { signal: timeoutSignal(NETWORK_TIMEOUT_MS) });
 		// Keyed by path alone, so /practice?tag=x and /?auth=failed reuse one shell.
 		if (response.ok && !response.redirected) await cache.put(pathname, response.clone());
 		return response;
