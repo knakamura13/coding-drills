@@ -94,15 +94,22 @@ export function review(prev: Card | undefined, grade: Grade, day: string, ids: {
  */
 export function replay(attempts: readonly Attempt[]): Map<string, Card> {
 	const cards = new Map<string, Card>();
-	const counted = new Set<string>();
-	for (const attempt of attempts) {
+	for (const attempt of countedAttempts(attempts)) {
 		const key = cardKey(attempt.deckId, attempt.questionId);
-		const dayKey = `${key}@${attempt.day}`;
-		if (counted.has(dayKey)) continue;
-		counted.add(dayKey);
 		cards.set(key, review(cards.get(key), gradeOf(attempt), attempt.day, attempt));
 	}
 	return cards;
+}
+
+/** The attempts that count: the first of each question on each calendar day, in the order given. */
+export function countedAttempts(attempts: readonly Attempt[]): Attempt[] {
+	const seen = new Set<string>();
+	return attempts.filter((attempt) => {
+		const key = `${cardKey(attempt.deckId, attempt.questionId)}@${attempt.day}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 /** Cards due on `today`, most overdue first. Ties break by key so the order is stable. */

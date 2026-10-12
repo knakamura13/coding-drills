@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import AccountRow from '$lib/components/AccountRow.svelte';
+	import ActionCard from '$lib/components/ActionCard.svelte';
 	import AuthNotice from '$lib/components/AuthNotice.svelte';
 	import DeckCard from '$lib/components/DeckCard.svelte';
+	import InstallHint from '$lib/components/InstallHint.svelte';
+	import PracticeCard from '$lib/components/PracticeCard.svelte';
 	import ReviewCard from '$lib/components/ReviewCard.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { localDay } from '$lib/domain/days';
 	import { streak } from '$lib/domain/streak';
 	import { REVIEW_SIZE, deckProgress, reviewStatus, type DeckProgress, type ReviewStatus } from '$lib/review/queue';
+	import { WEAK_SIZE, weakStatus } from '$lib/review/weak';
 	import { getRepository } from '$lib/storage';
 	import { account, initSync } from '$lib/sync/store.svelte';
 	import { decks } from 'virtual:decks';
@@ -20,6 +24,7 @@
 	let notice = $state('');
 	let progress = $state<Map<string, DeckProgress>>(new Map());
 	let streakDays = $state(0);
+	let weakCount = $state(0);
 
 	/** Reads local data again. Runs on load and whenever a sync brings something new. */
 	function refresh() {
@@ -32,6 +37,7 @@
 			attempts.map((attempt) => attempt.day),
 			today
 		);
+		weakCount = weakStatus(decks, attempts).count;
 		const status = reviewStatus(decks, attempts, today);
 		// Nothing scheduled yet: the card would only say "Nothing due" before any deck was played.
 		review = status.dueCount > 0 || status.nextInDays !== null ? status : null;
@@ -69,19 +75,37 @@
 		<div class="review"><ReviewCard dueCount={review.dueCount} sitting={REVIEW_SIZE} nextInDays={review.nextInDays} /></div>
 	{/if}
 
+	{#if weakCount > 0}
+		<div class="review">
+			<ActionCard
+				id="weak"
+				kicker="Weak spots"
+				title="{weakCount} {weakCount === 1 ? 'question' : 'questions'} you have missed"
+				description="Practice the ones you fail most often, whether or not they are due."
+				href="/weak"
+				action="Practice {Math.min(weakCount, WEAK_SIZE)}"
+			/>
+		</div>
+	{/if}
+
 	<section class="decks" aria-label="Decks">
 		{#each data.decks as deck (deck.id)}
 			<DeckCard {...deck} progress={progress.get(deck.id)} />
 		{/each}
+		<PracticeCard topics={data.topics} total={data.totalQuestions} />
 	</section>
 
-	{#if flagCount > 0}
-		<p class="flagged">
+	<nav class="links" aria-label="More">
+		<a href="/progress">Progress</a>
+		{#if flagCount > 0}
 			<a href="/flags">{flagCount} flagged {flagCount === 1 ? 'question' : 'questions'}</a>
-		</p>
-	{/if}
+		{/if}
+	</nav>
 
-	<footer><AccountRow /></footer>
+	<footer>
+		<AccountRow />
+		<InstallHint />
+	</footer>
 </main>
 
 <style>
@@ -125,8 +149,18 @@
 		gap: 15.5px;
 	}
 
-	.flagged {
-		margin-top: 28px;
-		text-align: center;
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 4px 24px;
+		margin-top: 20px;
+	}
+
+	.links a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-weight: 700;
 	}
 </style>

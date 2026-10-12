@@ -13,11 +13,5 @@ export const prerender = false;
 export const load: PageLoad = () => {
 	const { entries } = reviewStatus(decks, getRepository().attempts(), localDay(new Date()));
 	if (entries.length === 0) redirect(307, '/');
-	return {
-		entries: entries.map(({ deckId, question }) => ({
-			deckId,
-			question,
-			heading: decks.find((deck) => deck.id === deckId)?.heading
-		}))
-	};
+	return { entries };
 };

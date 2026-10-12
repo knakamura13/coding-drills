@@ -7,6 +7,8 @@ import { plainText } from '../src/lib/markdown/render.ts';
 export const deck = loadDecks('content/decks').find((candidate) => candidate.id === 'pattern-identification')!;
 export const DECK_URL = `/play/${deck.id}`;
 
+export const allDecks = loadDecks('content/decks');
+
 const text = (markdown: string) => plainText(markdown, 1000);
 
 export function optionOf(question: Question, optionId: string) {
@@ -29,6 +31,25 @@ export async function currentQuestion(page: Page): Promise<Question> {
 	});
 	if (!match) throw new Error(`no deck question has these options: ${shown.join(' | ')}`);
 	return match;
+}
+
+/**
+ * Like `currentQuestion`, but across every deck, for sessions that mix them. Questions whose
+ * options read the same are told apart by their problem text.
+ */
+export async function currentQuestionAny(page: Page): Promise<{ question: Question; deckId: string }> {
+	await page.getByRole('radio').first().waitFor();
+	const shown = (await page.locator('fieldset label').allInnerTexts()).map((label) => label.trim()).sort();
+	const candidates = allDecks.flatMap((candidateDeck) =>
+		candidateDeck.questions
+			.filter((candidate) => JSON.stringify(candidate.options.map((option) => text(option.text)).sort()) === JSON.stringify(shown))
+			.map((question) => ({ question, deckId: candidateDeck.id }))
+	);
+	if (candidates.length === 0) throw new Error(`no question has these options: ${shown.join(' | ')}`);
+	if (candidates.length === 1) return candidates[0];
+	const page_text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+	const match = candidates.find(({ question }) => page_text.includes(text(question.prompt).replace(/\s+/g, ' ').slice(0, 40)));
+	return match ?? candidates[0];
 }
 
 export async function pickAndCheck(page: Page, label: string) {

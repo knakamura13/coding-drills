@@ -6,7 +6,7 @@ Each question asks for a pattern, a complexity, or an output. Pick wrongly and t
 
 Live: https://coding-drills.up.railway.app
 
-Status: early. One deck of five questions, spaced review, and optional Google sign-in that syncs progress between devices automatically.
+Status: early. Six decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
 
 ## The lesson loop
 
@@ -25,6 +25,23 @@ Every question you answer enters a schedule, and the home screen shows a **Revie
 - **Intervals** follow the SM-2 family from learning-korean: 1 day, 3 days, then growing by the question's ease, capped at a year. *Again* resets to tomorrow.
 - **The schedule is derived, never stored.** `src/lib/domain/srs.ts` replays the attempt log, so every device that holds the same attempts shows the same Review card. It is pure and takes the clock as a parameter.
 - The home screen also shows a day streak and per-deck progress, and the summary says when the next review is due.
+
+## More ways to practice
+
+- **Weak spots** (`/weak`): replays the questions you have failed most often (wrong, then the follow-up wrong too), up to ten, whether or not they are due. Ties go to the most recent miss.
+- **Mixed practice** (`/practice`): ten random questions from every deck, or from one topic tag (`/practice?tag=hash-map`).
+- **Progress** (`/progress`): a calendar of the last twelve weeks, plus streak, first-try accuracy, and learned counts per topic tag and per deck.
+
+All three run through the same lesson loop, follow-ups included, and every answer feeds the review schedule exactly like a deck session. They are derived from the attempt log in `src/lib/domain/stats.ts` and `src/lib/review/`, so they sync across devices with no extra storage.
+
+## Installable and offline
+
+The app is a PWA. `static/manifest.webmanifest` makes it installable (with Review, Weak spots, and Practice shortcuts), and `src/service-worker.ts` caches the build, the static files, the prerendered pages, and the pages that render only in the browser (a lesson, review, weak spots, practice). Decks are compiled into the JavaScript, so every lesson works with no connection, and answers are saved on the device first and sync when the connection returns.
+
+- Page loads go to the network first (4 second timeout) and fall back to the cache, so a deploy shows up on the next load. `/api/*` is never cached.
+- A new version takes over immediately (`skipWaiting` and `clients.claim`) and the page reloads when the worker changes, so a deploy during a lesson can reload the page. Answered questions are already saved.
+- The service worker is registered only in production builds (`src/lib/pwa/register.ts`), because in development it would cache stale modules.
+- On Android, Chromium offers an Install button. On iPhone there is no install prompt, so the home screen shows "tap Share, then Add to Home Screen" until dismissed.
 
 ## Accounts and sync
 
@@ -100,7 +117,7 @@ Railway never reads `.railway/railway.ts` during a deploy. Pushing or merging an
 
 ## Roadmap
 
-Not built yet: more decks following the curriculum in py-coding-challenges, XP, and an offline service worker.
+Not built yet: more decks following the curriculum in py-coding-challenges, XP, and the settings screen ([#1](https://github.com/knakamura13/coding-drills/issues/1)).
 
 ## License
 

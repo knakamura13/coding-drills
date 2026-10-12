@@ -28,3 +28,8 @@ export function addDays(day: string, days: number): string {
 export function daysBetween(from: string, to: string): number {
 	return Math.round((toUtcMs(to) - toUtcMs(from)) / DAY_MS);
 }
+
+/** 0 for Sunday through 6 for Saturday. */
+export function weekday(day: string): number {
+	return new Date(toUtcMs(day)).getUTCDay();
+}

@@ -1,20 +1,16 @@
 import type { Deck, Question } from '$lib/content/schema';
+import type { LessonEntry } from '$lib/domain/lesson';
 import { daysUntilNextDue, dueCards, replay } from '$lib/domain/srs';
 import type { Attempt } from '$lib/storage/types';
 
 /** Questions in one review sitting. */
 export const REVIEW_SIZE = 10;
 
-export interface ReviewEntry {
-	deckId: string;
-	question: Question;
-}
-
 export interface ReviewStatus {
 	/** Questions due today, before the sitting limit. */
 	dueCount: number;
 	/** The most overdue questions, up to the sitting limit. */
-	entries: ReviewEntry[];
+	entries: LessonEntry[];
 	/** Days until the next question is due when none is due now. Null when nothing is scheduled. */
 	nextInDays: number | null;
 }
@@ -30,6 +26,7 @@ export function reviewStatus(
 	limit = REVIEW_SIZE
 ): ReviewStatus {
 	const questions = new Map<string, Question>();
+	const headings = new Map(decks.map((deck) => [deck.id, deck.heading]));
 	for (const deck of decks) {
 		for (const question of deck.questions) questions.set(`${deck.id}/${question.id}`, question);
 	}
@@ -42,6 +39,7 @@ export function reviewStatus(
 		dueCount: due.length,
 		entries: due.slice(0, limit).map((card) => ({
 			deckId: card.deckId,
+			heading: headings.get(card.deckId),
 			question: questions.get(`${card.deckId}/${card.questionId}`)!
 		})),
 		nextInDays: due.length > 0 ? 0 : daysUntilNextDue(cards, today)

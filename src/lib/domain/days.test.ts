@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, localDay } from './days';
+import { addDays, daysBetween, localDay, weekday } from './days';
 
 describe('days', () => {
 	it('formats the local date, not the UTC date', () => {
@@ -19,5 +19,11 @@ describe('days', () => {
 		expect(daysBetween('2026-10-10', '2026-10-13')).toBe(3);
 		expect(daysBetween('2026-10-13', '2026-10-10')).toBe(-3);
 		expect(daysBetween('2026-03-07', '2026-03-09')).toBe(2);
+	});
+
+	it('names the weekday, Sunday first', () => {
+		expect(weekday('2026-10-11')).toBe(0);
+		expect(weekday('2026-10-12')).toBe(1);
+		expect(weekday('2026-10-17')).toBe(6);
 	});
 });

@@ -1,38 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addDays, localDay } from '../src/lib/domain/days.ts';
 import { DECK_URL, answerFollowUp, answerMain, continueButton, currentQuestion, deck, firstWrongId, playDeck } from './helpers';
-
-const ATTEMPTS_KEY = 'coding-drills:v1:attempts';
-
-/** One attempt per deck question on `daysAgo` days before today, the first one missed. */
-function history(daysAgo: number, allRight = false) {
-	const day = addDays(localDay(new Date()), -daysAgo);
-	return deck.questions.map((question, index) => {
-		const wrong = !allRight && index === 0;
-		const wrongId = question.options.find((option) => option.id !== question.correct)!.id;
-		return {
-			id: `seed-${daysAgo}-${question.id}`,
-			at: `${day}T12:00:00.000Z`,
-			day,
-			deckId: deck.id,
-			questionId: question.id,
-			pickedId: wrong ? wrongId : question.correct,
-			correct: !wrong,
-			...(wrong ? { followUp: { pickedId: 'x', correct: false } } : {})
-		};
-	});
-}
-
-/** Seeds localStorage once, before the app loads, so a reload keeps what the test later writes. */
-async function seed(page: Page, attempts: unknown[]) {
-	await page.addInitScript(
-		([key, value]) => {
-			if (!localStorage.getItem(key)) localStorage.setItem(key, value);
-		},
-		[ATTEMPTS_KEY, JSON.stringify(attempts)]
-	);
-}
+import { history, seed } from './seed';
 
 test.describe('spaced review', () => {
 	test('a fresh device shows no review card', async ({ page }) => {
