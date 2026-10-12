@@ -25,7 +25,7 @@
 		<div class="meter" aria-hidden="true"><span style:width="{learnedPercent}%"></span></div>
 		<p class="learned">{progress.learned} of {count} learned</p>
 	{/if}
-	<div class="start"><Button href="/play/{id}">Start</Button></div>
+	<div class="start"><Button href="/play/{id}" label="Start {title}">Start</Button></div>
 </article>
 
 <style>

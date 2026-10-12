@@ -12,10 +12,12 @@
 		external?: boolean;
 		/** The rendered element, for focus management. */
 		el?: HTMLElement;
+		/** An accessible name that begins with the visible text, for links that would otherwise repeat it. */
+		label?: string;
 		children: Snippet;
 	}
 
-	let { variant = 'primary', href, external = false, el = $bindable(), children, ...rest }: Props = $props();
+	let { variant = 'primary', href, external = false, el = $bindable(), label, children, ...rest }: Props = $props();
 </script>
 
 {#if href}
@@ -23,6 +25,7 @@
 		bind:this={el}
 		class="btn {variant}"
 		{href}
+		aria-label={label}
 		target={external ? '_blank' : undefined}
 		rel={external ? 'noopener noreferrer' : undefined}>{@render children()}</a
 	>

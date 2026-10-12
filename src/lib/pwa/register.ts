@@ -18,7 +18,8 @@ export function registerServiceWorker(): void {
 	});
 
 	void navigator.serviceWorker
-		.register('/service-worker.js')
+		// `none` makes the browser revalidate the worker and everything it imports on every update check.
+		.register('/service-worker.js', { updateViaCache: 'none' })
 		.then((registration) => {
 			// Browsers only check for a new worker on navigation, and a home-screen app can stay open for days.
 			document.addEventListener('visibilitychange', () => {

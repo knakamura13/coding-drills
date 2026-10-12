@@ -1,6 +1,6 @@
 id: pattern-identification
 title: Pattern identification
-description: Name the technique that fits each problem, then show why the tempting alternatives do not.
+description: Name the technique or the cost that fits each problem, then show why the tempting alternatives do not.
 heading: Which pattern best fits?
 
 questions:
@@ -57,9 +57,10 @@ questions:
             text: The array must be sorted before either boundary can move
         correct: sum-between
         explanation: >-
-          Two pointers read the elements under the pointers and ignore what lies between them. This
-          problem sums the whole range, so you keep a running total as the window slides: add the
-          entering element, subtract the leaving one.
+          A two-pointer scan decides each move from the values under the pointers, as when looking for
+          a pair that hits a target. This problem needs the sum of everything between the
+          boundaries, so you keep a running total as the window slides: add the entering element,
+          subtract the leaving one.
       top-k:
         prompt: What does `k` mean here, compared with a top-k problem?
         options:
@@ -77,7 +78,9 @@ questions:
 
   - id: sorted-pair-sum
     tags: [two-pointers]
-    prompt: Given a sorted array of integers, find two numbers that add up to a target value.
+    prompt: >-
+      Given a sorted array of integers, find two numbers that add up to a target value, using only
+      O(1) extra space.
     options:
       - id: two-pointers
         text: Two Pointers
@@ -108,10 +111,10 @@ questions:
         options:
           - id: discard-per-move
             text: Each pointer move discards a candidate for good, so the whole scan takes at most n steps
-          - id: binary-needs-unsorted
-            text: Binary search only works when the array is unsorted
-          - id: skips-sorting
-            text: Two pointers skip a sorting step that binary search needs
+          - id: binary-linear-probe
+            text: Each binary-search probe costs O(n), so n probes cost O(n^2)
+          - id: no-extra-memory
+            text: Two pointers need no memory, while binary search needs a hash table
         correct: discard-per-move
         explanation: >-
           One binary search costs O(log n), and you would run it n times. The two-pointer scan never
@@ -171,9 +174,10 @@ questions:
         text: Prefix Sums with a Hash Map
         explanation: >-
           Let `P[j]` be the running total up to `j`. A subarray ending at `j` sums to `k` when an
-          earlier running total equals `P[j] - k`. Counting earlier totals in a hash map finds every
-          such subarray in O(n) time and O(n) space. Negative numbers do not matter, because nothing
-          relies on the sum moving in one direction.
+          earlier running total equals `P[j] - k`. Counting earlier totals in a hash map, seeded with
+          the empty prefix (a total of 0 seen once), finds every such subarray in O(n) expected time
+          and O(n) space. Negative numbers do not matter, because nothing relies on the sum moving
+          in one direction.
     correct: prefix-hash
     followUps:
       sliding-window:
@@ -181,8 +185,8 @@ questions:
         options:
           - id: sum-not-monotonic
             text: Adding an element can lower the sum, so a sum above `k` does not mean the window should shrink
-          - id: width-cap
-            text: The window can never be wider than `k` elements
+          - id: width-is-k
+            text: A window must always hold exactly `k` elements
           - id: needs-sorted
             text: Negative numbers make the array unsorted, and windows need sorted input
         correct: sum-not-monotonic
@@ -191,19 +195,19 @@ questions:
           With negatives, extending the window can lower the sum, so the signal disappears. Sorted
           input is not required.
       two-pointers:
-        prompt: What must be true for two pointers to solve a subarray-sum problem?
+        prompt: What does a two-pointer scan need in order to decide which pointer to move for a subarray sum?
         options:
           - id: sum-moves-one-way
-            text: Advancing the right pointer must never lower the sum, so a too-large sum tells you to move the left pointer
+            text: Moving the right pointer must never lower the sum, so a too-large sum tells you to move the left pointer
           - id: known-length
             text: The subarray length must be known in advance
           - id: no-duplicates
             text: The array must contain no duplicate values
         correct: sum-moves-one-way
         explanation: >-
-          Two pointers need each move to push the sum in a known direction. With only non-negative
+          The scan needs each move to push the sum in a known direction. With only non-negative
           numbers that holds. With negative numbers a pointer move can raise or lower the sum, so
-          the rule stops working.
+          no pointer move is the safe one.
       sort-sweep:
         prompt: What does sorting destroy that this problem depends on?
         options:
@@ -222,73 +226,75 @@ questions:
   - id: min-eating-speed
     tags: [binary-search]
     prompt: >-
-      You must finish every pile of fruit within `h` hours. Each hour you pick one pile and eat up
-      to `s` pieces from it. Find the smallest whole `s` that finishes in time.
+      A server must finish every queued batch of jobs within `h` hours, where `h` is at least the
+      number of batches. Each hour it works on one batch and can process up to `s` jobs from it.
+      Find the smallest whole `s` that finishes in time.
     options:
       - id: binary-search-answer
         text: Binary Search on the Answer
         explanation: >-
-          If speed `s` finishes in time, any faster speed does too. That yes-or-no check is
-          monotonic, so you can binary search the speed between 1 and the largest pile. Each check
-          costs O(n), so the total is O(n log m), where `m` is the largest pile.
+          If rate `s` finishes in time, any faster rate does too. That yes-or-no check is monotonic,
+          so you can binary search the rate between 1 and the largest batch. Each check costs O(n),
+          so the total is O(n log m), where `m` is the largest batch.
       - id: sort-greedy
         text: Sort and Greedy
         explanation: >-
-          Sorting the piles does not change how many hours a given speed takes, because each pile is
-          eaten separately and the hours add up in any order. It also does not tell you which speed
-          to try.
+          Sorting the batches does not change how many hours a given rate takes, because each batch
+          is processed separately and the hours add up in any order. It also does not tell you which
+          rate to try.
       - id: heap
         text: Heap
         explanation: >-
           A heap answers "which remaining item is largest right now?". This problem never asks that.
-          The unknown is a speed, and you test whole speeds against the deadline.
+          The unknown is a rate, and you test whole rates against the deadline.
       - id: sliding-window
         text: Sliding Window
         explanation: >-
-          A window slides over contiguous positions in the input. The unknown here is a speed, not a
-          stretch of piles.
+          A window slides over contiguous positions in the input. The unknown here is a rate, not a
+          stretch of batches.
     correct: binary-search-answer
     followUps:
       sort-greedy:
-        prompt: Does the order of the piles change the hours needed at a fixed speed?
+        prompt: Does the order of the batches change the hours needed at a fixed rate?
         options:
           - id: order-irrelevant
-            text: No. The hours are a sum over piles, and a sum does not depend on order
+            text: No. The hours are a sum over batches, and a sum does not depend on order
           - id: big-first
-            text: Yes. Eating the biggest piles first always saves hours
+            text: Yes. Processing the biggest batches first always saves hours
           - id: small-last
-            text: Yes. Small piles waste hours unless they come last
+            text: Yes. Small batches waste hours unless they come last
         correct: order-irrelevant
         explanation: >-
-          At speed `s`, a pile of `p` pieces takes `ceil(p / s)` hours, and the total is the sum over
-          piles. Reordering the terms of a sum never changes it, so sorting cannot reduce the hours.
+          At rate `s`, a batch of `p` jobs takes `ceil(p / s)` hours, and the total is the sum over
+          batches. Reordering the terms of a sum never changes it, so sorting cannot reduce the
+          hours.
       heap:
-        prompt: Why does a heap not help pick the speed?
+        prompt: Why does a heap not help pick the rate?
         options:
           - id: no-extreme-queries
-            text: The problem never asks for the largest or smallest remaining pile. It asks which speed works
-          - id: heap-needs-sorted
-            text: Heaps only work on sorted input
-          - id: heap-too-slow
-            text: Building a heap costs O(n^2)
+            text: The problem never asks for the largest or smallest remaining batch. It asks which rate works
+          - id: largest-batch
+            text: The answer is the largest batch, and a heap finds the largest batch
+          - id: heap-misses-rounding
+            text: A heap cannot handle the rounding up in `ceil(p / s)`
         correct: no-extreme-queries
         explanation: >-
           A heap pays off when you repeatedly need the current largest or smallest item. Here you
-          test whole speeds against the deadline, so there is no such query. Building a heap costs
-          O(n) and does not need sorted input.
+          test whole rates against the deadline, so there is no such query. The best rate is also
+          not simply the largest batch, since a slower rate can still finish in time.
       sliding-window:
         prompt: Why is a sliding window the wrong shape for this problem?
         options:
-          - id: unknown-is-speed
-            text: The unknown is a speed, not a contiguous stretch of piles
-          - id: strings-only
-            text: Sliding windows only work on strings
-          - id: needs-sorted-piles
-            text: A window needs the piles sorted first
-        correct: unknown-is-speed
+          - id: unknown-is-rate
+            text: The unknown is a rate, not a contiguous stretch of batches
+          - id: window-over-batches
+            text: A window over the batches picks the best group of batches to process first
+          - id: window-per-hour
+            text: Each hour is a window of batches, so the answer is the window length
+        correct: unknown-is-rate
         explanation: >-
           A sliding window searches over positions in the input. This problem searches over a
-          number, the speed, so you binary search the range of possible speeds instead.
+          number, the rate, so you binary search the range of possible rates instead.
 
   - id: cost-nested-slice-sum
     tags: [complexity, python]
@@ -312,7 +318,7 @@ questions:
         explanation: >-
           Two nested loops give about `n^2 / 2` pairs `(i, j)`, but that counts only the loops. For
           each pair, `nums[i:j + 1]` copies the slice and `sum` adds it up, which costs up to `n`
-          more steps.
+          steps per pair. That multiplies the pair count instead of adding to it.
       - id: cubic
         text: "`O(n^3)`"
         explanation: >-

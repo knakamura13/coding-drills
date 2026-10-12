@@ -25,7 +25,11 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 const CACHE = `drills-${version}`;
 const CLIENT_ROUTES = ['/review', '/weak', '/practice'];
 const NETWORK_TIMEOUT_MS = 4000;
-const ASSETS = [...build, ...files, ...prerendered].filter((path) => path !== '/healthz');
+// Font subsets for scripts the app does not use are left out; the browser only fetches the subsets a page needs.
+const UNUSED_FONT_SUBSETS = /nunito-(cyrillic|cyrillic-ext|greek|greek-ext|vietnamese)-/;
+const ASSETS = [...build, ...files, ...prerendered].filter(
+	(path) => path !== '/healthz' && !UNUSED_FONT_SUBSETS.test(path)
+);
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(
@@ -65,7 +69,9 @@ async function page(request: Request): Promise<Response> {
 	const cache = await caches.open(CACHE);
 	const { pathname } = new URL(request.url);
 	try {
-		const response = await fetch(request, { signal: timeoutSignal(NETWORK_TIMEOUT_MS) });
+		// `no-cache` revalidates with the server, so a page is never served from the browser's
+		// heuristic HTTP cache after a deploy. An unchanged page costs only a 304.
+		const response = await fetch(request, { cache: 'no-cache', signal: timeoutSignal(NETWORK_TIMEOUT_MS) });
 		// Keyed by path alone, so /practice?tag=x and /?auth=failed reuse one shell.
 		if (response.ok && !response.redirected) await cache.put(pathname, response.clone());
 		return response;

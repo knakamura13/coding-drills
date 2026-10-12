@@ -57,6 +57,10 @@ test.describe('accessibility', () => {
 	test('home', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Coding Drills' })).toBeVisible();
+		// Every deck link needs its own name, so a list of links is not six identical "Start"s.
+		const names = await page.getByRole('link', { name: /^Start/ }).evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')));
+		expect(names.length).toBeGreaterThan(1);
+		expect(new Set(names).size).toBe(names.length);
 		await expectNoViolations(page);
 	});
 
