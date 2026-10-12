@@ -6,8 +6,10 @@
 {#if account.status === 'signedIn'}
 	<p class="account">
 		<span>
-			{#if account.failed}
-				Sync failed. Retrying when you are back online.
+			{#if account.offline}
+				Offline. Answers are saved on this device and sync when you reconnect.
+			{:else if account.failed}
+				Sync failed. It will retry.
 			{:else if account.syncing}
 				Syncing…
 			{:else}

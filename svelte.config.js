@@ -12,6 +12,8 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({ precompress: true }),
+		// Registered by hand in src/lib/pwa/register.ts, and only in production.
+		serviceWorker: { register: false },
 		prerender: {
 			handleHttpError: 'fail',
 			entries: ['*']

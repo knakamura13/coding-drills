@@ -20,17 +20,22 @@ export async function createAccount(request: APIRequestContext, email = 'me@exam
 	const probe = await request.get('/api/me');
 	if (probe.status() !== 200) throw new Error(`the app has no database in this run: ${probe.status()}`);
 
-	const sql = postgres(DATABASE_URL, { max: 1, onnotice: () => {} });
+	// The simple query protocol, with generated values only: PGlite's connection multiplexer can
+	// lose the unnamed portal of an extended-protocol statement when several workers connect at once.
+	const sql = postgres(DATABASE_URL, { max: 1, onnotice: () => {}, prepare: false });
 	try {
 		const token = randomBytes(32).toString('base64url');
 		const sub = `e2e-${randomBytes(8).toString('hex')}`;
-		const [user] = await sql<{ id: number }[]>`
-			INSERT INTO users (google_sub, email, name) VALUES (${sub}, ${email}, null) RETURNING id
-		`;
-		await sql`
+		const hash = createHash('sha256').update(token).digest('hex');
+		const quote = (value: string) => `'${value.replace(/'/g, "''")}'`;
+		const expires = new Date(Date.now() + 30 * 86_400_000).toISOString();
+		await sql.unsafe(`
+			WITH created AS (
+				INSERT INTO users (google_sub, email, name) VALUES (${quote(sub)}, ${quote(email)}, NULL) RETURNING id
+			)
 			INSERT INTO sessions (token_hash, user_id, expires_at)
-			VALUES (${createHash('sha256').update(token).digest('hex')}, ${user.id}, ${new Date(Date.now() + 30 * 86_400_000)})
-		`;
+			SELECT ${quote(hash)}, id, ${quote(expires)}::timestamptz FROM created
+		`);
 		return { token, email };
 	} finally {
 		await sql.end({ timeout: 1 });
