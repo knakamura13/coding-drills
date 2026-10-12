@@ -24,10 +24,10 @@ Where every topic in the `py-coding-challenges` repo stands as a deck. The order
 | Phase 1, 4 | Binary search, including on the answer | `binary-search-on-answer` | done |
 | Phase 1, 5 | Monotonic stack | `monotonic-stack` | done |
 | Phase 1, 6 | One-dimensional dynamic programming | `one-dimensional-dp` | done |
-| Phase 2, 7 | Two pointers and sliding window | – | planned |
-| Phase 2, 8 | Heaps and top-K | – | planned |
-| Phase 2, 9 | Linked lists | – | planned |
-| Phase 2, 10 | Trees: traversals, BST, recursion | – | planned |
+| Phase 2, 7 | Two pointers and sliding window | `two-pointers-sliding-window` | done |
+| Phase 2, 8 | Heaps and top-K | `heaps-top-k` | done |
+| Phase 2, 9 | Linked lists | `linked-lists` | done |
+| Phase 2, 10 | Trees: traversals, BST, recursion | `trees-traversals-bst` | done |
 | Phase 2, 11 | Graphs: topological sort, union-find, Dijkstra | – | planned |
 | Phase 2, 12 | Recursion and backtracking | – | planned |
 | Phase 2, 13 | Two-dimensional DP and greedy | – | planned |
@@ -55,10 +55,10 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 | 006 search | Search | `binary-search-on-answer` | partial |
 | 007 dynamic programming | Dynamic programming | `one-dimensional-dp` | partial |
 | 008 stacks and queues | Stacks and queues | `monotonic-stack` | partial |
-| 009 heaps | Heaps | – | planned |
+| 009 heaps | Heaps | `heaps-top-k` | done |
 | 010 graphs | Graphs | `graph-traversal-grids` | partial |
-| 011 linked lists | Linked lists | – | planned |
-| 011 trees | Trees | – | planned |
+| 011 linked lists | Linked lists | `linked-lists` | done |
+| 011 trees | Trees | `trees-traversals-bst` | partial |
 | 012 recursion and backtracking | Recursion and backtracking | – | planned |
 | 013 bit manipulation | Bit manipulation | – | out of scope |
 
@@ -71,7 +71,7 @@ Bit manipulation is out of scope because the curriculum drops it to a single che
 | 001 binary search | Binary search | `binary-search-on-answer` | done |
 | 002 DFS | Depth-first search | `graph-traversal-grids` | partial |
 | 003 BFS | Breadth-first search | `graph-traversal-grids` | partial |
-| 004 sliding window | Sliding window | `pattern-identification` | partial |
+| 004 sliding window | Sliding window | `two-pointers-sliding-window` | done |
 
 ## `cracking_the_coding_interview/`
 
@@ -80,7 +80,7 @@ Only chapters 1 and 2 are in the repo so far (12 problems).
 | Source | Topic | Deck | Status |
 | --- | --- | --- | --- |
 | Chapter 1 | Arrays and strings (unique, permutation, URLify, palindrome permutation, one away, compression, rotate matrix, zero matrix, string rotation) | – | planned |
-| Chapter 2 | Linked lists (remove duplicates, kth to last, delete middle node) | – | planned |
+| Chapter 2 | Linked lists (remove duplicates, kth to last, delete middle node) | `linked-lists` | partial |
 
 ## `custom_challenges/`
 

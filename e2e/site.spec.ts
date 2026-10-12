@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerMain, continueButton, currentQuestion, firstWrongId, playDeck } from './helpers';
+import { DECK_URL, answerMain, continueButton, currentQuestion, currentQuestionAny, firstWrongId, playDeck } from './helpers';
 
 test.describe('deployment surface', () => {
 	test('the health check answers ok', async ({ request }) => {
@@ -120,4 +120,27 @@ test.describe('accessibility', () => {
 		await expect(page.getByRole('heading', { name: 'Flagged questions' })).toBeVisible();
 		await expectNoViolations(page);
 	});
+});
+
+test.describe('layout on a phone', () => {
+	// A tree or a call written out on one line is a long unbreakable string. It must wrap inside the
+	// card instead of widening the page, which on a phone shrinks everything and breaks taps.
+	for (const deckId of ['trees-traversals-bst', 'linked-lists']) {
+		test(`${deckId}: no question or follow-up scrolls sideways`, async ({ page }) => {
+			await page.goto(`/play/${deckId}`);
+			for (let step = 0; step < 6; step++) {
+				const { question } = await currentQuestionAny(page);
+				const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+				expect(await overflow(), `${question.id}`).toBeLessThanOrEqual(0);
+				await answerMain(page, question, firstWrongId(question));
+				await continueButton(page).click();
+				await page.getByText('Follow-up', { exact: true }).waitFor();
+				expect(await overflow(), `${question.id} follow-up`).toBeLessThanOrEqual(0);
+				await page.getByRole('radio').first().check();
+				await page.getByRole('button', { name: 'Check', exact: true }).click();
+				await continueButton(page).click();
+			}
+			await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+		});
+	}
 });

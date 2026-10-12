@@ -1,0 +1,525 @@
+id: linked-lists
+title: Linked lists
+description: Rewire the pointers of a singly linked list in place, with fast and slow pointers, a dummy head, and a clear cost model.
+heading: What should the code do?
+
+questions:
+  - id: reverse-in-place
+    heading: Which order reverses the list?
+    tags: [linked-list]
+    prompt: |-
+      A singly linked list uses this node class. The loop below should reverse the list in place and
+      return the new head. Its body is four statements: save the following node in `after`, point
+      `node` backwards, and advance `done` and `node`. Which order is correct for every list?
+
+      ```python
+      class Node:
+          def __init__(self, value=0, link=None):
+              self.value = value
+              self.link = link
+
+      done, node = None, head
+      while node:
+          ...  # four statements, in some order
+      return done
+      ```
+    options:
+      - id: overwrite-first
+        text: "`node.link = done`, `after = node.link`, `done = node`, `node = after`"
+        explanation: >-
+          `node.link` is overwritten before it is saved, so `after` receives `done` and the rest of the
+          list is lost. On `41 -> 17 -> 8 -> 93` the loop ends after one pass and the function returns
+          a list holding only `[41]`. On `[5, 6]` it returns `[5]`.
+      - id: done-too-early
+        text: "`after = node.link`, `done = node`, `node.link = done`, `node = after`"
+        explanation: >-
+          Setting `done = node` first makes the next line `node.link = node`, so every node points at
+          itself. The loop still ends, but the returned head loops forever: walking it from the head
+          of `[41, 17, 8, 93]` repeats 93.
+      - id: advance-before-done
+        text: "`after = node.link`, `node.link = done`, `node = after`, `done = node`"
+        explanation: >-
+          The save and the link are right, but `done = node` runs after `node` has advanced, so `done`
+          holds the following node instead of the node just relinked. The loop ends with `done` equal
+          to `None`, so the function returns `None` for every non-empty list.
+      - id: save-link-advance
+        text: "`after = node.link`, `node.link = done`, `done = node`, `node = after`"
+        explanation: >-
+          Save the way forward, rewrite the link, then move both pointers. After the link is
+          rewritten, `done` is the node just handled and `after` still holds the unvisited rest. Each
+          node is touched once, so it is O(n) time and O(1) extra space, and empty and one-node lists
+          come out right too.
+    correct: save-link-advance
+    followUps:
+      overwrite-first:
+        prompt: >-
+          On the first pass `done` is `None`. After `node.link = done`, what does `after = node.link`
+          store?
+        options:
+          - id: overwritten-value
+            text: "`None`, the value `done` just put into `node.link`, so the loop then ends after one pass"
+          - id: original-next
+            text: The second node, because `after` is assigned after the loop starts
+          - id: saved-copy
+            text: A saved copy of the old link, because assignment keeps the previous value
+        correct: overwritten-value
+        explanation: >-
+          An assignment to `node.link` replaces the only link to the rest of the list, and the line
+          after it reads the new value. So `after` is `None`, `node` becomes `None`, and the loop stops
+          with the remaining nodes unreachable. A copy has to be taken before the overwrite.
+      done-too-early:
+        prompt: After `done = node`, what does `node.link = done` do?
+        options:
+          - id: self-link
+            text: It points `node` at itself, because `done` and `node` are now the same node
+          - id: points-back
+            text: It points `node` at the node before it, which is the intended reversal
+          - id: no-op
+            text: Nothing, because the link was already set earlier
+        correct: self-link
+        explanation: >-
+          `done` has to keep the node behind `node` until the link is written. Updating it first makes
+          both names refer to one node, so the reversed link points at the node itself.
+      advance-before-done:
+        prompt: What should `done` hold at the end of each loop pass?
+        options:
+          - id: node-just-handled
+            text: The node whose link was just rewritten, which is the head of the reversed part
+          - id: next-node
+            text: The node `node` has just moved to, which is the next one to handle
+          - id: none
+            text: "`None` until the loop is finished"
+        correct: node-just-handled
+        explanation: >-
+          `done` is the head of the part already reversed, so it must follow the node that was just
+          relinked. If it copies `node` after `node` advances, it leads by one node and ends as `None`
+          when `node` runs off the end.
+
+  - id: middle-node
+    heading: What does this return?
+    tags: [linked-list, two-pointers]
+    prompt: |-
+      The function walks `fast` two nodes per round and `slow` one node per round.
+
+      ```python
+      def middle(head):
+          slow = fast = head
+          while fast and fast.link:
+              slow = slow.link
+              fast = fast.link.link
+          return slow
+      ```
+
+      For the six-node list `41 -> 17 -> 8 -> 93 -> 25 -> 60`, which value does `middle` return?
+    options:
+      - id: first-middle
+        text: "`8`, the first of the two middle nodes"
+        explanation: >-
+          Returning `8` takes a loop that stops one round sooner, such as
+          `while fast.link and fast.link.link`. With `while fast and fast.link` the third round still
+          runs, because `fast` is on `25` and `25` has a following node, so `slow` ends on `93`.
+      - id: second-middle
+        text: "`93`, the second of the two middle nodes"
+        explanation: >-
+          The loop runs three times. `fast` goes `41`, `8`, `25`, then `None`, while `slow` goes
+          `17`, `8`, `93`. For `n` nodes the loop runs `n // 2` times, so `slow` ends at index `n // 2`:
+          the exact middle when `n` is odd and the second of two middles when `n` is even.
+      - id: one-past
+        text: "`25`, because `slow` takes one more step once `fast` is `None`"
+        explanation: >-
+          The loop body does not run again after `fast` becomes `None`, so `slow` stays on `93`. It
+          moves exactly once per round, and there are three rounds.
+      - id: none
+        text: "`None`, because `fast` falls off the end and `slow` finishes together with it"
+        explanation: >-
+          `fast` moves twice as far, so when `fast` is past the end `slow` is only halfway. It rests on
+          a real node, and `middle` only returns `None` for an empty list.
+    correct: second-middle
+    followUps:
+      first-middle:
+        prompt: >-
+          For the six nodes at indexes 0 to 5, which indexes does `fast` visit under
+          `while fast and fast.link`, and how does the loop end?
+        options:
+          - id: even-then-none
+            text: 0, 2, 4, then `None`; the loop ends only when `fast` is falsy, after `slow` moved three times
+          - id: stops-at-last
+            text: 0, 2, 4, 5; it stops on the last node, after `slow` moved twice
+          - id: odd-indexes
+            text: 1, 3, 5, because `fast` starts one node ahead of `slow`
+        correct: even-then-none
+        explanation: >-
+          `fast` steps over odd indexes and never lands on index 5. At index 4 it still has a following
+          node, so a third round runs and `fast` becomes `None`. Stopping earlier needs a stricter
+          condition, which then returns the first middle.
+      one-past:
+        prompt: How many times does `slow` move on the six-node list?
+        options:
+          - id: three
+            text: 3 times, once per round, and `fast` needs three rounds to run off the end
+          - id: four
+            text: 4 times, one extra for the round where `fast` becomes `None`
+          - id: two
+            text: 2 times, because `fast` is on the last pair of nodes after two rounds
+        correct: three
+        explanation: >-
+          Both pointers move inside the same loop body, so `slow` takes exactly as many steps as there
+          are rounds. The check that ends the loop runs before any move, so there is no extra step.
+      none:
+        prompt: "`fast` is `None` when the loop ends. Where is `slow`?"
+        options:
+          - id: halfway
+            text: On a real node about halfway along, because it moved half as far as `fast`
+          - id: also-none
+            text: "On `None` as well, because both pointers move in the same loop"
+          - id: last-node
+            text: On the last node, because it is the node before the end
+        correct: halfway
+        explanation: >-
+          Each round moves `slow` one node and `fast` two, so `slow` has covered half the distance.
+          Here `fast` has gone past the end at index 6 and `slow` rests at index 3.
+
+  - id: dummy-head
+    heading: What does the dummy node change?
+    tags: [linked-list, python]
+    prompt: |-
+      This function should remove every node whose value equals `target` from a singly linked list.
+
+      ```python
+      def remove_all(head, target):
+          node = head
+          while node and node.link:
+              if node.link.value == target:
+                  node.link = node.link.link
+              else:
+                  node = node.link
+          return head
+      ```
+
+      It is right when the first node is kept, but `remove_all` on `7 -> 7 -> 52 -> 7 -> 19` with
+      `target = 7` returns `[7, 52, 19]`, and on `[7]` it returns `[7]`. The fix creates
+      `dummy = Node(0, head)` and starts the loop with `node = dummy`. What does the dummy node change?
+    options:
+      - id: faster
+        text: Removing every match drops from O(n) to O(1), because the dummy does the work
+        explanation: >-
+          Every node still has to be tested, so removing all matches is O(n) with or without a dummy.
+          The dummy node adds one node of space and a little constant work.
+      - id: keeps-head
+        text: "`head` always refers to the correct first node, so the function can still return `head`"
+        explanation: >-
+          When the first node is removed, `head` still refers to the removed node. The fixed function
+          has to return `dummy.link`, which always names the current first node.
+      - id: only-way
+        text: Without a dummy node, a singly linked list cannot remove its first node correctly
+        explanation: >-
+          Adding `while head and head.value == target: head = head.link` before the main loop also
+          gives the right answer, with the same O(n) time and no extra node. The dummy node replaces
+          that special case with the loop that all other nodes use.
+      - id: has-predecessor
+        text: The first node gets a predecessor, so the same `node.link` rewrite handles it
+        explanation: >-
+          The old loop only ever tests `node.link`, so it can never examine the first node. With the
+          dummy in front, `node.link` is the first node on the first pass, and the same rewrite removes
+          it. Return `dummy.link`: on `7 -> 7 -> 52 -> 7 -> 19` that gives `[52, 19]`.
+    correct: has-predecessor
+    followUps:
+      faster:
+        prompt: How many nodes must be tested to remove every match from a list of `n` nodes?
+        options:
+          - id: all
+            text: All `n`, once each, so the cost is O(n) either way
+          - id: only-matches
+            text: Only the matching nodes, since the others are left alone
+          - id: skip-head
+            text: Only `n - 1` with a dummy node, since the first node is handled for free
+        correct: all
+        explanation: >-
+          Nothing says which nodes match until each one is tested, so every node is examined once. A
+          dummy node changes where the loop starts, not how many nodes it must visit, and the first
+          node is tested like any other.
+      keeps-head:
+        prompt: After the first node is unlinked, what does the local `head` refer to?
+        options:
+          - id: removed-node
+            text: Still the removed node, which stays alive because `head` refers to it
+          - id: new-first
+            text: The new first node, because `head` follows the list
+          - id: none
+            text: "`None`, because Python deletes a node once the list no longer links to it"
+        correct: removed-node
+        explanation: >-
+          A variable keeps pointing at the same node object until it is reassigned, and unlinking does
+          not reassign it. Python frees an object only when nothing refers to it, so the removed node
+          lives on through `head`. `dummy.link` is read after the loop, so it reflects every change.
+      only-way:
+        prompt: Which extra code makes the dummy-free version correct?
+        options:
+          - id: head-loop
+            text: "A loop before the main one that advances `head` while `head and head.value == target`"
+          - id: start-second
+            text: Starting `node` on `head.link`, so the main loop handles the second node onward
+          - id: test-own-value
+            text: Testing `node.value` instead of `node.link.value`, so the current node is the one unlinked
+        correct: head-loop
+        explanation: >-
+          Moving `head` forward past matching nodes handles the first node, and the guard `head and`
+          keeps it safe on `[7]` and on an empty list. Starting on `head.link` leaves the first two
+          nodes untested: `1 -> 7 -> 7 -> 7 -> 2` comes back as `[1, 7, 2]`. A singly linked node
+          cannot unlink itself, because only its predecessor's link can change.
+
+  - id: remove-nth-from-end
+    heading: Which setup removes the right node?
+    tags: [linked-list, two-pointers]
+    prompt: >-
+      Remove the n-th node from the end of a singly linked list (n = 1 is the last node, and
+      1 ≤ n ≤ length) in one pass. `slow` and `fast` start on the same node. `fast` moves ahead first,
+      then both move one step at a time until `fast.link` is `None`, and finally
+      `slow.link = slow.link.link` unlinks a node. Which setup works in every case, including when the
+      node to remove is the head?
+    options:
+      - id: gap-n-plus-one
+        text: "Both start on a dummy node before `head`; `fast` moves ahead n + 1 steps first"
+        explanation: >-
+          The pointers stop n + 1 apart, so `slow.link` is the node one too early. On
+          `41 -> 17 -> 8 -> 93 -> 25` with n = 2 it removes `8` instead of `93`. When n equals the
+          length, `fast` is already `None` after the advance and `fast.link` raises AttributeError.
+      - id: gap-n-minus-one
+        text: "Both start on a dummy node before `head`; `fast` moves ahead n - 1 steps first"
+        explanation: >-
+          The pointers stop n - 1 apart, so the node removed is one too late. On the same list with
+          n = 2 it removes the last node, `25`, instead of `93`. With n = 1 `slow` ends on the last
+          node, and `slow.link.link` raises AttributeError.
+      - id: no-dummy
+        text: "Both start on `head`, with no dummy node; `fast` moves ahead n steps first"
+        explanation: >-
+          This works whenever the node to remove has a predecessor, such as n = 2 above. When n equals
+          the length, `fast` is `None` after the advance, so `fast.link` raises AttributeError, and no
+          node sits before `head` for `slow` to rewrite. An `if fast is None: return head.link` check
+          fixes it, but that is a special case again.
+      - id: gap-n
+        text: "Both start on a dummy node before `head`; `fast` moves ahead n steps first"
+        explanation: >-
+          When `fast` reaches the last node the pointers are n apart, so `slow` stops on the node just
+          before the one to remove. The dummy gives the head a predecessor: for n equal to the length
+          `slow` never leaves the dummy, and the head is unlinked. `fast` visits each node once, so it
+          is O(n) time and O(1) space. Return `dummy.link`.
+    correct: gap-n
+    followUps:
+      gap-n-plus-one:
+        prompt: >-
+          `fast` stops on the last node and `slow` is n + 1 nodes behind it. Which node is `slow.link`?
+        options:
+          - id: one-early
+            text: The (n + 1)-th node from the end, one node too early
+          - id: one-late
+            text: The (n - 1)-th node from the end, because a longer gap moves `slow` closer to the end
+          - id: nth
+            text: The n-th node from the end, since `slow.link` is always the target
+        correct: one-early
+        explanation: >-
+          If `slow` is n + 1 behind the last node, then `slow.link` is n behind it. The last node is
+          the first from the end, so a node n behind it is the (n + 1)-th. A longer gap leaves `slow`
+          further from the end, not closer. The gap has to be n, so that `slow.link` is the target.
+      gap-n-minus-one:
+        prompt: >-
+          With a gap of n - 1 and `fast` on the last node, which node is `slow.link` for n = 2?
+        options:
+          - id: last-node
+            text: The last node, which is the first from the end, one node too late
+          - id: third-last
+            text: The third node from the end, because a shorter gap leaves `slow` further back
+          - id: second-last
+            text: The second node from the end, which is the right target
+        correct: last-node
+        explanation: >-
+          A gap of n - 1 puts `slow` one step closer to the end than it should be. For n = 2 that
+          makes `slow.link` the last node. For n = 1 it makes `slow` the last node itself, with no
+          `link` to rewrite.
+      no-dummy:
+        prompt: >-
+          When the head is the node to remove, which node would `slow` have to point at to unlink it?
+        options:
+          - id: before-head
+            text: The node before `head`, which a list that starts at `head` does not have
+          - id: head
+            text: "`head` itself, since `slow.link = slow.link.link` removes `slow`"
+          - id: no-node
+            text: No node; once `fast` becomes `None` the loop has already removed the head
+        correct: before-head
+        explanation: >-
+          The rewrite `slow.link = slow.link.link` removes the node after `slow`, so removing the head
+          needs a node in front of it. When `fast` becomes `None` right after the advance, the loop
+          never runs and nothing has been unlinked. A dummy node supplies the missing predecessor.
+
+  - id: cycle-detection
+    heading: Which approach detects a cycle?
+    tags: [linked-list, two-pointers, complexity]
+    prompt: |-
+      A singly linked list is acyclic, or its last node links back to an earlier node. It may have any
+      length, including zero. Which approach reports whether it has a cycle using O(1) extra space?
+
+      ```python
+      def has_cycle(head):
+          slow = fast = head
+          while ???:
+              slow = slow.link
+              fast = fast.link.link
+              if slow is fast:
+                  return True
+          return False
+      ```
+    options:
+      - id: fast-link-only
+        text: "Fill in `fast.link`"
+        explanation: >-
+          Acyclic lists of even length, and the empty list, crash: with four nodes `fast` goes to the
+          third node and then to `None`, and `None.link` raises AttributeError. Odd lengths and cyclic
+          lists run correctly, which is why this bug hides in small tests.
+      - id: fast-only
+        text: "Fill in `fast`"
+        explanation: >-
+          Acyclic lists of odd length crash: with three nodes `fast` lands on the last node, the check
+          `fast` passes, and `fast.link.link` becomes `None.link`, which raises AttributeError. Even
+          lengths and cyclic lists run correctly.
+      - id: visited-set
+        text: Instead, keep a `set` of visited nodes and stop when a node repeats
+        explanation: >-
+          The set is correct and simple, but it stores up to one entry per node, so it uses O(n) space.
+          Both approaches take O(n) time. The pointer version keeps only two references.
+      - id: fast-and-link
+        text: "Fill in `fast and fast.link`"
+        explanation: >-
+          On an acyclic list `fast` runs off the end, so the condition becomes false before
+          `fast.link.link` fails. Inside a cycle `fast` closes the distance to `slow` by one node per
+          round, so it cannot jump past `slow`, and once both are inside the cycle they meet within
+          one more lap. Only two references are kept, so the extra space is O(1).
+    correct: fast-and-link
+    followUps:
+      fast-link-only:
+        prompt: >-
+          On an acyclic list of 4 nodes, `fast` moves two nodes each round. What happens on the third
+          check of `while fast.link`?
+        options:
+          - id: none-has-no-link
+            text: "`fast` is `None` after two rounds, so `fast.link` raises AttributeError"
+          - id: last-node
+            text: "`fast` is on the last node, so `fast.link` is `None` and the loop ends cleanly"
+          - id: wraps
+            text: "`fast` wraps around to the head, so the check keeps passing"
+        correct: none-has-no-link
+        explanation: >-
+          With an even length `fast` skips the last node and lands on `None`. Attribute access on
+          `None` raises an error. The condition must test `fast` itself before it looks at
+          `fast.link`.
+      fast-only:
+        prompt: >-
+          On an acyclic list of 3 nodes, `fast` is on the last node after one round. What does the
+          check `while fast` do next?
+        options:
+          - id: enters-and-crashes
+            text: It passes, and `fast.link.link` raises AttributeError because `fast.link` is `None`
+          - id: stops
+            text: It stops, because `fast` is on the last node
+          - id: quiet-none
+            text: It passes, and `fast.link.link` evaluates to `None`, so the loop quietly ends
+        correct: enters-and-crashes
+        explanation: >-
+          The last node is a real node, so `while fast` is true. The body then asks for
+          `fast.link.link`, and reading `.link` from `None` raises an error in Python rather than
+          giving `None`. The condition also has to check that `fast.link` exists.
+      visited-set:
+        prompt: >-
+          For an acyclic list of `n` nodes, how many entries does the visited set hold when the walk
+          ends?
+        options:
+          - id: n-entries
+            text: "`n`, one for each node, so it grows with the list"
+          - id: constant
+            text: A fixed number, because the set only needs the current node
+          - id: cycle-only
+            text: Only the nodes inside a cycle, since only those can repeat
+        correct: n-entries
+        explanation: >-
+          The set cannot know in advance which node might repeat, so it records every node it passes.
+          Nothing repeats on an acyclic list, so all `n` stay in the set: O(n) space. The slow and
+          fast pointers need two references however long the list is, so they are O(1).
+
+  - id: cost-model
+    heading: What is the complexity?
+    tags: [linked-list, complexity, python]
+    prompt: >-
+      A singly linked list holds `n` nodes, and you have a reference to its first node. A Python
+      `list` holds `n` items. A node is "held" when you already have a reference to it. Which
+      statement about worst-case time is correct?
+    options:
+      - id: both-index-o1
+        text: Both give O(1) access by index, but a linked insert after a held node is O(n)
+        explanation: >-
+          A linked list has no index arithmetic. Reaching index `k` takes `k` hops from the first
+          node, so reaching the last node takes `n - 1` hops. Only the Python `list` gives O(1) access
+          by index.
+      - id: linked-insert-shifts
+        text: Inserting after a node you already hold is O(n), because later nodes must shift
+        explanation: >-
+          Shifting is what a Python `list` does when you insert in the middle. A linked insert changes
+          two links, `new.link = node.link` and `node.link = new`, and no other node moves, so it is
+          O(1) once you hold the node.
+      - id: two-pass-quadratic
+        text: Counting nodes and then walking to the middle makes two passes, so O(n²)
+        explanation: >-
+          Passes that run one after the other add, not multiply. Counting takes `n` steps and walking
+          to the middle takes about `n / 2`, so the total is 1.5n, which is O(n). For 10,000 nodes
+          that is 15,000 steps.
+      - id: costs-split
+        text: "Linked: k-th node O(k), insert after a held node O(1); `list`: O(1) index, O(n) insert"
+        explanation: >-
+          The two structures trade costs. A linked insert after a held node is O(1), but finding the
+          node costs O(k). A `list` index is O(1), but inserting in the middle shifts every later
+          item, which is O(n). A length pass followed by a walk to the middle is still O(n).
+    correct: costs-split
+    followUps:
+      both-index-o1:
+        prompt: How many `.link` hops does it take to reach the node at index 3 from the first node?
+        options:
+          - id: three-hops
+            text: 3 hops, one per link followed on the way
+          - id: one-hop
+            text: 1 hop, because the first node stores where every node is
+          - id: zero-hops
+            text: 0 hops, because the nodes sit next to each other in memory
+        correct: three-hops
+        explanation: >-
+          A linked list keeps no mapping from an index to a location. Even if the nodes happened to be
+          adjacent in memory, nothing in the structure says so, so reaching index `i` means following
+          `i` links. That makes access O(n) in the worst case.
+      linked-insert-shifts:
+        prompt: When you insert a new node after a node `p` you already hold, what changes?
+        options:
+          - id: two-links
+            text: Two links, `new.link` and `p.link`, and no other node moves
+          - id: every-later
+            text: Every later node is relinked to keep the order
+          - id: only-p
+            text: Only `p.link`, because the new node does not need a link of its own
+        correct: two-links
+        explanation: >-
+          Only the neighbours are touched, so the cost does not depend on `n`. The new node must also
+          get a link to the old successor, or the rest of the list is cut off. That O(1) assumes you
+          already hold `p`. With only the first node, finding `p` takes up to `n` hops.
+      two-pass-quadratic:
+        prompt: >-
+          Counting visits every node, then the walk stops at the middle. How do the steps combine?
+        options:
+          - id: add
+            text: They add up to n + n / 2 = 1.5n, which is O(n)
+          - id: multiply
+            text: They multiply to about n² / 2, which is O(n²)
+          - id: whole-again
+            text: They add up to 2n, because the walk crosses the whole list a second time
+        correct: add
+        explanation: >-
+          Work done one pass after another adds, and big-O drops the constant. The walk stops at the
+          middle, so it costs about `n / 2` rather than `n`. A fast and slow pointer pass also moves
+          about 1.5n pointers in total (`n / 2` for `slow`, `n` for `fast`), so it saves a second pass
+          but not the O(n) bound.

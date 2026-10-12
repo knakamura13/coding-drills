@@ -71,6 +71,9 @@ test.describe('progress', () => {
 });
 
 test.describe('mixed practice', () => {
+	// Ten questions on a phone viewport, with six workers sharing the machine, can pass 30 seconds.
+	test.slow();
+
 	const total = allDecks.reduce((sum, candidate) => sum + candidate.questions.length, 0);
 
 	test('draws ten questions from every deck and runs the usual lesson loop', async ({ page }) => {

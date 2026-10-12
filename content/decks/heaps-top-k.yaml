@@ -1,0 +1,522 @@
+id: heaps-top-k
+title: Heaps and top-K
+description: Keep the current best few items in a priority queue, and know what a heap costs and where Python's heapq surprises you.
+heading: Which structure fits?
+
+questions:
+  - id: shortest-job-first
+    tags: [heap, complexity]
+    prompt: >-
+      A thumbnail worker handles one job at a time. Each job has an estimated run time, and new jobs
+      keep arriving while the worker is busy. When it finishes a job, it must start the pending job
+      with the smallest estimate. With up to `n` jobs pending, which structure makes both "add a
+      job" and "take the shortest job" O(log n) in the worst case?
+    options:
+      - id: fifo-deque
+        text: "A queue (`collections.deque`): append new jobs, pop from the front"
+        explanation: >-
+          A deque gives O(1) for both operations, but it returns jobs in arrival order, not by run
+          time. Say a 9-minute export starts at minute 0, and then `thumb` (2), `resize` (4), and
+          `ping` (1) arrive. A deque starts `ping` at minute 15, while shortest-first starts it at
+          minute 9.
+      - id: scan-min
+        text: "An unsorted list: append new jobs, and scan for the minimum when the worker is free"
+        explanation: >-
+          Adding is O(1), but every pick compares all pending jobs, which is O(n) per pick. The
+          result is correct, only slow: with a million pending jobs each pick looks at a million
+          entries, where a heap walks about 20 levels.
+      - id: sorted-list
+        text: "A sorted list: `bisect.insort` to add, `pop(0)` to take the shortest"
+        explanation: >-
+          `insort` finds the slot in about log n comparisons, but the insert shifts every later item
+          and `pop(0)` shifts all the rest, so each is O(n) in the worst case. Re-sorting after every
+          append is no better: Python's sort notices the one misplaced item and needs about n
+          comparisons (about 1,000 for 1,001 items), which is still O(n).
+      - id: min-heap
+        text: "A min-heap (`heapq`): `heappush` to add, `heappop` to take the shortest"
+        explanation: >-
+          `heappush` and `heappop` each cost O(log n) in the worst case (for `heappush`, the list
+          append itself is amortized O(1)), and the smallest item is always at `h[0]`. A heap keeps just enough order to find the minimum, so it avoids both
+          the O(n) scan and the O(n) cost of keeping everything sorted.
+    correct: min-heap
+    followUps:
+      fifo-deque:
+        prompt: A deque returns pending jobs in the order they arrived. Why does that fail the requirement here?
+        options:
+          - id: arrival-not-length
+            text: Arrival order ignores run time, so a long job that came first runs before a shorter one that came later
+          - id: slow-front
+            text: Removing from the front of a deque is O(n)
+          - id: no-adding
+            text: A deque cannot accept new items while the worker is busy
+        correct: arrival-not-length
+        explanation: >-
+          A queue orders by arrival, and the rule orders by run time. Both `append` and `popleft` are
+          O(1) on a deque, so speed is not the problem. Something has to compare run times, and a
+          heap does that in O(log n).
+      scan-min:
+        prompt: >-
+          The unsorted list returns the right job every time. Roughly how many comparisons does one
+          `min` scan make when `n` jobs are pending?
+        options:
+          - id: about-n
+            text: About n, because the smallest job could be anywhere, so every pending job is compared
+          - id: about-log-n
+            text: About log n, because the scan can skip half of the list
+          - id: about-one
+            text: One, because the smallest job is kept at the front
+        correct: about-n
+        explanation: >-
+          With no order in the list, a scan must look at all `n` items (n - 1 comparisons). A heap
+          keeps a partial order, so finding the minimum is O(1) and restoring order after a pick
+          walks one path of about log n levels.
+      sorted-list:
+        prompt: >-
+          `bisect.insort` finds the position in about log n comparisons. What else does inserting into
+          the middle of a Python list do?
+        options:
+          - id: shifts-items
+            text: It shifts every item after that position one slot to the right, which is O(n) in the worst case
+          - id: nothing-else
+            text: Nothing else, because an insert at a known position is O(1)
+          - id: re-sorts
+            text: It re-sorts the whole list, which is O(n log n)
+        correct: shifts-items
+        explanation: >-
+          A Python list is a contiguous array, so `insert` and `pop(0)` move the items behind the
+          position. The shift is a fast memory copy, so a sorted list is fine for small `n`, but it
+          is O(n) per operation, not O(log n). It does not re-sort; it only shifts.
+
+  - id: heapq-min-heap
+    heading: Which approach pops the largest first?
+    tags: [heap, python]
+    prompt: >-
+      Python's `heapq` keeps a heap inside a plain list. You push the numbers `8, 3, 11, 5` and want
+      to get them back largest first: `11, 8, 5, 3`. Which approach gives that order?
+    options:
+      - id: plain-pops
+        text: Push each number as it is, then call `heappop(h)` four times
+        explanation: >-
+          `heappop` always removes the smallest item, because `heapq` implements a min-heap. This
+          sequence returns `3, 5, 8, 11`, which is ascending. The order in which the numbers were
+          pushed does not change that.
+      - id: list-end
+        text: Push as is, then take the largest from the end of the list with `h.pop()`
+        explanation: >-
+          A heap list is only partly ordered, and nothing makes the last element the largest. After
+          pushing `8, 3, 11, 5` the list is `[3, 5, 11, 8]`, so `h.pop()` returns 8, not 11.
+      - id: reverse-kwarg
+        text: Push as is, then call `heappop(h, reverse=True)`
+        explanation: >-
+          `heappop` takes only the heap. Passing `reverse=True` raises `TypeError` because the
+          function takes no keyword arguments, and `key=` fails the same way. `sorted` has
+          both parameters, but the `heappush` and `heappop` functions have neither.
+      - id: negate
+        text: Push `-x` for each number `x`, and negate each value that `heappop` returns
+        explanation: >-
+          Negation reverses the order of numbers, so the smallest negated value is the original
+          largest. The pops return `-11, -8, -5, -3`, which become `11, 8, 5, 3`. For items with a
+          payload, store tuples such as `(-priority, item)`. Python 3.14 also adds `heappush_max` and
+          `heappop_max`, but negation works on every version.
+    correct: negate
+    followUps:
+      plain-pops:
+        prompt: The heap holds `8, 3, 11, 5`. Which value does `heappop` return first?
+        options:
+          - id: smallest
+            text: "3, the smallest, because `heapq` is a min-heap"
+          - id: largest
+            text: 11, the largest, because a heap hands out the biggest item first
+          - id: first-pushed
+            text: 8, because it was the first number pushed
+        correct: smallest
+        explanation: >-
+          `heappop` removes and returns `h[0]`, and the heap rule keeps the smallest item there. The
+          word "heap" does not mean "largest first": that is a max-heap, which `heapq` does not
+          provide through `heappush` and `heappop`. The pops come out as `3, 5, 8, 11`.
+      list-end:
+        prompt: >-
+          After pushing `8, 3, 11, 5` the list is `[3, 5, 11, 8]`. What does the heap rule guarantee
+          about this list?
+        options:
+          - id: parent-smaller
+            text: Every item is <= its children, so `h[0]` is the smallest, and the rest is only partly ordered
+          - id: sorted-list
+            text: The list is sorted from smallest to largest
+          - id: last-largest
+            text: The last item is the largest
+        correct: parent-smaller
+        explanation: >-
+          The only guarantee is parent <= child, with the children of `h[i]` at `2i + 1` and
+          `2i + 2`. `[3, 5, 11, 8]` is not sorted, and its last item, 8, is not the largest. Only
+          `h[0]` is guaranteed to be extreme.
+      reverse-kwarg:
+        prompt: >-
+          `heappush` and `heappop` accept no `reverse` or `key` argument. What changes the order in
+          which items come out, then?
+        options:
+          - id: stored-values
+            text: The values that are stored, such as negated numbers or `(-priority, item)` tuples
+          - id: max-class
+            text: Nothing needs to change, because the module has a `heapq.MaxHeap` class
+          - id: push-order
+            text: The order in which the items are pushed
+        correct: stored-values
+        explanation: >-
+          A heap orders items with `<` on whatever is stored, and you cannot supply another
+          comparison. To reverse the order, store values that compare in reverse (or use the `_max`
+          functions on Python 3.14 and later). There is no
+          `heapq.MaxHeap`, and push order does not matter: the pops come out sorted whichever way
+          the items went in.
+
+  - id: top-k-min-heap
+    heading: Which approach is correct?
+    tags: [heap, complexity, sorting]
+    prompt: >-
+      Scores arrive one at a time in a stream of `n` values, and you may keep only `O(k)` of them in
+      memory. At the end you need the `k` largest scores. Which approach is correct, uses `O(k)`
+      memory, and has `O(n log k)` worst-case time?
+    options:
+      - id: sort-all
+        text: Store every score, sort them in descending order, and take the first `k`
+        explanation: >-
+          The answer is right, but it keeps all `n` scores, which breaks the `O(k)` memory limit,
+          and it spends O(n log n) worst-case time ordering the `n - k` scores that get thrown away.
+          For small `k` that is more work than O(n log k).
+      - id: heap-all
+        text: Heapify all `n` scores as a max-heap, then pop `k` times
+        explanation: >-
+          This gives the right answer and can even be fast for small `k`: O(n) to build plus
+          O(k log n) to pop. But the heap holds all `n` scores, so memory is O(n), and a stream
+          cannot be heapified before it has fully arrived.
+      - id: capped-max
+        text: "Keep a max-heap capped at `k`: push each score, and pop whenever its size exceeds `k`"
+        explanation: >-
+          A max-heap pops its largest item, so every overflow throws away the best score seen so
+          far, and the heap ends up holding the `k` smallest. For `4, 9, 2, 7, 5` with `k = 2` it
+          ends with `4` and `2`, while the answer is `9` and `7`.
+      - id: capped-min
+        text: "Keep a min-heap capped at `k`: push each score, and pop whenever its size exceeds `k`"
+        explanation: >-
+          The root is the smallest of the `k` kept scores, so each overflow discards the weakest
+          candidate and only the `k` largest remain. Each step costs O(log k) in the worst case (for
+          example on ascending input, where every score gets pushed), so the total is O(n log k) with
+          O(k) memory. For `4, 9, 2, 7, 5` with `k = 2` it ends with `9` and `7`.
+    correct: capped-min
+    followUps:
+      sort-all:
+        prompt: Sorting returns the right `k` scores. Which cost does it pay that the min-heap of size `k` avoids?
+        options:
+          - id: orders-everything
+            text: It orders all `n` scores and has to hold them all, although only `k` are needed
+          - id: needs-distinct
+            text: It is only correct when all the scores are different
+          - id: stops-early
+            text: It can stop after finding `k` scores, so it costs the same as the heap
+        correct: orders-everything
+        explanation: >-
+          A full sort handles all `n` items, which is O(n log n) in the worst case, and needs them
+          all in memory. The heap discards a score as soon as it cannot be in the top `k`, so it
+          holds `k` items and does O(log k) work per score. `sorted` has no early exit, and
+          duplicates are no problem. Sorting is still a fine choice when `n` is small.
+      heap-all:
+        prompt: >-
+          Heapifying all `n` scores and popping `k` times costs O(n + k log n) time. What breaks the
+          stated limits?
+        options:
+          - id: holds-all
+            text: The heap holds all `n` scores at once, so memory is O(n) instead of O(k)
+          - id: slow-pops
+            text: Each pop costs O(n), so the `k` pops cost O(nk)
+          - id: smallest
+            text: It returns the `k` smallest scores, not the `k` largest
+        correct: holds-all
+        explanation: >-
+          Building in O(n) and popping `k` times at O(log n) each is correct, and for small `k` it can
+          beat O(n log k) on time. The catch is memory: every score is stored, and all of them must
+          exist before the heap can be built. The size-`k` min-heap trades that for O(k) memory.
+      capped-max:
+        prompt: >-
+          A max-heap capped at `k = 2` sees `4, 9, 2, 7, 5`. Whenever it holds 3 scores it pops the
+          largest. Which two scores remain at the end?
+        options:
+          - id: two-largest
+            text: "`9` and `7`, the two largest"
+          - id: two-smallest
+            text: "`4` and `2`, the two smallest"
+          - id: first-two
+            text: "`4` and `9`, the first two it saw"
+        correct: two-smallest
+        explanation: >-
+          The pops remove 9, then 7, then 5, leaving 4 and 2. A capped heap throws away whatever its
+          root holds, so for the `k` largest the root must be the smallest kept score. That makes it
+          a min-heap, which discards the weakest candidate.
+
+  - id: heapify-vs-pushes
+    heading: What is the complexity?
+    tags: [heap, complexity, python]
+    prompt: >-
+      You already have a list `nums` of `n` numbers and want a min-heap from it. One way is
+      `heapq.heapify(nums)`. Another is to start from an empty list and call `heappush` `n` times.
+      Which statement gives the tightest worst-case bounds?
+    options:
+      - id: both-n-log-n
+        text: Both cost n log n in the worst case, since each of the `n` items can move log n levels
+        explanation: >-
+          That is the cost of `n` pushes, but not of `heapify`. It starts at the last parent and
+          sifts down toward the root, and most items sit near the bottom where a sift moves them
+          little or not at all. The total is O(n), not n log n.
+      - id: pushes-linear
+        text: "`heapify` is O(n log n), and `n` pushes are O(n), since one push is O(1)"
+        explanation: >-
+          A push is O(1) on average for random order, but its worst case is O(log n): on strictly
+          decreasing numbers every new item climbs to the root. For 1,000 decreasing numbers, `n`
+          pushes made 7,987 comparisons, and for 1,000 random numbers about 2,200. `heapify` on the 1,000
+          decreasing numbers made 1,490.
+      - id: pops-linear
+        text: "`heapify` is O(n), so popping all `n` items in order is O(n) as well"
+        explanation: >-
+          Only the build is O(n). Each `heappop` costs O(log n) in the worst case, so popping all
+          `n` items is O(n log n). It would otherwise be a linear-time comparison sort, which cannot
+          exist. For 1,000 random numbers, `heapify` takes about 1,600 comparisons and popping
+          everything about 8,700.
+      - id: heapify-linear
+        text: "`heapify` is O(n); `n` pushes are O(n log n). These bounds are for building, not popping"
+        explanation: >-
+          `heapify` works bottom-up: about half of the items are leaves and need no work, a quarter
+          move at most one level, and so on, which sums to O(n). Push-built heaps can pay log n per
+          item. Both bounds cover building. Reading the items out in order with `n` pops is still
+          O(n log n).
+    correct: heapify-linear
+    followUps:
+      both-n-log-n:
+        prompt: >-
+          `heapify` sifts items down, starting from the last parent and working toward the root. Why
+          does that add up to O(n) and not n log n?
+        options:
+          - id: most-near-bottom
+            text: Most items are near the bottom, where a sift moves them 0 or 1 levels, and only a few near the top can move log n levels
+          - id: sorts-first
+            text: It first sorts the list with a linear-time sort
+          - id: only-root
+            text: It only repairs the root, so one sift of log n levels is enough
+        correct: most-near-bottom
+        explanation: >-
+          About n/2 items are leaves and cost nothing, n/4 can move one level, n/8 can move two, and
+          so on. That series sums to at most about n. `heapify` does not sort anything, and the
+          result is only a valid heap, not a sorted list.
+      pushes-linear:
+        prompt: >-
+          Strictly decreasing numbers `1000, 999, ..., 1` are pushed onto a min-heap one at a time.
+          What does each new push do?
+        options:
+          - id: climbs-to-root
+            text: It is smaller than everything stored, so it climbs all the way to the root, about log n levels
+          - id: stays-put
+            text: It stays at the end, because the list is already in heap order
+          - id: one-level
+            text: It swaps with its parent at most once, because a push never moves more than one level
+        correct: climbs-to-root
+        explanation: >-
+          Every new number beats its parent, then its grandparent, up to the root. The 1,023 numbers
+          `1023, 1022, ..., 1` climb 8,194 levels in total, close to n log n. Random order averages
+          only a few comparisons per push, so "n pushes are O(n)" is an average-case claim, not a
+          worst-case one.
+      pops-linear:
+        prompt: >-
+          After `heapify`, each `heappop` removes the root and restores the heap. How many levels can
+          that restoring step walk?
+        options:
+          - id: log-levels
+            text: Up to log n levels, so `n` pops cost O(n log n) in total
+          - id: none
+            text: None, because `heapify` has already put every item in order
+          - id: one-level
+            text: One level, because only the root changed
+        correct: log-levels
+        explanation: >-
+          `heapify` produces a heap, not a sorted list. A pop moves the last item to the root and
+          sifts it down, up to log n levels, and that happens `n` times. Comparison sorting needs
+          about n log n comparisons in the worst case, so heapify-then-pop-everything cannot be
+          linear.
+
+  - id: heap-tie-typeerror
+    heading: What happens, and what is the fix?
+    tags: [heap, python]
+    prompt: |-
+      Jobs are stored as `(priority, payload)` tuples, where the payload is a dict with a `"job"`
+      name and a `"file"`. Two different jobs can share a name, as these two do, and both have
+      priority 2.
+
+      ```python
+      import heapq
+
+      h = []
+      heapq.heappush(h, (2, {"job": "resize", "file": "a.png"}))
+      heapq.heappush(h, (2, {"job": "resize", "file": "b.png"}))
+      ```
+
+      What happens on the second push, and which fix works for any jobs, even ones with equal names?
+    options:
+      - id: no-error
+        text: No error, since the priorities tie, `heapq` keeps insertion order and skips the dicts
+        explanation: >-
+          Tuple comparison moves to the next element when the first ones are equal. The second push
+          compares the dicts, and raises `TypeError: '<' not supported between instances of 'dict'
+          and 'dict'`. `heapq` makes no promise to keep insertion order for ties either.
+      - id: name-middle
+        text: "`TypeError`; fix it with `(priority, job_name, payload)`"
+        explanation: >-
+          The `TypeError` is right, and a name often breaks a tie, but it is not enough when two
+          different jobs share a name: `(2, "a", {...}) < (2, "a", {...})` falls through to the dicts
+          and raises the same error. The tie-breaker has to be unique, not just usually different.
+      - id: heapify-instead
+        text: "`TypeError`; fix it by appending both tuples to a list and calling `heapify`"
+        explanation: >-
+          `heapify` compares items with `<` too, so tied tuples with different dicts raise the same
+          `TypeError` there. Only the way the heap is built changed, and the comparison that fails
+          did not.
+      - id: counter
+        text: "`TypeError`; fix it with `(priority, next(counter), payload)` using `itertools.count()`"
+        explanation: >-
+          The tie falls through to the dicts and raises `TypeError`. A counter gives every push a
+          unique number, so comparison never reaches the payload, and tied items pop in insertion
+          order. A `dataclass(order=True)` with `compare=False` on the payload also avoids the error,
+          but ties then pop in no promised order: six tied items pushed as 0 to 5 popped as
+          0, 2, 5, 4, 1, 3.
+    correct: counter
+    followUps:
+      no-error:
+        prompt: How does Python decide `(2, a) < (2, b)` when the first elements are equal?
+        options:
+          - id: compares-next
+            text: It goes on to compare `a < b`, and raises `TypeError` if those cannot be ordered
+          - id: stops-equal
+            text: It stops at the first element and treats the tuples as equal
+          - id: compares-id
+            text: It compares the `id()` values of the second elements
+        correct: compares-next
+        explanation: >-
+          Tuples compare left to right until the first position that differs. With distinct
+          priorities the payload is never touched, which is why this bug can hide until two
+          priorities tie. Even then, two payloads that are equal to each other do not raise, because
+          equal elements are skipped.
+      name-middle:
+        prompt: >-
+          Two jobs share priority 2 and the name `"a"`. What does `(2, "a", {"x": 1}) < (2, "a", {"x": 2})`
+          do?
+        options:
+          - id: raises
+            text: It raises `TypeError`, because priority and name tie and the dicts are compared next
+          - id: true-smaller
+            text: It returns `True`, because the first dict has the smaller value
+          - id: false-equal
+            text: It returns `False`, because tuples with equal leading items are equal
+        correct: raises
+        explanation: >-
+          Each tied position moves the comparison one element to the right, and the dicts are the
+          last stop. A middle key makes ties rarer but does not remove them. A counter cannot tie,
+          because every push draws a new number.
+      heapify-instead:
+        prompt: >-
+          `heapify` has to arrange items so that every parent is <= its children. What does it need to
+          do to decide that?
+        options:
+          - id: compares-items
+            text: Compare items with `<`, so tied tuples with unorderable payloads fail there too
+          - id: no-comparison
+            text: Nothing, because it moves items by position and never compares them
+          - id: first-only
+            text: Compare only the first element of each tuple and ignore the rest
+        correct: compares-items
+        explanation: >-
+          Every heap operation needs comparisons: push, pop, and `heapify` all use `<` on the stored
+          items. Running `heapify` on two tied tuples with different dicts raises the same
+          `TypeError`. The fix has to change what is stored, not how the heap is built.
+
+  - id: merge-k-sorted
+    heading: Which approach merges them?
+    tags: [heap, complexity, sorting]
+    prompt: >-
+      `k` sorted lists hold `N` numbers in total, and each list is read lazily, for example from a
+      file. You must produce one sorted stream while keeping only `O(k)` numbers in memory, in
+      `O(N log k)` worst-case time. Which approach does that?
+    options:
+      - id: concat-sort
+        text: Concatenate all the lists into one list and sort it
+        explanation: >-
+          The output is right, but it holds all `N` numbers, which breaks the `O(k)` memory limit.
+          For a sort that ignores existing order the time is O(N log N). CPython's `sorted` finds the
+          `k` sorted runs and merges them, about N(log₂ k + 1) comparisons for long runs (5.00
+          per item for `k = 16` lists of 10,000), so in Python the time gap is small and memory is the real difference.
+      - id: heap-all
+        text: Push every number from every list into one min-heap, then pop `N` times
+        explanation: >-
+          The output is right, but the heap holds all `N` numbers, not `k`, and `N` pops at O(log N)
+          each cost O(N log N) in the worst case. It also ignores that each list is already sorted:
+          only the front of each list can be the next output.
+      - id: scan-fronts
+        text: At each step, scan the current front of all `k` lists and take the smallest
+        explanation: >-
+          The output is right and memory stays at O(k), but each of the `N` outputs costs `k - 1`
+          comparisons, so the time is O(N·k). With `k = 1,000` that is about a thousand comparisons
+          per number, where a heap walks about 10 levels.
+      - id: heap-fronts
+        text: Keep a min-heap of one candidate per list; pop the smallest, push that list's next item
+        explanation: >-
+          The smallest unmerged number is always the front of some list, so the heap needs only those
+          `k` fronts. Each output costs one pop and at most one push, O(log k), for O(N log k) in
+          total. Store `(value, list_index, position)`; the list index is unique, so ties never
+          compare anything else. For `[3, 8, 20]`, `[1, 2, 30, 31]`, and `[5, 6, 7]` the heap never
+          exceeds 3 entries.
+    correct: heap-fronts
+    followUps:
+      concat-sort:
+        prompt: >-
+          Concatenate-and-sort does not need the lists to be sorted, and it holds everything in memory.
+          What does it cost that the heap merge avoids?
+        options:
+          - id: holds-all
+            text: It holds all `N` numbers at once, while the heap merge holds only `k`
+          - id: different-lengths
+            text: It gives the wrong order when the lists have different lengths
+          - id: duplicates
+            text: It cannot handle values that appear in more than one list
+        correct: holds-all
+        explanation: >-
+          Sorting the concatenation is correct for any list lengths and for duplicates. The
+          difference is working memory (`N` versus `k`) and laziness: the heap merge can yield the
+          first `m` numbers in O(k + m log k) time without reading the rest of the input, when the
+          `k` fronts are built with `heapify` rather than `k` separate pushes. `heapq.merge` is the
+          library version of it.
+      heap-all:
+        prompt: In the one-candidate-per-list heap, why can the heap never hold more than `k` entries?
+        options:
+          - id: fronts-only
+            text: A number behind a list's front cannot be next while that front is unmerged, so it can wait in its list
+          - id: pruned-at-k
+            text: The heap is pruned whenever it exceeds `k` entries, so the largest ones are dropped
+          - id: merged-first
+            text: Each list is first merged separately, so only `k` list summaries enter the heap
+        correct: fronts-only
+        explanation: >-
+          Every number behind a list's front is at least as large as that front, so only the `k` fronts
+          compete for the next output. Pushing all `N` numbers discards the sorted order of the lists
+          and pays O(N log N) for it.
+      scan-fronts:
+        prompt: >-
+          Scanning the `k` fronts costs about `k` comparisons per output. What is the total for `N`
+          outputs, compared with the heap?
+        options:
+          - id: nk-vs-n-log-k
+            text: O(N·k) for the scan, and O(N log k) for the heap
+          - id: n-plus-k
+            text: O(N + k) for the scan, because each list is scanned once
+          - id: same
+            text: O(N log k) for both, since log k comparisons are enough to find a minimum among `k` unordered fronts
+        correct: nk-vs-n-log-k
+        explanation: >-
+          Each output restarts the scan over all `k` fronts, because nothing remembers the earlier
+          comparisons. A heap remembers them in its tree shape and repairs one root-to-leaf path of
+          about log k levels per output. Finding the minimum of `k` unordered values needs `k - 1`
+          comparisons, not log k.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
-import { escapeHtml, plainText, renderInline, renderMarkdown } from './render';
+import { LONG_CODE_CHARS, escapeHtml, plainText, renderInline, renderMarkdown } from './render';
 
 describe('escapeHtml', () => {
 	it('escapes the five HTML-significant characters', () => {
@@ -126,5 +126,13 @@ describe('plainText and renderInline agree on every shipped option', () => {
 			];
 			for (const text of options) expect(plainText(text, 1000), text).toBe(visible(renderInline(text)));
 		}
+	});
+});
+
+describe('long inline code', () => {
+	it('marks spans past the limit so they can wrap, and leaves short ones as single-line chips', () => {
+		const long = 'x'.repeat(LONG_CODE_CHARS + 1);
+		expect(renderInline(`\`${long}\``)).toBe(`<code class="long">${long}</code>`);
+		expect(renderInline(`\`${'x'.repeat(LONG_CODE_CHARS)}\``)).toBe(`<code>${'x'.repeat(LONG_CODE_CHARS)}</code>`);
 	});
 });

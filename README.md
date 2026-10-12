@@ -6,7 +6,7 @@ Each question asks for a pattern, a complexity, or an output. Pick wrongly and t
 
 Live: https://coding-drills.up.railway.app
 
-Status: early. Nine decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
+Status: early. Thirteen decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
 
 ## The lesson loop
 

@@ -1,0 +1,566 @@
+id: trees-traversals-bst
+title: Trees, traversals, and BSTs
+description: Read binary trees through the three depth-first orders, level by level, and by the ordering rule of a binary search tree.
+heading: What does this return?
+
+questions:
+  - id: postorder-output
+    heading: What is in `out` afterward?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `walk(root, out)` runs with `out = []` on the tree below, which is
+      `TreeNode(5, TreeNode(2, TreeNode(9), TreeNode(4, TreeNode(8))), TreeNode(7, None, TreeNode(6)))`.
+
+      ```python
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          walk(node.right, out)
+          out.append(node.val)
+      ```
+
+      ```text
+              5
+             / \
+            2   7
+           / \   \
+          9   4   6
+             /
+            8
+      ```
+    options:
+      - id: preorder
+        text: "`[5, 2, 9, 4, 8, 7, 6]`"
+        explanation: >-
+          That is the preorder list: each node comes before both of its subtrees. Here the append comes
+          after both recursive calls, so a node is added only once everything below it has been added,
+          and the root 5 comes last.
+      - id: inorder
+        text: "`[9, 2, 8, 4, 5, 7, 6]`"
+        explanation: >-
+          That is the inorder list: left subtree, node, right subtree. It needs the append between the
+          two calls. With the append at the end, the 2 is added after its whole right subtree (4 and 8),
+          not before it.
+      - id: level-order
+        text: "`[5, 2, 7, 9, 4, 6, 8]`"
+        explanation: >-
+          That is the level-by-level order, and a plain three-line `walk` like this one cannot produce
+          it. It finishes the whole subtree under 2 before it starts the subtree under 7, so deeper
+          nodes such as 9 are added before shallower ones such as 7.
+      - id: postorder
+        text: "`[9, 8, 4, 2, 6, 7, 5]`"
+        explanation: >-
+          Postorder is left subtree, right subtree, then the node. The left subtree of 5 gives 9, then
+          8, 4, 2. The right subtree gives 6, then 7. The root 5 comes last. Every node appears after
+          all of its descendants.
+    correct: postorder
+    followUps:
+      preorder:
+        prompt: >-
+          In `walk`, where does `out.append(node.val)` sit relative to the two recursive calls, and
+          what does that make the first value added?
+        options:
+          - id: after-both
+            text: After both calls, so the first value added is the leftmost leaf, 9
+          - id: before-both
+            text: Before both calls, so the first value added is the root, 5
+          - id: between
+            text: Between the calls, so the first value added is the root, 5
+        correct: after-both
+        explanation: >-
+          The position of the append names the order. Before both calls is preorder, between them is
+          inorder, and after both is postorder. In postorder the recursion has to reach a leaf
+          before anything is appended, so 9 is first and the root is last.
+      inorder:
+        prompt: >-
+          Inside the subtree rooted at 2 (children 9 and 4, with 8 under 4), which value does `walk`
+          append last?
+        options:
+          - id: two-last
+            text: 2, because its append runs after both of its subtrees are finished
+          - id: four-last
+            text: 4, because it is the right child
+          - id: two-middle
+            text: 2, because it is appended before its right subtree
+        correct: two-last
+        explanation: >-
+          The append after both calls puts a node after everything in its left and right subtrees, so
+          this subtree gives 9, 8, 4, 2. Appending the 2 before its right subtree (4 and 8) would give
+          9, 2, 8, 4, which needs the append between the calls, and that is inorder.
+      level-order:
+        prompt: >-
+          In the level-by-level list `[5, 2, 7, 9, 4, 6, 8]` the 7 comes before the 9. In the output of
+          `walk` on this tree, does the 7 come before the 9?
+        options:
+          - id: finishes-subtree
+            text: No, because `walk` finishes the whole subtree under 2, which holds the 9, before it starts the one under 7
+          - id: shallow-first
+            text: Yes, because 7 is on a shallower level and recursion handles shallower nodes first
+          - id: append-last
+            text: Yes, because appending after the calls moves shallow nodes ahead
+        correct: finishes-subtree
+        explanation: >-
+          A recursive call returns only after all of its own calls have returned, so one whole
+          subtree is completed before its sibling begins. In the output the 9 is first and the 7 is
+          sixth. That is depth-first order, and a later question builds the level-by-level order.
+
+  - id: bst-bounds-check
+    heading: What must each call receive?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      In this tree all values are distinct, and at every node the whole left subtree must be smaller
+      and the whole right subtree larger. The function below returns `True` for
+      `TreeNode(30, TreeNode(12), TreeNode(45, TreeNode(18), TreeNode(60)))`, but the 18 sits in the
+      right subtree of the 30, so the tree is not a BST.
+
+      ```python
+      def looks_like_bst(node):
+          if node is None:
+              return True
+          if node.left and node.left.val >= node.val:
+              return False
+          if node.right and node.right.val <= node.val:
+              return False
+          return looks_like_bst(node.left) and looks_like_bst(node.right)
+      ```
+
+      What extra information should each recursive call receive to be correct for every tree?
+    options:
+      - id: nothing-more
+        text: Nothing; comparing each node with its children already checks the whole tree
+        explanation: >-
+          The sample tree shows otherwise: the 18 is smaller than its parent 45, so that comparison
+          passes, but it is also in the right subtree of the 30 and must exceed 30. A parent-child
+          comparison never sees an ancestor that is further up.
+      - id: root-value
+        text: The root's value, so every node is also compared with the root
+        explanation: >-
+          This catches the sample, but it only looks at the top of the tree. In
+          `TreeNode(30, TreeNode(14, None, TreeNode(22, TreeNode(9))))` the 9 passes the parent check
+          (9 < 22) and the root check (9 < 30), yet it lies in the right subtree of the 14 and must
+          exceed 14.
+      - id: sibling-value
+        text: The sibling's value, so the left child must also be smaller than the right child
+        explanation: >-
+          Siblings are not what the rule is about. The sample passes this extra test too: 12 < 45 at
+          the root and 18 < 60 below it. The rule links a node with every node in its subtrees, not
+          with its sibling.
+      - id: low-high
+        text: A (low, high) range that narrows as the call goes left or right
+        explanation: >-
+          Pass `low` and `high` down: going left sets `high` to the current value, going right sets
+          `low`, and every node must satisfy `low < val < high`. In the sample the 18 arrives with the
+          range (30, 45) and fails. Equivalently, an inorder traversal of a valid BST with distinct
+          values is strictly increasing, and the sample's is `[12, 30, 18, 45, 60]`.
+    correct: low-high
+    followUps:
+      nothing-more:
+        prompt: >-
+          The 18 is a left child of the 45 and passes the check. Which BST rule does it break?
+        options:
+          - id: whole-subtree
+            text: Every value in a node's right subtree must exceed the node, and 18 is in the right subtree of 30
+          - id: complete
+            text: A BST must have every level full, and this tree does not
+          - id: bigger-than-parent
+            text: Every node must be larger than its parent, and 18 is not
+        correct: whole-subtree
+        explanation: >-
+          The rule covers a node's entire subtree, not just its direct children. A left child is
+          allowed to be smaller than its parent (the 12 under the 30 is), and a BST does not have to be
+          full or balanced.
+      root-value:
+        prompt: >-
+          In `TreeNode(30, TreeNode(14, None, TreeNode(22, TreeNode(9))))` the 9 passes its parent
+          check and the root check. Which ancestor does it violate?
+        options:
+          - id: the-fourteen
+            text: The 14, because the 9 is in the right subtree of the 14 and must be larger than 14
+          - id: the-twenty-two
+            text: The 22, because a left child must be larger than its parent
+          - id: none
+            text: None, because 9 < 30 puts it correctly in the left half of the tree
+        correct: the-fourteen
+        explanation: >-
+          Every ancestor sets a limit, not only the root. With bounds, the 22 is called with the range
+          (14, 30) and the 9 with (14, 22), so `9 <= 14` fails. A left child smaller than its parent
+          (9 < 22) is allowed.
+      sibling-value:
+        prompt: >-
+          The sample's inorder traversal is `[12, 30, 18, 45, 60]`. Which two adjacent entries of that
+          list show that the tree is not a BST?
+        options:
+          - id: thirty-eighteen
+            text: 30 then 18, which goes down; the inorder list of a BST must be strictly increasing
+          - id: eighteen-fortyfive
+            text: 18 then 45, because a left child must be larger than its parent
+          - id: none
+            text: None; inorder order depends on the tree's shape, so a dip proves nothing
+        correct: thirty-eighteen
+        explanation: >-
+          Inorder visits a valid BST in increasing order whatever its shape, so any step down exposes a
+          violation. The 30 followed by the 18 is exactly the node that ended up on the wrong side of
+          the root. Whether two siblings happen to be in order proves nothing about the rest.
+
+  - id: level-order-queue
+    heading: Which technique fits?
+    tags: [tree, bfs, queue]
+    prompt: |-
+      Return the values of a binary tree grouped by depth, `[[depth 0], [depth 1], ...]`, left to
+      right within each level, by visiting every node at depth `d` before any node at depth `d + 1`. For
+      `TreeNode(4, TreeNode(8, TreeNode(1), TreeNode(6)), TreeNode(3, None, TreeNode(9, TreeNode(2))))`
+      the result is `[[4], [8, 3], [1, 6, 9], [2]]`. Which approach does this?
+    options:
+      - id: recursion
+        text: A recursive function that handles the node, then its left subtree, then its right subtree
+        explanation: >-
+          Recursion finishes a whole subtree before its sibling begins, so it is depth-first. On the
+          sample it visits `[4, 8, 1, 6, 3, 9, 2]`, with the depth-2 nodes 1 and 6 ahead of the depth-1
+          node 3. A recursive walk that passes the depth and appends to `levels[depth]` can still build
+          the groups, but it visits nodes in depth-first order, which this question rules out.
+      - id: stack
+        text: "An explicit stack (`list.pop()`): push the root, pop a node, push its children"
+        explanation: >-
+          A stack returns the most recently pushed node, which is the depth-first rule written without
+          recursion. Pushing the left child and then the right child, the sample is visited as
+          `[4, 3, 9, 2, 8, 6, 1]`, the whole right side first. Pushing right then left gives the
+          preorder `[4, 8, 1, 6, 3, 9, 2]`. Either way it is depth-first: swapping a queue for a stack
+          is what turns breadth-first into depth-first.
+      - id: drain-queue
+        text: A queue, closing the current group whenever the queue becomes empty
+        explanation: >-
+          A queue gives the right visiting order, but the group boundary is wrong. Each node's children
+          are added before the queue is checked again, so it empties only after the last node and the
+          result is the single group `[[4, 8, 3, 1, 6, 9, 2]]`.
+      - id: snapshot-queue
+        text: "A queue; at the start of each round take `n = len(queue)` and process exactly `n` nodes"
+        explanation: >-
+          When a round begins, the queue holds exactly the nodes of one depth. Taking `n = len(queue)`
+          before popping fixes how many belong to this group, and the children pushed during the round
+          wait for the next one. Each node is queued and dequeued once, so time is O(n), and the queue
+          can hold a whole level, up to O(n) nodes.
+    correct: snapshot-queue
+    followUps:
+      recursion:
+        prompt: >-
+          Recursion enters the node 8 from the root 4. What does it finish before it ever looks at the
+          node 3?
+        options:
+          - id: whole-subtree
+            text: The entire subtree under 8 (1 and 6), because a call returns only after its own calls return
+          - id: only-eight
+            text: Only the node 8 itself, then it moves on to 3, since they are siblings
+          - id: whole-level
+            text: Every node of the second level (8 and 3), because recursion works one level at a time
+        correct: whole-subtree
+        explanation: >-
+          Calls are nested, so the call for 8 has to complete, along with everything it calls, before
+          the call for 3 starts. That order is depth-first. A queue instead keeps nodes waiting in
+          arrival order, so the 3 is served before the 1 and the 6.
+      stack:
+        prompt: >-
+          The root 4 is popped and its children are pushed, 8 first and then 3. Which node comes out
+          next from a stack, and which from a queue?
+        options:
+          - id: stack-last-in
+            text: The stack gives 3 (last pushed); the queue gives 8 (first pushed)
+          - id: both-eight
+            text: Both give 8
+          - id: stack-first-in
+            text: The stack gives 8; the queue gives 3
+        correct: stack-last-in
+        explanation: >-
+          A stack is last in, first out, so it dives into the newest children and keeps going down.
+          A queue is first in, first out, so everything pushed earlier, which is everything on the
+          shallower level, is served first.
+      drain-queue:
+        prompt: >-
+          If the group is closed only when the queue is empty, when can the queue first become empty
+          on the sample tree?
+        options:
+          - id: after-last
+            text: After the last node, because every node's children are queued before the queue is checked again
+          - id: after-level
+            text: After each level is finished
+          - id: after-root
+            text: After the root is popped, because its children are not queued yet
+        correct: after-last
+        explanation: >-
+          Children are pushed as soon as their parent is processed, so the queue always holds the next
+          nodes until the tree runs out. The count `n = len(queue)` taken before the round starts
+          is what marks where one level ends.
+
+  - id: recursion-cost
+    heading: What is the complexity?
+    tags: [tree, recursion, complexity]
+    prompt: |-
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          return 1 + max(height(node.left), height(node.right))
+      ```
+
+      The tree has `n` nodes, and `h` is the number of nodes on its longest root-to-leaf path (one node
+      has `h = 1`, the empty tree `h = 0`). Counting the call stack as extra space, which statement
+      holds for every tree shape?
+    options:
+      - id: time-h
+        text: "Time O(h), space O(1): only the longest root-to-leaf path is walked"
+        explanation: >-
+          `max` needs both heights, so both recursive calls always run. The function makes 2n + 1 calls
+          on any tree with n nodes, however short the tree is.
+          The longest path decides the stack depth, not the time. Space is not O(1) either.
+      - id: no-container
+        text: "Time O(n), space O(1): no list or dictionary is built"
+        explanation: >-
+          The time is right, but a call stack is memory too. Each active call holds a frame, and up
+          to h + 1 calls are active at once, counting the call on `None` at the bottom. On a chain of
+          5000 nodes the recursion hits CPython's default limit of 1000 and raises `RecursionError`.
+      - id: log-space
+        text: "Time O(n), space O(log n): each call roughly halves the tree"
+        explanation: >-
+          A call does not halve anything: it hands over a subtree of any size, and a chain hands over
+          all but one node. The stack depth is the height, which is about log n only for balanced
+          trees. For a chain built by inserting 1, 2, ..., 50 into a BST in order it is 50.
+      - id: height-space
+        text: "Time O(n), space O(h): O(log n) if balanced, O(n) for a one-child chain"
+        explanation: >-
+          Every node is visited once, with one extra call per missing child, so time is O(n) in every
+          shape. The stack is as deep as the longest path, so space is O(h): about log₂ n for a balanced
+          tree and n for a chain, which is also the worst case. The same bound applies to preorder
+          and postorder walks written this way.
+    correct: height-space
+    followUps:
+      time-h:
+        prompt: How many calls does `height` make on any tree with n nodes?
+        options:
+          - id: two-n-plus-one
+            text: 2n + 1, one for each node and one for each missing child
+          - id: h-plus-one
+            text: h + 1, one for each node on the longest path
+          - id: n-times-h
+            text: About n · h, since each node walks down its own subtree
+        correct: two-n-plus-one
+        explanation: >-
+          Each of the n nodes calls the function once on each child, and a missing child is a call on
+          `None`, so there are n real calls and n + 1 calls on `None`. A chain of 10 makes 21 calls and
+          a perfectly balanced tree of 15 makes 31. The longest path matters for space, not for time.
+      no-container:
+        prompt: What accounts for the extra memory of a recursion that builds no list or dictionary?
+        options:
+          - id: frames
+            text: Each active call keeps a frame on the call stack, and up to h + 1 are active at once
+          - id: visited-copies
+            text: A copy of every node already visited, so memory grows with n on every tree
+          - id: containers-only
+            text: Nothing; extra space counts only containers the code creates, and this code creates none
+        correct: frames
+        explanation: >-
+          A frame stays alive until its call returns, so only the calls from the root down to the
+          current node are alive together, not every node visited so far. Their memory counts as extra
+          space, which is why a very deep chain raises `RecursionError` in CPython.
+      log-space:
+        prompt: Which shape makes the stack deepest for a given n?
+        options:
+          - id: chain
+            text: A chain in which every node has one child, so h = n
+          - id: balanced
+            text: A perfectly balanced tree, because it has the most nodes per level
+          - id: shape-irrelevant
+            text: None; the stack depends only on n, not on the shape
+        correct: chain
+        explanation: >-
+          The stack depth equals the height. A chain of n nodes has height n. A perfectly balanced tree of
+          1023 nodes has height 10, so the same recursion is shallow there. The shape, not just n,
+          sets the space.
+
+  - id: bst-lowest-common-ancestor
+    heading: Which technique fits?
+    tags: [tree, binary-search, complexity]
+    prompt: |-
+      In a binary search tree with distinct values, `p` and `q` both exist in the tree. Their lowest
+      common ancestor is the lowest node with both in its subtree, and a node counts as being in its
+      own subtree. Example:
+      `TreeNode(40, TreeNode(20, TreeNode(10), TreeNode(30, TreeNode(25), TreeNode(35))), TreeNode(60, TreeNode(50), TreeNode(70)))`.
+      For `p = 25` and `q = 70` it is 40. Which approach uses the ordering to find it in O(h) time,
+      where `h` is the height of the tree?
+    options:
+      - id: two-paths
+        text: Search the whole tree for the path to `p` and the path to `q`, then compare them
+        explanation: >-
+          This returns the correct node, since the last shared node of the two paths is the ancestor.
+          It does not use the ordering, though: searching an unordered tree can look at every node, so
+          the cost is O(n) rather than O(h). The ordering lets a search follow a single downward
+          path.
+      - id: strictly-between
+        text: Walk down and return the first node whose value lies strictly between `p` and `q`
+        explanation: >-
+          This fails when the ancestor is `p` or `q` itself, because that node is not strictly between
+          the two. For `p = 20` and `q = 35` the walk passes the 20 and returns 30, but the lowest
+          common ancestor is 20, which has 35 in its own subtree. It also finds nothing when `p == q`.
+      - id: inorder-midpoint
+        text: List the values in order and return the one halfway between `p` and `q` in the list
+        explanation: >-
+          The ancestor lies between `p` and `q` in inorder, but not halfway. Inorder is
+          `[10, 20, 25, 30, 35, 40, 50, 60, 70]`. For `p = 10` and `q = 35` the halfway element is 25,
+          while the ancestor is 20. Building the list also costs O(n).
+      - id: split-point
+        text: Go left if both are smaller, right if both are larger, otherwise return the current node
+        explanation: >-
+          While both values are smaller, both lie in the left subtree, so the ancestor is there too,
+          and likewise on the right. The first node that does not send both the same way either splits
+          them or equals one of them, so it is the ancestor. Each step goes down one level, so the cost
+          is O(h): about log₂ n if the tree is balanced, n for a chain.
+    correct: split-point
+    followUps:
+      two-paths:
+        prompt: Why can a BST reach `p` in O(h) steps, while the search above may look at nodes it does not need?
+        options:
+          - id: order-picks-child
+            text: At each node the ordering says which child can hold `p`, so only one path is followed
+          - id: always-balanced
+            text: A BST is always balanced, so h is about log n
+          - id: parent-pointers
+            text: Every BST node stores a pointer to its parent
+        correct: order-picks-child
+        explanation: >-
+          Comparing `p` with the current value discards a whole subtree, so the search follows a single
+          root-to-node path of at most h nodes. A BST is not always balanced: inserting 1, 2, ..., 50
+          in that order gives a chain with h = 50, and then O(h) is O(n). Nothing in this approach
+          needs parent pointers.
+      strictly-between:
+        prompt: >-
+          In the example tree, take `p = 20` and `q = 35`. What does the strictly-between version
+          return, and what is the correct answer?
+        options:
+          - id: thirty-vs-twenty
+            text: It returns 30, but the answer is 20, because 20 has 35 in its subtree and is itself one of the values
+          - id: twenty-both
+            text: It returns 20, the same as the correct answer
+          - id: forty
+            text: It returns 40, the root
+        correct: thirty-vs-twenty
+        explanation: >-
+          The strict test skips the 20 because it equals `p`, so the walk continues to the right and
+          lands on 30. A node counts as its own descendant, so 20 is the answer. The both-smaller and
+          both-larger tests handle that case without a special rule.
+      inorder-midpoint:
+        prompt: >-
+          Inorder for the example tree is `[10, 20, 25, 30, 35, 40, 50, 60, 70]`. For `p = 10` and
+          `q = 35`, the halfway element is 25. What is the lowest common ancestor?
+        options:
+          - id: twenty
+            text: 20, the lowest node with both 10 and 35 in its subtree; a position in the list says nothing about depth
+          - id: twenty-five
+            text: 25, because it sits halfway between them in the list
+          - id: thirty
+            text: 30, the parent of the 35, because the ancestor sits just above the larger value
+        correct: twenty
+        explanation: >-
+          The ancestor is defined by the tree structure (who contains whom), not by list distance. Here
+          25 is not even an ancestor of the 10, and 30 is the parent of the 35 but does not contain the 10.
+          Inorder only guarantees the ancestor lies somewhere between the two values, inclusive, and the
+          split-point walk finds it directly.
+
+  - id: diameter-return-vs-record
+    heading: What should the helper return?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      The diameter of a binary tree is the largest number of edges on any path that joins two of its
+      nodes along parent-child links. Such a path may turn around at any node, not just at the root.
+      `height` below counts nodes (0 for an empty subtree, 1 for a leaf), and `diameter` returns
+      `best`. Which line pair completes `height`?
+
+      ```python
+      def diameter(root):
+          best = 0
+
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              # ??? two lines here
+
+          height(root)
+          return best
+      ```
+    options:
+      - id: swapped
+        text: "`best = max(best, 1 + max(left, right))` and `return left + right`"
+        explanation: >-
+          The two roles are swapped. The helper's return value is used by the parent as a height, so it
+          must be a one-sided downward chain. On `TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4, TreeNode(6, TreeNode(8))), TreeNode(5, None, TreeNode(7, None, TreeNode(9)))))`
+          this returns 1, while the true diameter is 6.
+      - id: overwrite
+        text: "`best = left + right` and `return 1 + max(left, right)`"
+        explanation: >-
+          This stores a candidate at each node but overwrites `best` instead of keeping the larger
+          value. The root is processed last, so the final answer is only the path through the root. On
+          `TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4, TreeNode(6, TreeNode(8))), TreeNode(5, None, TreeNode(7, None, TreeNode(9)))))` it returns 5, but the longest path
+          bends at the 3 and has 6 edges.
+      - id: node-count
+        text: "`best = max(best, left + right + 1)` and `return 1 + max(left, right)`"
+        explanation: >-
+          The return value is right, but `left + right + 1` counts the nodes on the path, not its
+          edges. On every non-empty tree it is exactly one too large: a single node reports 1, while its
+          diameter is 0 edges.
+      - id: record-and-return
+        text: "`best = max(best, left + right)` and `return 1 + max(left, right)`"
+        explanation: >-
+          Two different values come out of one node. The longest path that bends at this node is
+          `left + right` edges, so it is recorded in `best`. What the parent can extend is only one
+          branch, `1 + max(left, right)` nodes, so that is returned. On `TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4, TreeNode(6, TreeNode(8))), TreeNode(5, None, TreeNode(7, None, TreeNode(9)))))`
+          it gives 6, the true diameter, and a single node gives 0.
+    correct: record-and-return
+    followUps:
+      swapped:
+        prompt: What must the helper's return value mean for the parent's own computation to be right?
+        options:
+          - id: one-branch
+            text: The longest downward chain starting at the child, since a path through the parent enters only one branch of it
+          - id: best-inside
+            text: The longest path anywhere inside the child's subtree
+          - id: both-branches
+            text: The longest path that bends at the child, using both of its branches
+        correct: one-branch
+        explanation: >-
+          A path through the parent can go down into the child and keep going down, but it cannot turn
+          at the child and also use the child's two branches, because that would visit the child
+          twice. The longest bent path at a node is a candidate answer, so it is recorded, not
+          returned.
+      overwrite:
+        prompt: >-
+          The helper runs in postorder, so the root is processed last. If every node assigns
+          `best = left + right`, what does `best` hold at the end?
+        options:
+          - id: root-only
+            text: Only the root's `left + right`, since the last assignment wins, so a path that bends lower is missed
+          - id: max-all
+            text: The maximum over all nodes, because later assignments keep the larger value
+          - id: sum-all
+            text: The sum over all nodes
+        correct: root-only
+        explanation: >-
+          Plain assignment keeps nothing from earlier nodes. `max(best, ...)` is what turns the
+          per-node candidates into a maximum. On `TreeNode(1, TreeNode(2), TreeNode(3, TreeNode(4, TreeNode(6, TreeNode(8))), TreeNode(5, None, TreeNode(7, None, TreeNode(9)))))`
+          the last assignment gives 5, though the path 8-6-4-3-5-7-9 has 6 edges.
+      node-count:
+        prompt: >-
+          For a tree with one node, how many edges does the diameter have, and what does the
+          node-count version report?
+        options:
+          - id: zero-vs-one
+            text: 0 edges, but this version reports 1, because it counts the node itself
+          - id: one-vs-one
+            text: 1 edge, and it reports 1
+          - id: zero-vs-zero
+            text: 0 edges, and it reports 0 as well
+        correct: zero-vs-one
+        explanation: >-
+          With heights in nodes, `left + right` is the number of edges on the path through a node, so
+          adding 1 changes the unit to nodes. Decide what is counted first, nodes or edges, and make
+          the formula match.

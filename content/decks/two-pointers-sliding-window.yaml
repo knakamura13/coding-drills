@@ -1,0 +1,563 @@
+id: two-pointers-sliding-window
+title: Two pointers and sliding window
+description: Move two indices through an array so each element is visited a bounded number of times, and learn when that stops being valid.
+heading: Which approach fits?
+
+questions:
+  - id: sorted-pairs-with-duplicates
+    heading: Which handling of duplicates is correct?
+    tags: [two-pointers, sorting]
+    prompt: >-
+      Prices are sorted in ascending order and may repeat: `[3, 3, 5, 6, 6, 6, 9, 9]`. Report every
+      distinct pair of values `(a, b)` with `a <= b` that adds up to 12, each pair once. A value may
+      pair with a second copy of itself, so `(6, 6)` counts, and the answer here is `(3, 9)` and
+      `(6, 6)`. You scan with `l = 0` and `r = len(nums) - 1`, moving `l` right when the sum is too
+      small and `r` left when it is too large. Which handling of duplicates is correct for every
+      sorted list?
+    options:
+      - id: no-skip
+        text: "Do nothing special: after recording a pair, move `l += 1` and `r -= 1`"
+        explanation: >-
+          Moving one step lands on the next copy at each end, and those copies still add up to 12.
+          On the price list this records `(3, 9)` twice and `(6, 6)` once, which breaks "each pair
+          once". Each distinct pair needs the whole run of equal values stepped over.
+      - id: skip-first
+        text: "Before each test, move `l` to its run's last copy and `r` to its run's first copy"
+        explanation: >-
+          This collapses every run of equal values to a single copy, so a pair made of two equal
+          values can never form. The three 6s shrink to one and the scan returns only `(3, 9)`,
+          missing `(6, 6)`. Skipping before the test is safe only when the skip compares against an
+          already-tested neighbor, such as moving `l` while it equals `nums[l - 1]`. Looking ahead
+          to the copies that are still unused removes the second copy the pair needs.
+      - id: dedupe-input
+        text: "Build `sorted(set(nums))` first, then run the same scan on that list"
+        explanation: >-
+          A `set` keeps one copy of each value, so a pair that needs two copies of the same value is
+          lost. On the price list `(6, 6)` disappears, and `[2, 4, 4, 7, 9]` with target 8 returns
+          nothing although `(4, 4)` works. The scan itself is fine, but its input no longer holds the
+          numbers it needs.
+      - id: skip-after-match
+        text: "After a match, move `l` past all copies of `nums[l]` and `r` past all copies of `nums[r]`"
+        explanation: >-
+          With a sorted array and a fixed target, a recorded pair `(v, w)` is the only partner for `v`
+          and for `w`, so their leftover copies can only repeat it and are skipped. The skip happens
+          after the match, when the pointers sit on two separate copies, so `(6, 6)` is recorded
+          before the run is stepped over. Each pointer moves one way only, so the worst case is O(n)
+          time with O(1) extra space beyond the output.
+    correct: skip-after-match
+    followUps:
+      no-skip:
+        prompt: >-
+          With only `l += 1; r -= 1`, what happens right after `(3, 9)` is recorded on
+          `[3, 3, 5, 6, 6, 6, 9, 9]`?
+        options:
+          - id: twin-match
+            text: The pointers land on the second 3 and the second 9, which add to 12, so `(3, 9)` is recorded again
+          - id: never-revisits
+            text: Nothing repeats, because the scan never looks at a value it has already used
+          - id: next-different
+            text: The next pair recorded is `(5, 6)`, because each move skips to the next different value
+        correct: twin-match
+        explanation: >-
+          Each end of a run has a twin with the same value, and twins add up to the same target. The
+          pair repeats until one of the two runs is used up, which is why the run must be stepped
+          over as a whole, not one item at a time.
+      skip-first:
+        prompt: >-
+          The pair `(6, 6)` needs two different copies of 6. Before each test, this option moves `l`
+          to the last copy of its run and `r` to the first copy of its run. What does that do to the
+          three 6s?
+        options:
+          - id: one-copy
+            text: It collapses the run to one copy, so `l` and `r` meet on it and the `l < r` test ends the scan
+          - id: still-two
+            text: Nothing is lost, because the later sum test still sees two 6s
+          - id: stops-early
+            text: It ends the scan as soon as the first sum is too small, whatever the duplicates
+        correct: one-copy
+        explanation: >-
+          Jumping to the inner edge of each run removes the second copy a pair of equal values
+          depends on. Skipping is safe after the pair has been recorded, because then no other pair
+          can use those values, or before a test when the skip compares against a neighbor that was
+          already tested.
+      dedupe-input:
+        prompt: >-
+          After `sorted(set(nums))` on `[2, 4, 4, 7, 9]`, the scan for target 8 runs on
+          `[2, 4, 7, 9]`. What does it return?
+        options:
+          - id: nothing
+            text: Nothing, because the only pair that works, `(4, 4)`, needs two 4s and only one remains
+          - id: half-target
+            text: "`(4, 4)`, because a lone value equal to half the target is accepted as a pair with itself"
+          - id: closest
+            text: "`(2, 4)`, because the scan settles for the closest sum it can reach"
+        correct: nothing
+        explanation: >-
+          `set` drops repeats, so `[2, 4, 4, 7, 9]` becomes `[2, 4, 7, 9]` and the scan finds no pair.
+          Duplicates are what a pair of equal values is built from, so they have to stay in the
+          array. The scan needs `l < r`, so one 4 cannot pair with itself.
+
+  - id: longest-run-at-most-k-types
+    heading: Which template fits?
+    tags: [sliding-window]
+    prompt: >-
+      A daily log records the main task type of each day. Find the longest stretch of consecutive
+      days that contains at most `k` distinct task types. For `k = 2` and
+      `["review", "bug", "docs", "docs", "bug", "docs", "docs", "deploy", "docs"]` the answer is 6,
+      from the days `bug, docs, docs, bug, docs, docs`. Which approach computes it in one
+      left-to-right pass?
+    options:
+      - id: fixed-width
+        text: Slide a window of exactly `k` days and keep the largest result
+        explanation: >-
+          `k` limits how many types a stretch may hold, not how many days it spans. A window of
+          exactly `k` days can never be longer than `k`, so on this log it returns 2 where the true
+          answer is 6. When the best length is the unknown, the window has to grow and shrink.
+      - id: restart
+        text: "Grow until a `(k + 1)`th type appears, record the length, then restart at that day"
+        explanation: >-
+          Restarting at the day that broke the stretch throws away earlier days that could still be
+          part of a longer valid stretch. On this log it returns 5: the first `docs` breaks the run
+          `review, bug`, the restart begins at that `docs` and loses the `bug` before it, and the best
+          stretch needs that `bug`.
+      - id: update-early
+        text: Add each day, record the length, then shrink while there are more than `k` types
+        explanation: >-
+          Recording before the shrink counts a stretch that may still hold more than `k` types. Right
+          after the `deploy` is added, the window runs from the first `bug` to the `deploy` and holds
+          three types, so this version returns 7 instead of 6.
+      - id: shrink-then-record
+        text: Add each day, shrink while there are more than `k` types, then record the length
+        explanation: >-
+          Each day extends the window on the right. While the window holds more than `k` types, the
+          left edge moves in until it is valid again, and only then is its length recorded, so every
+          recorded stretch is valid and none is skipped. Each day enters and leaves the window at most
+          once, so one pass costs O(n) time.
+    correct: shrink-then-record
+    followUps:
+      fixed-width:
+        prompt: What does `k` limit in this problem?
+        options:
+          - id: types
+            text: The number of distinct task types inside the stretch, so its length is free to vary
+          - id: days
+            text: The number of days in the stretch
+          - id: stretches
+            text: The number of stretches you are allowed to compare
+        correct: types
+        explanation: >-
+          The constraint is on what the stretch contains, and the length is the thing being
+          maximized. A fixed-width window fits problems that say "every stretch of `k` days". Here the
+          width changes as the window grows and shrinks.
+      restart:
+        prompt: >-
+          The window `review, bug` meets the first `docs`. If you restart at that `docs`, which
+          earlier day is lost?
+        options:
+          - id: drops-valid-tail
+            text: The `bug` just before it, which the best stretch needs, since `bug, docs` was still valid
+          - id: drops-review
+            text: The `review`, which the best stretch needs
+          - id: nothing-lost
+            text: None, because a restart keeps the last `k` days
+        correct: drops-valid-tail
+        explanation: >-
+          After a new type breaks the limit, the days nearest the new day can still form a valid
+          stretch. Here `bug, docs` is valid, and the best stretch begins with that `bug`. Shrinking
+          from the left keeps the tail, while restarting at the `docs` discards it.
+      update-early:
+        prompt: >-
+          Just after the `deploy` is added, the window holds `bug, docs, docs, bug, docs, docs,
+          deploy`. Is that a stretch the problem allows?
+        options:
+          - id: three-types
+            text: No, it holds three types, so recording its length overstates the answer
+          - id: later-valid
+            text: Yes, because the limit applies only after the left edge has moved
+          - id: ends-valid
+            text: Yes, because it ends on a day that was valid on its own
+        correct: three-types
+        explanation: >-
+          The limit describes every stretch you report. The window may break it for a moment while it
+          is being repaired, so it is measured after the repair. Measuring before gives 7 here.
+
+  - id: shrink-while-not-if
+    heading: Which change fixes it?
+    tags: [sliding-window]
+    prompt: |-
+      This function counts the contiguous stretches of days that contain at most `k` distinct task
+      types. It shrinks the window with `if`.
+
+      ```python
+      def count_stretches(days, k):
+          counts = {}
+          left = total = 0
+          for right, d in enumerate(days):
+              counts[d] = counts.get(d, 0) + 1
+              if len(counts) > k:
+                  gone = days[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              total += right - left + 1
+          return total
+      ```
+
+      For `["bug", "bug", "bug", "bug", "docs", "deploy"]` and `k = 2` it returns 20, but the true
+      count is 17. Which change makes it correct for every input?
+    options:
+      - id: while-gt
+        text: Replace the `if` with `while len(counts) > k`
+        explanation: >-
+          Removing the oldest day lowers the type count only when it was the last copy of its type.
+          Here the first four days are all `bug`, so four days must leave before `deploy` can sit next
+          to `docs`. A `while` keeps removing until the window is valid, so every counted window is
+          valid and the total is 17. (For the longest length alone an `if` can still return the
+          right number, but it leaves an invalid window behind.)
+      - id: while-ge
+        text: Replace the `if` with `while len(counts) >= k`
+        explanation: >-
+          A window with exactly `k` types is valid, but `>= k` shrinks it anyway and loses valid
+          stretches. On `["bug", "docs"]` with `k = 2` it counts 2 instead of 3, and on the example it
+          returns 12. The limit is "at most `k`", so the test is `> k`.
+      - id: two-ifs
+        text: Repeat the `if` block once more, right after the first one
+        explanation: >-
+          Two removals are enough only when at most two days need to leave. On the example four days
+          must leave, so the window still holds three types after two removals and the function
+          returns 19. How many removals a step needs depends on the data, so a loop is needed, not a
+          fixed number of `if` blocks.
+      - id: count-valid-only
+        text: Keep the `if`, but add to `total` only when `len(counts) <= k`
+        explanation: >-
+          Skipping the count hides the invalid step but does not repair the window. After the last
+          day the left edge has moved only once, so `docs, deploy` and `deploy` are never counted, and
+          the function returns 15, which is 2 too few.
+    correct: while-gt
+    followUps:
+      while-ge:
+        prompt: A window holds exactly `k` distinct types. Should the left edge move?
+        options:
+          - id: no-valid
+            text: "No: exactly `k` types still satisfies \"at most `k`\", so every stretch inside it is valid"
+          - id: yes-room
+            text: Yes, the window must hold fewer than `k` types to leave room for the next day
+          - id: yes-length
+            text: It depends on how many days the window spans, not on its types
+        correct: no-valid
+        explanation: >-
+          The limit is "at most `k`", so a window at the limit is still valid. Shrinking only when the
+          count goes above `k` keeps every valid stretch.
+      two-ifs:
+        prompt: >-
+          In `bug, bug, bug, bug, docs, deploy` with `k = 2`, how many `bug` days must leave when
+          `deploy` arrives?
+        options:
+          - id: all-four
+            text: All four, since the window keeps three types until the last `bug` is gone
+          - id: one
+            text: One, because each new day pushes out exactly one old day
+          - id: two
+            text: Two, because `k = 2`
+        correct: all-four
+        explanation: >-
+          The number of removals is set by how long the run at the left edge is, not by `k`, and a new
+          day does not push out exactly one old day. A `while` handles any run length, and the removals
+          still add up to at most `n` over the whole call.
+      count-valid-only:
+        prompt: >-
+          After one `if` shrink on the last day, the window is `bug, bug, bug, docs, deploy`. What
+          does skipping `total +=` leave wrong?
+        options:
+          - id: left-too-far
+            text: The left edge is still too far left, so `docs, deploy` and `deploy` are never counted
+          - id: nothing
+            text: Nothing, because every stretch ending on the last day is invalid
+          - id: dictionary
+            text: The `counts` dictionary, which now holds too few keys
+        correct: left-too-far
+        explanation: >-
+          The stretches `docs, deploy` and `deploy` are valid and end on the last day. They are missed
+          because the left edge never reached them. The window has to be repaired before it is
+          counted, which is what the `while` does.
+
+  - id: slow-fast-keep-distinct
+    heading: Which condition is correct?
+    tags: [two-pointers]
+    prompt: |-
+      `slow` and `fast` compact a sorted list in place so that each value appears once. The invariant
+      is that before every step `nums[:slow]` is final: it already holds each distinct value seen so
+      far, once and in order. `fast` reads ahead, and `slow` is the next slot to write.
+
+      ```python
+      def compact(nums):
+          slow = 0
+          for fast in range(len(nums)):
+              if ???:
+                  nums[slow] = nums[fast]
+                  slow += 1
+          return slow
+      ```
+
+      For `[2, 2, 3, 5, 5, 5, 8]` the call must return 4, with `nums[:4] == [2, 3, 5, 8]`. Which
+      condition works for every sorted list, including `[5, 5, 5]`?
+    options:
+      - id: prev-fast
+        text: "`nums[fast] != nums[fast - 1]`, the item just before `fast`"
+        explanation: >-
+          This gives the right answer for the example, but at `fast == 0` the expression reads
+          `nums[-1]`, the last item. In a sorted list the first and last items are equal only when
+          every item is equal, so on `[5, 5, 5]` the first 5 is never kept and the call returns 0. For
+          every other sorted list it works, which is why one example does not catch it.
+      - id: vs-slow
+        text: "`nums[fast] != nums[slow]`, the item at the next write slot"
+        explanation: >-
+          `nums[slow]` is the slot about to be written, so it holds an old value, not the last one
+          kept. At `slow == 0` the first item is compared with itself and skipped. On `[4, 4, 7]` the
+          call returns 1 and leaves `[7, 4, 7]`.
+      - id: next-fast
+        text: "`nums[fast] != nums[fast + 1]`, the item just after `fast`"
+        explanation: >-
+          On the last pass `fast + 1` is one past the end, so every non-empty list raises
+          `IndexError`. With a guard such as `fast == len(nums) - 1 or ...` it would keep the last copy
+          of each run, which also yields the right values, but the condition as written crashes.
+      - id: vs-last-kept
+        text: "`slow == 0 or nums[fast] != nums[slow - 1]`, the last item kept"
+        explanation: >-
+          Everything before `slow` is final, so `nums[slow - 1]` is the most recent kept value, and in
+          sorted order a new item differs from it exactly when it starts a new distinct value. The
+          `slow == 0` clause keeps the first item, because nothing is kept yet. This is O(n) time and
+          O(1) extra space. The example ends as `[2, 3, 5, 8, 5, 5, 8]`, and only `nums[:4]` counts.
+    correct: vs-last-kept
+    followUps:
+      prev-fast:
+        prompt: For `[5, 5, 5]` with `fast == 0`, what does `nums[fast - 1]` read?
+        options:
+          - id: wraps
+            text: "`nums[-1]`, the last item (5), so the first 5 looks like a repeat and is never kept"
+          - id: index-error
+            text: It raises `IndexError`, because there is no item before index 0
+          - id: nothing-read
+            text: Nothing is read, so the test counts as true and the first 5 is kept
+        correct: wraps
+        explanation: >-
+          A negative index counts from the end of a Python list, so `nums[-1]` is the last item and no
+          error is raised. The first item is then compared with the last one, which are equal only when
+          the whole sorted list is one value.
+      vs-slow:
+        prompt: When `fast == 0` and `slow == 0`, what does `nums[fast] != nums[slow]` compare?
+        options:
+          - id: itself
+            text: The first item with itself, so the test is false and the first item is not kept
+          - id: last
+            text: The first item with the last item, so the test depends on the whole list
+          - id: nothing-kept
+            text: Nothing, since no value has been kept yet, so the test counts as true
+        correct: itself
+        explanation: >-
+          `fast` and `slow` both point at index 0, so the item is compared with itself and skipped,
+          and the first value is never kept. The last final value is `nums[slow - 1]`, because
+          `nums[:slow]` is final and `slow` is the next slot to write. The `slow == 0` clause
+          covers the case where nothing is final yet.
+      next-fast:
+        prompt: What does `nums[fast + 1]` read when `fast` is the last index?
+        options:
+          - id: out-of-range
+            text: Index `len(nums)`, which is out of range, so Python raises `IndexError`
+          - id: nothing-read
+            text: Nothing is read, so the test is skipped and the pass ends quietly
+          - id: wraps
+            text: "`nums[0]`, because the index wraps around"
+        correct: out-of-range
+        explanation: >-
+          Only negative indices count from the end. An index past the end raises `IndexError`, so a
+          look-ahead needs a guard for the last item. Looking back at the last kept value needs only
+          the `slow == 0` guard.
+
+  - id: window-loop-cost
+    heading: What is the complexity?
+    tags: [sliding-window, complexity, hash-map]
+    prompt: |-
+      The function returns the length of the longest stretch of days with at most `k` distinct task
+      types. Assume `1 <= k <= n`, where `n = len(days)`, and that each dictionary read, write, and
+      delete takes O(1). What are the tightest worst-case time and extra space in terms of `n` and `k`?
+
+      ```python
+      def longest_run(days, k):
+          counts = {}
+          left = best = 0
+          for right, d in enumerate(days):
+              counts[d] = counts.get(d, 0) + 1
+              while len(counts) > k:
+                  gone = days[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              best = max(best, right - left + 1)
+          return best
+      ```
+    options:
+      - id: quadratic
+        text: O(n²) time and O(n) extra space, because a `while` sits inside a `for`
+        explanation: >-
+          A loop inside a loop multiplies only when the inner loop starts over each time. Here `left`
+          never moves back, and it can advance at most `n` times over the whole call, so all the
+          `while` iterations together are at most `n`, not `n` per step. The time is O(n), not
+          O(n²).
+      - id: linear-space
+        text: O(n) time and O(n) extra space, because the dictionary can hold every day
+        explanation: >-
+          The time is right, but the space bound is loose. The `while` loop removes types as soon as
+          `counts` has more than `k` keys, so the dictionary never holds more than `k + 1` keys, even
+          when the log has far more distinct types. O(n) is true only as a weak upper bound, since
+          `k <= n`. The tightest bound is O(k).
+      - id: constant-space
+        text: O(n) time and O(1) extra space, because only `left` and `best` are stored
+        explanation: >-
+          The time is right, but `counts` is extra memory too. It holds one entry per task type in the
+          window, up to `k + 1` at once, so the space grows with `k`. O(1) would hold only if `k` were
+          a fixed constant, which hides the term the question asks about.
+      - id: linear-k
+        text: "O(n) time and O(k) extra space: `left` never moves back, `counts` has at most `k + 1` keys"
+        explanation: >-
+          Every day is added once, and every day leaves the window at most once, because `left` only
+          increases. So the `while` body runs at most `n` times across the whole call, and the time is
+          O(n) in the worst case. One step can remove many days: with 500 days of one type followed by
+          500 new types and `k = 2`, a single step removes 500 days, yet the call makes 998 removals in
+          total. `counts` holds at most `k + 1` keys, so the extra space is O(k).
+    correct: linear-k
+    followUps:
+      quadratic:
+        prompt: One step of the `for` loop can remove many days. Why can that not happen at every step?
+        options:
+          - id: leave-once
+            text: Each day leaves the window at most once, so removals over the whole call total at most `n`
+          - id: k-per-step
+            text: A single step never removes more than `k` days
+          - id: free
+            text: Removals are free in big-O, so only the additions count
+        correct: leave-once
+        explanation: >-
+          A step can remove a long run, such as 500 days at once, so the per-step limit is false.
+          Removals are not free either. They are bounded because a day that has left is gone for good,
+          and each of the `n` days leaves at most once. This amortized argument is the same one that
+          bounds the pops of a monotonic stack.
+      linear-space:
+        prompt: >-
+          With `k = 2` and a log of 1,000,000 days that uses 50,000 task types, how many keys can
+          `counts` hold at once?
+        options:
+          - id: three
+            text: At most 3, because the window shrinks as soon as a third type would stay in it
+          - id: all-types
+            text: Up to 50,000, because every type may appear
+          - id: all-days
+            text: Up to 1,000,000, one key per day
+        correct: three
+        explanation: >-
+          `counts` describes only the current window, and the `while` loop keeps that window at `k`
+          types, plus the one new type for a moment before the shrink. Types that left the window are
+          deleted, so the dictionary does not grow with the length of the log.
+      constant-space:
+        prompt: What does `counts` store, and how large can it get?
+        options:
+          - id: window-types
+            text: One entry per task type currently in the window, up to `k + 1` entries
+          - id: one-int
+            text: One integer in total, the length of the window
+          - id: per-day
+            text: One entry per day, so it always reaches `n` entries
+        correct: window-types
+        explanation: >-
+          `counts` maps each task type in the window to how many times it appears there. Its size is
+          the number of types in the window, which is at most `k + 1`, so it counts as O(k) extra
+          space and not as a constant.
+
+  - id: window-needs-monotonic-sums
+    heading: When is the template correct?
+    tags: [sliding-window, two-pointers]
+    prompt: >-
+      Each entry of `nums` is a day's net change in balance, integers (positive, zero, or negative). For a positive target
+      `T`, find the length of the shortest stretch of consecutive days whose total is at least `T`.
+      The sliding-window template adds `nums[right]`, then runs `while total >= T:`, which records
+      `right - left + 1`, subtracts `nums[left]`, and advances `left`. On `[3, -1, 7, 2]` with
+      `T = 9`, the stretch `[7, 2]` has total 9 and length 2, but the template returns 3. When is the
+      template guaranteed to give the true shortest length?
+    options:
+      - id: any-integers
+        text: For any integers, because the `while` loop tries every useful left edge
+        explanation: >-
+          The example is a counterexample. At the third day the total is 9, the loop records length 3
+          and drops the 3, leaving a total of 6. The total never reaches 9 again, so the `-1` is never
+          dropped and `[7, 2]` is never examined. The loop trims the left edge only while the total is
+          high enough, which is weaker than trying every left edge.
+      - id: whole-list-total
+        text: For any integers, as long as the whole list adds up to at least `T`
+        explanation: >-
+          The list `[3, -1, 7, 2]` totals 11, which is at least 9, and the template still returns 3
+          instead of 2. Knowing that some valid stretch exists says nothing about whether the left
+          edge gets trimmed correctly as the window moves.
+      - id: sorted-ascending
+        text: For any integers, as long as the list is already sorted in ascending order
+        explanation: >-
+          Ascending order puts the negative values first. On `[-5, 1]` with `T = 1` the window takes
+          both, its total is -4, the `while` condition never fires, and the template reports no
+          stretch although `[1]` has total 1 and length 1.
+      - id: non-negative
+        text: When no value is negative, because extending a stretch never lowers its total
+        explanation: >-
+          With non-negative values, adding a day never lowers the total and removing the left day
+          never raises it. So once the total reaches `T`, trimming from the left is safe, and the
+          window finds the overall shortest stretch in O(n) time. With negatives neither
+          property holds. Prefix sums with a deque of candidate start positions handle that case in
+          O(n).
+    correct: non-negative
+    followUps:
+      any-integers:
+        prompt: >-
+          On `[3, -1, 7, 2]` with `T = 9`, the window drops the 3 and then holds `[-1, 7]`, total 6.
+          Why does the `-1` stay in the window from then on?
+        options:
+          - id: needs-high-total
+            text: The loop removes days only while the total is at least `T`, and it stays below 9 afterwards
+          - id: negatives-kept
+            text: The loop never removes negative values
+          - id: right-only
+            text: "`left` can move only on a pass where `right` has just moved"
+        correct: needs-high-total
+        explanation: >-
+          A low total can mean "not enough yet" or "a harmful negative is dragging the window down",
+          and the template cannot tell them apart. It trims only when the total is high, so a negative
+          at the left edge can stay in the window while a shorter stretch to its right goes unseen.
+      whole-list-total:
+        prompt: >-
+          The whole list `[3, -1, 7, 2]` adds up to 11, at least 9. Why does that not guarantee the
+          template is right?
+        options:
+          - id: exists-only
+            text: It only shows some valid stretch exists; it says nothing about whether trimming from the left is safe
+          - id: trim-below
+            text: Trimming can only help when the total is below `T`, and 11 is above it
+          - id: must-equal
+            text: The template works only when the whole list adds up to exactly `T`
+        correct: exists-only
+        explanation: >-
+          The template's trimming decisions depend on how each added or removed day changes the running
+          total. The total of the whole list is one number and cannot tell you whether the loop trims
+          the left edge in the right places.
+      sorted-ascending:
+        prompt: On the sorted list `[-5, 1]` with `T = 1`, what does the window do?
+        options:
+          - id: never-trims
+            text: It adds both values (total -4), never reaches 1, never trims, and reports no stretch
+          - id: trims-first
+            text: It drops `-5` first and then finds `[1]`
+          - id: skips-negative
+            text: It skips the `-5`, because the window only starts on a non-negative value
+        correct: never-trims
+        explanation: >-
+          Sorted order does not make extending a stretch safe. The negatives come in first, and while
+          the total stays below `T` nothing removes them. The template needs every extension to leave
+          the total unchanged or higher, which a sorted list with negatives does not give.

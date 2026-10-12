@@ -23,10 +23,17 @@ function emphasis(text: string): string {
 }
 
 /** Inline-only rendering, for option labels and headings. */
+/** Inline code longer than this may wrap, so one long expression cannot push the page wider than a phone. */
+export const LONG_CODE_CHARS = 28;
+
 export function renderInline(source: string): string {
 	return escapeHtml(source)
 		.split(/(`[^`\n]+`)/g)
-		.map((part, index) => (index % 2 === 1 ? `<code>${part.slice(1, -1)}</code>` : emphasis(part)))
+		.map((part, index) => {
+			if (index % 2 === 0) return emphasis(part);
+			const code = part.slice(1, -1);
+			return code.length > LONG_CODE_CHARS ? `<code class="long">${code}</code>` : `<code>${code}</code>`;
+		})
 		.join('');
 }
 
