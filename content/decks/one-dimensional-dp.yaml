@@ -1,0 +1,509 @@
+id: one-dimensional-dp
+title: One-dimensional dynamic programming
+description: Define a state, write the recurrence that builds each value from earlier ones, and fill a table without redoing work.
+heading: What is the recurrence?
+
+questions:
+  - id: overlapping-subproblems
+    heading: Why does dynamic programming apply?
+    tags: [dp, recursion]
+    prompt: >-
+      A function is defined as `f(n) = 1` when `n <= 1`, and `f(n - 1) + 2 * f(n - 2)` otherwise. It
+      is written as plain recursion with no cache. Calling `f(28)` makes 1,028,457 calls, yet only 29
+      different arguments, 0 through 28, ever occur. Which statement explains why dynamic programming
+      helps here?
+    options:
+      - id: two-branches-always
+        text: Any recursion with two branches is exponential, so it always needs a table
+        explanation: >-
+          Two branches alone do not cause the blow-up. Merge sort also calls itself twice, but each
+          call gets its own half of the input, so sorting 64 items makes only 63 splitting calls.
+          The blow-up needs the same subproblem to be requested again and again.
+      - id: disjoint-pieces
+        text: The two calls work on separate pieces of the input, so DP only combines their results
+        explanation: >-
+          The pieces are not separate. `f(n - 1)` calls `f(n - 2)` itself, so the branch from `f(n)`
+          to `f(n - 2)` repeats work the other branch already does. Dynamic programming pays off when
+          subproblems overlap like this.
+      - id: cache-speeds-calls
+        text: A cache only makes each call faster, so the program still makes about a million calls
+        explanation: >-
+          A cache removes calls. Once a value is stored, later requests for the same argument return
+          it without running the body again, so only 29 values are ever computed. Counting every
+          lookup, `f(28)` is requested 55 times instead of 1,028,457.
+      - id: repeated-arguments
+        text: Arguments repeat, so storing each result once leaves 29 real computations, not a million
+        explanation: >-
+          Only 29 distinct arguments exist, but the plain recursion recomputes them over and over.
+          For example, evaluating `f(10)` evaluates `f(7)` three times. Memoization (cache on the way
+          down) or tabulation (fill 0 up to 28 in a loop) computes each value once, so the work grows
+          linearly, O(n), instead of exponentially.
+    correct: repeated-arguments
+    followUps:
+      two-branches-always:
+        prompt: Merge sort also calls itself twice. What keeps it from blowing up the way `f(n)` does?
+        options:
+          - id: disjoint-halves
+            text: Each call gets its own half of the input, so no two calls solve the same subproblem
+          - id: sorting-cheap
+            text: Sorting is an easier problem, so the recursion has fewer levels
+          - id: merge-caches
+            text: The merge step caches results that the two calls would otherwise repeat
+        correct: disjoint-halves
+        explanation: >-
+          Repeated subproblems, not the number of branches, are what make a recursion exponential.
+          Merge sort splits 64 items into 63 non-overlapping splitting calls, and total work stays
+          O(n log n). In `f(n)` the same arguments come up along many different call paths.
+      disjoint-pieces:
+        prompt: In the plain recursion for `f(10)`, how many times is `f(7)` evaluated?
+        options:
+          - id: three-times
+            text: Three times, reached along three different call paths, so the subproblems overlap
+          - id: once
+            text: Once, because each argument is solved by exactly one branch
+          - id: never
+            text: Never, since `f(10)` only calls `f(9)` and `f(8)` directly
+        correct: three-times
+        explanation: >-
+          `f(7)` is reached through `f(10)`, `f(9)`, `f(7)`, through `f(10)`, `f(9)`, `f(8)`, `f(7)`,
+          and through `f(10)`, `f(8)`, `f(7)`. Calls made further down count too, not only the direct
+          ones. Overlap like this is the signal that a cache or table will help.
+      cache-speeds-calls:
+        prompt: How many times does the cached version actually compute a value for `f(28)`?
+        options:
+          - id: thirty-one
+            text: 29, once for each distinct argument from 0 through 28
+          - id: same-count
+            text: 1,028,457, but each computation is cheaper
+          - id: half-count
+            text: About half of 1,028,457, since a cache removes one of the two branches
+        correct: thirty-one
+        explanation: >-
+          Each argument is computed the first time it is requested and looked up after that. Of the
+          55 requests, 29 compute a value and 26 are lookups. A cache does not prune a branch. It
+          answers repeated requests without running the body.
+
+  - id: tiling-recurrence
+    tags: [dp]
+    prompt: >-
+      A 1 x n strip is covered from left to right with no gaps, using tiles of length 1 and length 3.
+      Different orders are different tilings, so `1+3` and `3+1` are two tilings of a 1 x 4 strip.
+      Let `ways[i]` be the number of tilings of a strip of length `i`. Which recurrence and base cases
+      are correct?
+    options:
+      - id: uses-offset-two
+        text: "`ways[i] = ways[i-1] + ways[i-2]`, with `ways[0] = ways[1] = 1`"
+        explanation: >-
+          This is the recurrence for tiles of length 1 and 2. With a tile of length 3, removing the
+          last tile leaves `i - 3`, not `i - 2`. It already gives `ways[2] = 2`, but a 1 x 2 strip has
+          only one tiling, `1+1`. Its table is 1, 1, 2, 3, 5, 8, against the true 1, 1, 1, 2, 3, 4.
+      - id: uses-product
+        text: "`ways[i] = ways[i-1] * ways[i-3]`, with `ways[0] = ways[1] = ways[2] = 1`"
+        explanation: >-
+          The last tile is either a 1 or a 3, never both, so the two counts are alternatives to add.
+          Multiplying them makes every `ways[i]` equal to 1, but a 1 x 3 strip has two tilings,
+          `1+1+1` and `3`.
+      - id: empty-is-zero
+        text: "`ways[i] = ways[i-1] + ways[i-3]`, with `ways[0] = 0`, `ways[1] = ways[2] = 1`"
+        explanation: >-
+          The empty strip has exactly one tiling, the one with no tiles, and the lone tile `3` leaves
+          an empty strip behind. With `ways[0] = 0` that tiling is lost: `ways[3]` comes out as 1
+          instead of 2, and `ways[10]` as 19 instead of 28.
+      - id: last-tile-split
+        text: "`ways[i] = ways[i-1] + ways[i-3]`, with `ways[0] = ways[1] = ways[2] = 1`"
+        explanation: >-
+          Look at the last tile. If it has length 1, the rest is any tiling of length `i - 1`. If it
+          has length 3, the rest is any tiling of length `i - 3`. Every tiling falls into exactly
+          one case, so the counts add. The table for `i = 0..10` is 1, 1, 1, 2, 3, 4, 6, 9, 13, 19, 28.
+          The three base cases cover the lengths where `i - 3` would be negative.
+    correct: last-tile-split
+    followUps:
+      uses-offset-two:
+        prompt: >-
+          The last tile of a strip of length `i` has length 1 or 3. How long is the strip that remains
+          in each case?
+        options:
+          - id: offset-matches-tile
+            text: "`i - 1` after a length-1 tile, and `i - 3` after a length-3 tile"
+          - id: offset-two
+            text: "`i - 1` after a length-1 tile, and `i - 2` after a length-3 tile"
+          - id: one-cell-at-a-time
+            text: "`i - 1` after either tile, because the strip is covered one cell at a time"
+        correct: offset-matches-tile
+        explanation: >-
+          The earlier state is whatever remains after removing the last tile, so the offset equals the
+          tile length, and a 3-tile removes three cells at once. Using `i - 2` for a 3-tile counts
+          tilings of the wrong length, and the table is already off at `ways[2]`, which comes out as
+          2 instead of 1.
+      uses-product:
+        prompt: >-
+          A 1 x 3 strip has two tilings, `1+1+1` and `3`. Why is `ways[3] = ways[2] * ways[0]`, which
+          equals 1, wrong?
+        options:
+          - id: alternatives-add
+            text: The last tile is a 1 or a 3, never both, so the counts of the two cases are alternatives and add
+          - id: base-two
+            text: Multiplication is right, but `ways[0]` should be 2
+          - id: addition-cheaper
+            text: Multiplication gives the correct count, but addition is cheaper to compute
+        correct: alternatives-add
+        explanation: >-
+          Multiply when you make independent choices one after another, and add when each outcome
+          falls into exactly one of several cases. Here each tiling is in exactly one case, depending
+          on its last tile. Neither a different base value nor cost matters.
+      empty-is-zero:
+        prompt: >-
+          How many ways are there to tile a strip of length 0, and why does `ways[3]` need that count?
+        options:
+          - id: one-empty-tiling
+            text: One, the tiling with no tiles, and `ways[3]` needs it for the case where a single 3-tile fills the strip
+          - id: zero-nothing
+            text: Zero, because there is nothing to place, and that is why `ways[3]` is 1
+          - id: never-read
+            text: It does not matter, because `ways[0]` is never read when `i >= 3`
+        correct: one-empty-tiling
+        explanation: >-
+          `ways[3] = ways[2] + ways[0]`, so the base case is read directly. A single tile of length 3
+          covers the strip completely, and that must count as one tiling. Treating the empty strip as
+          having zero tilings drops every tiling that begins with a 3-tile. For `ways[10]` those are
+          the `ways[7] = 9` tilings, which is why 28 becomes 19.
+
+  - id: nonadjacent-slots
+    heading: Which approach is correct?
+    tags: [dp]
+    prompt: >-
+      A room has `n` time slots in a row. Slot `i` has a non-negative value `v[i]`. Two neighboring
+      slots cannot both be booked, because the room needs a reset between them. Book slots so the
+      total value is as large as possible. Let `best[i]` be the best total using only slots `0..i`,
+      and read any index below 0 as 0. Which plan is correct?
+    options:
+      - id: greedy-largest
+        text: Repeatedly book the highest-value free slot and block its two neighbors
+        explanation: >-
+          A large value can block two neighbors whose combined worth is larger. On `[11, 14, 11, 5]`
+          this books the 14, which blocks slots 0 and 2, then the 5, for a total of 19. Booking
+          slots 0 and 2 gives 22.
+      - id: always-take
+        text: "`best[i] = best[i-2] + v[i]`, and return `best[n-1]`"
+        explanation: >-
+          This forces slot `i` to be booked. A prefix may do better by skipping its last slot: on
+          `[2, 13, 3]` the recurrence gives `best[2] = 2 + 3 = 5`, while the best total is 13.
+      - id: max-then-add
+        text: "`best[i] = max(best[i-1], best[i-2]) + v[i]`, and return `best[n-1]`"
+        explanation: >-
+          When `best[i-1]` is the larger term, it may include slot `i-1`, and adding `v[i]` then books
+          two neighbors. On `[6, 8, 6]` it returns 20, but the best total is 12 (slots 0 and 2).
+      - id: take-or-skip
+        text: "`best[i] = max(best[i-1], best[i-2] + v[i])`, and return `best[n-1]`"
+        explanation: >-
+          For slot `i` there are two cases. Skip it, and the best total is `best[i-1]`. Book it, and
+          the neighbor is off limits, so it adds `v[i]` to the best total over slots `0..i-2`. Take the
+          larger. On `[11, 14, 11, 5]` the values are 11, 14, 22, 22, so the answer is 22.
+    correct: take-or-skip
+    followUps:
+      greedy-largest:
+        prompt: >-
+          On `[11, 14, 11, 5]` greedy books the 14 first. What total does it end with, and what is the
+          best total?
+        options:
+          - id: thirteen-vs-fourteen
+            text: 19 (the 14, then the 5), while slots 0 and 2 give 22
+          - id: fourteen-both
+            text: 22, so greedy happens to match the best total
+          - id: ten
+            text: 14, because booking the 14 blocks every other slot
+        correct: thirteen-vs-fourteen
+        explanation: >-
+          Booking the 14 blocks slots 0 and 2, but slot 3 stays free, so greedy ends at 19. The
+          recurrence does not commit to the biggest value. It compares skipping and booking at each
+          slot, and keeps the better total.
+      always-take:
+        prompt: >-
+          On `[2, 13, 3]`, `best[1]` is 13 but `best[2] = best[0] + v[2]` is 5. What does that
+          recurrence leave out?
+        options:
+          - id: skip-option
+            text: Skipping slot `i`, which would let `best[i]` be at least `best[i-1]`
+          - id: base-cases
+            text: The base cases, because `best[0]` should be 0
+          - id: add-previous
+            text: Adding `best[i-1] + v[i]`, since the previous slot is free to use
+        correct: skip-option
+        explanation: >-
+          `best[i]` means the best total using slots `0..i`, and that includes plans that never book
+          slot `i`. Without the `best[i-1]` term the total can fall below a shorter prefix's total.
+          Adding `best[i-1] + v[i]` would break the neighbor rule.
+      max-then-add:
+        prompt: >-
+          On `[6, 8, 6]`, `max(best[i-1], best[i-2]) + v[i]` returns 20. Why is that total invalid?
+        options:
+          - id: may-include-neighbor
+            text: "`best[i-1]` may already book slot `i-1`, so adding `v[i]` books two neighbors"
+          - id: use-min
+            text: "`max` should be `min`, to avoid choosing a neighbor"
+          - id: forgot-previous-value
+            text: It forgets to add `v[i-1]` to the total
+        correct: may-include-neighbor
+        explanation: >-
+          `v[i]` may be added only to a total that leaves slot `i-1` free, which is `best[i-2]`. The
+          correct recurrence puts `+ v[i]` inside the second term only, so the first term, `best[i-1]`,
+          stays a plain "skip slot `i`" case.
+
+  - id: min-coins-recurrence
+    heading: Which plan is correct?
+    tags: [dp]
+    prompt: >-
+      You have unlimited coins of values 4, 6, and 9. You want the fewest coins that add to exactly
+      `amount`, or to learn that no combination works. Let `dp[a]` be that fewest count for amount
+      `a`. In every plan, an amount smaller than all the coins keeps its starting value. Which plan is
+      correct?
+    options:
+      - id: largest-first
+        text: Take the largest coin that still fits, repeatedly, until the amount reaches 0
+        explanation: >-
+          Committing to the largest coin can leave a remainder that no coin can fill. For amount 12 it
+          takes a 9, leaves 3, and gets stuck, yet 6 + 6 works with two coins. Even with a coin of
+          value 1 it can lose. Coins 1, 7, and 9 with amount 14 give 9 + five 1s, which is six coins,
+          while 7 + 7 is two.
+      - id: zero-start
+        text: "`dp[0] = 0`, rest start at `0`; `dp[a] = 1 + min(dp[a-c])` for coins `c <= a`"
+        explanation: >-
+          Starting every entry at 0 makes unreachable amounts look reachable for free. `dp[1]` stays
+          0, so `dp[5] = 1 + dp[1] = 1`, although 5 cannot be made from 4, 6, and 9. Since 0 is the
+          smallest possible count, `min` also prefers it. For amount 12 the table says 1 instead of 2.
+      - id: base-one
+        text: "`dp[0] = 1`, rest start at `inf`; `dp[a] = 1 + min(dp[a-c])` for coins `c <= a`"
+        explanation: >-
+          Amount 0 needs zero coins. Storing 1 adds a phantom coin to every answer: `dp[4]` comes out
+          as 2 although one coin of value 4 suffices, and `dp[12]` as 3 instead of 2.
+      - id: inf-start
+        text: "`dp[0] = 0`, rest start at `inf`; `dp[a] = 1 + min(dp[a-c])` for coins `c <= a`"
+        explanation: >-
+          The last coin `c` is one coin plus the best way to make `a - c`, so the table takes the
+          smallest such total. Amount 0 needs no coins, and an unreachable amount holds `inf`, which
+          `min` never prefers and which stays `inf` after adding 1 (`1 + float('inf')` is `inf`). Amounts below 4 keep `inf`. For
+          4, 6, and 9 the unreachable amounts up to 12 are 1, 2, 3, 5, 7, and 11. `dp[12]` is 2 and
+          `dp[8]` is 2.
+    correct: inf-start
+    followUps:
+      largest-first:
+        prompt: With coins 4, 6, and 9 and amount 12, largest-first takes a 9. What happens next?
+        options:
+          - id: stuck-at-three
+            text: 3 is left and no coin fits, so it gets stuck, although 6 + 6 uses two coins
+          - id: overshoots
+            text: It pays the leftover 3 with a 4, reaching 13 with two coins, which ties the best count
+          - id: backs-up
+            text: It backs up and uses 6 + 6, so largest-first is correct here
+        correct: stuck-at-three
+        explanation: >-
+          The total must be exactly 12, so a 4 cannot cover a leftover 3, and largest-first never
+          checks that the remainder can be made or reconsiders. A
+          table tries every coin as the last one and keeps the smallest count. Backing up and trying
+          another coin is a different algorithm, which is what the recurrence does systematically.
+      zero-start:
+        prompt: With every entry starting at 0, what does the table say for amount 5 using coins 4, 6, and 9?
+        options:
+          - id: one-coin
+            text: One coin, because `dp[5] = 1 + dp[1]` and the untouched `dp[1] = 0` reads like a valid count
+          - id: infinity
+            text: "`inf`, because 5 cannot be made and the code can tell"
+          - id: key-error
+            text: An error, because `dp[1]` was never set
+        correct: one-coin
+        explanation: >-
+          The list holds 0 from the start, so no error occurs, and 0 is indistinguishable from "zero
+          coins". The sentinel for unreachable has to be larger than any real count and stay larger
+          after adding 1, which `inf` does.
+      base-one:
+        prompt: With `dp[0] = 1`, what does `dp[4]` come out as for coins 4, 6, and 9, and why?
+        options:
+          - id: two-coins
+            text: 2, because the 4-coin counts as one coin on top of the 1 stored for amount 0
+          - id: one-coin
+            text: 1, because 4 is a coin value and the table reads it directly
+          - id: infinity
+            text: "`inf`, because `dp[4 - 4]` is not a valid amount"
+        correct: two-coins
+        explanation: >-
+          `dp[4] = 1 + dp[0]`, so whatever sits in `dp[0]` is added to every count. Zero coins make
+          amount 0, so the base value must be 0. Storing 1 shifts all answers up by one.
+
+  - id: space-two-variables
+    heading: Which statement is true?
+    tags: [dp, complexity]
+    prompt: |-
+      A room has `n` time slots in a row with non-negative values `v`, and no two neighboring slots
+      may both be booked. The maximum total value is computed with a table. Only the total is needed,
+      not which slots were chosen. Here `n = len(v)`, `v` is non-empty, and `best[k]` is the best
+      total over the first `k` slots.
+
+      ```python
+      best = [0, v[0]]
+      for k in range(2, n + 1):
+          best.append(max(best[k - 1], best[k - 2] + v[k - 1]))
+      return best[n]
+      ```
+
+      Which statement about reducing the extra space is correct?
+    options:
+      - id: need-full-table
+        text: The full table must stay, because `best[n]` depends on every earlier entry
+        explanation: >-
+          Each `best[k]` reads only `best[k-1]` and `best[k-2]`, so older entries are never read
+          again. The answer depends on earlier slots only through those carried values. The table is
+          needed only if you want to recover which slots were chosen.
+      - id: one-variable
+        text: One variable holding `best[k-1]` is enough, because it summarizes all earlier slots
+        explanation: >-
+          The recurrence needs `best[k-2]` too, the best total that leaves slot `k-1` free. With one
+          variable the loop adds every slot to a total that may already contain its neighbor. On
+          `[6, 8, 6]` it returns 20 instead of 12.
+      - id: update-order
+        text: "Write `prev2 = prev1`, then `prev1 = max(prev1, prev2 + x)`; the order does not matter"
+        explanation: >-
+          Separate statements run one after another. After `prev2 = prev1`, the old `prev2` is gone,
+          so the next line computes `max(prev1, prev1 + x)`, which adds every slot. On `[6, 8, 6]` it
+          returns 20 instead of 12. The tuple form assigns both at once and avoids this.
+      - id: two-variables
+        text: Each step reads only the last two entries, so two variables suffice, in O(1) space
+        explanation: >-
+          `prev2, prev1 = prev1, max(prev1, prev2 + v[k - 1])` evaluates the right side before
+          assigning, so it matches the table. Extra space drops from O(n) to O(1), and time stays
+          O(n). The rule is to keep a window as wide as the farthest look-back. A recurrence
+          that reads `ways[i-3]` needs the last three entries kept, because the one in between is
+          needed on the next steps.
+    correct: two-variables
+    followUps:
+      need-full-table:
+        prompt: >-
+          Each `best[k]` reads two older entries, yet `best[n]` depends on every slot. Why can the rest
+          be dropped?
+        options:
+          - id: carried-forward
+            text: Older entries affect `best[n]` only through the last two, which already contain their effect
+          - id: rebuilt
+            text: Older entries are rebuilt from the input whenever a later step needs them
+          - id: only-last-two-slots
+            text: Slots before the last two cannot appear in the best set, so they do not matter
+        correct: carried-forward
+        explanation: >-
+          Slot 0 can still be part of the best answer: on `[11, 14, 11, 5]` the best total uses slots 0
+          and 2. It stays in play because its effect lives on inside `best[k-1]` and `best[k-2]`. If
+          you needed the chosen slots, you would keep the table or a record of choices.
+      one-variable:
+        prompt: >-
+          What goes wrong in the loop `prev1 = max(prev1, prev1 + v[k - 1])` for `v = [6, 8, 6]`?
+        options:
+          - id: adds-neighbor
+            text: It returns 20, because it adds every slot to a total that may already contain its neighbor
+          - id: returns-five
+            text: It returns 6, because only the first slot is ever kept
+          - id: returns-ten
+            text: It returns 12, because `max` repairs the extra term
+        correct: adds-neighbor
+        explanation: >-
+          With non-negative values, `max(prev1, prev1 + x)` is always `prev1 + x`, so the loop just
+          sums everything. Booking slot `k` needs the best total that leaves slot `k-1` free, which
+          is `best[k-2]`, not `best[k-1]`.
+      update-order:
+        prompt: After `prev2 = prev1` runs, what does `prev1 = max(prev1, prev2 + x)` use for `prev2`?
+        options:
+          - id: new-value
+            text: The new value, already equal to `prev1`, so the line becomes `max(prev1, prev1 + x)`
+          - id: old-value
+            text: The old value, because Python reads the right side before any assignment in the function
+          - id: copy-at-start
+            text: A copy of `prev2` taken before the loop body started, so the result is unchanged
+        correct: new-value
+        explanation: >-
+          Each statement runs completely before the next one starts, so the second line sees the
+          overwritten `prev2`. In `prev2, prev1 = prev1, max(prev1, prev2 + x)`, the whole right
+          side is evaluated first, and then both names are assigned.
+
+  - id: memoization-complexity
+    heading: What is the complexity?
+    tags: [dp, complexity]
+    prompt: >-
+      The fewest-coins problem for amount `n` with `k` coin values is solved two ways: top-down
+      recursion with a cache on `dp(a)`, and a bottom-up loop that fills `dp[0..n]`. The smallest coin
+      is 1, the recursion tries coin 1 first (the worst case), and `k` may grow with the input. Python's
+      default recursion limit of 1000 applies. Which statement is correct?
+    options:
+      - id: exponential-memo
+        text: Memoized recursion is exponential in `n`, since every call branches `k` ways
+        explanation: >-
+          The cache makes each amount's body run once, so the branching happens once per amount, not
+          once per path. Without the cache, and skipping coins larger than the amount, coins 1, 5, and 12 need
+          12,613 calls at `n = 30`. With it, `n + 1` values are computed and each looks at `k` coins.
+      - id: linear-only
+        text: Both take O(n) time, because each of the `n + 1` states is computed once
+        explanation: >-
+          Computing a state means trying every coin as its last one, which costs `k` steps. That makes
+          `n` states times `k` coins, so O(n·k) rather than O(n). With coins 1, 5, and 12 and `n = 300`,
+          the table makes up to 900 coin tries (885 once coins larger than the amount are skipped).
+      - id: no-depth-limit
+        text: Both are O(n·k), and neither nears the recursion limit, since the cache cuts calls short
+        explanation: >-
+          Nothing is cached before the first call returns, so with coin 1 tried first the first call
+          walks down `dp(n)`, `dp(n - 1)`, and so on to `dp(0)`, `n + 1` frames deep. With coins tried
+          in the order 1, 5, 12, the recursive version raises `RecursionError` at `n = 2000`, while the
+          table finishes.
+      - id: both-nk-recursion-risk
+        text: Both take O(n·k) time; only the recursive one raises `RecursionError` when `n` nears 1000
+        explanation: >-
+          There are `n + 1` states, each tried once with `k` coins, so both versions are O(n·k) time
+          and O(n) space. The bottom-up loop has no call stack. In the worst case, with coin 1 tried
+          first, the recursive one is `n + 1` frames deep before the first return, so `n` near 1000
+          overflows the default limit. Trying the largest coin first shortens that first chain, but a
+          loop, or a higher limit, is the reliable fix.
+    correct: both-nk-recursion-risk
+    followUps:
+      exponential-memo:
+        prompt: Why does the cache stop the exponential growth of the plain recursion?
+        options:
+          - id: body-runs-once
+            text: Each amount's body runs once, and every later request is a lookup, so work is states times coins
+          - id: fewer-coins
+            text: The cache removes coins from the list as it goes, so `k` shrinks
+          - id: no-calls
+            text: The cache turns the recursion into a loop, so there are no calls
+        correct: body-runs-once
+        explanation: >-
+          The plain recursion repeats subproblems along many call paths. With a cache, a repeated
+          request returns immediately. Total work is the number of distinct amounts times the work
+          per amount, which is `k`. The cache does not remove coins or make the recursion a loop.
+      linear-only:
+        prompt: >-
+          Coins 1, 5, and 12 with `n = 300`. How many coin tries does the bottom-up table make at most?
+        options:
+          - id: nine-hundred
+            text: 900, because each of the 300 amounts tries all 3 coins (885 once oversized coins are skipped)
+          - id: three-hundred
+            text: 300, because each amount is computed once
+          - id: three-oh-three
+            text: 303, because there are 300 amounts plus 3 coins
+        correct: nine-hundred
+        explanation: >-
+          One computed amount costs up to one try per coin. States times transitions gives 300 x 3 = 900,
+          or 885 when coins larger than the amount are skipped. Either way the cost is proportional to
+          n·k.
+          Treating `k` as free is only right when it is a fixed small constant, and the question lets
+          it grow.
+      no-depth-limit:
+        prompt: >-
+          When the cached recursion starts on a large `n`, why is the stack about `n` frames deep?
+        options:
+          - id: nothing-cached-yet
+            text: Nothing is cached before the first call returns, so with coin 1 tried first it nests `n + 1` calls down to `dp(0)`
+          - id: lookups-add-frames
+            text: Every cache lookup leaves a new frame on the stack
+          - id: filled-from-top
+            text: The cache is filled from the top down, so deep calls are always answered from it
+        correct: nothing-cached-yet
+        explanation: >-
+          A value is stored only when its call finishes, and the first chain of calls finishes at
+          `dp(0)`. With coins tried in the order 1, 5, 12 and `n = 2000`, the recursive version hits
+          `RecursionError` under the default limit, while the bottom-up loop returns 169 for the same
+          input. Raising `sys.setrecursionlimit` lets deeper inputs run, and a
+          loop avoids recursion entirely.

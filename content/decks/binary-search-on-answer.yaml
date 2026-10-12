@@ -1,0 +1,524 @@
+id: binary-search-on-answer
+title: Binary search, including on the answer
+description: Halve a sorted range, or a range of possible answers, and know which loop, test, and cost go with it.
+heading: What should you search over?
+
+questions:
+  - id: sorted-array-search-loop
+    heading: Which loop is correct?
+    tags: [binary-search]
+    prompt: >-
+      Search a sorted array `a` of distinct integers (ascending, 0-based indexes) for `t`, returning
+      its index or `-1` if it is absent. All four loops start with `lo, hi = 0, len(a) - 1`, compute
+      `mid = (lo + hi) // 2`, and return `mid` when `a[mid] == t`. They differ in the loop condition
+      and in how they move `lo` and `hi` after a miss. Which one is correct?
+    options:
+      - id: lt-inclusive
+        text: "`while lo < hi`; after a miss, `lo = mid + 1` or `hi = mid - 1`"
+        explanation: >-
+          With `hi = len(a) - 1` the range is inclusive, so `lo == hi` is a live one-element range.
+          `while lo < hi` stops before looking at it. On `[1, 3, 5]`, searching for `5` returns `-1`,
+          and so does `[4]` with `4`. The `lo < hi` condition belongs with a half-open `hi = len(a)`.
+      - id: le-minus-one
+        text: "`while lo <= hi`; after a miss, `lo = mid + 1` or `hi = mid - 1`"
+        explanation: >-
+          The invariant is that if `t` is present, it is in `a[lo..hi]`, both ends included. A miss
+          rules `mid` out, so `mid + 1` or `mid - 1` keeps the invariant and always shrinks the range.
+          The loop ends when `lo > hi`, an empty range, so a one-element range is still examined.
+          That is O(log n) probes in the worst case. The half-open form (`hi = len(a)`, `while lo <
+          hi`, `hi = mid`) is also correct.
+      - id: lo-equals-mid
+        text: "`while lo <= hi`; after a miss, `lo = mid` or `hi = mid - 1`"
+        explanation: >-
+          After `a[mid] < t`, `mid` is ruled out, but `lo = mid` keeps it. Since `//` rounds down,
+          `mid == lo` whenever `hi == lo + 1`, so the range stops shrinking. On `[2, 5, 8]` with
+          `t = 8`, `lo, hi` goes `0, 2`, then `1, 2`, and stays at `1, 2`, so the loop never
+          terminates. A `lo = mid` loop needs both `mid` rounded up and `while lo < hi`.
+      - id: hi-equals-mid
+        text: "`while lo <= hi`; after a miss, `lo = mid + 1` or `hi = mid`"
+        explanation: >-
+          With `lo <= hi`, a one-element range still enters the loop. If that element is larger than
+          `t`, `hi = mid` leaves `hi` unchanged and the loop repeats forever. On `[2, 5, 8]` with
+          `t = 6` the range reaches `lo = hi = 2` and stays there. It hangs whenever `t` is absent and
+          smaller than the largest element. `hi = mid` needs `while lo < hi` and a half-open `hi`.
+    correct: le-minus-one
+    followUps:
+      lt-inclusive:
+        prompt: >-
+          With `a = [4]` and `t = 4`, `lo = hi = 0`. What does the `while lo < hi` version do?
+        options:
+          - id: never-compared
+            text: The loop body never runs, so the only candidate, `a[0]`, is never compared and `-1` comes back
+          - id: returns-zero
+            text: It returns `0`, because `lo == hi` already shows that the target was found
+          - id: loops-forever
+            text: It loops forever, because `lo` can never become larger than `hi`
+        correct: never-compared
+        explanation: >-
+          With inclusive bounds, `lo == hi` means one candidate is left, not none. The condition must
+          keep running while the range is nonempty, which is `lo <= hi`. With a half-open `hi`, `lo ==
+          hi` does mean empty, so `lo < hi` is the matching condition there.
+      lo-equals-mid:
+        prompt: >-
+          On `[2, 5, 8]` with `t = 8`, the range reaches `lo = 1`, `hi = 2`, so `mid = 1` and
+          `a[1] = 5 < 8`. Why does `lo = mid` get stuck?
+        options:
+          - id: keeps-mid
+            text: "`mid` was ruled out but kept, and `(1 + 2) // 2` rounds down to 1, so the range does not shrink"
+          - id: skips-target
+            text: "`lo = mid` jumps past `8`, so the target is never found and `-1` is returned"
+          - id: backwards-compare
+            text: The comparison `a[mid] < t` is backwards, so the loop moves away from the target
+        correct: keeps-mid
+        explanation: >-
+          Every step must remove at least `mid` from the range. `lo = mid` removes nothing, and with
+          floor division `mid` equals `lo` for a two-element range, so the same range comes back. It
+          does not skip the target and does not return `-1`. It hangs. `lo = mid + 1` removes `mid`
+          and guarantees progress.
+      hi-equals-mid:
+        prompt: >-
+          Which pairing of loop condition and `hi` update is safe? Think about a range with a single
+          element, where `lo == hi`.
+        options:
+          - id: match-pairs
+            text: "`lo <= hi` with `hi = mid - 1`, or `lo < hi` with a half-open `hi = len(a)` and `hi = mid`"
+          - id: any-pairing
+            text: Any condition works with any update, because `mid` always lies inside the range
+          - id: le-with-mid
+            text: "`lo <= hi` with `hi = mid`, because `<=` gives the loop one extra pass at the end"
+        correct: match-pairs
+        explanation: >-
+          `hi = mid - 1` drops `mid` from an inclusive range, so `lo <= hi` can end on an empty range.
+          `hi = mid` suits a half-open `[lo, hi)`, where `hi` itself is already excluded, so `lo < hi`
+          ends on empty. Mixing them, as in `lo <= hi` with `hi = mid`, leaves a one-element range
+          that never shrinks.
+
+  - id: first-position-duplicates
+    heading: Which loop returns the first index with `a[i] >= x`?
+    tags: [binary-search, python]
+    prompt: >-
+      A sorted list `a = [2, 4, 4, 4, 9, 11]` may contain duplicates (0-based indexes). You need the
+      first index `i` with `a[i] >= x`, or `len(a)` if there is none. That is what
+      `bisect.bisect_left(a, x)` returns, and for `x = 4` it is `1`. Which loop returns it for every
+      `x`? Each loop starts with `lo, hi = 0, len(a)` unless the option says otherwise.
+    options:
+      - id: return-on-equal
+        text: "`while lo < hi`; return `mid` on `a[mid] == x`, else halve; return `lo` if absent"
+        explanation: >-
+          Returning on the first hit stops at whichever 4 the probe lands on. On this list with
+          `x = 4` the first probe is index 3, so the loop returns 3, not 1. With
+          distinct values this loop is fine. With duplicates, an equal probe must keep searching to
+          its left.
+      - id: le-moves-right
+        text: "`while lo < hi`; `lo = mid + 1` if `a[mid] <= x`, else `hi = mid`"
+        explanation: >-
+          Sending equal elements to the right makes the loop return the first index with `a[i] > x`.
+          For `x = 4` that is 4, which is `bisect_right`: the position after the last 4. It is the
+          right answer for "insert after the equal elements", but not for the first `a[i] >= x`.
+      - id: hi-len-minus-one
+        text: "`hi = len(a) - 1`; `while lo < hi`; `lo = mid + 1` if `a[mid] < x`, else `hi = mid`"
+        explanation: >-
+          Starting `hi` at `len(a) - 1` means the range can never reach index `len(a)`, so "every
+          element is below `x`" cannot be reported. With `x = 20` this loop returns 5, but the correct
+          answer is 6. A half-open range with `hi = len(a)` can end one past the last element.
+      - id: lt-moves-right
+        text: "`while lo < hi`; `lo = mid + 1` if `a[mid] < x`, else `hi = mid`; return `lo`"
+        explanation: >-
+          The invariant is that everything before `lo` is `< x` and everything from `hi` on is
+          `>= x`. A probe with `a[mid] < x` rules out `mid` and everything left of it. Otherwise `mid`
+          might be the answer, so `hi = mid` keeps it. When `lo == hi`, that index is the first
+          `>= x`, possibly `len(a)`. Equal elements move `hi`, never `lo`, which is `bisect_left`.
+    correct: lt-moves-right
+    followUps:
+      return-on-equal:
+        prompt: >-
+          You want the first index with `a[i] >= x`. When `a[mid] == x` and duplicates are allowed,
+          what does that tell you?
+        options:
+          - id: candidate-keep-left
+            text: "`mid` is a candidate, but an earlier equal element may exist, so keep `mid` in range and search left"
+          - id: any-equal-fine
+            text: Any equal index answers the question, so return it immediately
+          - id: first-is-right
+            text: The first equal element must lie to the right of `mid`
+        correct: candidate-keep-left
+        explanation: >-
+          For the first index with `a[i] >= x`, an equal `a[mid]` is a candidate, not a finished
+          answer, since earlier copies may exist. Setting `hi = mid` keeps it while discarding the
+          right side. Returning on equality is right only when any matching index will do.
+      le-moves-right:
+        prompt: What do the two update rules `a[mid] <= x` and `a[mid] < x` find, when they move `lo` to the right?
+        options:
+          - id: le-after-lt-before
+            text: "`<=` finds the first index with `a[i] > x` (`bisect_right`), `<` finds the first with `a[i] >= x` (`bisect_left`)"
+          - id: same-answer
+            text: They always return the same index, and differ only in how many probes they use
+          - id: reversed
+            text: "`<=` finds the first index with `a[i] >= x`, and `<` finds the first with `a[i] > x`"
+        correct: le-after-lt-before
+        explanation: >-
+          Moving right on `a[mid] <= x` pushes past every copy of `x`, so the loop stops after the
+          last one. On the list above the two loops give 4 and 1 for `x = 4`. When `x` is absent they
+          agree, so a test without duplicates can hide the mix-up. `bisect_right(a, x) -
+          bisect_left(a, x)` counts the copies, 3 here.
+      hi-len-minus-one:
+        prompt: How many different answers can an insertion point take in a list of `len(a)` elements?
+        options:
+          - id: len-plus-one
+            text: "`len(a) + 1`: before any element, or after the last, so `hi` must start at `len(a)`"
+          - id: len-answers
+            text: "`len(a)`: one per element, so `hi = len(a) - 1` already covers them"
+          - id: hi-irrelevant
+            text: The starting `hi` does not matter, because the loop returns `lo` anyway
+        correct: len-plus-one
+        explanation: >-
+          An insertion point can sit before each element or after the last one, which is `len(a) + 1`
+          choices. Starting at `hi = len(a) - 1` offers only `len(a)` of them and never the one after
+          the end. That start is fine only when the answer is certain to be an existing index.
+
+  - id: search-the-answer-sessions
+    tags: [binary-search]
+    prompt: >-
+      A pipeline uploads `n` files in their given order, so each upload session takes a contiguous
+      run of files. File `i` has size `sizes[i]` (positive integers, duplicates allowed) and cannot
+      be split. Every session has the same size limit `x`. Find the smallest `x` that fits all the
+      files into at most `d` sessions. For `sizes = [4, 9, 3, 7, 6, 2, 8]` and `d = 3` the answer is
+      16. Which search finds `x` in general?
+    options:
+      - id: search-positions
+        text: Binary search the cut positions in `sizes`, probing the middle index each time
+        explanation: >-
+          The sizes are in arbitrary order, so no probed index says which side the cuts belong on:
+          nothing is sorted or monotonic by position. There are also `d - 1` cuts to place, not one
+          index. What is monotonic is the limit `x`, so the search runs over capacities, not over the
+          array.
+      - id: average-test
+        text: "Search `x` in `[1, sum(sizes)]`, with the test `sum(sizes) <= x * d`"
+        explanation: >-
+          This test checks only the average load. It ignores that files cannot be split and that
+          sessions are contiguous, so it can pass when no grouping works. On the sample it accepts
+          `x = 13`, since `39 <= 13 * 3`, but at 13 greedy packing needs 4 sessions. It is a lower
+          bound on the answer, not a feasibility test.
+      - id: exactly-d
+        text: "Search `x` in `[max(sizes), sum(sizes)]`; test: greedy packing uses exactly `d` sessions"
+        explanation: >-
+          The greedy session count only falls as `x` grows, so "exactly `d`" holds on a middle
+          stretch and fails on both sides. A failed test then no longer says which way to go. On the
+          sample, the first probe `x = 24` uses 2 sessions, so the test fails and the usual
+          `lo = mid + 1` moves up, ending at 39 instead of 16.
+      - id: at-most-d
+        text: "Search `x` in `[max(sizes), sum(sizes)]`; test: greedy packing needs at most `d` sessions"
+        explanation: >-
+          The search and the test are separate. `feasible(x)` fills a session until the next file would exceed
+          `x`, then starts a new one, in one O(n) pass. A larger `x` never needs more sessions, so
+          the results read `False ... False True ... True`, and the search finds the first `True`.
+          Below `max(sizes)` some file never fits, and `sum(sizes)` always fits in one session. Here
+          `x = 15` needs 4 sessions and `x = 16` needs 3.
+    correct: at-most-d
+    followUps:
+      search-positions:
+        prompt: >-
+          Binary search needs a yes/no question whose answer flips once as the probe moves. Which
+          probe gives that here?
+        options:
+          - id: capacity-probe
+            text: A limit `x`. If `x` suffices, every larger limit does too, so the answer flips once
+          - id: index-probe
+            text: An index `i`. The files before `i` are smaller, so the answer lies on one side
+          - id: size-probe
+            text: A file size taken from `sizes`, because the answer must equal one of the sizes
+        correct: capacity-probe
+        explanation: >-
+          No order on the files lets a position probe discard a side, but capacities are ordered and
+          feasibility flips once from no to yes. The answer 16 is not a file size. It is the total of
+          a contiguous group, so you search the number range, not the list.
+      average-test:
+        prompt: >-
+          On the sample, `sum(sizes) <= x * d` is true at `x = 13`, yet 13 is too small. What does it
+          fail to account for?
+        options:
+          - id: indivisible-ordered
+            text: Files are indivisible and sessions are contiguous, so the load cannot be spread evenly
+          - id: needs-rounding
+            text: It needs integer rounding, since `39 / 3` should be rounded up
+          - id: not-monotonic
+            text: It is not monotonic, so binary search takes the wrong side
+        correct: indivisible-ordered
+        explanation: >-
+          The test is monotonic, so the search runs, but it answers the wrong question. Even
+          spreading needs splittable work. At 13, greedy packing gives `[4, 9]`, `[3, 7]`,
+          `[6, 2]`, `[8]`, which is 4 sessions. Feasibility needs the actual packing.
+      exactly-d:
+        prompt: As `x` grows, what happens to the number of sessions that greedy packing uses?
+        options:
+          - id: never-rises
+            text: It never rises. A bigger limit can only merge sessions, so the count stays level or falls
+          - id: rises-and-falls
+            text: It can rise and fall, so no test on it is monotonic
+          - id: stays-at-d
+            text: It stays at `d` once `x` reaches the answer
+        correct: never-rises
+        explanation: >-
+          On the sample, the count is 6 at `x = 9`, 5 for 10 to 12, 4 for 13 to 15, 3 for 16 to 22,
+          2 for 23 to 38, and 1 at 39. It never rises, so "at most `d`" flips once at 16, while
+          "exactly `d`" is true only for 16 through 22.
+
+  - id: rotated-array-search
+    heading: Which rule decides the side?
+    tags: [binary-search]
+    prompt: >-
+      A sorted array of distinct integers was rotated at an unknown point, such as
+      `[14, 17, 19, 3, 5, 8, 11]` (0-based indexes). You must find a target `t` in O(log n) time.
+      At each step you probe `mid` between `lo` and `hi`. Which rule works?
+    options:
+      - id: plain-compare
+        text: "Ordinary binary search: go right if `a[mid] < t`, otherwise go left"
+        explanation: >-
+          Plain comparisons assume the whole range ascends. In the example with `t = 17`, the first
+          probe is 3, which is below 17, so the rule goes right and discards `[14, 17, 19]`. The call
+          returns `-1`, although 17 sits at index 1.
+      - id: strict-sorted-test
+        text: "Decide the left part is sorted with the strict test `a[lo] < a[mid]`, then check `t`"
+        explanation: >-
+          On a two-element range `mid` rounds down to `lo`, so the left part is a single element and
+          sorted, but `a[lo] < a[mid]` is false. The code then assumes the right part is sorted. On
+          `[5, 2]` with `t = 2` it returns `-1`. The test `a[lo] <= a[mid]` returns 1.
+      - id: scan-for-pivot
+        text: Scan for where the order drops, then binary search the half that can hold `t`
+        explanation: >-
+          This finds the right answer, but the scan reads elements one by one, so the worst case is
+          O(n) for the whole search, no better than a linear search. The drop can itself be found in
+          O(log n) with a binary search, and the sorted-half rule avoids the separate pass.
+      - id: sorted-half
+        text: "Find the sorted side (`a[lo] <= a[mid]` means left), then see whether `t` lies in it"
+        explanation: >-
+          After a rotation, at least one of `a[lo..mid]` and `a[mid..hi]` is in order. If
+          `a[lo] <= a[mid]`, the left part is sorted: if `a[lo] <= t < a[mid]`, go left,
+          otherwise go right. If the left part is not sorted, the right part is: if
+          `a[mid] < t <= a[hi]`, go right, otherwise go left. Each step discards half, so it is
+          O(log n).
+    correct: sorted-half
+    followUps:
+      plain-compare:
+        prompt: >-
+          In `[14, 17, 19, 3, 5, 8, 11]`, `mid = 3` holds 3 and `t = 17`. Why does "go right because
+          3 < 17" fail?
+        options:
+          - id: order-breaks
+            text: Values left of `mid` can be larger than the ones on its right, so `a[mid] < t` does not say which side holds `t`
+          - id: wrong-mid
+            text: In a rotated array, `mid` must be rounded up instead of down
+          - id: target-absent
+            text: 17 is not in the array, so every rule fails
+        correct: order-breaks
+        explanation: >-
+          Plain search needs "everything left is at most `a[mid]`, and everything right is at least
+          it". After a rotation that holds only inside one sorted run. Here the right part,
+          `[5, 8, 11]`, is entirely below 17, and 17 is on the left. Finding the sorted side first
+          restores a valid comparison.
+      strict-sorted-test:
+        prompt: >-
+          In `[5, 2]`, `lo = 0`, `hi = 1`, so `mid = 0`. Is the left part `a[lo..mid]` sorted, and does
+          the test need to accept `a[lo] == a[mid]`?
+        options:
+          - id: single-sorted
+            text: A single element is sorted, and `a[lo]` and `a[mid]` are the same element, so the test must accept equality
+          - id: not-sorted
+            text: It is not sorted, because 5 is larger than 2
+          - id: mid-rounds-up
+            text: It is sorted, but `mid` should round up to 1 in a two-element range
+        correct: single-sorted
+        explanation: >-
+          A one-element part is trivially sorted, and `lo == mid` makes `a[lo] == a[mid]`. So the
+          test is `a[lo] <= a[mid]`. It is true when the left part is one element or truly ascends.
+          Then `t` is checked against `a[lo]..a[mid]`, and otherwise the search goes right.
+      scan-for-pivot:
+        prompt: How can the rotation point be found in O(log n) instead of by scanning?
+        options:
+          - id: compare-with-hi
+            text: Compare `a[mid]` with `a[hi]`. If `a[mid] > a[hi]`, the drop is right of `mid`, otherwise at or left of it
+          - id: scan-only
+            text: It cannot. Only a scan can locate the rotation point
+          - id: sort-first
+            text: Sort the array first, then undo the rotation
+        correct: compare-with-hi
+        explanation: >-
+          The drop is the only place where order breaks, so comparing `a[mid]` with `a[hi]` shows
+          which side holds it. That is itself a binary search, O(log n). Sorting would cost
+          O(n log n), which loses the point of searching a sorted structure.
+
+  - id: binary-search-preconditions
+    heading: Which statement is true?
+    tags: [binary-search, complexity]
+    prompt: >-
+      Binary search halves the candidates with each probe. Which statement about what it needs, and
+      about total running time or correctness when those needs are missing, is true? (Python 3,
+      0-based indexes, ascending order.)
+    options:
+      - id: linked-list-ok
+        text: On a sorted linked list, total time is O(log n), since comparisons are O(log n)
+        explanation: >-
+          The comparisons are O(log n), but a linked list has no indexing, so each probe walks from
+          the range start to its middle. Those walks add up to about `n` pointer steps in the worst
+          case: with a million nodes and a target above the maximum there are 20 comparisons but
+          about a million hops. That is no better than a plain scan.
+      - id: unsorted-ok
+        text: On an unsorted array it still finds `t` whenever `t` is present, only less reliably fast
+        explanation: >-
+          Without order, a probe says nothing about which side holds `t`. On
+          `[9, 2, 7, 4, 1, 8, 5]` the targets 9, 7, 1, and 5 are all present, and the search returns
+          `-1` for each. On shuffled 11-element arrays, roughly two thirds of the present targets
+          are missed.
+      - id: python-overflow
+        text: "In Python, `(lo + hi) // 2` can overflow on huge lists, so write `lo + (hi - lo) // 2`"
+        explanation: >-
+          Python integers have arbitrary precision, so `lo + hi` cannot overflow:
+          `(sys.maxsize + sys.maxsize) // 2` works. The advice comes from fixed-width integers in
+          languages like Java, where `1_500_000_000 + 2_000_000_000` wraps to a negative number
+          in 32 bits (in C, signed overflow is undefined behavior). The `lo + (hi - lo) // 2` form is harmless in Python, just unnecessary.
+      - id: needs-access-and-order
+        text: It needs O(1) access to the middle and an order, so one probe discards a whole side
+        explanation: >-
+          A probe is useful only if it settles a whole side. That needs an order (or, for an answer
+          search, a yes/no test that flips once) and cheap access to the middle, which a Python
+          `list` gives in O(1). A sorted array satisfies both. Missing either one removes the
+          O(log n) bound.
+    correct: needs-access-and-order
+    followUps:
+      linked-list-ok:
+        prompt: Binary search on a sorted linked list makes O(log n) comparisons. Why is its total time still O(n)?
+        options:
+          - id: walk-cost
+            text: Reaching each middle node means walking along the links, and the walks add up to about `n` steps
+          - id: compare-cost
+            text: Comparing two nodes costs O(n)
+          - id: cannot-sort
+            text: A linked list cannot be kept in sorted order
+        correct: walk-cost
+        explanation: >-
+          Time is the number of probes times the cost of each probe. An array reaches `a[mid]` in
+          O(1). A linked list walks about n/2 links for the first probe, n/4 for the next, and so on,
+          which sums to about n. Counting only comparisons hides that cost.
+      unsorted-ok:
+        prompt: On an unsorted array, what is wrong with discarding the right half after seeing `a[mid] > t`?
+        options:
+          - id: no-order
+            text: Nothing says larger values are on the right, so `t` may be in the half that was discarded
+          - id: slow-fix
+            text: It is correct, but the discarded half must be scanned afterwards, which costs time
+          - id: wrong-middle
+            text: "`mid` is not the middle element when the array is unsorted"
+        correct: no-order
+        explanation: >-
+          The discard step relies on an order. Without one, `a[mid] > t` says nothing about where
+          `t` is. In `[9, 2, 7, 4, 1, 8, 5]` the probes for 5 hit 4, 8, and 1, and the search ends
+          at `-1`, although 5 is at index 6.
+      python-overflow:
+        prompt: When does `(lo + hi) // 2` overflow in a language like Java or C?
+        options:
+          - id: fixed-width
+            text: When `lo + hi` exceeds the largest value of a fixed-width integer, such as 2,147,483,647 for a 32-bit `int`
+          - id: any-large
+            text: Whenever the array is large, in any language
+          - id: odd-sum
+            text: Whenever `lo + hi` is odd, because of the rounding
+        correct: fixed-width
+        explanation: >-
+          Fixed-width integer types wrap around (Java) or have undefined behavior (signed C) when the sum is too big. Python's `int` grows
+          as needed, so the sum is exact and the `lo + (hi - lo) // 2` form is only a habit to keep
+          when porting code. Rounding on odd sums is a separate matter, about rounding `mid` down or
+          up.
+
+  - id: answer-search-total-cost
+    heading: What is the worst-case time complexity?
+    tags: [binary-search, complexity]
+    prompt: |-
+      To find the smallest session limit for `n` files in order (sample: `sizes = [4, 9, 3, 7, 6, 2, 8]`
+      with at most `d = 3` sessions), you binary search the limit:
+
+      ```python
+      lo, hi = max(sizes), sum(sizes)
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if feasible(mid):   # one pass over all n sizes
+              hi = mid
+          else:
+              lo = mid + 1
+      ```
+
+      `feasible(x)` makes one pass over the `n` sizes, and `R = hi - lo + 1` is the size of the
+      initial search range. What is the worst-case time of the whole loop?
+    options:
+      - id: log-r
+        text: O(log R)
+        explanation: >-
+          That counts the probes and forgets their cost. The loop makes at most `ceil(log2 R)`
+          probes, but each `feasible` call scans all `n` sizes. O(log R) would be right only if a
+          probe took constant time, as when `bisect.bisect_left(a, x)` reads one element of a
+          sorted list per step.
+      - id: n-plus-log-r
+        text: O(n + log R)
+        explanation: >-
+          Adding fits two separate phases, such as one pass over the data and then a search. Here
+          `feasible` runs inside the loop, so its O(n) cost recurs on every probe. With 7 sizes and
+          5 probes the loop made 35 element visits, not 12.
+      - id: n-log-r
+        text: O(n log R)
+        explanation: >-
+          The loop halves the range, so it makes at most `ceil(log2 R)` probes, and each probe costs
+          O(n). For `sizes = [4, 9, 3, 7, 6, 2, 8]` and `d = 3`, `R = 31` and the loop made 5 probes,
+          35 visits. In Python 3.10+, `bisect_left(range(lo, hi + 1), True, key=feasible)` runs this
+          same search.
+      - id: n-times-r
+        text: O(n × R)
+        explanation: >-
+          O(n × R) is what you get by trying every limit from `lo` to `hi` in turn, with one O(n) test
+          each. Binary search needs only about `log2 R` of those tests, because feasibility flips
+          once. When `R` is in the billions, the gap decides whether the program finishes.
+    correct: n-log-r
+    followUps:
+      log-r:
+        prompt: >-
+          Binary search on a sorted list reads `a[mid]` O(log n) times and is O(log n). What differs
+          about `feasible(mid)`?
+        options:
+          - id: costs-n
+            text: Each call has to scan the `n` sizes, so a probe costs O(n) instead of O(1)
+          - id: hidden-sort
+            text: It sorts the sizes first, so each probe costs O(n log n)
+          - id: more-probes
+            text: It gets called many more than `log2 R` times
+        correct: costs-n
+        explanation: >-
+          Total time is the number of probes times the cost of one probe. Reading `a[mid]` is O(1),
+          so O(log n) probes give O(log n). A greedy `feasible` visits every size, so O(n) per probe
+          gives O(n log R). It does not sort, since the sizes must stay in their original order.
+      n-plus-log-r:
+        prompt: Is `feasible` run once before the loop, or once per probe?
+        options:
+          - id: per-probe
+            text: Once per probe, with a different `mid` each time, so its cost multiplies the number of probes
+          - id: once-only
+            text: Once, because the result for one `mid` also answers every other `mid`
+          - id: cached
+            text: Once per probe, but each result is reused by later probes, so the passes add up only once
+        correct: per-probe
+        explanation: >-
+          Each `mid` is a different limit and needs its own pass. The pass at 24 does not say how
+          many sessions 16 needs. A cache would not help, because this loop never probes the same
+          `mid` twice. Costs of separate phases add, and costs of work nested in a loop multiply.
+      n-times-r:
+        prompt: What lets binary search skip most of the `R` candidate limits that a linear scan would try?
+        options:
+          - id: single-flip
+            text: "`feasible` flips once from false to true, so one probe discards every candidate on one side"
+          - id: sorted-sizes
+            text: The sizes are sorted, so the candidate limits are sorted as well
+          - id: only-sizes
+            text: It tries only limits equal to a file size
+        correct: single-flip
+        explanation: >-
+          A failing probe at `mid` means every smaller limit fails, and a passing probe means every
+          larger one passes. That discards half of the remaining candidates per probe, leaving about
+          `log2 R` probes. The sizes need not be sorted, and the answer, 16 in the sample, need not
+          equal any single size.
