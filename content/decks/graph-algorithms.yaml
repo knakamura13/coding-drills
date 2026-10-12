@@ -1,0 +1,554 @@
+id: graph-algorithms
+title: Graph algorithms
+description: Pick the right tool for ordering, connectivity, and shortest paths on graphs given as edge lists or adjacency lists.
+heading: Which algorithm fits?
+
+questions:
+  - id: prep-order-needs-dag
+    tags: [graph]
+    prompt: >-
+      A bakery prep list has 7 steps numbered 0 to 6. Each pair `(a, b)` means step `a` must finish
+      before step `b` can start, so the links are directed and unweighted:
+      `(0, 1), (0, 2), (2, 1), (1, 3), (3, 4), (5, 2), (5, 6), (6, 4)`. Which approach produces an
+      order that respects every pair, and when does no such order exist?
+    options:
+      - id: bfs-from-zero
+        text: Breadth-first search from step 0, listing steps in the order they are reached
+        explanation: >-
+          Search order is not prerequisite order. From step 0 it reaches 1 before 2 even though
+          `(2, 1)` says 2 comes first, and steps 5 and 6 are never reached, so the list is
+          `[0, 1, 2, 3, 4]`. BFS discovers steps by distance from the start, not by what each step
+          still waits for.
+      - id: sort-by-count
+        text: Sort the steps once by number of prerequisites, fewest first, and follow that list
+        explanation: >-
+          A count taken once is a snapshot, not a schedule. It gives `[0, 5, 3, 6, 1, 2, 4]`, which
+          puts 3 ahead of 1 although `(1, 3)` needs 1 first. Step 3 has only one prerequisite, but
+          that prerequisite is not finished yet. What matters is how many prerequisites are still
+          unfinished as steps complete.
+      - id: union-find-sets
+        text: "Union-find: merge each pair, then list the steps one connected set at a time"
+        explanation: >-
+          Union-find answers "are these connected?" and forgets direction. Every pair here merges
+          into one set, so all 7 steps end up together, and reversing every pair would give the same
+          set. A set holds no information about which step goes first.
+      - id: topological-sort
+        text: Topological sort, which works only when there is no directed cycle
+        explanation: >-
+          Repeatedly start a step with no unfinished prerequisite. Kahn's algorithm gives
+          `[0, 5, 2, 6, 1, 3, 4]` here, and a DFS-based version works too. An order exists only for a
+          DAG (a directed graph with no cycle). Add `(4, 2)` and steps 2, 1, 3, 4 wait on each other,
+          so Kahn's algorithm returns just `[0, 5, 6]`, fewer than 7 steps, which means no valid
+          order exists.
+    correct: topological-sort
+    followUps:
+      bfs-from-zero:
+        prompt: When breadth-first search lists a step, what has it decided about that step's prerequisites?
+        options:
+          - id: nothing
+            text: Nothing. It lists a step when first reached, whatever else still feeds that step
+          - id: waits
+            text: That every step with a pair `(a, step)` has already been listed before it is reached
+          - id: arrows
+            text: That they are done, because it only ever travels along the arrows toward the step
+        correct: nothing
+        explanation: >-
+          BFS follows arrows outward and lists a step the first time it arrives, which can be before
+          another step that also feeds it. Holding a step back until every prerequisite is listed is
+          exactly what topological sort adds.
+      sort-by-count:
+        prompt: >-
+          Step 3 has one prerequisite and step 1 has two, yet step 1 must come first. Why does the
+          one-time sort put 3 too early?
+        options:
+          - id: never-lowered
+            text: The counts are fixed at the start and never lowered as steps finish, so they go stale
+          - id: outgoing-too
+            text: Prerequisite counts are the wrong measure; counting outgoing edges too would fix the order
+          - id: most-first
+            text: Fewest-first is backwards; sorting by most prerequisites first would respect every pair
+        correct: never-lowered
+        explanation: >-
+          Kahn's algorithm uses the same counts but lowers them as steps are finished, and releases a
+          step only when its count reaches 0. A fixed snapshot ranks step 3 (count 1) ahead of step 1
+          (count 2), although 1 must finish first. Reversing the sort does not help either: most-first
+          would put step 1 ahead of step 0.
+      union-find-sets:
+        prompt: >-
+          Union-find receives `(0, 1)` in one run and `(1, 0)` in another. How do the two runs compare,
+          and what does an ordering problem need?
+        options:
+          - id: same-merge
+            text: They merge the same two steps, but an order needs to know which of the two comes first
+          - id: directed-edge
+            text: They differ, because union-find keeps each pair as a directed edge, first step to second
+          - id: root-is-first
+            text: They match, and the root of each merged set is the step that goes first in the order
+        correct: same-merge
+        explanation: >-
+          A union takes two nodes and joins their sets, so the direction of the pair is lost. The root
+          is chosen to keep the trees shallow (for example by size), not to mean "first". Ordering
+          depends on direction, so it needs the directed pairs themselves.
+
+  - id: kahn-short-result
+    heading: What does a short result mean?
+    tags: [graph, queue]
+    prompt: |-
+      Kahn's algorithm below orders a directed, unweighted graph of `n` nodes given as an edge list,
+      where `(a, b)` means `a` must come before `b`. The graph may contain cycles.
+
+      ```python
+      from collections import deque
+
+      def kahn(n, edges):
+          out = [[] for _ in range(n)]
+          indeg = [0] * n
+          for a, b in edges:
+              out[a].append(b)
+              indeg[b] += 1
+          queue = deque(v for v in range(n) if indeg[v] == 0)
+          order = []
+          while queue:
+              v = queue.popleft()
+              order.append(v)
+              for w in out[v]:
+                  indeg[w] -= 1
+                  if indeg[w] == 0:
+                      queue.append(w)
+          return order
+      ```
+
+      For `n = 7` and edges `(0, 1), (1, 2), (2, 3), (3, 1), (3, 4), (5, 6), (5, 4)` it returns
+      `[0, 5, 6]`. Which statement is true?
+    options:
+      - id: disconnected
+        text: The graph is disconnected, so the queue never reached nodes 1 to 4; restart from 1
+        explanation: >-
+          The premise is false: ignoring edge direction, this graph is one connected piece (5 links to
+          4, and 4 to 3). Also, the queue starts with every node whose in-degree is 0 (here 0 and 5),
+          not with a single start node, so separate pieces are all seeded. A disconnected graph without
+          cycles, such as edges `(0, 1), (2, 3), (4, 5)`, returns all 6 nodes. Restarting from node 1
+          would emit it while its prerequisite 3 is still unfinished.
+      - id: only-cycle-nodes
+        text: The 4 missing nodes are exactly the nodes that lie on a cycle
+        explanation: >-
+          Node 4 is missing but is not on a cycle, because the only cycle is 1, 2, 3. Its prerequisite
+          3 is never processed, so its in-degree stops at 1 and never reaches 0. In general the
+          unprocessed nodes are the cycle nodes plus everything reachable from them.
+      - id: append-rest
+        text: "`[0, 5, 6]` is a valid prefix, and the other nodes can be appended in any order"
+        explanation: >-
+          Node 3 must come before 1, 1 before 2, and 2 before 3. Whichever of the three goes first has
+          a prerequisite among the other two that would come after it, so no order of these nodes
+          satisfies every pair. Appending them in any order breaks at least one pair.
+      - id: cycle-exists
+        text: A cycle exists, so no valid order does; missing nodes sit on or after a cycle
+        explanation: >-
+          `indeg[v]` counts the prerequisites of `v` not yet processed, and the queue holds the nodes
+          with none left. Each node on a cycle has a prerequisite on that cycle that is itself waiting
+          on the cycle, so its count never reaches 0. So `len(order) < n` exactly when the graph has a cycle.
+          Time is O(n + m) for `m` edges: each node is queued once and each edge is read once.
+    correct: cycle-exists
+    followUps:
+      disconnected:
+        prompt: Which nodes does the queue hold before the loop starts?
+        options:
+          - id: all-zero-indegree
+            text: Every node whose in-degree is 0, wherever it sits in the graph, so each piece starts
+          - id: only-zero
+            text: Only node 0, the node with the first label, so other pieces are never started
+          - id: has-outgoing
+            text: Only the nodes that have at least one outgoing edge to some later node
+        correct: all-zero-indegree
+        explanation: >-
+          Seeding with every in-degree-0 node lets each acyclic piece of the graph start, so a
+          disconnected graph is no problem. A result shorter than `n` points to a cycle, not to a
+          missing start node.
+      only-cycle-nodes:
+        prompt: Node 4 is not on a cycle. What keeps its in-degree from reaching 0?
+        options:
+          - id: prerequisite-stuck
+            text: Its prerequisite 3 is never processed, so 3 never lowers the count of 4
+          - id: once-per-node
+            text: The queue lowers a node's count at most once, even when two edges enter it
+          - id: edge-order
+            text: The edge `(5, 4)` comes last in the list, so the count for 4 was taken too late
+        correct: prerequisite-stuck
+        explanation: >-
+          Node 4 has two incoming edges, from 3 and from 5. Node 5 lowers the count once, but 3 is
+          stuck behind the cycle, so the count stays at 1. A node is held back by any stuck
+          prerequisite, not just by being on a cycle. The order of the edge list changes no count.
+      append-rest:
+        prompt: >-
+          Nodes 1, 2, 3 are left with the pairs `(1, 2)`, `(2, 3)`, `(3, 1)`. Could some order of the
+          three satisfy all three pairs?
+        options:
+          - id: impossible
+            text: No. Whichever goes first has a prerequisite among the other two that comes later
+          - id: one-violation
+            text: Yes. Order 1, 2, 3 breaks only the pair `(3, 1)`, and one broken pair is acceptable here
+          - id: pick-a-start
+            text: Yes. Start with 1 and let 3 break the tie later, since a cycle only needs one node to start
+        correct: impossible
+        explanation: >-
+          A valid order must satisfy every pair, and these three chase each other in a circle: any node
+          placed first still needs a prerequisite that would come after it. A cycle has no node that
+          can start, and tolerating a broken pair turns "an order that works" into a best effort,
+          which a dependency list cannot use.
+
+  - id: union-find-link-stream
+    heading: Which structure fits?
+    tags: [graph, complexity]
+    prompt: >-
+      A monitoring tool tracks 100,000 machines in an undirected, unweighted network. It receives
+      200,000 events in a row, each either `link(a, b)`, which adds a cable (cycles and repeated
+      links can occur), or `same(a, b)`, which asks whether `a` and `b` are currently joined by some
+      chain of cables. Which approach answers every event in near-constant amortized time?
+    options:
+      - id: bfs-each-query
+        text: Keep an adjacency list and answer each `same` with a fresh BFS from `a`
+        explanation: >-
+          The answers are right, but one BFS costs O(V + E), and the stream may hold up to 200,000
+          questions, so the total is far from linear. BFS or DFS is a good fit when the graph is fixed
+          and only one or a few questions are asked. With many merges mixed between the questions,
+          union-find avoids searching again each time, and it needs only O(V) memory.
+      - id: pair-set
+        text: Keep a set of linked pairs; `same(a, b)` is true when the pair is in the set
+        explanation: >-
+          The set only knows about cables that were added directly. After `link(0, 1)` and
+          `link(1, 2)`, the question `same(0, 2)` should be true, but the pair `(0, 2)` is not in the
+          set. Being connected is transitive, and a set of direct pairs does not capture that.
+      - id: plain-union-find
+        text: Union-find that hangs one root under the other, with no compression or size rule
+        explanation: >-
+          The answers are right, but nothing keeps the trees shallow. Linking `(0, 1), (1, 2), ...,
+          (n - 2, n - 1)` in order, with the first root hung under the second, builds a chain, and
+          `find(0)` walks `n - 1` steps, again on every later query. That is O(n) per operation
+          instead of near-constant.
+      - id: union-find-optimized
+        text: Union-find with path compression, hanging the smaller tree under the larger
+        explanation: >-
+          `find` follows parents to the root and points the nodes it passed straight at it; `union`
+          hangs the smaller tree under the larger one. `same(a, b)` compares two roots, and a link
+          closes a cycle exactly when `find(a) == find(b)` before it is merged. With both tricks the
+          amortized cost per operation is O(α(n)), where α is the inverse Ackermann function: below 5
+          for any n that fits in memory, so effectively constant.
+    correct: union-find-optimized
+    followUps:
+      bfs-each-query:
+        prompt: When would running a BFS for each question be as good as union-find?
+        options:
+          - id: fixed-graph
+            text: When the graph is built once and only one or a few questions are asked about it
+          - id: memory
+            text: When the graph is large, because union-find needs more memory than an adjacency list
+          - id: cycles
+            text: When the graph contains cycles, because BFS handles cycles better than union-find
+        correct: fixed-graph
+        explanation: >-
+          One search costs O(V + E), and so does building the structure once, so a single question
+          gains nothing from union-find. The advantage shows up as merges and questions interleave:
+          each search starts over, while union-find keeps what it has learned. Memory is not the
+          reason (union-find needs O(V)), and cycles are no problem for either.
+      pair-set:
+        prompt: After `link(0, 1)` and `link(1, 2)`, what should `same(0, 2)` return, and why?
+        options:
+          - id: true-transitive
+            text: True, because 0 reaches 2 through 1, and connectedness follows chains of links
+          - id: false-no-link
+            text: False, because no cable joins 0 and 2 directly, and a chain of two does not count
+          - id: needs-cycle
+            text: True only if a cable also joins 2 back to 0, which would close a cycle
+        correct: true-transitive
+        explanation: >-
+          Two machines are connected when any chain of cables joins them, so the answer is true. A
+          lookup of direct pairs misses every chain longer than one cable. A cycle is not required for
+          two machines to be connected.
+      plain-union-find:
+        prompt: >-
+          With the links `(0, 1), (1, 2), ..., (n - 2, n - 1)` hung first-root-under-second, why is
+          `find(0)` slow?
+        options:
+          - id: chain
+            text: Each link hung the old root under a new one, so an n - 1 chain forms and stays
+          - id: scans-edges
+            text: "`find` has to scan the whole list of links to locate the right root each time"
+          - id: compression-slows
+            text: Path compression adds extra work on every call, which ends up making `find` slower
+        correct: chain
+        explanation: >-
+          A `find` costs as many steps as the depth of the node. Hanging one root under another without
+          looking at the sizes can stack the trees into a chain. Union by size keeps the depth at most
+          log₂ n, and path compression flattens the paths that `find` walks.
+
+  - id: negative-edge-shortest-path
+    tags: [graph, bfs, greedy]
+    prompt: >-
+      A delivery network is a directed, weighted graph with three nodes: `depot`, `hub`, and `shop`.
+      The edges are `depot -> shop` costing 4, `depot -> hub` costing 5, and `hub -> shop` costing
+      -3, a rebate. Negative costs are allowed, but no cycle adds up to a negative total. Which
+      algorithm returns the cheapest cost from `depot` to `shop` on every graph of this kind?
+    options:
+      - id: bfs
+        text: Breadth-first search, which finds the path with the fewest edges
+        explanation: >-
+          BFS minimizes the number of edges, which is the right goal only when every edge costs the
+          same. The direct road has one edge and costs 4, while the route through `hub` has two edges
+          and costs 5 + (-3) = 2. BFS returns 4, because it reaches `shop` first by the one-edge road.
+      - id: dijkstra
+        text: Dijkstra's algorithm, fixing each node's cost when it is first taken from the heap
+        explanation: >-
+          `shop` waits in the heap at 4 and `hub` at 5, so `shop` is taken first and fixed at 4. When
+          `hub` is processed, its edge offers 5 - 3 = 2, but `shop` is already fixed, so this version
+          returns 4. The greedy step is safe only when every cost is >= 0. The lazy `heapq` loop that
+          skips only stale entries re-expands a node that gets cheaper, and returns 2 here, but with
+          negative edges it can pop more than E + 1 entries, and it loops forever on a negative cycle
+          reachable from the start.
+      - id: shift-weights
+        text: Add 3 to every cost so none is negative, then run Dijkstra on the new costs
+        explanation: >-
+          A path with `k` edges grows by 3k, so paths with more edges look worse than they are. After
+          the shift the direct road costs 7 and the route through `hub` costs 8 + 0 = 8, so Dijkstra
+          picks the direct road, whose real cost is 4. The true cheapest cost is 2.
+      - id: bellman-ford
+        text: Bellman-Ford, which relaxes every edge up to `V - 1` times
+        explanation: >-
+          A cheapest path uses at most `V - 1` edges, so repeating a relaxation of every edge that
+          many times finds it even with negative costs. It runs in O(V * E), slower than Dijkstra's
+          O((V + E) log V), and one extra round exposes a negative cycle, where no cheapest cost
+          exists. With every cost >= 0 use Dijkstra, and with all costs equal use BFS.
+    correct: bellman-ford
+    followUps:
+      bfs:
+        prompt: What does BFS minimize when edges have different costs?
+        options:
+          - id: edge-count
+            text: The number of edges on the path, which matches cost only when all edges cost the same
+          - id: cost-positive
+            text: The total cost, provided every cost in the graph is positive and none is zero
+          - id: cost-acyclic
+            text: The total cost, provided the graph has no cycle in it, as in this three-node graph
+        correct: edge-count
+        explanation: >-
+          BFS reaches nodes in order of how many edges away they are, and never adds up costs. With
+          equal costs, fewest edges means cheapest, which is why BFS suits unweighted graphs. This
+          graph has no cycle, yet BFS is still wrong, because the cheaper route has more edges.
+      dijkstra:
+        prompt: >-
+          If every cost is >= 0, why can Dijkstra fix a node's cost when it is first taken from the
+          heap?
+        options:
+          - id: no-cheaper-detour
+            text: Any other route passes through a node at least as far, and extra edges never cut the total
+          - id: all-paths-checked
+            text: By then it has already tried every possible path to that node, so no path is left to try
+          - id: one-visit
+            text: A node's cost can be discovered only once, so nothing can change it after it is taken
+        correct: no-cheaper-detour
+        explanation: >-
+          Every node still waiting is at least as far as the one taken, so a route through them cannot
+          come back cheaper when edges add 0 or more. A negative edge breaks this: the farther node
+          `hub` (5) lowers the cost of the nearer node `shop` (4) after `shop` was fixed.
+      shift-weights:
+        prompt: Adding 3 to every edge cost changes the total cost of a path from `depot` to `shop` by how much?
+        options:
+          - id: three-per-edge
+            text: By 3 per edge on the path, so paths with different edge counts shift differently
+          - id: three-total
+            text: By 3 in total, the same for every path from `depot` to `shop`, so the winner is unchanged
+          - id: nothing
+            text: By nothing that matters, because Dijkstra ignores a constant added to every edge cost
+        correct: three-per-edge
+        explanation: >-
+          The direct road has one edge and gains 3 (4 becomes 7). The route through `hub` has two
+          edges and gains 6 (2 becomes 8). The gap is not constant, so the winner after the shift can
+          differ from the winner before it.
+
+  - id: dijkstra-stale-entry
+    heading: What does the stale check do?
+    tags: [graph, heap, complexity]
+    prompt: |-
+      The function below runs Dijkstra on a directed, weighted graph with cycles allowed. Every
+      weight `w` is at least 0, and `graph[u]` holds `(v, w)` pairs.
+
+      ```python
+      import heapq
+      from math import inf
+
+      def dijkstra(graph, src):
+          dist = [inf] * len(graph)
+          dist[src] = 0
+          heap = [(0, src)]
+          while heap:
+              d, u = heapq.heappop(heap)
+              if d > dist[u]:
+                  continue
+              for v, w in graph[u]:
+                  if d + w < dist[v]:
+                      dist[v] = d + w
+                      heapq.heappush(heap, (d + w, v))
+          return dist
+      ```
+
+      What is true if the two lines `if d > dist[u]:` and `continue` are deleted?
+    options:
+      - id: wrong-distances
+        text: A stale entry overwrites `dist[u]` with its larger value and ruins the result
+        explanation: >-
+          Writes to `dist` happen only inside `if d + w < dist[v]`, so a larger value never replaces
+          a smaller one. A stale entry for `u` has `d` above `dist[u]`, so every `d + w` it tries is
+          above `dist[u] + w`, which already bounded `dist[v]` when `u` was first expanded. It changes
+          nothing, so the answers stay right.
+      - id: never-ends
+        text: A cycle in the graph keeps re-adding nodes, so the loop can run forever
+        explanation: >-
+          Every push needs a strict improvement `d + w < dist[v]`, and stale entries never cause one,
+          so only the first expansion of each node relaxes edges. That limits the pushes to one per
+          edge plus the start, and the loop ends. Cycles are harmless here because no weight is
+          negative.
+      - id: never-stale
+        text: It changes nothing, because a node is pushed only when it is first reached
+        explanation: >-
+          A node is pushed on every improvement. Take `0 -> 1` (5), `0 -> 2` (1), `2 -> 1` (1): node 1
+          is pushed with 5, then again with 2, and `(5, 1)` pops last as a stale entry. `heapq` has no
+          decrease-key, so several entries for one node are normal.
+      - id: same-answers
+        text: Answers stay correct, but stale entries re-scan edges for no gain
+        explanation: >-
+          A stale pop relaxes nothing, but the loop still scans all of that node's edges. A node
+          improved `k` times with `k` outgoing edges costs about k² scans instead of k, so the total
+          can exceed O((V + E) log V). With the check, each node is expanded once: at most E + 1
+          pushes, each O(log E) on a heap of at most E + 1 entries. That is O(log V) for a graph
+          without parallel edges, so O((V + E) log V) in total.
+    correct: same-answers
+    followUps:
+      wrong-distances:
+        prompt: >-
+          A stale entry `(d, u)` pops after `u` was already expanded with a smaller distance. Why can't
+          its edges improve any `dist[v]`?
+        options:
+          - id: already-bounded
+            text: Each `d + w` exceeds `dist[u] + w`, which already bounded `dist[v]` at the first expansion
+          - id: heap-removes
+            text: The heap discards a stale entry before it can be popped, so its edges never get scanned
+          - id: overwritten
+            text: Popping a stale entry resets `dist[u]` to the stale value, so every comparison fails
+        correct: already-bounded
+        explanation: >-
+          `heapq` pops the smallest entry first, so the cheaper entry for `u` was expanded earlier,
+          and the relaxations it made bound every neighbor. The stale entry repeats those with a
+          larger `d`, which cannot win. Entries are not deleted from the heap, and popping one does
+          not touch `dist`.
+      never-ends:
+        prompt: With every weight >= 0, what limits the number of pushes, with or without the stale check?
+        options:
+          - id: one-per-edge
+            text: A push needs a strict improvement, and an edge improves only at its tail's first pop
+          - id: heap-refuses
+            text: The heap refuses a second entry for a node that is already stored in it at all
+          - id: once-per-node
+            text: Pushes stop for good once every node has been reached one time by any route at all
+        correct: one-per-edge
+        explanation: >-
+          The first expansion of a node uses its final distance, and every later expansion is a stale
+          entry that cannot improve anything. So each edge succeeds at most once, giving at most
+          E + 1 pushes in all. Neither the heap nor the number of reached nodes stops a push; it is
+          the strict `<` test that does.
+      never-stale:
+        prompt: >-
+          In the graph `0 -> 1` (5), `0 -> 2` (1), `2 -> 1` (1), how many heap entries does node 1 get
+          over the run from node 0?
+        options:
+          - id: two-entries
+            text: Two, `(5, 1)` pushed from node 0 and later `(2, 1)` pushed from node 2
+          - id: one-replaced
+            text: One, because `heapq` replaces the old entry in place when `dist[1]` improves
+          - id: three-entries
+            text: Three, one for each node that gets expanded over the whole run from node 0
+        correct: two-entries
+        explanation: >-
+          `heapq` can only push and pop, so an improvement adds a new entry and leaves the old one
+          where it is. `(2, 1)` pops first, and `(5, 1)` pops last as a stale entry that the check
+          skips. The heap can therefore hold up to E + 1 entries, which may exceed V, but without
+          parallel edges log of that is still O(log V).
+
+  - id: count-components-edge-list
+    heading: Which approach counts the components?
+    tags: [graph, bfs, dfs]
+    prompt: >-
+      A graph has `n = 10` nodes labelled 0 to 9 and is given as an undirected, unweighted edge list:
+      `(0, 3), (3, 5), (5, 0), (1, 6), (4, 7), (7, 8)`. It may contain cycles (here `0, 3, 5`), and
+      some nodes have no edges at all. A connected component is a group of nodes that can all reach
+      one another, and this graph has 5 of them. Which approach returns the right count for every
+      such graph in O(V + E) time?
+    options:
+      - id: no-visited-set
+        text: Run DFS from every node, count the starts, and keep no visited set
+        explanation: >-
+          An undirected edge can be walked in both directions, so `0 -> 3 -> 0 -> 3 ...` never
+          finishes normally. Even a single edge `(0, 1)` does this, cycle or not, and a recursive
+          version fails with Python's `RecursionError` instead of returning a count. Only a graph with
+          no edges would finish, with the count `n`. A visited set marks a node as already handled.
+      - id: nodes-minus-edges
+        text: Return `n` minus the number of edges, since each edge joins two components
+        explanation: >-
+          An edge lowers the count only when it joins two different components. An edge inside a
+          component, such as `(5, 0)`, which closes the triangle, lowers nothing. Here the formula
+          gives 10 - 6 = 4, but the answer is 5. It is exact only when the graph has no cycle.
+      - id: one-search
+        text: Run one BFS from node 0 with a visited set and return how many nodes it reaches
+        explanation: >-
+          One search finds only the component of node 0. Here it reaches `0, 3, 5`, so this returns 3
+          instead of 5, and it would return `n` for a connected graph. The search has to start again
+          from every node that no earlier search reached, and the number of restarts is the answer.
+      - id: search-each-new
+        text: Loop over all nodes; at each unvisited one, run BFS or DFS and add 1
+        explanation: >-
+          Each search marks its whole component as visited, so a new search starts only for a
+          component not yet counted. Every node is queued once and every adjacency entry is read
+          once, which is O(V + E) including building the adjacency list. Union-find also works in near-linear
+          time: start at `n` and subtract 1 for each union that merges two sets.
+    correct: search-each-new
+    followUps:
+      no-visited-set:
+        prompt: With only the edge `(0, 1)`, what does DFS without a visited set do on reaching node 1?
+        options:
+          - id: walks-back
+            text: It walks back to 0, then to 1 again, forever, since an undirected edge works both ways
+          - id: stops-leaf
+            text: It stops, because node 1 has just one edge and the search already used it to get there
+          - id: stops-acyclic
+            text: It stops, because a graph with a single edge cannot contain a cycle to loop around
+        correct: walks-back
+        explanation: >-
+          Without a visited set nothing says the search has been to 0 before. An undirected edge sits
+          in both adjacency lists, so one edge is already a two-node loop. Remembering only the parent
+          avoids this on trees but still loops on a real cycle such as `0, 3, 5`.
+      nodes-minus-edges:
+        prompt: When does `n - len(edges)` equal the number of components?
+        options:
+          - id: no-cycles
+            text: Only when the graph has no cycle, so every edge joins two separate components
+          - id: connected
+            text: Only when the graph is connected, so one component remains and every edge was needed
+          - id: fewer-edges
+            text: Whenever the graph has fewer edges than it has nodes, since then edges cannot form cycles
+        correct: no-cycles
+        explanation: >-
+          In a graph with no cycle, each edge merges two components, so the count falls by exactly one
+          per edge. A cycle adds an edge that merges nothing. Fewer edges than nodes is not enough:
+          a triangle plus three isolated nodes has 6 nodes, 3 edges, and 4 components.
+      one-search:
+        prompt: A BFS from node 0 ends when its queue is empty. What has it found?
+        options:
+          - id: one-component
+            text: Exactly the nodes reachable from node 0, which is one component
+          - id: whole-graph
+            text: Every node of the graph, as long as the search keeps a visited set
+          - id: component-count
+            text: The number of components, since the queue empties once per component
+        correct: one-component
+        explanation: >-
+          The queue empties when no unvisited neighbor is left, which happens once per search, and
+          the search covers only what node 0 can reach. Nodes in other components stay unvisited, and
+          the outer loop finds them.

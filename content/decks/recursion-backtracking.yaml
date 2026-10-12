@@ -1,0 +1,548 @@
+id: recursion-backtracking
+title: Recursion and backtracking
+description: Explore choices depth-first, undo each one on the way back, and cut off branches that cannot succeed.
+heading: What does the search do?
+
+questions:
+  - id: forgotten-undo
+    heading: What does this return?
+    tags: [backtracking, recursion]
+    prompt: |-
+      A routine decides, item by item, whether each element goes into a subset. It should undo the
+      include choice before trying the exclude choice, but the `path.pop()` line was forgotten. The
+      items are distinct, and the results are listed in the order the code records them.
+
+      ```python
+      def subsets(items):
+          out, path = [], []
+
+          def explore(i):
+              if i == len(items):
+                  out.append(path[:])
+                  return
+              path.append(items[i])  # include item i
+              explore(i + 1)
+              explore(i + 1)         # meant to leave item i out
+
+          explore(0)
+          return out
+      ```
+
+      What does `subsets([4, 9])` return?
+    options:
+      - id: fixed-output
+        text: "`[[4, 9], [4], [9], []]`, because each call works on its own view of `path`"
+        explanation: >-
+          That is the output of the fixed version, which calls `path.pop()` after the include branch.
+          Here `path` is one list shared by every call, so nothing removes an item once it has been
+          appended.
+      - id: two-lists
+        text: "`[[4, 9], [4, 9]]`, because once `path` is full the exclude branch has nothing to add"
+        explanation: >-
+          The missing `pop` changes what `path` holds, not which calls run. Both `explore(i + 1)`
+          calls still happen at every level, so four leaves are reached and four lists are recorded.
+      - id: all-empty
+        text: "`[[], [], [], []]`, because every entry ends up showing the final, empty `path`"
+        explanation: >-
+          Empty lists would come from recording `path` itself and popping every item. This code
+          records a copy, `path[:]`, and never pops, so `path` never shrinks and no recorded list is
+          empty.
+      - id: stale-items
+        text: "`[[4, 9], [4, 9], [4, 9, 9], [4, 9, 9]]`, because stale items stay in `path`"
+        explanation: >-
+          The include branch for 4 and 9 records `[4, 9]` at both leaves. Nothing removes the 9, so
+          the exclude branch for 4 starts from `[4, 9]`, appends another 9, and records `[4, 9, 9]`
+          twice. Each choice has to be undone with `path.pop()` straight after its recursive call.
+    correct: stale-items
+    followUps:
+      fixed-output:
+        prompt: >-
+          `path` is created once in `subsets` and every `explore` call uses that same list. When an
+          `explore` call returns, what happens to the items it appended?
+        options:
+          - id: remain
+            text: They stay in `path`, because returning does not undo changes to a shared list
+          - id: auto-removed
+            text: They are removed automatically, because the call that added them has finished
+          - id: moved-to-out
+            text: They move into `out`, because the call recorded them
+        correct: remain
+        explanation: >-
+          A function returning does not reverse changes it made to an object that outlives it. The
+          shared `path` keeps whatever was appended, so the "un-choose" step has to remove each item
+          explicitly.
+      two-lists:
+        prompt: >-
+          Without the `pop`, how many times does `explore(2)`, the call that records a list, run for
+          `[4, 9]`?
+        options:
+          - id: four
+            text: Four times, since every call still makes both of its recursive calls
+          - id: once
+            text: Once, because `path` is already full after the first branch
+          - id: twice
+            text: Twice, one for the include branch and one for the exclude branch
+        correct: four
+        explanation: >-
+          The recursive calls do not depend on what `path` holds, so the call tree is the same with or
+          without the `pop`. Four leaves run, and each records the contents of `path` at that moment.
+      all-empty:
+        prompt: The code records `path[:]`. What does `out` hold for each leaf?
+        options:
+          - id: snapshot
+            text: A separate snapshot, so later changes to `path` do not alter it
+          - id: same-list
+            text: A reference to `path` itself, so later changes show up in `out`
+          - id: final-copy
+            text: A copy taken once, at the end of the whole search, after every pop has run
+        correct: snapshot
+        explanation: >-
+          The slice `path[:]` builds a new list at the moment of the call. The entries are never empty
+          here because the real bug is the missing `pop`, which makes `path` grow instead of shrink.
+
+  - id: append-copy
+    heading: What does this return?
+    tags: [backtracking, recursion, python]
+    prompt: |-
+      This include/exclude search undoes each choice correctly with `path.pop()`. The items are
+      distinct, and the results are listed in the order the code records them.
+
+      ```python
+      def subsets(items):
+          out, path = [], []
+
+          def explore(i):
+              if i == len(items):
+                  out.append(path)
+                  return
+              path.append(items[i])
+              explore(i + 1)
+              path.pop()
+              explore(i + 1)
+
+          explore(0)
+          return out
+      ```
+
+      What does `subsets([4, 9])` return?
+    options:
+      - id: expected-subsets
+        text: "`[[4, 9], [4], [9], []]`, the four subsets in the order they were reached"
+        explanation: >-
+          That is what the search builds along the way, but `out.append(path)` stores the list itself,
+          not its contents at that moment. Each later `path.pop()` changes the lists already stored.
+      - id: first-only
+        text: "`[[4, 9], [], [], []]`, because only the first leaf is recorded before pops begin"
+        explanation: >-
+          Every leaf appends `path`, and `out` ends with four entries that are all the same object. The
+          first leaf is not special: when the search ends, all four entries show the same final contents.
+      - id: full-copies
+        text: "`[[4, 9], [4, 9], [4, 9], [4, 9]]`, because every entry is the first list recorded"
+        explanation: >-
+          The entries do not keep the first leaf's contents. They are references to the one `path` list,
+          and that list is emptied by the pops that follow, so `[4, 9]` does not survive.
+      - id: shared-empty
+        text: "`[[], [], [], []]`, four references to one list that is empty again at the end"
+        explanation: >-
+          Every `out.append(path)` adds the same list object. Each append is matched by a pop, so
+          `path` is empty when `subsets` returns and all four entries show `[]`. Appending `path[:]` or
+          `list(path)` stores a snapshot instead.
+    correct: shared-empty
+    followUps:
+      expected-subsets:
+        prompt: >-
+          A leaf runs `out.append(path)`, and later `path.pop()` runs on the same list. What happens to
+          the entry already in `out`?
+        options:
+          - id: changes-too
+            text: It changes too, because the entry and `path` are the same list object
+          - id: frozen
+            text: It stays as it was, because `append` stores the current contents of `path`
+          - id: removed
+            text: It is removed from `out`, because `pop` undoes the earlier append
+        correct: changes-too
+        explanation: >-
+          `append` stores a reference, not a copy of the contents. A change made through `path` is
+          visible through every reference to it, including the entries of `out`.
+      first-only:
+        prompt: How many different list objects does `out` hold at the end?
+        options:
+          - id: one
+            text: One, referenced four times, so every entry shows the same contents
+          - id: four
+            text: Four, one for each leaf, with only the first one still holding its items
+          - id: two
+            text: Two, one for the include branch and one for the exclude branch
+        correct: one
+        explanation: >-
+          Appending the same name four times adds four references to one list. Nothing creates a new
+          list per leaf, so no entry can differ from the others.
+      full-copies:
+        prompt: When the search has finished and every `pop` has run, what does `path` contain?
+        options:
+          - id: empty
+            text: "`[]`, because every append was matched by a pop"
+          - id: first-subset
+            text: "`[4, 9]`, the first subset the search recorded"
+          - id: last-item
+            text: "`[9]`, because the last choice made is the one that remains"
+        correct: empty
+        explanation: >-
+          Each `append` has a matching `pop`, so `path` returns to `[]`. All four entries of `out` are
+          that same list, which is why they all read `[]` instead of keeping any earlier contents.
+
+  - id: subset-cost
+    heading: What is the complexity?
+    tags: [backtracking, complexity]
+    prompt: >-
+      A routine takes `n` distinct items and decides for each one, in turn, whether to include it or
+      leave it out. After all `n` decisions it records a copy of the current subset with `path[:]`.
+      Each include and each undo is O(1), and the results are not sorted. Counting the cost of those
+      copies, what is the tightest bound on the total running time?
+    options:
+      - id: two-to-n
+        text: O(2^n), because there are 2^n subsets and each one is recorded in constant time
+        explanation: >-
+          There are 2^n subsets, but recording one is not constant. Copying a subset costs time in
+          proportion to its length, and the lengths add up to n · 2^(n-1) items. For n = 4 that is 32
+          items across 16 subsets, so the total is more than O(2^n).
+      - id: n-two-to-n
+        text: O(n · 2^n), because the 2^n finished subsets are copied at up to n items each
+        explanation: >-
+          The tree has 2^(n+1) - 1 calls (31 for n = 4), and those cost O(2^n) in total. The copies
+          cost more: each item is in exactly half the subsets, so about n · 2^(n-1) items are copied
+          (32 for n = 4). The output alone already holds that many items, so the bound is tight.
+      - id: n-squared
+        text: O(n²), because the recursion is n levels deep and each level does O(n) work
+        explanation: >-
+          The depth is n, but each level of the tree holds twice as many calls as the one above, so
+          the bottom level alone has 2^n of them. The output has 2^n lists, which no O(n²) routine
+          could write once n passes 4.
+      - id: n-factorial
+        text: O(n!), because each branch chooses among the items that remain, as in permutations
+        explanation: >-
+          Each item has two options, include or leave out, which gives 2^n leaves. The n! count comes
+          from ordering items, as in permutations. n! is a valid but loose upper bound here: at n = 10
+          it is 3,628,800 against 10,240 for n · 2^n.
+    correct: n-two-to-n
+    followUps:
+      two-to-n:
+        prompt: >-
+          For n = 4, 16 subsets are recorded. How many items are copied in total across all of them?
+        options:
+          - id: sixteen
+            text: 16, one per subset, so copying adds only a constant amount
+          - id: thirty-two
+            text: 32, since subsets average two items each (n · 2^(n-1))
+          - id: sixty-four
+            text: 64, because each of the 16 subsets has all four items
+        correct: thirty-two
+        explanation: >-
+          Each of the 4 items appears in exactly 8 of the 16 subsets, which is 4 · 8 = 32 copied items.
+          A copy takes time in proportion to its length, so the copies cost Θ(n · 2^n) in total.
+      n-squared:
+        prompt: >-
+          Count the root as level 0. How many calls does level `d` of the include/exclude tree hold?
+        options:
+          - id: doubles
+            text: 2^d, because each call makes two calls
+          - id: d-calls
+            text: d, because there is one call per level of depth
+          - id: n-calls
+            text: n, because every level looks at all n items
+        correct: doubles
+        explanation: >-
+          Each call spawns two, so level `d` holds 2^d calls and the last level holds 2^n. A depth of n
+          does not mean n calls per level.
+      n-factorial:
+        prompt: >-
+          For n = 4, how many finished subsets does the include/exclude tree produce?
+        options:
+          - id: sixteen
+            text: 16, since each of the four items has two options
+          - id: twenty-four
+            text: 24, since the items can be ordered in 4! ways
+          - id: eight
+            text: 8, since each item adds two more subsets
+        correct: sixteen
+        explanation: >-
+          Two options for each of four items gives 2 · 2 · 2 · 2 = 16 leaves. The 4! = 24 count applies
+          when the order of the chosen items matters, as in permutations, which is a different search.
+
+  - id: permutation-duplicates
+    heading: Which skip test dedupes?
+    tags: [backtracking, recursion, sorting]
+    prompt: |-
+      The search below builds every ordering of `nums`, using the array `used` so that no index is
+      taken twice. `nums` may contain duplicates, for example `[5, 8, 5]`, and order matters, so
+      `[5, 8, 5]` and `[8, 5, 5]` are different results. Each distinct ordering must be recorded once.
+
+      ```python
+      # step A runs here, before the search
+      def explore():
+          if len(path) == len(nums):
+              out.append(path[:])
+              return
+          for i in range(len(nums)):
+              if used[i]:
+                  continue
+              # step B runs here
+              used[i] = True
+              path.append(nums[i])
+              explore()
+              path.pop()
+              used[i] = False
+      ```
+
+      Which choice of steps A and B gives each distinct ordering exactly once for every input?
+    options:
+      - id: skip-any-equal
+        text: "Sort `nums`; B skips `i` when `i > 0 and nums[i] == nums[i - 1]`, used or not"
+        explanation: >-
+          This skips the second 5 every time, even when the first 5 is already in the path and the
+          second one is needed for a later position. No path can hold both 5s, so `[5, 8, 5]` returns
+          `[]`. The test also has to check whether the left neighbour is currently in the path.
+      - id: unsorted
+        text: "Do not sort; B skips `i` when `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+        explanation: >-
+          The test compares an item only with the one just before it. In the unsorted `[5, 8, 5]` the
+          two 5s are not neighbours, so nothing is skipped and 6 paths are recorded, three of them
+          repeats. Sorting first puts equal values side by side.
+      - id: by-value
+        text: "Do not sort; B skips `i` when the value `nums[i]` is already in `path`"
+        explanation: >-
+          Testing by value refuses the second 5 whenever one 5 is in the path, so no path reaches
+          length 3 and `[5, 8, 5]` returns `[]`. It would work only on distinct values, where `used`
+          already does the job.
+      - id: sorted-used-check
+        text: "Sort `nums`; B skips `i` if `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+        explanation: >-
+          Sorted, `[5, 8, 5]` becomes `[5, 5, 8]`. The test `not used[i - 1]` means the equal item to the
+          left is not in the path, so it was already tried at this position and its copy would repeat
+          the same values. The result is `[[5, 5, 8], [5, 8, 5], [8, 5, 5]]`.
+    correct: sorted-used-check
+    followUps:
+      skip-any-equal:
+        prompt: >-
+          In sorted `[5, 5, 8]` the path already holds the first 5. What does a test that ignores
+          `used[i - 1]` do to the second 5?
+        options:
+          - id: always-skipped
+            text: It skips the second 5 here too, so no path can ever hold both 5s
+          - id: allowed-here
+            text: It allows the second 5 here, because the first 5 is already placed
+          - id: after-eight
+            text: It allows the second 5 only after the 8 has been placed
+        correct: always-skipped
+        explanation: >-
+          Without the `used` check the rule fires for the second 5 wherever it appears, including when
+          the first 5 sits earlier in the path. Every full-length path needs both 5s, so none survive.
+      unsorted:
+        prompt: >-
+          In unsorted `[5, 8, 5]`, what does the test at index 2 compare `nums[2]` with?
+        options:
+          - id: eight
+            text: "`nums[1]`, which is 8, so the two 5s are never compared"
+          - id: first-five
+            text: "`nums[0]`, which is 5, so the duplicate is detected"
+          - id: whole-path
+            text: Every value in the path, so it finds the earlier 5
+        correct: eight
+        explanation: >-
+          The test looks only at index `i - 1`. When equal values are not adjacent it never sees that a
+          value repeats, and sorting is what makes duplicates neighbours.
+      by-value:
+        prompt: >-
+          The path is `[5]` and the search is at the other 5. What does `nums[i] in path` say?
+        options:
+          - id: is-present
+            text: True, so the second 5 is skipped and no full path holds both 5s
+          - id: not-present
+            text: False, because the second 5 is at a different index than the first
+          - id: depends
+            text: It depends on whether the input was sorted first
+        correct: is-present
+        explanation: >-
+          The test compares values, and the value 5 is already present. The array `used` compares
+          indexes instead, which is why it keeps duplicate values usable as separate items.
+
+  - id: pruned-search
+    heading: Which pruning check is correct?
+    tags: [backtracking, sorting]
+    prompt: |-
+      A courier must find every set of parcels whose weights add up to exactly `cap`. The weights are
+      distinct positive integers in no particular order, each parcel is used at most once, and the order
+      inside a set does not matter. The weights arrive unsorted, and the search may sort them once
+      before `explore(0, cap)`.
+
+      ```python
+      def explore(start, left):
+          if left == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(weights)):
+              ...  # pruning check goes here
+              path.append(weights[i])
+              explore(i + 1, left - weights[i])
+              path.pop()
+      ```
+
+      Which check keeps every valid set and also ends the loop as soon as one weight is too heavy?
+    options:
+      - id: ge-break
+        text: "Sort first; `if weights[i] >= left: break`"
+        explanation: >-
+          A weight equal to `left` fits exactly and finishes a set, but `>=` breaks before taking it.
+          On `[4, 6, 10]` with `cap = 10` this returns `[]`, although `[4, 6]` and `[10]` both work.
+      - id: continue-check
+        text: "Sort first; `if weights[i] > left: continue`"
+        explanation: >-
+          This keeps every valid set, but it skips only the one heavy weight and keeps testing the
+          rest, all of which are heavier. It makes the same calls and finds the same sets as `break`,
+          but it still tests every remaining weight, so the loop iterates more.
+      - id: unsorted-break
+        text: "Leave unsorted; `if weights[i] > left: break`"
+        explanation: >-
+          A `break` assumes that every later weight is at least as heavy, which only holds after
+          sorting. On `[9, 2, 4]` with `cap = 6` the loop stops at the 9 and returns `[]`, losing
+          `[2, 4]`.
+      - id: break-check
+        text: "Sort first; `if weights[i] > left: break`"
+        explanation: >-
+          Once a sorted weight exceeds `left`, every later one does too, so `break` drops them safely, and
+          `>` keeps the exact fit. With no check the search makes the most calls, testing `left < 0`
+          on entry makes fewer, and this `break` makes fewer still, all finding the same sets.
+    correct: break-check
+    followUps:
+      ge-break:
+        prompt: >-
+          With `cap = 10` and weights `[4, 6, 10]`, the parcel of weight 10 is considered when `left` is
+          10. Why must it not trigger the break?
+        options:
+          - id: exact-fit
+            text: An exact fit completes a set, so only a weight greater than `left` is too heavy
+          - id: too-heavy
+            text: A weight equal to `left` leaves nothing for other parcels, so it should be skipped
+          - id: either-way
+            text: The two tests differ only on ties, and ties never change the result
+        correct: exact-fit
+        explanation: >-
+          A weight is too heavy only when it is more than what remains. Equal is exactly what the
+          search wants, because the next call sees `left == 0` and records the set.
+      continue-check:
+        prompt: >-
+          In sorted order, once `weights[i] > left`, can any later weight in the same loop fit?
+        options:
+          - id: none-fit
+            text: No, because every later weight is heavier still
+          - id: some-fit
+            text: Yes, because a later weight might be lighter
+          - id: exact-only
+            text: Only a weight equal to `left`, since an exact fit is allowed
+        correct: none-fit
+        explanation: >-
+          The weights are distinct and ascending, so each later weight is larger than the one that
+          failed. Testing them is wasted work, and `break` ends the loop instead of testing each one.
+      unsorted-break:
+        prompt: >-
+          With `[9, 2, 4]` and `cap = 6`, the loop first meets 9. What does `break` do there?
+        options:
+          - id: ends-loop
+            text: It ends the loop, so 2 and 4 (sum 6) are never tried
+          - id: skips-nine
+            text: It skips only the 9 and continues with 2 and 4
+          - id: ends-search
+            text: It ends the whole search, which is right because 9 is too heavy
+        correct: ends-loop
+        explanation: >-
+          `break` leaves the entire loop, not just the current weight. That is safe only when nothing
+          later can fit, which sorting guarantees and arbitrary order does not.
+
+  - id: base-case-depth
+    heading: What happens when it runs?
+    tags: [backtracking, recursion, python]
+    prompt: |-
+      `fill` should build every string of `n` letters from `R` and `G`. There is no input list, so no
+      duplicates, and order matters. A slip deleted the base case, which was
+      `if slot == n: record the string and return`.
+
+      ```python
+      def fill(slot, n, path):
+          for color in "RG":
+              path.append(color)
+              fill(slot + 1, n, path)
+              path.pop()
+      ```
+
+      On a default Python setup, what happens when `fill(0, 3, [])` runs?
+    options:
+      - id: eight-strings
+        text: It finishes normally, because the loop over `"RG"` ends each call
+        explanation: >-
+          Each call runs the loop, and each pass through the loop makes another call, so nothing stops
+          the descent. The loop ending only returns control to the caller after its inner calls
+          return, and they never do.
+      - id: runs-forever
+        text: It never stops and never raises, because the recursion has no end condition
+        explanation: >-
+          Every call waits on a deeper one, so the stack of unfinished calls keeps growing. Python
+          limits that stack (1,000 frames by default) and raises `RecursionError` when it is
+          exceeded, instead of running forever.
+      - id: only-big-n
+        text: It raises `RecursionError` only when `n` is close to 1,000, since the depth equals `n`
+        explanation: >-
+          Depth tracks `n` only while the base case compares `slot` with `n`. Without it, `n` is never
+          consulted, so `slot` climbs until the limit is reached and the error appears for `n = 3` too.
+      - id: recursion-error
+        text: "`RecursionError` once about 1,000 calls are nested, whatever the value of `n`"
+        explanation: >-
+          Nothing ever stops the descent, so the stack reaches Python's default limit of 1,000
+          frames. With the base case in place the stack is at most `n + 1` calls deep (11 for
+          `n = 10`), so the limit matters only for `n` near 1,000, far past what an exhaustive search
+          could finish.
+    correct: recursion-error
+    followUps:
+      eight-strings:
+        prompt: What stops a recursive call from making another recursive call?
+        options:
+          - id: base-case
+            text: A base case that returns before the call recurses
+          - id: loop-end
+            text: The loop over the colours running out of items
+          - id: path-length
+            text: The path getting long enough, which Python detects itself
+        correct: base-case
+        explanation: >-
+          A loop ends only after its body has finished, and here the body is another call. Only a
+          condition that returns without recursing, such as `slot == n`, cuts a branch off and lets
+          the stack unwind.
+      runs-forever:
+        prompt: >-
+          Each call is waiting for a deeper call to return. What does Python do as those unfinished
+          calls pile up?
+        options:
+          - id: raises-error
+            text: It keeps adding stack frames until the limit, then raises `RecursionError`
+          - id: reuses-frames
+            text: It reuses the frame of the waiting call, so the stack stays small and the program hangs
+          - id: stops-quietly
+            text: It stops quietly at the limit and returns `None`
+        correct: raises-error
+        explanation: >-
+          Python does not reuse frames for recursive calls, and these calls are not even the last
+          action in the function. The stack grows until it reaches the limit, and then Python raises
+          `RecursionError`.
+      only-big-n:
+        prompt: >-
+          With the base case deleted, does the value of `n` change when the recursion stops?
+        options:
+          - id: n-unused
+            text: "No: `n` only fed the missing base case, so depth grows until the limit for any `n`"
+          - id: n-sets-depth
+            text: Yes, because the depth always equals `n` and the recursion stops there
+          - id: n-over-limit
+            text: Yes, but only when `n` is larger than the limit
+        correct: n-unused
+        explanation: >-
+          `n` limits the depth only through the base case. With the check present the stack is at most
+          `n + 1` calls deep, and without it the depth is bounded only by Python's limit.

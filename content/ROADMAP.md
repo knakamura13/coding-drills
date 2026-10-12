@@ -28,9 +28,9 @@ Where every topic in the `py-coding-challenges` repo stands as a deck. The order
 | Phase 2, 8 | Heaps and top-K | `heaps-top-k` | done |
 | Phase 2, 9 | Linked lists | `linked-lists` | done |
 | Phase 2, 10 | Trees: traversals, BST, recursion | `trees-traversals-bst` | done |
-| Phase 2, 11 | Graphs: topological sort, union-find, Dijkstra | – | planned |
-| Phase 2, 12 | Recursion and backtracking | – | planned |
-| Phase 2, 13 | Two-dimensional DP and greedy | – | planned |
+| Phase 2, 11 | Graphs: topological sort, union-find, Dijkstra | `graph-algorithms` | done |
+| Phase 2, 12 | Recursion and backtracking | `recursion-backtracking` | done |
+| Phase 2, 13 | Two-dimensional DP and greedy | `two-dimensional-dp-greedy` | done |
 | Phase 3 | Python practical coding (LRU cache, rate limiter, aggregation, asyncio) | – | planned |
 | Phase 3 | AI-role topics (ML fundamentals, embeddings, LLM system design) | – | planned |
 
@@ -51,15 +51,15 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 | 002 hash maps | Hash maps | `hash-maps-prefix-sums` | done |
 | 003 sorting | Sorting | `sorting-interval-sweeps` | partial |
 | 004 string manipulation | Strings | – | planned |
-| 005 greedy algorithms | Greedy | – | planned |
+| 005 greedy algorithms | Greedy | `two-dimensional-dp-greedy` | partial |
 | 006 search | Search | `binary-search-on-answer` | partial |
 | 007 dynamic programming | Dynamic programming | `one-dimensional-dp` | partial |
 | 008 stacks and queues | Stacks and queues | `monotonic-stack` | partial |
 | 009 heaps | Heaps | `heaps-top-k` | done |
-| 010 graphs | Graphs | `graph-traversal-grids` | partial |
+| 010 graphs | Graphs | `graph-algorithms` | done |
 | 011 linked lists | Linked lists | `linked-lists` | done |
 | 011 trees | Trees | `trees-traversals-bst` | partial |
-| 012 recursion and backtracking | Recursion and backtracking | – | planned |
+| 012 recursion and backtracking | Recursion and backtracking | `recursion-backtracking` | done |
 | 013 bit manipulation | Bit manipulation | – | out of scope |
 
 Bit manipulation is out of scope because the curriculum drops it to a single cheat-sheet page, unless an interview needs it.

@@ -1,0 +1,544 @@
+id: two-dimensional-dp-greedy
+title: Two-dimensional DP and greedy
+description: Fill grid and two-sequence tables, shrink them to one row, and tell when a locally best choice is safe and when it is not.
+heading: What is the right approach?
+
+questions:
+  - id: grid-paths-blocked
+    heading: Which fill rule is correct?
+    tags: [dp, grid]
+    prompt: |-
+      A walker starts at the top-left cell of a grid and must reach the bottom-right cell. Each move
+      goes one cell right or one cell down. Cells marked `#` are blocked and cannot be entered. Rows
+      and columns are numbered from 0, so the start is `(0, 0)` and the goal is `(3, 4)`.
+
+      ```
+      . . # . .
+      . . . # .
+      # . . . .
+      . . . . .
+      ```
+
+      Let `ways[r][c]` be the number of different valid paths from `(0, 0)` to `(r, c)`, so the answer
+      is `ways[3][4]`. Which rule fills the table correctly?
+    options:
+      - id: multiply-neighbors
+        text: "First row and column are 1; inner cells `ways[r-1][c] * ways[r][c-1]`; blocked cells 0"
+        explanation: >-
+          Every path ends with a move from above or from the left, so the two counts are alternatives
+          that add. Multiplying them keeps every cell at 0 or 1, so this rule reports 0 at the goal
+          although 14 paths exist. Even an open 2 x 2 grid gives `ways[1][1] = 1` instead of 2.
+      - id: all-ones-edges
+        text: "First row and column are all 1; inner cells top + left; every blocked cell is 0"
+        explanation: >-
+          Filling the edges with 1 ignores blocks that cut them off. The 1s at `(0, 3)` and `(0, 4)`
+          lie beyond the blocked `(0, 2)`, and the 1 at `(3, 0)` lies below the blocked `(2, 0)`. None
+          of those cells can be reached, and the goal comes out as 16 instead of 14.
+      - id: add-diagonal
+        text: "`ways[0][0] = 1`; each cell is top + left + top-left; every blocked cell is 0"
+        explanation: >-
+          The walker only moves right or down, so no path enters a cell diagonally. Adding the top-left
+          neighbor counts paths that use diagonal moves. On this grid the goal comes out as 75 instead
+          of 14, and on an open 3 x 3 grid as 13 instead of 6.
+      - id: top-plus-left
+        text: "`ways[0][0] = 1`; each cell is top + left, off-grid reads 0; every blocked cell is 0"
+        explanation: >-
+          A path reaches `(r, c)` by one last move, from above or from the left, so the counts of the
+          two groups add. An off-grid neighbor contributes 0, so the first row and column hold 1s up to
+          the first block and 0s after it. The rows are `[1, 1, 0, 0, 0]`,
+          `[1, 2, 2, 0, 0]`, `[0, 2, 4, 4, 4]`, and `[0, 2, 6, 10, 14]`, so the answer is 14.
+    correct: top-plus-left
+    followUps:
+      multiply-neighbors:
+        prompt: >-
+          On an open 2 x 2 grid there is one path to `(0, 1)` and one path to `(1, 0)`. How many paths
+          reach `(1, 1)`?
+        options:
+          - id: two-added
+            text: 2, one entering from each neighbor, so the two counts add
+          - id: one-multiplied
+            text: 1, the product of 1 and 1, because the two counts combine
+          - id: four-extended
+            text: 4, because each of the two paths can be extended in two ways
+        correct: two-added
+        explanation: >-
+          The paths are right-then-down and down-then-right. Each ends with a move from exactly one
+          neighbor, so a path belongs to exactly one group and the groups add. Multiplying would count
+          combinations of independent choices, which is not what alternative last moves are.
+      all-ones-edges:
+        prompt: >-
+          On this grid `(2, 0)` is blocked. How many paths reach `(3, 0)`, the cell directly below it?
+        options:
+          - id: zero-paths
+            text: 0, because the only way in is down from the blocked `(2, 0)`
+          - id: one-straight
+            text: 1, walking straight down the first column, since moves down are allowed
+          - id: one-from-right
+            text: 1, entering from the right neighbor `(3, 1)` after reaching it another way
+        correct: zero-paths
+        explanation: >-
+          A first-column cell can be entered only from above, and a first-row cell only from the left.
+          Once a block cuts that edge, every cell beyond it has 0 paths. Reading off-grid neighbors as
+          0 gives that for free, whereas "all 1s on the edges" is right only when no edge cell is
+          blocked.
+      add-diagonal:
+        prompt: On an open 3 x 3 grid, how many right/down paths lead from `(0, 0)` to `(2, 2)`?
+        options:
+          - id: six-orders
+            text: 6, the orders of two rights and two downs
+          - id: thirteen-with-diagonal
+            text: 13, which is what adding the top-left neighbor gives
+          - id: nine-cells
+            text: 9, one for each cell of the grid
+        correct: six-orders
+        explanation: >-
+          Two rights and two downs can be ordered in 6 ways, and the top + left table gives 6 too. The
+          rule with the extra top-left term gives 13 because it also counts routes that may step
+          diagonally, which the walker cannot do.
+
+  - id: min-cost-grid
+    heading: Which plan is correct?
+    tags: [dp, grid, greedy]
+    prompt: |-
+      Every cell of a grid has a cost. A walker starts at the top-left cell and must reach the
+      bottom-right cell, moving one cell right or one cell down at a time. It pays the cost of every
+      cell it stands on, including the first and the last. Rows and columns are numbered from 0.
+
+      ```
+      3 9 7
+      1 6 2
+      5 8 9
+      ```
+
+      Let `cost[r][c]` be the cheapest total for reaching `(r, c)`. Which plan gives the cheapest
+      total for the goal `(2, 2)`?
+    options:
+      - id: cheaper-next-step
+        text: Walk from the start, always stepping to the cheaper of the right and down cells
+        explanation: >-
+          On this grid the walk is 3, then down to 1 (cheaper than 9), then down to 5 (cheaper than 6),
+          then forced along the bottom row to 8 and 9, for a total of 26. The route 3, 1, 6, 2, 9
+          costs 21. A cheap step can close off a cheaper route later, and a table that compares
+          complete totals does not make that mistake.
+      - id: add-both-neighbors
+        text: "`cost[r][c] = grid[r][c] + cost[r-1][c] + cost[r][c-1]`, off-grid reads 0"
+        explanation: >-
+          The walker enters a cell once, from one side. Adding both neighbors' totals pays for two
+          different routes, with shared cells counted twice, so the goal comes out as 91 instead of
+          21. Path counting adds because it counts alternatives. A cheapest total takes one alternative.
+      - id: off-grid-zero
+        text: "`cost[r][c] = grid[r][c] + min(top, left)`, with off-grid neighbors read as 0"
+        explanation: >-
+          On the first row and column one neighbor is off the grid, and a 0 always wins the `min`
+          because every real total is positive. Those cells then hold only their own cost: `(0, 2)` gets
+          7 instead of 3 + 9 + 7 = 19, and the goal gets 18 instead of 21.
+      - id: min-of-totals
+        text: "`grid[r][c] + min(top, left)` inside; first row and column are running sums"
+        explanation: >-
+          The walker reaches `(r, c)` from above or from the left, so the cheapest total is the cell's
+          cost plus the cheaper of those two cheapest totals. The first row and column have only one
+          neighbor, so they are running sums. The rows are `[3, 12, 19]`, `[4, 10, 12]`, and
+          `[9, 17, 21]`, so the cheapest total is 21. A check of all 6 paths agrees.
+    correct: min-of-totals
+    followUps:
+      cheaper-next-step:
+        prompt: >-
+          At `(1, 0)` the right cell costs 6 and the down cell costs 5. What happens if the walker
+          steps down?
+        options:
+          - id: locked-into-bottom
+            text: It is locked into the bottom row, 8 and 9, ending at 26 while 21 is possible
+          - id: still-optimal
+            text: It ends at 21, so the cheaper step turns out to be optimal on this particular grid
+          - id: tie-break
+            text: It ends at 26, but only because of how ties between equal costs are broken here
+        correct: locked-into-bottom
+        explanation: >-
+          Going down from `(1, 0)` leaves only the bottom row, with 8 and 9. Going right costs 6 now
+          but allows 2 and 9 afterwards, for 21 overall. No step on this grid compares equal costs, so
+          ties are not involved. A step is safe to commit to only when nothing later can make the
+          other option cheaper, which the table checks and the greedy walk does not.
+      add-both-neighbors:
+        prompt: The walker enters `(1, 1)` from one of its two neighbors. What should `cost[1][1]` build on?
+        options:
+          - id: cheaper-total
+            text: The smaller of the two neighbors' cheapest totals, as one route is used
+          - id: both-totals
+            text: Both totals added, because the walker could have taken either route to get there
+          - id: smaller-cell
+            text: The neighbor whose own cell cost is smaller, ignoring the total behind it
+        correct: cheaper-total
+        explanation: >-
+          One walker takes one route, so only one neighbor's total counts, and the cheaper total gives
+          the cheapest result. Comparing the neighbors' own cell costs repeats the greedy mistake: a
+          cheap cell can sit at the end of an expensive route.
+      off-grid-zero:
+        prompt: >-
+          With off-grid neighbors read as 0, what does the table hold at `(0, 2)`? The true cheapest
+          total there is 3 + 9 + 7 = 19.
+        options:
+          - id: seven
+            text: 7, because `min` picks the off-grid 0 over the real left neighbor
+          - id: nineteen
+            text: 19, because only the real left neighbor takes part in the `min`
+          - id: error
+            text: An error, because the top neighbor does not exist and cannot be read
+        correct: seven
+        explanation: >-
+          `(0, 2)` has no top neighbor, so `min(0, 9)` is 0 and the cell stores 7. An off-grid cell is
+          not a legal predecessor, so it must not take part in the `min`. Skip it, or give it the
+          value `inf`, which never wins, and treat `(0, 0)` as the base case.
+
+  - id: lcs-recurrence
+    heading: What is the recurrence?
+    tags: [dp]
+    prompt: >-
+      Strings `a = "granite"` and `b = "lattice"` are compared. A common subsequence keeps characters
+      in order but may skip some, so the kept characters need not be adjacent. Let `dp[i][j]` be the
+      length of the longest common subsequence of the first `i` characters of `a` and the first `j`
+      characters of `b`, with `dp[0][j] = dp[i][0] = 0`. For `i, j >= 1` the characters being compared
+      are `a[i-1]` and `b[j-1]`. Which rule fills the table so that `dp[7][7]` is the answer?
+    options:
+      - id: reset-to-zero
+        text: "Match: `dp[i-1][j-1] + 1`. Mismatch: 0"
+        explanation: >-
+          Resetting to 0 on a mismatch keeps only the matching run that ends at the last characters of
+          the two prefixes. The subsequence `ate` appears in both words with letters in between, but
+          this rule ends with `dp[7][7] = 1`.
+      - id: diagonal-on-mismatch
+        text: "Match: `dp[i-1][j-1] + 1`. Mismatch: `dp[i-1][j-1]`"
+        explanation: >-
+          On a mismatch this drops both last characters, but the best subsequence may still use one of
+          them. For `"gran"` and `"la"` the last characters `n` and `a` differ, yet the `a` in each
+          word matches. This rule stores 0 there instead of 1, and ends with `dp[7][7] = 2`.
+      - id: max-plus-one
+        text: "Match: `max(dp[i-1][j], dp[i][j-1]) + 1`. Mismatch: `max(dp[i-1][j], dp[i][j-1])`"
+        explanation: >-
+          Adding 1 to the larger neighbor can use a character twice, because that neighbor may already
+          have matched it. For `"aa"` and `"a"` it gives `dp[2][1] = 2`, but `b` holds only one `a`.
+          On `granite` and `lattice` it ends at 4.
+      - id: skip-one-side
+        text: "Match: `dp[i-1][j-1] + 1`. Mismatch: `max(dp[i-1][j], dp[i][j-1])`"
+        explanation: >-
+          If the last characters are equal, some longest subsequence can end with that pair, which adds
+          1 to `dp[i-1][j-1]`. If they differ, at least one of them is unused, so drop the last
+          character of `a` (`dp[i-1][j]`) or of `b` (`dp[i][j-1]`) and keep the larger. Here
+          `dp[7][7] = 3`, and `ate` and `aie` are the only common subsequences of that length.
+    correct: skip-one-side
+    followUps:
+      reset-to-zero:
+        prompt: >-
+          `ate` is a subsequence of both `granite` and `lattice`, with other letters in between. Does
+          the rule "mismatch gives 0" allow it to count?
+        options:
+          - id: gaps-break-run
+            text: No, a mismatch resets the count, so only runs of adjacent characters count
+          - id: later-cells-recover
+            text: Yes, the reset only affects one cell, and later cells recover the earlier count
+          - id: same-thing
+            text: Yes, a substring may skip characters when they are repeated, so `ate` counts
+        correct: gaps-break-run
+        explanation: >-
+          A substring must be contiguous, a subsequence may skip characters. After a reset to 0 only a
+          diagonal step can use that cell, and only on a match, so earlier matches are not carried
+          across a gap. Taking the larger of the neighbors is what carries them.
+      diagonal-on-mismatch:
+        prompt: >-
+          In `"gran"` versus `"la"` the last characters `n` and `a` differ. Which cases can a best common
+          subsequence fall into?
+        options:
+          - id: drop-either
+            text: 'The `n` or the `a` is unused: try `"gra"` vs `"la"` and `"gran"` vs `"l"`, take the larger'
+          - id: drop-both
+            text: Both last characters must go, so only `"gra"` versus `"l"` needs to be checked at all
+          - id: drop-longer
+            text: Only the last character of the longer string can be unused, so drop that one and compare the rest
+        correct: drop-either
+        explanation: >-
+          If both last characters were used, each would have to be matched with the other, and they
+          differ. So at least one is unused, but which one is unknown. Dropping both can lose a match:
+          the `a` of `"gran"` and `"la"` is found only by dropping the `n` alone.
+      max-plus-one:
+        prompt: >-
+          For `a = "aa"` and `b = "a"`, what is the longest common subsequence length, and what does
+          "match: larger neighbor + 1" produce?
+        options:
+          - id: one-versus-two
+            text: 1, but that rule gives 2, as the single `a` of `b` is counted twice
+          - id: two-both-match
+            text: 2, because both `a` characters of the first string match the one in `b`
+          - id: one-both-one
+            text: 1, and the rule also gives 1, because both neighbors of `dp[2][1]` are 0
+        correct: one-versus-two
+        explanation: >-
+          `dp[1][1] = 1` already uses the only `a` in `b`. At `dp[2][1]` the rule takes that neighbor
+          and adds 1 again. A match must extend the diagonal state, where both prefixes lose their last
+          character, so neither character was used before.
+
+  - id: row-space-order
+    heading: Which statement is true?
+    tags: [dp, grid, complexity]
+    prompt: |-
+      The cheapest-walk table for a grid with `R` rows and `C` columns is rebuilt with one list `row`
+      of `C` entries instead of an `R x C` table. Moves are right or down, the walker pays the cost of
+      every cell it stands on, and indices start at 0. When the loop reaches row `r`, `row[c]` holds the
+      cheapest total for `(r - 1, c)`. The header of the inner loop is missing.
+
+      ```python
+      row = [0] * C
+      row[0] = grid[0][0]
+      for c in range(1, C):
+          row[c] = row[c - 1] + grid[0][c]
+      for r in range(1, R):
+          row[0] += grid[r][0]
+          for c in ???:
+              row[c] = grid[r][c] + min(row[c], row[c - 1])
+      return row[C - 1]
+      ```
+
+      Which statement about the missing header and the cost is correct?
+    options:
+      - id: right-to-left
+        text: "`c` from `C - 1` down to 1, so no write destroys a value that is still needed"
+        explanation: >-
+          Going right to left, `row[c - 1]` has not been rewritten yet, so it still holds the total of
+          the cell above and to the left. The update becomes grid cost plus `min(above, above-left)`,
+          which allows a diagonal step. On `[[1, 1, 1], [8, 9, 5], [1, 1, 5], [9, 2, 8]]` it returns 19,
+          while the cheapest total is 21.
+      - id: faster-time
+        text: "`c` from 1 to `C - 1`; extra space is O(C), and the time drops to O(C)"
+        explanation: >-
+          The direction is right, but the time claim is not. Each of the `R` rows still updates its `C`
+          entries, so every cell is computed once and the time stays O(R·C). Only the memory shrinks,
+          from O(R·C) to O(C).
+      - id: two-rows-needed
+        text: No single row works, because the left and top neighbors come from different rows
+        explanation: >-
+          The left neighbor was updated a moment ago in the same row, so it is already in `row[c - 1]`.
+          The top neighbor is still in `row[c]`, waiting to be overwritten. A second row would also
+          work, but it uses twice the memory for nothing.
+      - id: left-to-right
+        text: "`c` from 1 to `C - 1`; extra space is O(C), and the time stays O(R·C)"
+        explanation: >-
+          Left to right, `row[c]` still holds the total for the cell above when it is read, and
+          `row[c - 1]` has already been overwritten with the total for the cell to the left, so the
+          `min` sees top and left, as in the full table. On the 4 x 3 grid `[[1, 1, 1], [8, 9, 5],
+          [1, 1, 5], [9, 2, 8]]` it returns 21, as the full table does.
+    correct: left-to-right
+    followUps:
+      right-to-left:
+        prompt: In the right-to-left loop, what does `row[c - 1]` hold when `row[c]` is updated?
+        options:
+          - id: old-row-value
+            text: The previous row's total for the cell above-left; it is not overwritten yet
+          - id: new-row-value
+            text: The current row's total for the cell to the left, because it was updated first
+          - id: saved-copy
+            text: A copy of the left total saved before the loop started, so nothing is lost
+        correct: old-row-value
+        explanation: >-
+          The loop reaches `c` before `c - 1`, so the entry on its left still belongs to the previous
+          row. Right to left is the correct order when a cell needs the old value of its left
+          neighbor, as in a one-row 0/1 knapsack. Here the cell needs the new one.
+      faster-time:
+        prompt: >-
+          A grid has `R` rows and `C` columns. Over the whole run, how many cells have a total
+          computed?
+        options:
+          - id: r-times-c
+            text: "R·C, one per cell, since every cell is still computed once"
+          - id: just-c
+            text: C, because the list has only C entries and each is computed once
+          - id: r-plus-c
+            text: R + C, one for each row and one for each column of the grid
+        correct: r-times-c
+        explanation: >-
+          The list entries are overwritten once per grid row, and each overwrite is a computation. The
+          list shrinks the memory, not the number of cells that must be visited, so the time stays
+          O(R·C).
+      two-rows-needed:
+        prompt: >-
+          While `row[c]` is updated in row `r`, going left to right, where is the total for the cell
+          to its left?
+        options:
+          - id: already-in-row
+            text: In `row[c - 1]`, which was overwritten with this row's value a moment ago
+          - id: second-list
+            text: In a second list that must be kept, because `row` only holds the previous row
+          - id: recompute
+            text: Nowhere, so it must be recomputed from the grid
+        correct: already-in-row
+        explanation: >-
+          Entries to the left of `c` were already rewritten for row `r`, and entries from `c` onward
+          still hold row `r - 1`. That is exactly the pair of neighbors the recurrence reads, so no
+          second list is needed.
+
+  - id: greedy-loading-rule
+    heading: Does greedy work?
+    tags: [greedy, dp]
+    prompt: >-
+      A truck carries at most 10 kg. Load A weighs 6 kg and is worth 30, load B weighs 5 kg and is
+      worth 24, and load C weighs 5 kg and is worth 24. The rule under test is to repeatedly take the
+      load with the highest value per kg that still has room, taking as much of it as fits. In task 1
+      the loads are loose goods, so any fraction can be taken and is worth that fraction of the value.
+      In task 2 each load is a sealed crate, taken whole or not at all, and a crate that does not fit
+      is skipped. Which statement is correct?
+    options:
+      - id: optimal-in-both
+        text: Optimal in both tasks, because taking the best rate first never blocks a better total
+        explanation: >-
+          In task 2 the rule takes A, and then neither crate fits in the 4 kg left, so the total is 30.
+          B and C together weigh exactly 10 kg and are worth 48. The best rate first is a safe choice
+          only when leftover room can always be filled at the next best rate.
+      - id: suboptimal-in-both
+        text: Suboptimal in both tasks, because any greedy rule ignores what later loads need
+        explanation: >-
+          Some greedy rules are provably optimal. For loose goods, taking all of A and then 4 kg of B
+          gives 30 + 19.2 = 49.2, and no choice does better. Greedy is not wrong in general. It is wrong
+          when the choice it commits to can waste room that nothing else can use.
+      - id: ties-break-it
+        text: Optimal in task 1 only when no two rates tie (B and C tie here), and suboptimal in task 2
+        explanation: >-
+          The task 2 half is true, but ties do not matter in task 1. B and C both give 4.8 per kg, so
+          taking 4 kg of either one adds 19.2, and the total is 49.2 in both orders. The rule needs "at
+          least as good a rate", not a strictly better one.
+      - id: loose-yes-crates-no
+        text: Optimal in task 1 but suboptimal in task 2, where a better set of crates exists
+        explanation: >-
+          With loose goods, swapping some weight of a lower-rate load for the same weight of a
+          higher-rate load never lowers the total, so the best rate first is safe, and the result is
+          49.2. With whole crates the 4 kg left after A is wasted, and B plus C reach 48. Task 2 needs
+          a table over items and capacity instead.
+    correct: loose-yes-crates-no
+    followUps:
+      optimal-in-both:
+        prompt: >-
+          In task 2 the rule has taken A (6 kg), leaving 4 kg. What total does the rule reach, and
+          what is the best total?
+        options:
+          - id: neither-fits
+            text: It reaches 30, as neither crate fits, while B and C together give 48
+          - id: b-fits
+            text: B fits because 4.8 per kg is cheap, so the rule adds it and reaches 54
+          - id: fraction-of-b
+            text: Part of B is added until the truck is full, for a total of 49.2
+        correct: neither-fits
+        explanation: >-
+          Whether a crate fits depends on its weight, not its rate. A crate of 5 kg does not fit in 4
+          kg and cannot be split, so both are skipped. Passing on A and taking B and C fills the truck
+          exactly. Committing to the best rate first cost 18 here.
+      suboptimal-in-both:
+        prompt: >-
+          Task 1, after taking all of A, leaves 4 kg. What does the rule do next, and can any plan
+          beat the result?
+        options:
+          - id: fills-with-b
+            text: It takes 4 kg of B, reaching 49.2, which no plan can beat
+          - id: stops-at-thirty
+            text: It stops at 30, because B does not fit whole and the rule never splits
+          - id: better-with-two
+            text: It takes 4 kg of B, but taking B and C whole would give more than 49.2
+        correct: fills-with-b
+        explanation: >-
+          Loose goods can be split, so 4 kg of B fits, worth 4 x 4.8 = 19.2. The first 6 kg are at
+          the best rate, 5 per kg, and the last 4 kg are at the best rate left, 4.8 per kg. B and C
+          whole total 48, which is lower than 49.2.
+      ties-break-it:
+        prompt: >-
+          In task 1, B and C both have a rate of 4.8 per kg. Does the tie change the total the rule
+          reaches after taking A?
+        options:
+          - id: same-total
+            text: No, equal rates add the same value per kg, so either order totals 49.2
+          - id: order-matters
+            text: Yes, taking C before B instead of B before C changes the total
+          - id: proof-fails
+            text: Yes, with a tie the rule can no longer be proven optimal by any argument
+        correct: same-total
+        explanation: >-
+          Taking 4 kg of B or 4 kg of C adds 19.2 either way. The argument that justifies greedy only
+          needs the chosen load to be at least as good per kg as the rest, so equal rates are fine.
+
+  - id: dp-table-costs
+    heading: What is the complexity?
+    tags: [dp, complexity]
+    prompt: >-
+      The table for the longest common subsequence of strings of lengths `m` and `n` is filled one
+      cell per pair `(i, j)` with `1 <= i <= m` and `1 <= j <= n`, and each cell costs O(1). Afterwards, one longest common subsequence is recovered by walking
+      back through the table: start at `dp[m][n]` and move up, left, or diagonally up-left, until `i`
+      or `j` reaches 0. Which statement about the cost of filling the table, the memory used, and the
+      number of steps in the walk back is correct?
+    options:
+      - id: linear-fill
+        text: Fill O(m + n), because each cell is O(1); memory O(m·n); walk O(m + n)
+        explanation: >-
+          Each cell is O(1), but there are m·n of them. For lengths 8 and 10 the loop computes 80
+          cells, not 18. A linear fill would read each character once, whereas the table compares
+          every prefix of one string with every prefix of the other.
+      - id: quadratic-walk
+        text: Fill O(m·n); memory O(m·n); walk O(m·n), because the walk may revisit cells
+        explanation: >-
+          The walk never revisits a cell. Every step lowers `i + j` by at least 1, so it takes at most
+          m + n - 1 steps: 17 for lengths 8 and 10, even though the table has 99 entries. m·n is the
+          cost of filling, not of walking back.
+      - id: linear-space
+        text: Fill O(m·n); memory O(m + n), because a row reads only the row above; walk O(m + n)
+        explanation: >-
+          A row reads only the row above, so two rows are enough to get the length alone. This walk
+          back reads cells from rows far above, so it needs the full table: O(m·n) memory, 99 entries
+          for lengths 8 and 10. Divide-and-conquer methods can recover the string in linear space, but
+          that is a different algorithm.
+      - id: fill-then-walk
+        text: Fill O(m·n); memory O(m·n); walk O(m + n), because each step lowers `i + j`
+        explanation: >-
+          The fill computes one cell per pair of prefixes: 80 cells for lengths 8 and 10, and 320 for
+          lengths 16 and 20. The walk takes at most m + n - 1 steps, so it is cheap next to the fill:
+          17 steps at most for lengths 8 and 10, and 35 at most for 16 and 20.
+    correct: fill-then-walk
+    followUps:
+      linear-fill:
+        prompt: For `a` of length 8 and `b` of length 10, how many cells does the fill loop compute?
+        options:
+          - id: eighty
+            text: 80, one per pair of prefixes
+          - id: eighteen
+            text: 18, one per character of both strings together
+          - id: forty
+            text: 40, because only half of the table is ever needed
+        correct: eighty
+        explanation: >-
+          The loop runs `i` from 1 to 8 and `j` from 1 to 10, so it computes 8 x 10 = 80 cells. Every
+          cell is needed, because a cell may depend on a different one in the row above or the column
+          to its left.
+      quadratic-walk:
+        prompt: >-
+          Each walk step goes from `(i, j)` to `(i-1, j)`, `(i, j-1)`, or `(i-1, j-1)`. What does that
+          guarantee?
+        options:
+          - id: sum-falls
+            text: "`i + j` falls every step, so no cell repeats and there are at most m + n steps"
+          - id: can-return
+            text: The walk can return to a cell it left, so it may take up to m·n steps
+          - id: both-fall
+            text: Both `i` and `j` fall in every step, so the walk takes at most min(m, n) steps in all
+        correct: sum-falls
+        explanation: >-
+          An up move lowers only `i` and a left move lowers only `j`, so one of them can stay fixed
+          for many steps. The sum still falls every time, which rules out revisits and caps the walk
+          near m + n. Only diagonal steps lower both.
+      linear-space:
+        prompt: >-
+          If the fill kept only the last two rows, what could the plain walk back still do afterwards?
+        options:
+          - id: length-only
+            text: Report the length of the longest common subsequence, but not rebuild the string
+          - id: string-too
+            text: Report the length and rebuild the string, because the walk only needs the last row
+          - id: nothing
+            text: Report nothing, since the final cell depends on rows that were discarded
+        correct: length-only
+        explanation: >-
+          Each row needs only the row above, so the final cell, the length, comes out of two rows. The
+          plain walk back needs earlier rows to see which move produced each value, and they are
+          gone. Methods that rebuild the string in linear space exist, but they are different
+          algorithms.
