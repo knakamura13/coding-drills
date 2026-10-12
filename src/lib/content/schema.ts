@@ -12,6 +12,8 @@ import { z } from 'zod';
  * code blocks). Option text is inline Markdown.
  */
 
+import { TOPIC_TAGS } from './tags.ts';
+
 const id = z
 	.string()
 	.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'use lowercase kebab-case (letters, digits, hyphens)');
@@ -74,7 +76,8 @@ const questionSchema = z
 		heading: text(80).optional(),
 		/** Markdown. Rendered inside the pinned problem card. */
 		prompt: text(800),
-		tags: z.array(id).optional(),
+		/** Topics, from the fixed list in tags.ts. */
+		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
 		options: z.array(optionSchema).min(2).max(6),
 		correct: id,
 		/** Keyed by the id of the wrong option that triggers it. */

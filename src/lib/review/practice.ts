@@ -30,13 +30,13 @@ export function practiceEntries(
 ): LessonEntry[] {
 	const pool: LessonEntry[] = decks.flatMap((deck) =>
 		deck.questions
-			.filter((question) => tag === null || (question.tags ?? []).includes(tag))
+			.filter((question) => tag === null || (question.tags as readonly string[] | undefined)?.includes(tag))
 			.map((question) => ({ deckId: deck.id, heading: deck.heading, question }))
 	);
 	return shuffled(pool, rng).slice(0, size);
 }
 
-const ACRONYMS = new Set(['bfs', 'dfs']);
+const ACRONYMS = new Set(['bfs', 'dfs', 'dp']);
 
 /** "sliding-window" as "Sliding window", and acronyms in capitals. */
 export function tagLabel(tag: string): string {

@@ -7,6 +7,7 @@ SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 - `pnpm dev` serves on 5173 and on the LAN. `pnpm check` runs svelte-check plus a type-check of `.railway/railway.ts`. `pnpm test` runs vitest, which also validates every deck, evaluates `.railway/railway.ts`, and runs the SQL against PGlite.
 - `PW_CHANNEL=chrome pnpm test:e2e` builds the app, serves `build/`, and runs desktop, Android (Chromium), and iPhone (WebKit) suites with axe scans. `PW_CHANNEL=chrome` only affects the Chromium projects, and WebKit needs `pnpm exec playwright install webkit`. CI installs both browsers.
 - Use `pnpm`, never npm. Use `fd` and `rg`.
+- Never use Fable 5.1 sub-agents in this project (the owner's standing rule). Leave an Agent call's `model` unset or choose another model explicitly.
 
 ## Rules that are not obvious from the code
 
@@ -18,6 +19,7 @@ SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 - e2e runs the production build against PGlite (`e2e/pg-server.mjs`) with `ORIGIN` set. adapter-node assumes `https` without `ORIGIN` or `PROTOCOL_HEADER`, which makes the API's origin check reject every write. The Dockerfile sets the proxy headers for Railway.
 - Weak spots, mixed practice, and the Progress screen are all derived from the attempt log (`src/lib/review/`, `src/lib/domain/stats.ts`). They reuse `createReviewLesson` and the lesson loop. Do not add storage for them.
 - `src/service-worker.ts` caches the app for offline use and takes over immediately on a new version. It must never touch `/api/*`. Client-only routes (`/play/*`, `/review`, `/weak`, `/practice`) are cached as shells at install, so a new client-only route must be added to `CLIENT_ROUTES` there. The worker is registered only in production builds.
+- Every deck must appear in `content/ROADMAP.md` (a test enforces it). Add the row, or change its status, in the same commit as the deck.
 - Decks are authored by hand and then reviewed adversarially: run every code snippet in Python before putting an output in an explanation, and check that no wrong option is also defensibly correct.
 - Lesson rules live in `src/lib/domain/lesson.ts` (pure and tested). `src/lib/lesson/controller.svelte.ts` only adds Svelte state and writes attempts and flags to localStorage. Keep rules out of components.
 - `/play/[deckId]` is client-only (`ssr = false`) because option order is shuffled per run. Every other page is prerendered.

@@ -55,5 +55,6 @@ describe('tagLabel', () => {
 		expect(tagLabel('sliding-window')).toBe('Sliding window');
 		expect(tagLabel('bfs')).toBe('BFS');
 		expect(tagLabel('dfs')).toBe('DFS');
+		expect(tagLabel('dp')).toBe('DP');
 	});
 });

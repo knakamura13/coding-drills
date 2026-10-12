@@ -39,7 +39,7 @@ Prompts and explanations are Markdown: paragraphs, `` `inline code` ``, **bold**
 
 ## Tags
 
-Give every question one to three `tags` (lowercase kebab-case, such as `hash-map` or `sliding-window`). Tags are the topics shown on the Progress screen and offered as filters in Mixed practice. Reuse an existing tag when the topic is the same, because each distinct tag becomes its own row and filter. A question with no tags is skipped by both.
+Give every question one to three `tags`. They come from the fixed list in `src/lib/content/tags.ts` (`hash-map`, `sliding-window`, `dp`, and so on), and the build rejects any other value. Tags are the topics shown on the Progress screen and offered as filters in Mixed practice, so a fixed list stops near-duplicates such as `queue` and `queues`. To add a topic, add it to that list. A question with no tags is skipped by both screens.
 
 ## Rules the build enforces
 

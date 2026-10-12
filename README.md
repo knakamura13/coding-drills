@@ -6,7 +6,7 @@ Each question asks for a pattern, a complexity, or an output. Pick wrongly and t
 
 Live: https://coding-drills.up.railway.app
 
-Status: early. Six decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
+Status: early. Nine decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
 
 ## The lesson loop
 
@@ -85,7 +85,7 @@ pnpm dev      # http://localhost:5173, also reachable on your LAN for phone test
 
 ## Decks
 
-Decks are YAML files in `content/decks/`. The build validates them, and a deck with a wrong option that has no follow-up does not build. See [content/README.md](content/README.md) for the shape and for what makes a good follow-up.
+Decks are YAML files in `content/decks/`. The build validates them, and a deck with a wrong option that has no follow-up does not build. See [content/README.md](content/README.md) for the shape and for what makes a good follow-up. [content/ROADMAP.md](content/ROADMAP.md) maps every topic in the `py-coding-challenges` repo to a deck and says what is done, in review, or planned; a test keeps it in step with `content/decks/`.
 
 ## How it is built
 
@@ -117,7 +117,7 @@ Railway never reads `.railway/railway.ts` during a deploy. Pushing or merging an
 
 ## Roadmap
 
-Not built yet: more decks following the curriculum in py-coding-challenges, XP, and the settings screen ([#1](https://github.com/knakamura13/coding-drills/issues/1)).
+Not built yet: the remaining decks in [content/ROADMAP.md](content/ROADMAP.md), XP, and the settings screen ([#1](https://github.com/knakamura13/coding-drills/issues/1)).
 
 ## License
 

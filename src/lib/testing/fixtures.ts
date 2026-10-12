@@ -1,8 +1,9 @@
 import type { Deck } from '$lib/content/schema';
+import type { TopicTag } from '$lib/content/tags';
 import type { Attempt } from '$lib/storage/types';
 
 /** A small deck with tagged questions, for tests that need decks but not real content. */
-export function deck(id: string, questions: { id: string; tags?: string[] }[], heading?: string): Deck {
+export function deck(id: string, questions: { id: string; tags?: TopicTag[] }[], heading?: string): Deck {
 	return {
 		id,
 		title: id,
