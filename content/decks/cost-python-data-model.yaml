@@ -1,0 +1,494 @@
+id: cost-python-data-model
+title: Cost accounting in Python
+description: Predict what everyday Python operations really cost and how lists, references, and sorting behave, so a short line of code does not hide a slow loop or a surprise.
+heading: What does this really cost?
+
+questions:
+  - id: slice-in-recursion
+    tags: [slicing, recursion]
+    prompt: |-
+      `nums` is a list of `n` numbers. What is the time cost of this function?
+
+      ```python
+      def total(nums):
+          if not nums:
+              return 0
+          return nums[0] + total(nums[1:])
+      ```
+    options:
+      - id: linear
+        text: O(n)
+        explanation: >-
+          There are only `n` calls, and each does one addition, which suggests O(n). But `nums[1:]`
+          is not free: it builds a new list, so each call also pays for a copy.
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          A log n factor comes from about log n levels of halving, each costing n. This problem
+          shrinks by a single item per call, so there are `n` levels, and the copy sizes `n - 1`,
+          `n - 2`, ... add up to about n² / 2.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          A slice copies the references it covers, so the calls copy about `n - 1`, `n - 2`, ..., 0
+          items. That adds up to n(n - 1) / 2 copies. Passing an index, as in `total(nums, i + 1)`,
+          avoids the copying and brings the cost to O(n).
+      - id: exponential
+        text: O(2^n)
+        explanation: >-
+          Exponential cost needs each call to start two or more further calls. Each call here starts
+          exactly one, so the calls form a chain of `n + 1` calls, not a tree.
+    correct: quadratic
+    followUps:
+      linear:
+        prompt: What does `nums[1:]` do for a list holding `m` items?
+        options:
+          - id: view
+            text: Returns a view of the same data in O(1)
+          - id: copy
+            text: Builds a new list and copies `m - 1` references into it, which is O(m)
+          - id: in-place
+            text: Removes the first item from `nums` in place
+        correct: copy
+        explanation: >-
+          A list slice is a shallow copy, so its cost grows with the slice length. Views that share
+          memory exist in other tools, such as NumPy arrays or `memoryview`, but not for list
+          slices. Slicing also leaves the original list untouched.
+      n-log-n:
+        prompt: How do the copy sizes add up when each call passes on a list that is one item shorter?
+        options:
+          - id: halving
+            text: Like n + n/2 + n/4 + ..., which gives n log n
+          - id: arithmetic
+            text: Like (n - 1) + (n - 2) + ... + 1, which is about n² / 2
+          - id: constant
+            text: Each copy is a fixed size, so the total is a multiple of n
+        correct: arithmetic
+        explanation: >-
+          Shrinking by one item per call gives an arithmetic series, which sums to a quadratic.
+          Even real halving would not give n log n here. With copies of size n, n/2, n/4, ... the sum
+          stays below 2n, which is O(n).
+      exponential:
+        prompt: How many recursive calls does one call of `total` start?
+        options:
+          - id: one
+            text: One, so the calls form a chain of about `n` calls
+          - id: two
+            text: Two, one for each half of the list
+          - id: n-calls
+            text: "`n`, one for each remaining item"
+        correct: one
+        explanation: >-
+          One call per level means about `n` calls in total, not 2^n. Those `n` calls are what the
+          copying multiplies: n calls times up to n items copied each.
+
+  - id: membership-in-loop
+    heading: Which change brings the cost down?
+    tags: [membership, hashing]
+    prompt: |-
+      `a` and `b` are lists of `n` items each, and this function is too slow.
+
+      ```python
+      def shared(a, b):
+          return [x for x in a if x in b]
+      ```
+
+      Which change makes the total cost O(n) on average while still returning every `x` in `a`
+      that appears in `b`?
+    options:
+      - id: sort-b
+        text: Sort `b` first, then keep the same comprehension
+        explanation: >-
+          The `in` operator on a list always compares item by item, whether or not the list is
+          sorted, so the loop still costs O(n²). Sorting does enable `bisect`, which would bring the
+          total to O(n log n), but a set is simpler and faster on average.
+      - id: set-b-once
+        text: Build `seen = set(b)` once before the loop and test `x in seen`
+        explanation: >-
+          Building the set costs O(n) once. After that each `x in seen` is O(1) on average, so the
+          loop costs O(n) on average. The price is O(n) extra memory and the need for hashable items.
+          Worst-case hashing can degrade a lookup, which is why this is an average-case claim.
+      - id: set-in-loop
+        text: Write `x in set(b)` inside the comprehension
+        explanation: >-
+          This rebuilds the set from `b` for every item of `a`. Each rebuild is O(n), so the total is
+          back to O(n²), and now it also allocates a fresh set every time.
+      - id: set-a
+        text: Loop over `set(a)` instead and keep `x in b`
+        explanation: >-
+          The slow part is the membership test, and `b` is still a list that every test scans from
+          the start. Looping over a set of `a` changes nothing about that, and it would drop
+          duplicates from the result.
+    correct: set-b-once
+    followUps:
+      sort-b:
+        prompt: Does `x in some_list` take advantage of the list being sorted?
+        options:
+          - id: yes-detects
+            text: Yes, Python notices the order and runs a binary search
+          - id: no-scan
+            text: No, it compares item by item from the front until it finds a match or reaches the end
+          - id: only-ints
+            text: Only for lists of integers
+        correct: no-scan
+        explanation: >-
+          A list does not record whether it is sorted, so `in` is always a linear scan. To exploit
+          sorted order you must call `bisect` yourself, which is O(log n) per lookup.
+      set-in-loop:
+        prompt: In `[x for x in a if x in set(b)]`, how many times does `set(b)` run?
+        options:
+          - id: once
+            text: Once, because the expression is the same each time
+          - id: per-item
+            text: Once for every item of `a`, building an `n`-item set each time
+          - id: first-hit
+            text: Until the first match, and then Python reuses the set
+        correct: per-item
+        explanation: >-
+          Python evaluates the expression again on every pass, and it does not cache the result. To
+          pay for the set once, give it a name before the loop.
+      set-a:
+        prompt: In `x for x in set(a) if x in b`, which container does the `in` test search?
+        options:
+          - id: b-list
+            text: The list `b`, so each test is still a linear scan
+          - id: a-set
+            text: The set built from `a`
+          - id: neither
+            text: Neither, because a set is involved
+        correct: b-list
+        explanation: >-
+          `x in b` always searches `b`. Fast membership comes from the container being searched, so
+          the set has to be built from `b`, not from the list you loop over.
+
+  - id: queue-front-removal
+    heading: Which change brings the cost down?
+    tags: [deque, queues, bfs]
+    prompt: |-
+      A breadth-first search keeps its frontier in a list used as a queue, and it is slow on large
+      graphs.
+
+      ```python
+      queue = [start]
+      while queue:
+          node = queue.pop(0)
+          for nxt in graph[node]:
+              if nxt not in seen:
+                  seen.add(nxt)
+                  queue.append(nxt)
+      ```
+
+      Which change makes both adding and removing O(1) and keeps first-in, first-out order?
+    options:
+      - id: pop-end
+        text: Take from the end with `queue.pop()` instead
+        explanation: >-
+          `pop()` from the end is O(1), but it returns the newest item, so the order becomes
+          last-in, first-out. It handles the newest node first, so nodes are no longer visited in
+          order of distance from `start`.
+      - id: insert-front
+        text: Add with `queue.insert(0, nxt)` and take with `queue.pop()`
+        explanation: >-
+          This keeps first-in, first-out order, but `insert(0, x)` shifts every existing item one
+          slot, so it costs O(n) and the cost has only moved from one end to the other.
+      - id: slice-rest
+        text: Read `queue[0]`, then set `queue = queue[1:]`
+        explanation: >-
+          The slice copies the whole rest of the list each time, which is O(n) and allocates a new
+          list per step. That is no better than `pop(0)`.
+      - id: deque
+        text: Make it `collections.deque([start])` and take with `queue.popleft()`
+        explanation: >-
+          A deque is built for both ends, so `append` and `popleft` are O(1). A list shifts every
+          remaining item on `pop(0)`. A moving index into a list also gives O(1) steps, but the
+          consumed items stay in memory.
+    correct: deque
+    followUps:
+      pop-end:
+        prompt: What order does a queue need, and what does `pop()` from the end give?
+        options:
+          - id: fifo-vs-lifo
+            text: A queue needs oldest-first, but `pop()` gives newest-first
+          - id: same
+            text: Both give oldest-first, since a list keeps insertion order
+          - id: random
+            text: "`pop()` removes an arbitrary item"
+        correct: fifo-vs-lifo
+        explanation: >-
+          A list keeps insertion order, and `pop()` removes the last item inserted, which makes the
+          list a stack. Breadth-first search needs the oldest frontier node first so that closer nodes
+          are visited before farther ones.
+      insert-front:
+        prompt: What does `insert(0, x)` do to the items already in a list?
+        options:
+          - id: shift-all
+            text: Moves every existing item one position to the right, which is O(n)
+          - id: constant
+            text: Nothing to the others, since a list keeps spare room at the front for `x`
+          - id: swap
+            text: Swaps `x` with the first item
+        correct: shift-all
+        explanation: >-
+          A list stores its items in one contiguous block, so making room at the front means moving
+          all the others. The shift is a fast memory move, so it only hurts when the list is long,
+          but the total still grows quadratically.
+      slice-rest:
+        prompt: What does `queue[1:]` do to a list of `m` items?
+        options:
+          - id: view
+            text: Returns a view of the same items without copying
+          - id: copy
+            text: Creates a new list and copies the other `m - 1` references into it
+          - id: removes
+            text: Removes the first item from `queue` in place
+        correct: copy
+        explanation: >-
+          A slice is a new list, and building it costs time proportional to its length. That makes
+          `queue = queue[1:]` O(n) per step, the same order of cost as `pop(0)`.
+
+  - id: shared-row-grid
+    heading: What does this print?
+    tags: [aliasing, mutation]
+    prompt: |-
+      What does this code print?
+
+      ```python
+      grid = [[0] * 3] * 2
+      grid[0][1] = 5
+      print(grid)
+      ```
+    options:
+      - id: one-row
+        text: "`[[0, 5, 0], [0, 0, 0]]`"
+        explanation: >-
+          This is what you would get from `[[0] * 3 for _ in range(2)]`, which builds a separate row
+          per iteration. `[row] * 2` instead puts the same row object into both slots.
+      - id: both-rows
+        text: "`[[0, 5, 0], [0, 5, 0]]`"
+        explanation: >-
+          The outer `* 2` repeats the reference to one inner list, so `grid[0]` and `grid[1]` are the
+          same object. Setting one cell through either row shows up in both.
+      - id: all-fives
+        text: "`[[5, 5, 5], [5, 5, 5]]`"
+        explanation: >-
+          The assignment replaces a single slot, index 1 of the one row list. The other slots keep
+          their `0`, and the output shows that row twice because both outer slots point at it.
+      - id: type-error
+        text: Raises `TypeError`
+        explanation: >-
+          Multiplying a list by an integer works for any items, including lists. It repeats the
+          references and never checks whether the items are mutable, so the code runs and prints.
+    correct: both-rows
+    followUps:
+      one-row:
+        prompt: How many row lists does `[[0] * 3] * 2` create?
+        options:
+          - id: two
+            text: Two, because it is repeated twice
+          - id: one
+            text: One, referenced from both outer slots
+          - id: three
+            text: Three, one for each element of `[0] * 3`
+        correct: one
+        explanation: >-
+          `[0] * 3` runs once and makes one row, and the outer `* 2` copies the reference to it, not
+          the row. Here `grid[0] is grid[1]` is `True`. A comprehension evaluates `[0] * 3` on every
+          iteration, so each row is a separate object.
+      all-fives:
+        prompt: What does `grid[0][1] = 5` change?
+        options:
+          - id: one-slot
+            text: Slot 1 of the single row list that `grid[0]` points to
+          - id: whole-row
+            text: Every slot of that row
+          - id: whole-grid
+            text: Every slot of every row
+        correct: one-slot
+        explanation: >-
+          Item assignment rebinds exactly one slot of one list. Only slot 1 of the shared row
+          changes. Both outer slots point at that row, so the change appears in both printed rows.
+      type-error:
+        prompt: >-
+          `[0] * 3` and `[row] * 2` both run. Why is sharing harmless in the first case and a trap
+          in the second?
+        options:
+          - id: mutability
+            text: The repeated ints cannot be changed in place, but the repeated row can, and every reference sees the change
+          - id: copies-mutable
+            text: Python copies mutable items when multiplying, so both are safe
+          - id: only-immutable
+            text: Multiplication is only allowed for immutable items
+        correct: mutability
+        explanation: >-
+          The multiplication repeats references. Sharing an `int` is invisible because you can only
+          rebind a slot, not change the number. Sharing a list shows up as soon as you change one
+          cell through any reference to it.
+
+  - id: mutate-or-rebind
+    heading: What does this print?
+    tags: [mutation, rebinding]
+    prompt: |-
+      What does this code print?
+
+      ```python
+      def grow_a(items):
+          items += [4]
+
+      def grow_b(items):
+          items = items + [4]
+
+      a = [1, 2, 3]
+      b = [1, 2, 3]
+      grow_a(a)
+      grow_b(b)
+      print(a, b)
+      ```
+    options:
+      - id: neither-grows
+        text: "`[1, 2, 3] [1, 2, 3]`"
+        explanation: >-
+          That would be right if each function received a private copy of the list. It receives a
+          reference to the caller's list, so changes made through that reference are visible outside.
+      - id: only-a-grows
+        text: "`[1, 2, 3, 4] [1, 2, 3]`"
+        explanation: >-
+          For lists, `items += [4]` extends the existing list in place, so the caller sees the new
+          item. `items = items + [4]` builds a new list and rebinds only the local name, so the
+          caller's list is untouched.
+      - id: both-grow
+        text: "`[1, 2, 3, 4] [1, 2, 3, 4]`"
+        explanation: >-
+          Only one of the two edits the caller's list. The `+` in `items + [4]` builds a new list,
+          and assigning it to `items` makes the local name point at that new list.
+      - id: only-b-grows
+        text: "`[1, 2, 3] [1, 2, 3, 4]`"
+        explanation: >-
+          This has the two operators backwards. For a list, `+=` extends in place and `+` builds a
+          new list, so it is `a` that grows and `b` that stays the same.
+    correct: only-a-grows
+    followUps:
+      neither-grows:
+        prompt: When a list is passed to a function, what does the parameter receive?
+        options:
+          - id: copy
+            text: A separate copy of the list
+          - id: reference
+            text: A name bound to the same list object the caller holds
+          - id: read-only
+            text: A read-only view that cannot be changed
+        correct: reference
+        explanation: >-
+          Python binds the parameter to the same object, and it makes no copy. In-place operations
+          such as `append`, `+=`, and item assignment are visible to the caller. Assigning a new
+          value to the parameter name only changes the local name.
+      both-grow:
+        prompt: What does `items = items + [4]` do to the caller's list?
+        options:
+          - id: extends
+            text: Extends it in place, like `append`
+          - id: new-list
+            text: Nothing, since it builds a new list and points only the local name at it
+          - id: error
+            text: Raises an error, because a parameter cannot be reassigned
+        correct: new-list
+        explanation: >-
+          `items + [4]` creates a new list, and `items = ...` rebinds the local name to it. The
+          caller's name still points at the old list, which was never changed.
+      only-b-grows:
+        prompt: For a list `items`, what does `items += [4]` do?
+        options:
+          - id: rebinds
+            text: Builds a new list, then rebinds `items` to it, same as `items = items + [4]`
+          - id: in-place
+            text: Extends the existing list object in place, like `items.extend([4])`
+          - id: error
+            text: Raises an error, because `+=` works only on numbers
+        correct: in-place
+        explanation: >-
+          Lists implement `+=` as an in-place extension, so every name bound to that list sees the
+          change. Immutable types such as `int` and `tuple` cannot do this, so for them `+=` rebinds
+          the name to a new object.
+
+  - id: sorted-in-loop
+    tags: [sorting-cost, copying]
+    prompt: |-
+      `nums` is a list of `n` numbers in no particular order. What is the time cost of `ranks`?
+
+      ```python
+      def ranks(nums):
+          out = []
+          for x in nums:
+              ordered = sorted(nums)
+              out.append(ordered.index(x))
+          return out
+      ```
+    options:
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          One sort costs about n log n, but the sort does not run once. It sits inside a loop of `n`
+          iterations, so that cost is paid `n` times.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Each iteration does more than a pass over the list. `sorted` has to order the `n` items,
+          which takes about n log n comparisons on top of the O(n) copy, so the total is larger than
+          n².
+      - id: n-squared-log-n
+        text: O(n² log n)
+        explanation: >-
+          The loop runs `n` times. Each iteration sorts `n` items in O(n log n) and then runs an O(n)
+          `index`, which is O(n log n) in all. Sorting once before the loop would cut the sorting
+          cost to O(n log n), but the `n` `index` scans would still total O(n²). A dictionary from
+          value to rank removes those too.
+      - id: cubic
+        text: O(n³)
+        explanation: >-
+          Cubic cost would need three nested levels of `n`. Here there is one loop, and its body does
+          one sort plus one `index` scan, which run one after the other, so their costs add.
+    correct: n-squared-log-n
+    followUps:
+      n-log-n:
+        prompt: How many times does `sorted(nums)` run in this function?
+        options:
+          - id: once
+            text: Once, since the result is the same every time
+          - id: per-iteration
+            text: Once per iteration, so `n` times
+          - id: per-distinct
+            text: Once for each distinct value in `nums`
+        correct: per-iteration
+        explanation: >-
+          Python does not remember that `nums` has not changed, so the call runs again on every
+          iteration and builds a new sorted list each time. Hoist it above the loop to sort once.
+      quadratic:
+        prompt: What does one call of `sorted(nums)` cost for an unordered list?
+        options:
+          - id: linear
+            text: O(n), since it only copies the list
+          - id: n-log-n
+            text: O(n log n), because the copy is O(n) but ordering needs about n log n comparisons
+          - id: n-squared
+            text: O(n²), because it compares every pair
+        correct: n-log-n
+        explanation: >-
+          Python sorts by comparison, so ordering unordered data costs about n log n. `sorted` also
+          makes a copy, while `nums.sort()` sorts in place with no new list. Both keep the same
+          time cost, so the in-place version saves memory, not the log factor.
+      cubic:
+        prompt: >-
+          The body does an O(n log n) sort and then an O(n) `index` scan. How do the two combine in
+          one iteration?
+        options:
+          - id: add
+            text: They add, so one iteration is O(n log n)
+          - id: multiply
+            text: They multiply, so one iteration is O(n² log n)
+          - id: scan-only
+            text: Only the scan matters, so one iteration is O(n)
+        correct: add
+        explanation: >-
+          Steps that run one after the other add, and the larger term wins, so an iteration costs
+          O(n log n). Costs multiply only when one step runs inside another, which is how the `n`
+          loop iterations multiply that per-iteration cost. Treating the sort as O(n²) would also
+          give a cubic total, but a comparison sort costs about n log n.

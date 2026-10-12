@@ -1,0 +1,510 @@
+id: graph-traversal-grids
+title: BFS and DFS on grids
+description: Scan every cell, start a traversal from each unvisited one, and learn which choices (BFS or DFS, when to mark, how deep to recurse) decide whether it is right and fast.
+heading: Which traversal fits?
+
+questions:
+  - id: count-islands
+    heading: Which approach counts the islands?
+    tags: [bfs, dfs, grid, visited, connected-components]
+    prompt: >-
+      A grid holds `1` for land and `0` for water. An island is a group of land cells joined by moves
+      up, down, left, or right. How do you count the islands?
+    options:
+      - id: one-corner
+        text: Run one BFS or DFS from the top-left cell and return how many cells it reaches
+        explanation: >-
+          Two flaws. A traversal reaches only the cells connected to its start, so from one corner it
+          covers at most one island, and the start may even be water. And what it returns is a cell
+          count, not an island count. Each island needs its own start, and each start adds one.
+      - id: border-cells
+        text: Count the land cells that touch water or the grid edge
+        explanation: >-
+          That counts the rim of the land shapes, not the shapes. One island that is a 3 x 3 block of
+          land has eight such cells. Counting cells cannot tell whether two land cells belong to the
+          same island, but following connections can.
+      - id: every-land-cell
+        text: Start a traversal from every land cell with no visited check, adding one for each
+        explanation: >-
+          With no visited check, every land cell starts its own traversal, so the answer is just the
+          number of land cells. An island of five cells would be counted five times.
+      - id: scan-unvisited
+        text: Scan all cells; at each unvisited land cell, start a traversal and add one
+        explanation: >-
+          If a land cell were part of an earlier island, that island's traversal would already have
+          marked it. So each unvisited land cell found by the scan must be a new island. The traversal
+          marks the whole island, and the scan skips its other cells. Total work is O(R*C).
+    correct: scan-unvisited
+    followUps:
+      one-corner:
+        prompt: Which cells does a BFS or DFS started at one land cell reach?
+        options:
+          - id: all-land
+            text: Every land cell in the grid
+          - id: connected-only
+            text: Only the land cells connected to the start by up, down, left, or right steps
+          - id: neighbors-only
+            text: Only the start's four neighbors, because a traversal takes a single step
+        correct: connected-only
+        explanation: >-
+          A traversal follows adjacency, so it stops at water and never jumps to a separate island.
+          That is why the count needs a fresh start for each island, found by scanning every cell.
+      border-cells:
+        prompt: Why does counting land cells that touch water or the edge fail to give the island count?
+        options:
+          - id: same-island
+            text: It never checks whether two land cells are joined, so one big island contributes many cells
+          - id: thin-islands
+            text: It skips islands that are only one cell wide
+          - id: diagonals
+            text: It misses that diagonal neighbors also belong to the same island
+        correct: same-island
+        explanation: >-
+          An island is defined by connectivity, and a per-cell count never looks at how cells are
+          joined, so it measures rim length instead of islands. A traversal walks the joins, so one
+          traversal start stands for one island. Here islands join only by up, down, left, or right.
+      every-land-cell:
+        prompt: >-
+          A 2 x 2 block of land is one island. If a traversal starts from every land cell with no
+          visited check, how many does it add?
+        options:
+          - id: one
+            text: "1"
+          - id: two
+            text: "2"
+          - id: four
+            text: "4"
+        correct: four
+        explanation: >-
+          Each of the four cells starts its own traversal, so the count is four for one island. The
+          visited mark is what lets the scan skip the other three after the first traversal has
+          marked them.
+
+  - id: shortest-path-grid
+    tags: [bfs, dfs, shortest-path, grid]
+    prompt: >-
+      Each move goes up, down, left, or right to an adjacent open cell and costs 1. Find the fewest
+      moves from a start cell to a target cell in a grid that contains walls. Which approach is the
+      best fit?
+    options:
+      - id: bfs
+        text: BFS from the start, stopping when the target is first reached
+        explanation: >-
+          BFS visits every cell 1 move away, then every cell 2 moves away, and so on. The first time
+          it reaches the target is therefore by a shortest route. With a visited mark it takes
+          O(R*C) time.
+      - id: dfs-first
+        text: DFS from the start, returning the length of the first path that reaches the target
+        explanation: >-
+          DFS follows one branch as deep as it can before trying others, so the first path it finds
+          depends on direction order, not length. On an open 3 x 3 grid, trying down, up, right, left
+          in that order from corner to corner returns a path of 8 moves, though 4 suffice.
+      - id: dfs-all
+        text: DFS with backtracking over every path, keeping the shortest length
+        explanation: >-
+          This does give the right answer, since it eventually tries a shortest path. But it counts
+          simple paths, and they multiply fast. Corner to corner there are 12 on an open 3 x 3 grid
+          and 8,512 on 5 x 5. BFS finds the same length in O(R*C).
+      - id: dijkstra
+        text: Dijkstra's algorithm with a priority queue
+        explanation: >-
+          Dijkstra also gives the right answer, but it exists for steps with different costs. When
+          every move costs 1, a plain FIFO queue already hands out cells in order of distance, so the
+          priority queue only adds a log factor.
+    correct: bfs
+    followUps:
+      dfs-first:
+        prompt: Why can the first path DFS finds be longer than the shortest one?
+        options:
+          - id: commits-deep
+            text: It commits to a branch and goes deep, so it can reach the target by a long detour before trying a shorter branch
+          - id: random-order
+            text: It picks directions at random, so which path it returns is a matter of luck
+          - id: revisits
+            text: It visits cells more than once, which adds extra moves
+        correct: commits-deep
+        explanation: >-
+          DFS tries directions in a fixed order and goes as deep as it can, so the path it finds first
+          depends on that order and not on length. BFS explores by distance, so its first arrival is
+          also a shortest one.
+      dfs-all:
+        prompt: What makes trying every path expensive in a grid?
+        options:
+          - id: many-paths
+            text: The number of distinct simple paths grows explosively with grid size, and each is explored on its own
+          - id: queue-updates
+            text: Every step needs a priority-queue update
+          - id: rescan
+            text: Every move requires rescanning all R*C cells
+        correct: many-paths
+        explanation: >-
+          BFS marks each cell once and never explores a second route into it. Backtracking forgets the
+          marks when it unwinds, so the same cells are reached again by an enormous number of routes.
+      dijkstra:
+        prompt: What does the priority queue add when every move costs 1?
+        options:
+          - id: nothing-needed
+            text: Nothing needed, because a FIFO queue already yields cells in order of distance
+          - id: no-revisits
+            text: It stops cells from being revisited, which a plain queue cannot do
+          - id: handles-walls
+            text: It lets the search handle walls, which BFS cannot
+        correct: nothing-needed
+        explanation: >-
+          In BFS the queue holds cells at distance d, then d + 1, so popping in order is already
+          sorted by distance. Visited marks stop revisits in both, and BFS handles walls by skipping
+          them. A heap helps only when costs differ.
+
+  - id: bfs-mark-on-enqueue
+    heading: Which change fixes it most cheaply?
+    tags: [bfs, visited, queue, grid]
+    prompt: |-
+      This BFS walks an `n x n` grid of open cells from `(0, 0)`. It should handle each cell once,
+      but it does not. Which change fixes it most cheaply?
+
+      ```python
+      seen = set()
+      queue = deque([(0, 0)])
+      while queue:
+          r, c = queue.popleft()
+          seen.add((r, c))
+          for nr, nc in neighbors(r, c):  # in-bounds cells only
+              if (nr, nc) not in seen:
+                  queue.append((nr, nc))
+      ```
+    options:
+      - id: nothing-wrong
+        text: No change, since every cell is already dequeued and processed exactly once
+        explanation: >-
+          A cell is marked only after it leaves the queue, so while it waits, other neighbors still
+          see it as unseen and queue it again. Counting dequeues for this code gives 19 on a 3 x 3
+          grid (9 cells), 251 on 5 x 5 (25 cells), and 184,755 on 10 x 10 (100 cells).
+      - id: use-stack
+        text: Swap the queue for a stack
+        explanation: >-
+          A stack changes the visiting order, not when the mark is written. With the mark at pop time,
+          a stack still processes cells repeatedly: 13 pops on a 3 x 3 grid instead of 9. The fix is
+          moving the mark earlier.
+      - id: skip-on-dequeue
+        text: Keep the mark on dequeue, but skip any cell already in `seen` when it is dequeued
+        explanation: >-
+          This is a valid fix and gives correct results, but it is not the cheapest one, because
+          duplicates still pile up in the queue. On a 100 x 100 open grid it appends 19,801 entries
+          with a peak queue of 199, against 10,000 entries and a peak of 100 when cells are marked as
+          they are appended.
+      - id: mark-on-enqueue
+        text: Add a cell to `seen` when it is appended, so it can never be queued twice
+        explanation: >-
+          The first cell to reach a neighbor claims it, and in BFS that first reach is also a shortest
+          one. Each cell is appended once, so the queue sees R*C entries in total, 10,000 on a 100 x 100
+          grid, and processing stays proportional to the number of cells.
+    correct: mark-on-enqueue
+    followUps:
+      nothing-wrong:
+        prompt: >-
+          On a 3 x 3 grid, `(0, 1)` and `(1, 0)` are both queued before either is dequeued. How many
+          times does `(1, 1)` get queued?
+        options:
+          - id: once
+            text: Once
+          - id: twice
+            text: Twice
+          - id: never
+            text: Never
+        correct: twice
+        explanation: >-
+          Each of the two neighbors checks `(1, 1)` when it is dequeued, and `(1, 1)` has not been
+          marked yet because it has not been dequeued itself. Both checks pass, so it is queued twice,
+          and each copy later queues its own neighbors again.
+      use-stack:
+        prompt: What decides whether a cell can be added to the container twice?
+        options:
+          - id: mark-timing
+            text: Whether it is marked seen before or after it is added to the container
+          - id: fifo-lifo
+            text: Whether the container is first-in-first-out or last-in-first-out
+          - id: neighbor-order
+            text: Whether the neighbors are checked in a fixed order
+        correct: mark-timing
+        explanation: >-
+          A cell can be added again only while it still looks unseen. Marking at append time closes
+          that window for any container, queue or stack. Marking at removal time leaves it open.
+      skip-on-dequeue:
+        prompt: >-
+          Compared with marking when a cell is appended, what does marking at dequeue plus a skip check
+          cost on a large open grid?
+        options:
+          - id: exponential
+            text: Exponentially more work, as when there is no skip check
+          - id: about-double
+            text: About twice the queue entries and a larger peak queue, with the same final answer
+          - id: identical
+            text: Nothing, because the queue sizes come out identical
+        correct: about-double
+        explanation: >-
+          The skip check stops repeated processing, so the work stays proportional to R*C. A cell is
+          still appended once for each neighbor that reaches it before it is dequeued, which is about
+          twice per cell on an open grid, so the queue holds duplicates and grows larger.
+
+  - id: multi-source-bfs
+    tags: [bfs, multi-source, grid]
+    prompt: >-
+      In a grid, `2` is a rotten orange, `1` is a fresh orange, and `0` is empty. Each minute, every
+      fresh orange next to a rotten one (up, down, left, right) turns rotten. Several oranges can start
+      rotten. How many minutes pass until no fresh orange is left (or -1 if some never rot)? Which
+      approach is the best fit?
+    options:
+      - id: one-queue
+        text: Queue every rotten orange at minute 0 and run one BFS, one level per minute
+        explanation: >-
+          With all sources in the queue at distance 0, the search expands from all of them at once.
+          Level k holds the cells that rot at minute k, which matches how the rot spreads. Each cell
+          enters the queue once, so it is O(R*C) however many sources there are.
+      - id: sum-times
+        text: Run a separate BFS from each rotten orange and add up their times
+        explanation: >-
+          Rotting happens everywhere at once, so the spreads overlap instead of taking turns. For the
+          row `[2, 1, 1, 1, 2]`, each separate BFS needs 3 minutes, so the sum is 6. The real answer
+          is 2, since the middle orange rots at minute 2.
+      - id: per-source-min
+        text: Run a BFS from each rotten orange, keep each cell's smallest time, take the largest
+        explanation: >-
+          This works, because a cell rots at its smallest distance to any source. It is slower, since
+          S sources mean S full traversals, O(S*R*C), where one multi-source BFS is O(R*C). On a
+          60 x 60 grid that is otherwise all fresh, 100 sources make separate runs do 350,100 cell
+          visits against 3,600 for one BFS, about 100 times as many.
+      - id: dfs-each
+        text: Run a DFS from each rotten orange and use its deepest recursion level as the time
+        explanation: >-
+          DFS depth is the length of some path, not the shortest one, so it can overstate when a cell
+          rots. Handling each source on its own also ignores that another source may reach the cell
+          sooner.
+    correct: one-queue
+    followUps:
+      sum-times:
+        prompt: >-
+          Two rotten oranges both start spreading at minute 0. What does the total time depend on?
+        options:
+          - id: latest-rot
+            text: The latest minute at which any fresh orange rots, since the spreads run in parallel
+          - id: sum-alone
+            text: The sum of the times each orange would need on its own
+          - id: source-count
+            text: The number of rotten oranges at the start
+        correct: latest-rot
+        explanation: >-
+          Everything spreads in the same minutes, so the answer is the maximum over cells of the
+          earliest time each is reached. Adding single-source times double counts the minutes that the
+          spreads share.
+      per-source-min:
+        prompt: >-
+          With `S` rotten oranges, how does the cost of separate BFS runs compare with one multi-source
+          BFS?
+        options:
+          - id: repeats
+            text: It repeats traversals, up to S times the cell visits, so O(S*R*C) against O(R*C)
+          - id: same-total
+            text: It is the same, because every cell is still visited once in total
+          - id: lower
+            text: It is lower, since each BFS covers only the cells near its source
+        correct: repeats
+        explanation: >-
+          Each separate BFS can sweep the whole connected region, and nothing is shared between them.
+          One queue holding every source lets each cell be claimed once by whichever source reaches it
+          first.
+      dfs-each:
+        prompt: Why is the minute a cell rots its BFS distance from the nearest source, not a DFS depth?
+        options:
+          - id: shortest-route
+            text: Rot spreads one step per minute along shortest routes, while DFS depth can reflect a longer route
+          - id: no-marks
+            text: DFS cannot mark cells as visited
+          - id: single-source
+            text: DFS only works from a single source
+        correct: shortest-route
+        explanation: >-
+          A cell rots as soon as any neighbor is rotten, so its time is the length of the shortest
+          route from the nearest source. DFS can mark cells and run from many sources, but it does not
+          explore in order of distance.
+
+  - id: recursive-dfs-depth
+    heading: What happens?
+    tags: [dfs, recursion, python, stack]
+    prompt: |-
+      A recursive DFS flood fill runs on a `1000 x 1000` grid where every cell is land, starting at
+      `(0, 0)`, in CPython with default settings.
+
+      ```python
+      def fill(grid, r, c):
+          if not (0 <= r < len(grid) and 0 <= c < len(grid[0])) or grid[r][c] != 1:
+              return
+          grid[r][c] = 2
+          fill(grid, r + 1, c)
+          fill(grid, r - 1, c)
+          fill(grid, r, c + 1)
+          fill(grid, r, c - 1)
+      ```
+
+      What happens, and what is the sturdiest fix?
+    options:
+      - id: explicit-stack
+        text: A RecursionError, so run the same DFS with an explicit stack instead of recursion
+        explanation: >-
+          Each pending cell is a nested call, and on an all-land grid the depth can reach about R*C
+          (10,001 on a 100 x 100 grid). CPython stops at 1000 frames by default. A list used as a
+          stack, or a deque, keeps pending cells on the heap, and the same fill written that way
+          visits all 1,000,000 cells.
+      - id: raise-limit
+        text: "A RecursionError, so raise the limit with `sys.setrecursionlimit` and keep recursing"
+        explanation: >-
+          This can work. With the limit set to 2 million, the recursion finishes on a 1000 x 1000 grid
+          in recent CPython, at a peak of about 190 MB, against about 85 MB for an explicit stack that
+          marks cells as it pushes them. It leans on how deep the interpreter and platform tolerate
+          recursion, so it is a fragile fix. An explicit stack removes the depth limit as a concern.
+      - id: switch-bfs
+        text: DFS cannot handle grids this large, so switch to BFS
+        explanation: >-
+          A BFS with a deque would avoid the error, but DFS is not what failed. Recursion is. The same
+          DFS with an explicit stack visits every cell. Choose BFS when you need shortest distances,
+          not to dodge recursion depth.
+      - id: runs-fine
+        text: It runs fine, since DFS is O(R*C) and a million cells is small
+        explanation: >-
+          Time complexity says how work grows, not whether the call stack survives. CPython allows
+          about 1000 nested calls, and this fill nests about R*C. It raises
+          `RecursionError: maximum recursion depth exceeded`, and so does a single row of 1000 land
+          cells.
+    correct: explicit-stack
+    followUps:
+      raise-limit:
+        prompt: What is the main risk of relying on a raised recursion limit?
+        options:
+          - id: fragile-memory
+            text: Tolerated depth depends on the interpreter and platform, and a million frames cost a lot of memory
+          - id: changes-order
+            text: It changes the order cells are visited, which changes the island count
+          - id: wrong-results
+            text: Past 1000 frames the recursion keeps running but starts returning wrong results
+        correct: fragile-memory
+        explanation: >-
+          The limit is a guard against overflowing the interpreter's stack, so raising it moves the
+          risk instead of removing it. An explicit stack holds only coordinates and has no such limit.
+      switch-bfs:
+        prompt: What actually made the recursive version fail?
+        options:
+          - id: nested-calls
+            text: Each pending cell is a nested call, and CPython caps the number of nested calls
+          - id: more-cells
+            text: DFS visits more cells than BFS does
+          - id: visited-size
+            text: The visited marks take too much memory for DFS
+        correct: nested-calls
+        explanation: >-
+          DFS and BFS both visit each cell once. The failure comes from using the call stack to hold
+          pending cells. Hold them in a list or a deque and the same traversal order works at any size.
+      runs-fine:
+        prompt: What did the O(R*C) analysis not account for?
+        options:
+          - id: call-stack
+            text: Call-stack space, since recursion can keep up to R*C frames active and CPython caps how many
+          - id: direction-count
+            text: The four directions, which multiply the time by four
+          - id: slow-loops
+            text: A million cells being more than Python can loop over
+        correct: call-stack
+        explanation: >-
+          Big-O time and the call-stack limit are separate questions. An iterative fill over a million
+          cells runs fine in Python. The recursion limit is what stops the recursive version.
+
+  - id: grid-bounds-and-cost
+    heading: What is wrong with this code?
+    tags: [grid, bounds-check, complexity, dfs, python]
+    prompt: |-
+      This counts islands in a grid with `R` rows and `C` columns. The helper marks land it reaches
+      so it is not counted again.
+
+      ```python
+      def sink(grid, r, c):
+          R, C = len(grid), len(grid[0])
+          if r >= R or c >= C or grid[r][c] != 1:
+              return
+          grid[r][c] = 2
+          sink(grid, r + 1, c)
+          sink(grid, r - 1, c)
+          sink(grid, r, c + 1)
+          sink(grid, r, c - 1)
+      ```
+
+      Which statement is accurate?
+    options:
+      - id: raises-top-left
+        text: Stepping off the top or left edge raises IndexError, so the bug shows up as a crash
+        explanation: >-
+          A list index raises IndexError only outside the range from `-len` to `len - 1`, so `grid[-1][0]`
+          quietly reads the last row. Here `r >= R` stops the bottom and right edges before indexing,
+          but nothing guards the top and left. A step off those edges does not crash, and it gives a
+          wrong count whenever the cell it wraps to is land.
+      - id: fine-linear
+        text: Nothing is wrong, since each cell is handled a bounded number of times, so it is O(R*C)
+        explanation: >-
+          The cost claim is right: the scan is R*C and each cell is expanded once, so O(R*C). But the
+          code has a correctness bug that the cost analysis does not touch. The top and left edges are
+          never checked.
+      - id: wrap-around
+        text: Negative `r` or `c` are not rejected and wrap to the opposite edge, silently joining cells
+        explanation: >-
+          A negative index counts from the end, so `grid[-1]` is the last row and `grid[r][-1]` the
+          last column. For example, a 3 x 3 grid with land at `(0, 0)` and `(2, 0)` is counted as 1
+          island instead of 2. The fix is to check `0 <= r < R and 0 <= c < C` before `grid[r][c]`.
+      - id: quadratic
+        text: The scan starts a traversal at every cell, so counting costs O((R*C)^2)
+        explanation: >-
+          A traversal starts only at an unvisited land cell, and each cell is marked on first entry
+          and expanded once. All traversals together do about four calls per cell, so the total is
+          O(R*C). The real bug in this code is different.
+    correct: wrap-around
+    followUps:
+      raises-top-left:
+        prompt: In Python, what does `grid[-1][0]` do on a 3 x 3 list of lists?
+        options:
+          - id: reads-last-row
+            text: It reads the first column of the last row
+          - id: index-error
+            text: It raises IndexError
+          - id: clamps-to-zero
+            text: It treats -1 as 0 and reads the first row
+        correct: reads-last-row
+        explanation: >-
+          A negative index counts back from the end, so `-1` is the last item. IndexError is raised
+          only for an index outside `-len` to `len - 1`, which is why the bottom and right edges fail
+          loudly and the top and left edges do not.
+      fine-linear:
+        prompt: >-
+          Before the code indexes `grid[r][c]`, what must happen to a step to `r = -1`?
+        options:
+          - id: reject-first
+            text: A lower-bound check must reject it, since indexing would read the last row
+          - id: later-test
+            text: Nothing, because the later `!= 1` test rejects it anyway
+          - id: upper-check
+            text: The `r >= R` check already catches it
+        correct: reject-first
+        explanation: >-
+          The cell it wraps to may well be land, so the `!= 1` test would not reject it, and `r >= R`
+          is false for a negative number. Put `0 <= r < R and 0 <= c < C` first so no out-of-range
+          index ever reaches the list.
+      quadratic:
+        prompt: >-
+          Why is the total cost of all traversals in an island count only O(R*C)?
+        options:
+          - id: marked-once
+            text: Each cell is marked on first entry, so it is expanded at most once across all traversals
+          - id: small-islands
+            text: Each traversal covers only a small constant number of cells
+          - id: stop-at-water
+            text: Each traversal stops at the first water cell it meets
+        correct: marked-once
+        explanation: >-
+          The visited mark is shared by every traversal, so a cell already covered is never expanded
+          again, whatever start reaches it. Expansion is bounded by the number of cells, and each
+          expansion does a constant number of neighbor checks.

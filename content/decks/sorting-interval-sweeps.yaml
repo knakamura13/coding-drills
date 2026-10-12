@@ -1,0 +1,494 @@
+id: sorting-interval-sweeps
+title: Sorting and interval sweeps
+description: Sort the intervals first, then sweep once while tracking a single current interval, kept end, or running count.
+heading: What should you do first?
+
+questions:
+  - id: merge-intervals-sort-start
+    heading: Which plan merges them correctly?
+    tags: [intervals, sorting, sweep]
+    prompt: >-
+      Merge every group of overlapping intervals in an unordered list. Intervals that share an
+      endpoint count as overlapping, so `[1, 3]` and `[3, 5]` become `[1, 5]`. For example,
+      `[[12, 15], [2, 5], [4, 8], [20, 22]]` becomes `[[2, 8], [12, 15], [20, 22]]`.
+    options:
+      - id: sort-start-max
+        text: Sort by start, then sweep once and extend the current interval's end with `max`
+        explanation: >-
+          Once the starts are in order, each interval either begins inside the current one, so you
+          extend its end, or begins after it, so the current one is finished. The sort costs
+          O(n log n) and the sweep adds O(n), so the sort sets the total at O(n log n).
+      - id: sort-end
+        text: Sort by end, then sweep once and extend the current interval's end
+        explanation: >-
+          With ends in order, an interval later in the list can begin before the current interval
+          starts. The sweep only ever updates the end, so it keeps the wrong start. For
+          `[[1, 4], [2, 3], [5, 6]]` it returns `[[2, 4], [5, 6]]` instead of `[[1, 4], [5, 6]]`.
+      - id: no-sort
+        text: Skip the sort and sweep once, extending the current interval's end with `max`
+        explanation: >-
+          The sweep assumes starts never go backward. On the example it starts with `[12, 15]`,
+          absorbs `[2, 5]` and `[4, 8]` without ever lowering the start, and returns
+          `[[12, 15], [20, 22]]`, losing the real start of 2. Without the sort, the simple
+          approaches need O(n²) comparisons.
+      - id: sort-start-last-end
+        text: Sort by start, then set the current end to the end of each overlapping interval
+        explanation: >-
+          Sorting by start is right, but replacing the end can shrink it. For
+          `[[1, 10], [2, 3], [4, 5]]` this gives `[[1, 3], [4, 5]]`, even though everything is
+          inside `[1, 10]`. Use `max` so the end only grows.
+    correct: sort-start-max
+    followUps:
+      sort-end:
+        prompt: >-
+          Sorted by end, `[[1, 4], [2, 3], [5, 6]]` becomes `[2, 3], [1, 4], [5, 6]`. What goes
+          wrong in the sweep?
+        options:
+          - id: later-starts-earlier
+            text: "`[1, 4]` comes after `[2, 3]` but starts earlier, and the sweep never lowers the current start"
+          - id: too-many-groups
+            text: The sweep produces more groups than there are overlaps
+          - id: sweep-quadratic
+            text: Sorting by end makes the sweep O(n²)
+        correct: later-starts-earlier
+        explanation: >-
+          The sweep reads one interval at a time and only moves the end forward. Sorting by end
+          can put a later interval with an earlier start after the current one, so the merged
+          start comes out as 2 instead of 1. Sorting by start rules this out, because no later
+          interval can start before the current one.
+      no-sort:
+        prompt: >-
+          What does sorting by start guarantee that lets a single current interval be enough?
+        options:
+          - id: start-after-end-closes
+            text: >-
+              If an interval starts after the current end, every later one starts even later, so
+              the current one can be closed
+          - id: ends-also-sorted
+            text: The ends come out in order too
+          - id: no-overlaps-left
+            text: Sorting removes the overlaps between intervals
+        correct: start-after-end-closes
+        explanation: >-
+          Starts only increase from left to right. If the next start is past the current end, the
+          current interval cannot overlap anything later, so it can be closed. The ends are not
+          sorted and overlaps still exist, so you keep extending one interval until a gap appears.
+      sort-start-last-end:
+        prompt: >-
+          Sorted by start, the list is `[1, 10], [2, 3], [4, 5]`. What must the merged end be?
+        options:
+          - id: ten
+            text: 10, because a later interval can end before the current one does
+          - id: five
+            text: 5, the end of the last interval merged
+          - id: three
+            text: 3, the end of the first interval that overlaps
+        correct: ten
+        explanation: >-
+          Sorted starts do not mean sorted ends. An interval nested inside a longer one ends
+          earlier, so overwriting the end would shrink it. Taking `max(current_end, end)` keeps
+          the farthest reach.
+
+  - id: meeting-rooms-touching
+    heading: What is the check?
+    tags: [intervals, sorting, edge-cases]
+    prompt: >-
+      Given a list of meetings as `[start, end]` pairs in any order, decide whether one person can
+      attend all of them. A meeting that ends at time 3 and another that starts at time 3 do not
+      conflict. Which is the most efficient correct check?
+    options:
+      - id: sort-start-less-than
+        text: Sort by start, then fail if any start is less than the previous meeting's end
+        explanation: >-
+          After sorting by start, if any clash exists, then some adjacent pair clashes, so one pass
+          over neighbors is enough. A clashing pair need not itself be adjacent: in
+          `[0, 10], [1, 2], [3, 4]`, the meeting `[3, 4]` clashes with `[0, 10]`, but `[1, 2]`
+          already trips the neighbor check. The strict `<` lets `[1, 3]` and `[3, 5]` coexist. The
+          cost is O(n log n) for the sort plus an O(n) pass.
+      - id: sort-start-less-equal
+        text: Sort by start, then fail if any start is at most the previous meeting's end
+        explanation: >-
+          Sorting is right, but `<=` treats a start equal to the previous end as a clash. That
+          rejects `[[1, 3], [3, 5]]`, which the rules allow. It would be the right comparison only
+          if touching meetings did conflict.
+      - id: no-sort-adjacent
+        text: Compare each meeting with the next one in the order given, with no sorting
+        explanation: >-
+          Neighbors in the input need not be neighbors in time. In
+          `[[0, 10], [20, 30], [5, 6]]` no adjacent pair in the given order overlaps, yet `[0, 10]`
+          and `[5, 6]` do. After sorting by start, `[5, 6]` sits right after `[0, 10]`, so the
+          neighbor check catches it.
+      - id: compare-all-pairs
+        text: Compare every meeting with every other meeting instead of sorting
+        explanation: >-
+          Comparing all pairs finds every clash, so the answer is correct, but it takes O(n²)
+          comparisons. Sorting by start lets you check only neighbors, which brings the total down
+          to O(n log n).
+    correct: sort-start-less-than
+    followUps:
+      sort-start-less-equal:
+        prompt: >-
+          A check returns `True` when two meetings conflict. With touching allowed, which test on
+          `start` and `previous_end` should it use, so that `[[1, 3], [3, 5]]` gives `False`?
+        options:
+          - id: less-than
+            text: "`start < previous_end`, since `3 < 3` is false"
+          - id: less-equal-ok
+            text: "`start <= previous_end`, since `3 <= 3` is true"
+          - id: either
+            text: Either one, because the result is the same for touching meetings
+        correct: less-than
+        explanation: >-
+          The test asks whether the next meeting starts before the previous one has ended. Equal
+          means it starts exactly as the other ends, which is allowed, so only a strict `<` is
+          true for an overlap and false for touching. Whether touching counts as a clash is a rule of the problem, and the choice
+          between `<` and `<=` is where you encode it.
+      no-sort-adjacent:
+        prompt: >-
+          Why does sorting by start let you check only neighboring meetings?
+        options:
+          - id: neighbors-catch-all
+            text: >-
+              If meeting `i` clashes with a later one, the very next meeting also starts before
+              `i` ends
+          - id: sorted-ends
+            text: Sorting by start also sorts the ends
+          - id: only-neighbors
+            text: Meetings can only ever overlap their direct neighbors, so farther pairs never matter
+        correct: neighbors-catch-all
+        explanation: >-
+          If a later meeting `j` starts before meeting `i` ends, then every meeting between them
+          starts no later than `j`, so the one right after `i` starts before `i` ends as well. A
+          clash with any later meeting therefore always shows up between neighbors.
+      compare-all-pairs:
+        prompt: What does the sort buy you over checking all pairs?
+        options:
+          - id: n-log-n-total
+            text: Only `n - 1` neighbor checks, so the total is O(n log n) rather than O(n²)
+          - id: constant-checks
+            text: A single check, so the total is O(n)
+          - id: correctness
+            text: Correctness, since all-pairs misses some clashes
+        correct: n-log-n-total
+        explanation: >-
+          Both approaches find every clash. After the O(n log n) sort, the pass is O(n), against
+          roughly n² / 2 pair checks. So the pairwise version is correct but slower for large `n`.
+
+  - id: non-overlapping-sort-end
+    heading: How should you sort and what do you keep?
+    tags: [intervals, sorting, greedy]
+    prompt: >-
+      Remove as few intervals as possible so that the rest do not overlap. Intervals that only
+      touch, like `[1, 2]` and `[2, 3]`, do not overlap. Which greedy plan is correct?
+    options:
+      - id: sort-end-keep-earliest
+        text: Sort by end, then keep an interval only when its start is at or after the last kept end
+        explanation: >-
+          Finishing earliest leaves the most room for everything after it, so keeping the
+          earliest-ending interval never hurts. You remove `n` minus the number kept, in
+          O(n log n) for the sort and O(n) for the pass.
+      - id: sort-start-keep-first
+        text: Sort by start, then keep each interval that does not overlap the last one kept
+        explanation: >-
+          An early start says nothing about when an interval finishes. On
+          `[[1, 10], [2, 3], [4, 5], [6, 7]]` it keeps `[1, 10]` and drops the other three, but
+          removing just `[1, 10]` is enough. Sorting by start can work if each clash drops the
+          interval with the later end, but that is the same earliest-end idea.
+      - id: shortest-first
+        text: Sort by length, shortest first, and keep each interval that fits
+        explanation: >-
+          Short does not mean it blocks little. For `[[1, 6], [5, 8], [7, 12]]` the shortest is
+          `[5, 8]`, which overlaps both others, so it keeps 1 interval and removes 2. Keeping
+          `[1, 6]` and `[7, 12]` removes only 1.
+      - id: merge-and-count
+        text: Merge the overlapping intervals first, then remove one for each interval that merged away
+        explanation: >-
+          Merging counts groups, not what has to go. On `[[1, 10], [2, 3], [4, 5], [6, 7]]`
+          everything merges into one group, which suggests removing 3, but removing the single
+          interval `[1, 10]` leaves the other three non-overlapping.
+    correct: sort-end-keep-earliest
+    followUps:
+      sort-start-keep-first:
+        prompt: >-
+          Sorted by start, `[[1, 10], [2, 3], [4, 5], [6, 7]]` starts with `[1, 10]`. How many
+          intervals does keep-the-first-that-fits end up with, compared with the best possible?
+        options:
+          - id: one-versus-three
+            text: It keeps 1, while the best keeps 3, because the long first interval blocks the rest
+          - id: three-versus-three
+            text: Both keep 3
+          - id: two-versus-three
+            text: It keeps 2, while the best keeps 3
+        correct: one-versus-three
+        explanation: >-
+          The first interval starts earliest but covers everything, so every later interval
+          overlaps it and gets dropped. Choosing by end time avoids it, because `[1, 10]` finishes
+          last and is never picked ahead of the short ones.
+      shortest-first:
+        prompt: >-
+          Why is picking the shortest interval first not the same as picking the one that ends
+          first?
+        options:
+          - id: length-vs-position
+            text: Length ignores where the interval sits, so a short one in the middle can block two others
+          - id: same-thing
+            text: They always select the same interval
+          - id: short-always-safe
+            text: A short interval blocks the least time, so keeping it is always safe
+        correct: length-vs-position
+        explanation: >-
+          What limits the intervals chosen after it is where it finishes, which is its end, not
+          its length. A short interval can sit in the middle and overlap two longer ones that
+          could otherwise both be kept.
+      merge-and-count:
+        prompt: What does merging overlapping intervals into groups tell you?
+        options:
+          - id: covered-ranges
+            text: Which ranges of time are covered, not the largest set of intervals that fit together
+          - id: removals-needed
+            text: How many intervals must be removed
+          - id: kept-intervals
+            text: Which intervals to keep
+        correct: covered-ranges
+        explanation: >-
+          Merging answers a coverage question: which stretches of time are occupied. Choosing the
+          most intervals that fit together is a selection problem, and the earliest-end rule
+          solves it.
+
+  - id: insert-interval-three-phases
+    heading: Which one-pass plan fits?
+    tags: [intervals, sweep]
+    prompt: >-
+      A list of non-overlapping intervals is already sorted by start. Insert one new interval,
+      merging anything it overlaps, and do it in one O(n) pass. Intervals that touch count as
+      overlapping. For example, inserting `[5, 12]` into
+      `[[1, 3], [4, 6], [7, 8], [10, 11], [14, 18]]` gives `[[1, 3], [4, 12], [14, 18]]`.
+      Which plan fits?
+    options:
+      - id: three-phases
+        text: Copy the intervals ending before the new start, merge all that overlap it, copy the rest
+        explanation: >-
+          The list is already sorted, so the intervals that overlap the new one are one
+          contiguous run. Walk the list once: copy while the end is before the new start, grow the
+          new interval while starts are at or before its end, then copy what remains.
+      - id: resort-and-merge
+        text: Append the new interval, re-sort by start, then run the usual merge
+        explanation: >-
+          The output is correct, but the task asks for one O(n) pass, and a comparison sort has an
+          O(n log n) worst case. The three-phase pass needs no sort at all. Some implementations,
+          CPython's among them, run close to linear on nearly sorted input, but that is not a
+          language-independent guarantee.
+      - id: append-and-merge
+        text: Append the new interval to the end and run the merge sweep without sorting
+        explanation: >-
+          The merge sweep needs starts in order. On the example the appended `[5, 12]` is folded
+          into `[14, 18]`, whose start stays at 14, so the result is
+          `[[1, 3], [4, 6], [7, 8], [10, 11], [14, 18]]`, with nothing merged and the new interval
+          lost.
+      - id: merge-with-neighbor
+        text: Find the interval nearest the new start and merge the new one with just that one
+        explanation: >-
+          A new interval can reach across several existing ones. In the example `[5, 12]` absorbs
+          `[4, 6]`, `[7, 8]`, and `[10, 11]`. Merging with one neighbor leaves the others
+          overlapping it.
+    correct: three-phases
+    followUps:
+      resort-and-merge:
+        prompt: What makes re-sorting unnecessary here?
+        options:
+          - id: already-ordered
+            text: The existing intervals are in order, so a scan can place the new one without any sorting
+          - id: sort-wrong
+            text: Sorting would produce a wrong merged result
+          - id: sort-by-end-too
+            text: Sorting by start alone would leave ties unresolved, so you would also need to sort by end
+        correct: already-ordered
+        explanation: >-
+          Only the new interval is out of place, and the sorted order tells you exactly where it
+          belongs and where to stop. Re-sorting gives the same result, so it is not wrong, but it
+          breaks the O(n) requirement in the worst case.
+      append-and-merge:
+        prompt: Why does the merge sweep lose the appended `[5, 12]`?
+        options:
+          - id: assumes-sorted-starts
+            text: The sweep assumes starts never decrease, so `[5, 12]` is folded into `[14, 18]` and its start is lost
+          - id: stays-separate
+            text: The sweep keeps `[5, 12]` as its own interval because it does not overlap `[14, 18]`
+          - id: ends-unsorted
+            text: The problem is that the ends are out of order, not the starts
+        correct: assumes-sorted-starts
+        explanation: >-
+          The sweep tests only whether the next start is at or before the current end, and then
+          raises the end. `[5, 12]` starts at 5, which is before 18, so it passes that test and is
+          merged into `[14, 18]` even though the two do not overlap. The start 5 is never recorded.
+      merge-with-neighbor:
+        prompt: How many existing intervals can one new interval overlap?
+        options:
+          - id: any-run
+            text: Any number, always a consecutive run, including ones it only partly covers
+          - id: at-most-one
+            text: At most one
+          - id: fully-inside
+            text: Only those it fully contains
+        correct: any-run
+        explanation: >-
+          A long new interval can span many existing ones, and partial overlap counts too. Because
+          the list is sorted and non-overlapping, they form one consecutive run, which is why
+          the middle phase is a loop with `min` on the start and `max` on the end.
+
+  - id: sorted-key-stability
+    heading: What do `a`, `b`, and `c` hold?
+    tags: [sorting, python]
+    prompt: |-
+      What do `a`, `b`, and `c` hold after this runs?
+
+      ```python
+      intervals = [[3, 4], [1, 9], [1, 2]]
+      a = sorted(intervals, key=lambda x: x[0])
+      b = sorted(intervals)
+      c = intervals.sort(key=lambda x: x[0])
+      ```
+    options:
+      - id: stable-lexicographic-none
+        text: "`a` starts `[1, 9]`, `b` starts `[1, 2]`, `c` is `None`"
+        explanation: >-
+          The key looks only at the start, and Python's sort is stable, so `[1, 9]` stays ahead of
+          `[1, 2]` as in the input. With no key, lists compare element by element, so `[1, 2]`
+          sorts before `[1, 9]`. `sort()` reorders in place and returns `None`.
+      - id: a-equals-b
+        text: "`a` and `b` are equal, and `c` is `None`"
+        explanation: >-
+          They differ on the tie. The key sort sees both `[1, 9]` and `[1, 2]` as 1 and keeps their
+          input order, while the default sort goes on to compare the ends.
+      - id: b-type-error
+        text: "`a` starts `[1, 9]`, `b` raises `TypeError`, and `c` is `None`"
+        explanation: >-
+          Lists can be compared, element by element, so the default sort of intervals works. A
+          `TypeError` appears only when the elements cannot be compared, such as dicts.
+      - id: c-sorted-list
+        text: "`a` starts `[1, 9]`, `b` starts `[1, 2]`, and `c` is the sorted list"
+        explanation: >-
+          `list.sort()` changes the list it is called on and returns `None`. Only `sorted()` returns
+          a new list, so `c` is `None`.
+    correct: stable-lexicographic-none
+    followUps:
+      a-equals-b:
+        prompt: Why does `a` keep `[1, 9]` ahead of `[1, 2]`?
+        options:
+          - id: equal-keys-stable
+            text: Both keys are 1, and a stable sort keeps tied items in their original order
+          - id: larger-end-first
+            text: The key sort breaks ties by putting the larger end first
+          - id: reversed-ties
+            text: Tied items always come out reversed
+        correct: equal-keys-stable
+        explanation: >-
+          The key `x[0]` is 1 for both, so they are tied, and Python guarantees tied items keep
+          their input order. Nothing looks at the end. For merging, the order of tied starts is
+          harmless, but it is not the same as the default sort.
+      b-type-error:
+        prompt: How does Python compare two lists, or two tuples?
+        options:
+          - id: left-to-right
+            text: Element by element from the left, and the first difference decides
+          - id: not-comparable
+            text: They cannot be compared with `<`
+          - id: by-length
+            text: By length first
+        correct: left-to-right
+        explanation: >-
+          `[1, 2] < [1, 9]` is true because the first elements tie and `2 < 9`. That is why
+          `sorted(intervals)` orders by start and then by end, and why tuples work the same way.
+      c-sorted-list:
+        prompt: What is the difference between `intervals.sort()` and `sorted(intervals)`?
+        options:
+          - id: inplace-vs-copy
+            text: "`sort()` reorders the list in place and returns `None`; `sorted()` returns a new list"
+          - id: same-both
+            text: Both return a new sorted list
+          - id: sort-copies
+            text: "`sort()` returns a sorted copy and leaves the original alone"
+        correct: inplace-vs-copy
+        explanation: >-
+          Writing `intervals = intervals.sort()` wipes the list by assigning `None`. `sorted()` is
+          the choice when you need the original untouched. It copies only the outer list, so the
+          inner intervals are shared.
+
+  - id: sweep-line-minimum-rooms
+    heading: How do you count the rooms?
+    tags: [intervals, sweep, sorting]
+    prompt: >-
+      Find the fewest rooms that can hold every meeting in a list of `[start, end]` pairs. A meeting
+      that ends at time 3 frees its room for one that starts at time 3. Which sweep-line plan is
+      correct?
+    options:
+      - id: events-end-first
+        text: Sort +1 and -1 events by time, add them up, and process a -1 before a +1 at the same time
+        explanation: >-
+          Each start adds a room in use and each end frees one, so the running total is the number
+          of meetings in progress. The largest total is the answer. Processing ends first at a tie
+          stops a touching pair from counting as overlap. Sorting dominates at O(n log n).
+      - id: events-start-first
+        text: Sort +1 and -1 events by time, add them up, and process a +1 before a -1 at the same time
+        explanation: >-
+          With starts first, `[[1, 3], [3, 5]]` rises to 2 at time 3 before the end is applied, so
+          it reports 2 rooms for meetings that can share one. This order would be right only if
+          touching meetings did conflict.
+      - id: max-overlaps-plus-one
+        text: Find the interval overlapping the most others and add one
+        explanation: >-
+          One interval can overlap many that never overlap each other. In
+          `[[0, 10], [1, 2], [3, 4], [5, 6]]` the first overlaps three others, which suggests 4
+          rooms, but the short ones can share a single room beside it, so 2 is enough.
+      - id: room-per-meeting
+        text: One room per meeting, so the answer is the number of meetings
+        explanation: >-
+          This holds only if every meeting overlaps every other one. A room is free again once its
+          meeting ends, so meetings that run one after another can share it.
+    correct: events-end-first
+    followUps:
+      events-start-first:
+        prompt: >-
+          For `[[1, 3], [3, 5]]`, what does the sweep report if the +1 at time 3 is handled before
+          the -1 at time 3?
+        options:
+          - id: two-rooms
+            text: 2, because the count reaches 2 before the first meeting is removed
+          - id: one-room
+            text: 1, because the meetings touch only at a point
+          - id: arbitrary
+            text: It is arbitrary, since sorting by time does not decide the order of tied events
+        correct: two-rooms
+        explanation: >-
+          The count goes 1, 2, 1, 0 instead of 1, 0, 1, 0. Sorting `(time, delta)` pairs with the
+          default tuple order puts `(3, -1)` before `(3, 1)`, because -1 is less than 1, so the
+          right tie-break comes for free.
+      max-overlaps-plus-one:
+        prompt: >-
+          In `[[0, 10], [1, 2], [3, 4], [5, 6]]`, how many rooms are needed?
+        options:
+          - id: two
+            text: 2, because the three short meetings never overlap each other
+          - id: four
+            text: 4, one for each meeting
+          - id: three
+            text: 3, one for the long meeting and two for the short ones
+        correct: two
+        explanation: >-
+          At most two meetings are ever in progress together: the long one and one short one. The
+          sweep sees this because it counts how many are running at one moment, not how many
+          overlap an interval across its whole length.
+      room-per-meeting:
+        prompt: How many rooms do `[[1, 2], [3, 4], [5, 6]]` need?
+        options:
+          - id: one
+            text: 1, because each meeting ends before the next begins
+          - id: three
+            text: 3, one for each meeting
+          - id: two
+            text: 2, since only every other meeting can reuse a room
+        correct: one
+        explanation: >-
+          The running count never goes above 1, since each meeting finishes before the next starts.
+          The answer is the peak number of meetings in progress, which is at most the number of
+          meetings and often far smaller.

@@ -37,6 +37,10 @@ questions:
 
 Prompts and explanations are Markdown: paragraphs, `` `inline code` ``, **bold**, *italics*, and fenced code blocks. Option text is inline Markdown. Quote any YAML value that starts with a backtick or contains `: `.
 
+## Tags
+
+Give every question one to three `tags` (lowercase kebab-case, such as `hash-map` or `sliding-window`). Tags are the topics shown on the Progress screen and offered as filters in Mixed practice. Reuse an existing tag when the topic is the same, because each distinct tag becomes its own row and filter. A question with no tags is skipped by both.
+
 ## Rules the build enforces
 
 - Every wrong option has a follow-up, and the correct option has none.
@@ -61,7 +65,8 @@ Write every prompt and explanation yourself. Do not copy problem statements or e
 
 1. `pnpm test` (validates the schema and plays random sessions over every deck).
 2. Play the deck in the app and pick every wrong option once.
-3. Read each explanation as a skeptic. A wrong explanation teaches the wrong thing, so check claims about complexity and edge cases.
+3. Read each explanation as a skeptic. A wrong explanation teaches the wrong thing, so check claims about complexity and edge cases. Run every code snippet in Python and paste the real output, never an expected one.
+4. Check that no wrong option is also defensibly correct for the way the question is worded (for example "average case" versus "worst case", or whether the returned value counts as extra space). If it is, reword the question or the option.
 
 ## Reporting a bad question
 

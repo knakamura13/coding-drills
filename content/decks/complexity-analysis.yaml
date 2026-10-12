@@ -44,8 +44,8 @@ questions:
             text: It doubles
         correct: one-more
         explanation: >-
-          Doubling `n` lets you halve one more time before reaching the old size, so the count rises
-          by one. Growing slowly is still growing, which is why the answer is not O(1).
+          Doubling `n` adds one more halving, so the number of checks rises by about one. Growing
+          slowly is still growing, which is why the answer is not O(1).
       linear:
         prompt: What lets binary search skip half of the array at each step?
         options:
@@ -94,8 +94,9 @@ questions:
       - id: n-log-n
         text: O(n log n)
         explanation: >-
-          A log n factor needs the inner work to shrink by a constant fraction each time. Here it
-          shrinks by only one per outer step, so the counts add up to n(n + 1) / 2.
+          A log n factor comes from halving or doubling, as in a loop with `j *= 2`. Here the inner
+          loop is not halved. It just starts one item later each time, so the counts add up to
+          n(n + 1) / 2.
       - id: quadratic
         text: O(n²)
         explanation: >-
@@ -132,7 +133,7 @@ questions:
             text: A loop that runs a fixed number of times
         correct: halving
         explanation: >-
-          A log n factor appears when the remaining work is cut by a constant fraction each step.
+          A log n factor usually comes from halving or doubling, such as a loop with `j *= 2`.
           Starting one item later removes only one item per round, which still sums to about n² / 2.
       exponential:
         prompt: What does an O(2^n) algorithm typically do?
@@ -152,7 +153,7 @@ questions:
     tags: [hash-map]
     prompt: >-
       Count how many times each value appears in a list of `n` items, using a dictionary and one
-      pass over the list. What is the time complexity?
+      pass over the list. What is the expected (average-case) time complexity?
     options:
       - id: constant
         text: O(1)
@@ -173,11 +174,12 @@ questions:
         text: O(n²)
         explanation: >-
           Quadratic time means each item triggers a scan of the other items, as when counting with
-          `nums.count(x)` for every `x`. A dictionary finds a key without scanning.
+          `nums.count(x)` for every `x`. A dictionary normally finds a key directly through its
+          hash, with no scan.
     correct: linear
     followUps:
       constant:
-        prompt: A dictionary update is O(1). Why is the whole pass not O(1)?
+        prompt: A dictionary update is O(1) on average. Why is the whole pass not O(1)?
         options:
           - id: repeated-per-item
             text: The update runs once for each of the n items, so the constant cost is paid n times
@@ -219,8 +221,9 @@ questions:
   - id: sort-then-scan
     tags: [sorting]
     prompt: >-
-      To check whether a list of `n` numbers contains a duplicate, you sort it and then compare each
-      item with its neighbor in one pass. What is the time complexity?
+      To check whether a list of `n` numbers contains a duplicate, you sort it with Python's built-in
+      `sorted` (O(n log n) in the worst case) and then compare each item with its neighbor in one
+      pass. What is the time complexity?
     options:
       - id: linear
         text: O(n)
@@ -236,7 +239,8 @@ questions:
         text: O(n²)
         explanation: >-
           Comparing every pair with a double loop would be quadratic. Sorting first puts duplicates
-          next to each other, so no pair loop is needed, and a comparison sort runs in n log n.
+          next to each other, so no pair loop is needed, and the built-in sort is O(n log n) even
+          in the worst case.
       - id: logarithmic
         text: O(log n)
         explanation: >-
@@ -276,10 +280,10 @@ questions:
         options:
           - id: read-everything
             text: Any item might be the duplicate, so every item has to be read at least once
-          - id: sorting-is-slow
-            text: Sorting is always slower than log n
-          - id: slow-indexing
-            text: Python lists do not support fast indexing
+          - id: sorted-means-search
+            text: Sorting already orders the data, so binary search could find a duplicate in log n
+          - id: too-big
+            text: The list is too large to hold in memory
         correct: read-everything
         explanation: >-
           One unread item could be the duplicate, so a correct algorithm reads all `n`. Sublinear
@@ -291,14 +295,15 @@ questions:
     tags: [space-complexity]
     prompt: >-
       A function takes a list of `n` numbers and returns a new list holding the same numbers in
-      reverse order. It builds the result with a loop that appends to an empty list. Apart from the
-      input, how much memory does it use?
+      reverse order. It builds the result with a loop that appends to an empty list. Counting the
+      returned list but not the input, how much extra memory does it use?
     options:
       - id: constant
         text: O(1)
         explanation: >-
           O(1) extra space means a fixed number of variables, as when you reverse the list in place
-          by swapping from both ends. Building a new list stores `n` more items.
+          by swapping from both ends. Here the returned list counts, and building it stores `n`
+          more items.
       - id: logarithmic
         text: O(log n)
         explanation: >-
@@ -334,25 +339,26 @@ questions:
         prompt: When does extra space grow like log n?
         options:
           - id: recursion-depth
-            text: When recursion halves the problem each call and every call stays on the stack
+            text: When recursion halves the problem each call, so about log n calls are active at once
           - id: any-loop
             text: Whenever a loop runs
           - id: any-copy
             text: Whenever a list is copied
         correct: recursion-depth
         explanation: >-
-          Each active recursive call holds stack space. If the problem halves per call, the depth is
-          about log n. A plain loop reuses its variables, and a copy costs `n`.
+          Each active recursive call holds stack space. If the problem halves per call, about log n
+          calls are active at once. A plain loop reuses its variables, and a copy costs `n`.
       quadratic:
-        prompt: How many values does a table with one entry for every pair of the `n` items store?
+        prompt: The loop appends one item per iteration, `n` times. How many items does the result hold at the end?
         options:
-          - id: about-n-squared
-            text: About n²
-          - id: about-n
-            text: About n
-          - id: about-two-n
-            text: About 2n
-        correct: about-n-squared
+          - id: n-items
+            text: "`n` items, one per iteration"
+          - id: n-squared-items
+            text: About n², because each append copies the items already there
+          - id: one-item
+            text: One item, since the list is rebuilt on every iteration
+        correct: n-items
         explanation: >-
-          `n` items form about n² pairs, so such a table is O(n²). A list with one slot per item is
-          only O(n).
+          Each iteration adds one item and keeps the earlier ones, so the list ends with `n` items
+          and takes O(n) memory. Time and space differ here: copying on every append would cost time,
+          but it would not leave more items behind.

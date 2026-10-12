@@ -1,0 +1,476 @@
+id: hash-maps-prefix-sums
+title: Hash maps and prefix sums
+description: Spot when a dictionary, a set, or a running sum replaces a nested loop, and what each one costs.
+heading: Which technique fits?
+
+questions:
+  - id: two-sum-unsorted
+    tags: [hash-map]
+    prompt: >-
+      Given an unsorted list of integers and a target, return the indices of two different elements
+      that add up to the target. Assume exactly one such pair exists. Which approach finds it in
+      one pass?
+    options:
+      - id: sort-two-pointers
+        text: Sort the list, then move two pointers inward from both ends
+        explanation: >-
+          This finds the right values, but the sort costs O(n log n) and moves every element, so the
+          positions you end up with are not the original indices. You would have to carry each
+          index along with its value, which takes O(n) extra space anyway.
+      - id: nested-loops
+        text: Try every pair of positions with two nested loops
+        explanation: >-
+          This is correct but does about n²/2 sum checks, so it is O(n²) time. Its one advantage is
+          that it needs only O(1) extra memory. A dictionary buys O(n) average time by spending
+          O(n) memory.
+      - id: insert-then-lookup
+        text: One pass with a dictionary, storing each value first and never checking the index differs
+        explanation: >-
+          Storing the current value first lets the lookup find the current element itself, so a
+          number can pair with itself. You would need an extra check that the match has a different
+          index. Looking up the complement first avoids the problem with no check, because only
+          earlier elements can match.
+      - id: lookup-then-insert
+        text: One pass with a dictionary from value to index, looking up the complement first
+        explanation: >-
+          For each `x`, check whether `target - x` is already in the dictionary. If so, return its
+          stored index and the current one. Otherwise store `x -> i`. Only earlier elements can
+          match, so an element never pairs with itself, and `[6, 6]` with target 12 still works.
+          That is O(n) average time and O(n) space. A set would not do, because the answer needs
+          indices.
+    correct: lookup-then-insert
+    followUps:
+      sort-two-pointers:
+        prompt: >-
+          Sorting plus two pointers does find a pair of values. What does it cost when the answer must
+          be original indices?
+        options:
+          - id: tracking-and-sort
+            text: Sorting moves values, so indices are lost unless carried along, and the sort costs O(n log n)
+          - id: negatives-fail
+            text: Two pointers cannot handle negative numbers, so some pairs would be missed
+          - id: changes-sum
+            text: Sorting changes which pairs add up to the target, so the answer may differ
+        correct: tracking-and-sort
+        explanation: >-
+          On `[4, 3, 5]` with target 8, the sorted list is `[3, 4, 5]` and the pointers stop at
+          positions 0 and 2, but the original indices are 1 and 2. Sorting keeps the sums intact,
+          and two pointers handle negatives fine. You can fix the indices by storing pairs, but the
+          O(n log n) sort remains.
+      nested-loops:
+        prompt: What does the dictionary replace in the nested-loop version?
+        options:
+          - id: inner-scan
+            text: The inner scan for the complement, which becomes one lookup that is O(1) on average
+          - id: outer-loop
+            text: The outer loop, because the dictionary visits every element for you
+          - id: the-addition
+            text: The addition, because the dictionary compares values directly
+        correct: inner-scan
+        explanation: >-
+          Both versions visit each element once in the outer loop. The nested version then scans the
+          rest of the list for `target - x`, which costs O(n). The dictionary answers the same
+          question with one hash lookup, trading memory for time.
+      insert-then-lookup:
+        prompt: >-
+          With `nums = [4, 3, 5]` and target 8, what goes wrong if the 4 is stored before its
+          complement is looked up?
+        options:
+          - id: pairs-with-itself
+            text: The 4 finds itself as its own complement, so the answer pairs index 0 with index 0
+          - id: overwrites-three
+            text: The 4 overwrites the entry for the 3
+          - id: never-finds
+            text: The loop never finds any pair
+        correct: pairs-with-itself
+        explanation: >-
+          Storing `4 -> 0` first lets the lookup for `8 - 4 = 4` succeed immediately, giving the
+          invalid pair `[0, 0]`. A check that the match is a different index would also fix it, but
+          looking up first needs no check, and the real pair, indices 1 and 2, is found when the 5
+          arrives.
+
+  - id: group-anagrams-key
+    heading: What goes in the dictionary?
+    tags: [hash-map, grouping]
+    prompt: >-
+      Group a list of lowercase words so that anagrams end up together, for example `stop`, `pots`,
+      and `tops`. You will use a dictionary from a key to a list of words. Which key should each word
+      get?
+    options:
+      - id: sorted-list
+        text: "`sorted(word)`, the list of its letters in order"
+        explanation: >-
+          Two anagrams do produce equal sorted lists, so the idea is right. But a list is mutable
+          and unhashable, so using it as a dictionary key raises `TypeError: unhashable type:
+          'list'`. Convert it to a tuple or join it into a string first.
+      - id: letter-set
+        text: "`frozenset(word)`, the set of distinct letters"
+        explanation: >-
+          A `frozenset` is hashable, but it keeps only which letters appear and forgets how many.
+          `seed` and `sdde` would get the same key, and so would any two words with the same
+          distinct letters but different counts, so non-anagrams get grouped together.
+      - id: word-length
+        text: "`len(word)`, because anagrams always have the same length"
+        explanation: >-
+          Equal length is necessary but far from enough. `cat` and `dog` both have length 3 and are
+          not anagrams. The key must be equal exactly when two words are anagrams.
+      - id: sorted-string
+        text: "`\"\".join(sorted(word))`, the letters sorted into a string"
+        explanation: >-
+          Anagrams have identical sorted letters, and a string is hashable, so each group shares one
+          key. This costs O(L log L) per word of length `L`. A tuple of 26 letter counts is also
+          correct and costs O(L) per word, so the key you pick sets the total: O(n L log L) versus
+          O(n L).
+    correct: sorted-string
+    followUps:
+      sorted-list:
+        prompt: What does Python do when a list is used as a dictionary key?
+        options:
+          - id: raises-typeerror
+            text: It raises `TypeError`, because a list can change and so has no stable hash. A tuple or string works
+          - id: uses-identity
+            text: It silently keys on the list object itself, so equal lists get different entries
+          - id: converts-tuple
+            text: It converts the list to a tuple automatically
+        correct: raises-typeerror
+        explanation: >-
+          `d[sorted("pots")] = 1` raises `TypeError: unhashable type: 'list'`. Python refuses rather
+          than guessing, since a key that could change after insertion would make its entry
+          impossible to find. `tuple(sorted(word))` or the joined string fixes it.
+      letter-set:
+        prompt: Which pair of words does `frozenset(word)` wrongly put under the same key?
+        options:
+          - id: seed-sdde
+            text: "`seed` and `sdde`, because the set keeps which letters appear but not how many"
+          - id: stop-pots
+            text: "`stop` and `pots`, because a set forgets the order of the letters"
+          - id: cat-cart
+            text: "`cat` and `cart`, because they share most of their letters"
+        correct: seed-sdde
+        explanation: >-
+          `frozenset("seed") == frozenset("sdde")`, yet the words are not anagrams, because the letter
+          counts differ. Forgetting order is fine: `stop` and `pots` are anagrams. A correct key must
+          keep the counts, which sorting or a count tuple does.
+      word-length:
+        prompt: Anagrams always have equal length. Why is length alone a bad key?
+        options:
+          - id: not-sufficient
+            text: Words of equal length need not be anagrams, so unrelated words share a group
+          - id: len-is-slow
+            text: Computing the length of a word costs O(L), which is too slow for a key
+          - id: int-keys-slow
+            text: Integer keys are slower to hash than string keys
+        correct: not-sufficient
+        explanation: >-
+          A key must separate non-anagrams as well as join anagrams. Length joins all anagrams but
+          also joins `cat` with `dog`, so it merges groups that should stay apart.
+
+  - id: longest-consecutive-set
+    tags: [hash-set]
+    prompt: >-
+      Given an unsorted list of integers, find the length of the longest run of consecutive values,
+      such as `6, 7, 8, 9` in `[20, 8, 7, 21, 9, 100, 6, 22]`. The target is O(n) average time. Which
+      approach meets it?
+    options:
+      - id: sort-and-scan
+        text: Sort the list, then scan for runs of values that each increase by one
+        explanation: >-
+          This is correct and needs no hash set, but comparison sorting takes O(n log n), which
+          misses the O(n) target. Duplicates also need a skip, since equal neighbors do not extend a
+          run.
+      - id: set-count-from-all
+        text: Put the values in a set, then count upward from every value
+        explanation: >-
+          The set makes each step O(1) on average, but starting from every value rewalks the same
+          runs. On `[0, 1, ..., n - 1]` the value 0 walks `n - 1` steps, 1 walks `n - 2`, and so on,
+          about n²/2 steps in total.
+      - id: max-minus-min
+        text: Return `max(nums) - min(nums) + 1`
+        explanation: >-
+          That is the length of the full span from the smallest to the largest value. It is right
+          only when every value in between is present. `[5, 90]` has span 86 but its longest run
+          has length 1.
+      - id: set-start-at-run-head
+        text: Put the values in a set and count upward only from values whose `x - 1` is absent
+        explanation: >-
+          A value with no predecessor in the set must be the start of a run, so each run is walked
+          once, from its start. Every element is stepped over at most once while counting and checked
+          once as a candidate start. That is O(n) average, with O(n) extra space for the set.
+    correct: set-start-at-run-head
+    followUps:
+      sort-and-scan:
+        prompt: >-
+          Sorting then scanning gives the right answer. Why does it miss an O(n) goal while the set
+          approach does not?
+        options:
+          - id: sort-cost
+            text: A comparison sort costs O(n log n), more than one hash-based pass
+          - id: not-adjacent
+            text: After sorting, consecutive values are no longer next to each other
+          - id: duplicates-break
+            text: Duplicates make the scan return a wrong answer
+        correct: sort-cost
+        explanation: >-
+          After sorting, consecutive values are adjacent, so a scan works once equal neighbors are
+          skipped. The cost is the sort itself, O(n log n), against one O(n) hash pass. A sort-based
+          answer is still a reasonable choice when you want to avoid building a set.
+      set-count-from-all:
+        prompt: >-
+          On `[0, 1, 2, ..., n - 1]`, roughly how many upward steps does counting from every value
+          take?
+        options:
+          - id: quadratic-steps
+            text: About n²/2, because value 0 walks n - 1 steps, value 1 walks n - 2, and so on
+          - id: linear-steps
+            text: About n, because each value is visited once
+          - id: n-log-n-steps
+            text: About n log n
+        correct: quadratic-steps
+        explanation: >-
+          Without the `x - 1` check, every value in a long run starts its own walk to the end of that
+          run. The check prevents it, because only the first value, 0, passes, so the run is walked
+          once and the total stays O(n).
+      max-minus-min:
+        prompt: What does `max - min + 1` assume about the values?
+        options:
+          - id: no-gaps
+            text: That every integer between the minimum and the maximum is present
+          - id: sorted-input
+            text: That the list is already sorted
+          - id: no-negatives
+            text: That all values are non-negative
+        correct: no-gaps
+        explanation: >-
+          The formula counts every integer from the smallest to the largest, whether or not it is in
+          the list. A gap such as the missing 6 through 89 in `[5, 90]` breaks the run, so the
+          longest run is shorter than the span.
+
+  - id: subarray-sum-equals-k
+    tags: [prefix-sum, hash-map]
+    prompt: >-
+      Count the contiguous subarrays of a list that add up to exactly `k`. The list may contain
+      negative numbers. For `[6, -2, 4]` and `k = 4`, the answer is 2, from `[6, -2]` and `[4]`.
+      Which approach counts them in O(n) average time?
+    options:
+      - id: sliding-window
+        text: Grow a window to the right and shrink it from the left whenever its sum exceeds `k`
+        explanation: >-
+          Shrinking on "sum above `k`" only makes sense when adding elements never lowers the sum.
+          With negatives, a window that is too big can come back down later. On `[6, -2, 4]` this
+          drops the 6 as soon as the sum hits 6, and it ends up finding neither `[6, -2]` nor `[4]`.
+      - id: prefix-set
+        text: Keep a running prefix sum and a set of the prefix sums seen so far
+        explanation: >-
+          A set can say that an earlier prefix `p - k` exists, but not how many times. Several start
+          positions can share one prefix sum, and each is a separate subarray. On `[2, -2, 0]` with
+          `k = 0` the answer is 3, and this approach finds 2, even when the set starts as `{0}`.
+      - id: prefix-counts-unseeded
+        text: Keep a running prefix sum and a dictionary of prefix counts that starts empty
+        explanation: >-
+          Counting is right, but an empty start misses every subarray that begins at index 0. For
+          `[4]` with `k = 4`, the prefix `4` needs an earlier prefix of 0, which was never stored,
+          so the count comes out 0 instead of 1.
+      - id: prefix-counts-seeded
+        text: "Keep a running prefix sum and a dictionary of prefix counts that starts as `{0: 1}`"
+        explanation: >-
+          Let `p` be the sum so far. Add `counts[p - k]` to the answer, then increment `counts[p]`.
+          The seed means the empty prefix has occurred once, so subarrays starting at index 0 count.
+          Looking up before inserting matters when `k = 0`. It costs O(n) average time and O(n)
+          space, and negatives are fine.
+    correct: prefix-counts-seeded
+    followUps:
+      sliding-window:
+        prompt: >-
+          On `[6, -2, 4]` with `k = 4`, the window drops the 6 once its sum reaches 6. Why is that
+          wrong when negatives are allowed?
+        options:
+          - id: later-negative
+            text: A later negative number can lower the sum again, so the 6 may still belong to a valid subarray such as `[6, -2]`
+          - id: one-subarray
+            text: A window can only ever count one subarray
+          - id: negative-subtraction
+            text: Subtracting a negative number from the running sum gives the wrong arithmetic
+        correct: later-negative
+        explanation: >-
+          A window works only if overshooting `k` is a safe reason to shrink, which holds when
+          values are positive. With negatives, an overshoot can be repaired by a later element, so
+          shrinking can discard valid starts. The arithmetic itself is fine.
+      prefix-set:
+        prompt: Why must the dictionary store counts instead of only which prefix sums have appeared?
+        options:
+          - id: repeated-prefix
+            text: Several start positions can share the same prefix sum, and each gives a separate subarray ending here
+          - id: no-negatives-in-sets
+            text: A set cannot hold negative prefix sums, so it would break on negative input
+          - id: set-forgets-order
+            text: A set does not remember the order in which prefix sums appeared
+        correct: repeated-prefix
+        explanation: >-
+          On `[2, -2, 0]` with `k = 0` the prefix sums are 0 (empty), 2, 0, 0. At the last element,
+          0 has been seen twice before, so the dictionary adds 2 while a set seeded with `{0}` adds
+          only 1. Over the whole list that is 3 versus 2. Sets hold negative numbers fine, and order
+          is not what is missing.
+      prefix-counts-unseeded:
+        prompt: "What does the starting entry `{0: 1}` stand for?"
+        options:
+          - id: empty-prefix
+            text: The empty prefix before the first element, so subarrays that start at index 0 can be counted
+          - id: zero-sum-exists
+            text: A guarantee that some subarray sums to 0
+          - id: avoid-keyerror
+            text: A default that keeps the lookup from raising `KeyError`
+        correct: empty-prefix
+        explanation: >-
+          A subarray from index `i` to `j` sums to `P[j] - P[i - 1]`. When `i` is 0 there is no
+          earlier prefix unless you add the empty one, whose sum is 0. Using `.get` would avoid a
+          `KeyError` but still miss those subarrays.
+
+  - id: contains-duplicate-tradeoff
+    tags: [hash-set, sorting]
+    prompt: >-
+      Decide whether a list of `n` hashable values contains any repeated value, and stop as soon as
+      the answer is known. Which approach is the best default, and what does it cost?
+    options:
+      - id: nested-loops
+        text: Compare every pair of positions with two nested loops
+        explanation: >-
+          This is correct and uses almost no extra memory, but it takes O(n²) time. It is a fair
+          choice only when `n` is small or memory is extremely tight.
+      - id: sort-and-compare
+        text: Sort the list, then compare each value with its neighbor
+        explanation: >-
+          Sorting puts equal values side by side and needs no hash set. But it costs O(n log n)
+          time instead of O(n) average, the values must be orderable (`sorted([1, "a"])` raises
+          `TypeError`, though both are hashable), and the original order is lost.
+      - id: list-membership
+        text: Scan once, checking `x in seen` where `seen` is a list that grows as you go
+        explanation: >-
+          The idea is right but the container is wrong. `x in list` compares against items one by
+          one, which is O(n), so the whole scan becomes O(n²). The same code with a set makes each
+          check O(1) on average.
+      - id: seen-set
+        text: Scan once, checking `x in seen` where `seen` is a set that grows as you go
+        explanation: >-
+          Each membership test and insertion is O(1) on average, so the scan is O(n) average time,
+          and it can stop at the first repeat. The price is O(n) extra space for the set. That
+          space-for-time trade is what replaces the nested loop.
+    correct: seen-set
+    followUps:
+      nested-loops:
+        prompt: What does the nested-loop version save compared with the set version?
+        options:
+          - id: memory
+            text: Memory. It needs only a few variables, but it pays O(n²) time
+          - id: time
+            text: Time. It is faster whenever the list has no duplicate
+          - id: nothing
+            text: Nothing. It is worse in every respect
+        correct: memory
+        explanation: >-
+          The nested loop needs O(1) extra space, while the set can grow to hold all `n` values.
+          That is a genuine advantage in tight memory. With no duplicate, though, it makes all n²/2
+          comparisons while the set does about n steps.
+      sort-and-compare:
+        prompt: What does sorting trade away compared with the set approach?
+        options:
+          - id: time-for-memory
+            text: It spends O(n log n) time instead of O(n) average, needs no hash set, but values must be orderable
+          - id: faster-overall
+            text: It finishes in O(n) overall, because the scan is the only cost
+          - id: keeps-order
+            text: It keeps the original order, so it can report the first repeated element
+        correct: time-for-memory
+        explanation: >-
+          The scan after sorting is O(n), but the sort dominates at O(n log n). Sorting also reorders
+          the data: on `[4, 7, 2, 4, 9, 7, 2]` the first repeat in scan order is 4, while the sorted
+          neighbor check reports 2 first.
+      list-membership:
+        prompt: Why is `x in seen_list` slow while `x in seen_set` is fast?
+        options:
+          - id: hash-vs-compare
+            text: A list compares against its items one at a time, while a set jumps to the slot its hash points to
+          - id: fewer-items
+            text: A set holds fewer items, so there is less to search
+          - id: ints-slow-in-lists
+            text: Lists cannot compare integers quickly
+        correct: hash-vs-compare
+        explanation: >-
+          A list has no index by value, so a membership test walks it in O(n). A set computes the
+          hash and checks that slot, O(1) on average even when it holds as many items. A set is not
+          faster because of its size.
+
+  - id: hash-map-cost-model
+    heading: Which statement is true?
+    tags: [hash-map, hashing, complexity]
+    prompt: >-
+      You use Python dictionaries and sets in loops over `n` items. Which statement about their cost
+      and their keys is correct?
+    options:
+      - id: list-keys-ok
+        text: A list can be a key, because it hashes by its contents
+        explanation: >-
+          Lists are mutable and unhashable, so `d[[1, 2]] = x` raises `TypeError: unhashable type:
+          'list'`. Equal contents do not help, because a key whose contents could change after
+          insertion would be lost.
+      - id: tuples-never
+        text: A tuple can never be a key, because it is a collection
+        explanation: >-
+          A tuple is immutable, and it is hashable when everything inside it is. `(1, 2)` works as a
+          key. `(1, [2])` raises `TypeError`, because the list inside it cannot be hashed.
+      - id: always-constant
+        text: A lookup is always O(1), whatever the keys are
+        explanation: >-
+          O(1) is the average with a well-spread hash. If many keys collide, a lookup has to compare
+          against all of them, which can degrade to O(n). Python's built-in hashes make this rare for
+          ordinary keys.
+      - id: cost-follows-key-length
+        text: A lookup is O(1) on average, but hashing a long key costs time proportional to its length
+        explanation: >-
+          The first hash of a key reads all of it, and the equality check on a hit can compare it
+          again, so each costs O(L) for a key of length `L`. CPython caches a string's hash, but
+          building the key already costs at least O(L). Grouping `n` words by a key built from each
+          word therefore costs at least O(n L), not O(n).
+    correct: cost-follows-key-length
+    followUps:
+      list-keys-ok:
+        prompt: Why must a dictionary key not change while it is stored?
+        options:
+          - id: hash-would-change
+            text: The slot is chosen from the key's hash, so a changed key would no longer be found
+          - id: uses-more-memory
+            text: Mutable objects use more memory, so Python bans them
+          - id: cannot-compare
+            text: Python cannot compare two lists with `==`
+        correct: hash-would-change
+        explanation: >-
+          A dictionary files each entry under its key's hash. If the key's contents could change,
+          its hash would change too, and lookups would go to the wrong slot. Lists can be compared
+          with `==`; that is not the issue.
+      tuples-never:
+        prompt: Which statement about tuples as keys is true?
+        options:
+          - id: depends-on-contents
+            text: A tuple works as a key when every element inside is hashable, so `(1, 2)` does and `(1, [2])` does not
+          - id: any-tuple
+            text: Any tuple works, whatever it contains
+          - id: only-single
+            text: Only tuples of length 1 work
+        correct: depends-on-contents
+        explanation: >-
+          A tuple's hash combines its elements' hashes, so one unhashable element makes the whole
+          tuple unhashable. A tuple of ints or strings is a good composite key, such as a pair of
+          coordinates.
+      always-constant:
+        prompt: What can push a single lookup from O(1) toward O(n)?
+        options:
+          - id: collisions
+            text: Many keys landing in the same slot, so equal-hash keys must be compared one by one
+          - id: big-dict
+            text: The dictionary simply holding many entries
+          - id: tuple-keys
+            text: Using tuples as keys
+        correct: collisions
+        explanation: >-
+          A large dictionary is not the problem, because resizing keeps it spread out. Collisions are.
+          With a key type that hashes every instance to the same value, lookups probe through every
+          colliding entry, and building the dictionary becomes O(n²).
