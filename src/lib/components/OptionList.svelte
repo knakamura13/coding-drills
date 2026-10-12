@@ -85,7 +85,7 @@
 	}
 
 	.option:hover:not(.locked):not(.selected) {
-		border-color: #5a5a6e;
+		border-color: var(--line-hover);
 	}
 
 	/* Pressing sinks the tile onto its edge. The margin keeps the layout from moving. */

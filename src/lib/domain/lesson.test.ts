@@ -168,7 +168,15 @@ describe('select and check', () => {
 		const checked = answer(start(), 'a');
 		expect(checked.checked).toBe(true);
 		expect(select(checked, 'b')).toBe(checked);
+		expect(select(checked, 'b', true)).toBe(checked);
 		expect(check(checked)).toBe(checked);
+	});
+
+	it('checks on select when immediate feedback is on', () => {
+		const checked = select(start(), 'a', true);
+		expect(checked.checked).toBe(true);
+		expect(checked.selected).toBe('a');
+		expect(view(checked)!.verdict?.correct).toBe(false);
 	});
 
 	it('does not advance before checking', () => {
@@ -260,6 +268,16 @@ describe('a wrong answer', () => {
 			correctText: 'Good',
 			explanation: 'A explained.'
 		});
+	});
+
+	it('still leaves a wrong answer only through its follow-up when feedback is immediate', () => {
+		const checked = select(start(), 'a', true);
+		const followUp = advance(checked);
+		expect(followUp.stage).toBe('followUp');
+		expect(followUp.completed).toEqual([]);
+		const done = advance(select(followUp, 'fa-good', true));
+		expect(done.completed[0].followUp).toEqual({ pickedId: 'fa-good', correct: true });
+		expect(done.stage).toBe('question');
 	});
 
 	it('never nests a second follow-up', () => {

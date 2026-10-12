@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import AccountRow from '$lib/components/AccountRow.svelte';
 	import ActionCard from '$lib/components/ActionCard.svelte';
 	import AuthNotice from '$lib/components/AuthNotice.svelte';
 	import DeckCard from '$lib/components/DeckCard.svelte';
@@ -104,7 +103,7 @@
 	</nav>
 
 	<footer>
-		<AccountRow />
+		<a class="settings" href="/settings">Settings</a>
 		<InstallHint />
 	</footer>
 </main>
@@ -143,6 +142,15 @@
 
 	footer {
 		margin-top: 28px;
+	}
+
+	.settings {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 44px;
+		font-weight: 700;
+		text-decoration: none;
 	}
 
 	.decks {
