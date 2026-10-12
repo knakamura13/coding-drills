@@ -5,14 +5,19 @@
  * `src/lib/review/practice.ts` if the default capitalization reads badly.
  */
 export const TOPIC_TAGS = [
+	'backtracking',
 	'binary-search',
 	'bfs',
 	'complexity',
 	'dfs',
 	'dp',
+	'graph',
+	'greedy',
 	'grid',
 	'hash-map',
+	'heap',
 	'intervals',
+	'linked-list',
 	'prefix-sum',
 	'python',
 	'queue',
@@ -20,6 +25,7 @@ export const TOPIC_TAGS = [
 	'sliding-window',
 	'sorting',
 	'stack',
+	'tree',
 	'two-pointers'
 ] as const;
 
