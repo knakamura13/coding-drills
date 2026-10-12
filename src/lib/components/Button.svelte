@@ -10,6 +10,8 @@
 		href?: string;
 		/** Opens an external link in a new tab. */
 		external?: boolean;
+		/** Full page load. Sign-in leaves the app and comes back. */
+		reload?: boolean;
 		/** The rendered element, for focus management. */
 		el?: HTMLElement;
 		/** An accessible name that begins with the visible text, for links that would otherwise repeat it. */
@@ -17,7 +19,8 @@
 		children: Snippet;
 	}
 
-	let { variant = 'primary', href, external = false, el = $bindable(), label, children, ...rest }: Props = $props();
+	let { variant = 'primary', href, external = false, reload = false, el = $bindable(), label, children, ...rest }: Props =
+		$props();
 </script>
 
 {#if href}
@@ -26,6 +29,7 @@
 		class="btn {variant}"
 		{href}
 		aria-label={label}
+		data-sveltekit-reload={reload ? '' : undefined}
 		target={external ? '_blank' : undefined}
 		rel={external ? 'noopener noreferrer' : undefined}>{@render children()}</a
 	>

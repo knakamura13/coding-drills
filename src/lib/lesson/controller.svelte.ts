@@ -10,6 +10,7 @@ import {
 	type LessonState
 } from '$lib/domain/lesson';
 import type { Rng } from '$lib/domain/shuffle';
+import { preferences } from '$lib/preferences/store.svelte';
 import { getRepository, type Flag } from '$lib/storage';
 import { syncSoon } from '$lib/sync/store.svelte';
 
@@ -89,7 +90,7 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 			return existing?.note ?? '';
 		},
 		select(optionId: string) {
-			state = select(state, optionId);
+			state = select(state, optionId, preferences.immediateFeedback);
 		},
 		check() {
 			state = check(state);

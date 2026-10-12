@@ -3,6 +3,8 @@
 	import { tick, untrack } from 'svelte';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
+	import { playAnswerSound, vibrateAnswer } from '$lib/preferences/feedback';
+	import { initPreferences, preferences } from '$lib/preferences/store.svelte';
 	import Button from './Button.svelte';
 	import FeedbackSheet from './FeedbackSheet.svelte';
 	import FlagDialog from './FlagDialog.svelte';
@@ -17,6 +19,9 @@
 
 	let { source }: { source: LessonSource } = $props();
 
+	// Client-only lesson routes: read the stored mode before the first paint of Check.
+	initPreferences();
+
 	// The route re-creates this component per lesson, so the initial value is the one that matters.
 	const lesson = createLessonController(untrack(() => source));
 
@@ -29,6 +34,18 @@
 
 	const screen = $derived(lesson.screen);
 	const verdict = $derived(screen?.verdict ?? null);
+
+	let heard = '';
+
+	function cue() {
+		const current = lesson.screen?.verdict;
+		if (!current) return;
+		const token = `${lesson.stepKey}:${current.correct}`;
+		if (heard === token) return;
+		heard = token;
+		if (preferences.sound) playAnswerSound(current.correct);
+		if (preferences.haptics) vibrateAnswer(current.correct);
+	}
 
 	const announcement = $derived(
 		verdict
@@ -79,13 +96,17 @@
 			if (option) {
 				event.preventDefault();
 				lesson.select(option.id);
+				cue();
 			}
 			return;
 		}
 		if (event.key === 'Enter' && !target?.closest('button, a')) {
 			event.preventDefault();
 			if (verdict) proceed();
-			else if (screen.canCheck) lesson.check();
+			else if (screen.canCheck) {
+				lesson.check();
+				cue();
+			}
 		}
 	}
 </script>
@@ -118,13 +139,22 @@
 				locked={verdict !== null}
 				legend={screen.stage === 'followUp' ? 'Follow-up answers' : 'Answers'}
 				name={lesson.stepKey}
-				onselect={(id) => lesson.select(id)}
+				onselect={(id) => {
+					lesson.select(id);
+					cue();
+				}}
 			/>
 		</main>
 
-		{#if !verdict}
+		{#if !verdict && !preferences.immediateFeedback}
 			<div class="footer">
-				<Button disabled={!screen.canCheck} onclick={() => lesson.check()}>Check</Button>
+				<Button
+					disabled={!screen.canCheck}
+					onclick={() => {
+						lesson.check();
+						cue();
+					}}>Check</Button
+				>
 			</div>
 		{/if}
 	</div>

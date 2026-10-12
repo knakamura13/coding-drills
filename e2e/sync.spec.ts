@@ -5,13 +5,15 @@ import { DECK_URL, answerMain, continueButton, currentQuestion, deck, firstWrong
 const TWO_DAYS_MS = 2 * 86_400_000;
 
 test.describe('accounts and sync', () => {
-	test('signed out, the home screen offers Google sign-in and everything still works locally', async ({ page }) => {
+	test('signed out, settings offers Google sign-in and everything still works locally', async ({ page }) => {
 		await page.goto('/');
+		await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+
+		await page.goto('/settings');
 		await expect(page.getByText('Progress is on this device only.')).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Sign in with Google to sync' })).toHaveAttribute(
-			'href',
-			'/api/auth/google'
-		);
+		await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', '/api/auth/google');
 
 		await page.goto(DECK_URL);
 		await playDeck(page, () => ({ main: 'right' }));
@@ -20,8 +22,8 @@ test.describe('accounts and sync', () => {
 
 	test('a client ID that is not a Google client ID is reported instead of failing at Google', async ({ page }) => {
 		// The e2e server is configured with a bogus ID, so the hop returns straight to the app.
-		await page.goto('/');
-		await page.getByRole('link', { name: 'Sign in with Google to sync' }).click();
+		await page.goto('/settings');
+		await page.getByRole('link', { name: 'Sign in with Google' }).click();
 		await expect(page.getByText(/GOOGLE_CLIENT_ID should be the Client ID/)).toBeVisible();
 		// The message is shown once and the URL is cleaned.
 		await expect(page).toHaveURL('/');
@@ -48,8 +50,9 @@ test.describe('accounts and sync', () => {
 		await signIn(other, account, baseURL!);
 		const phone = await other.newPage();
 		await phone.clock.setFixedTime(new Date(Date.now() + TWO_DAYS_MS));
+		await phone.goto('/settings');
+		await expect(phone.getByText(account.email)).toBeVisible();
 		await phone.goto('/');
-		await expect(phone.getByText(`Synced as ${account.email}`)).toBeVisible();
 		await expect(phone.getByText(`${deck.questions.length} questions due`)).toBeVisible();
 
 		// Reviewing there syncs back with no save button either.
@@ -87,10 +90,12 @@ test.describe('accounts and sync', () => {
 		const account = await createAccount(request);
 		await signIn(page.context(), account, baseURL!);
 		await page.goto('/');
-		await expect(page.getByText(`Synced as ${account.email}`)).toBeVisible();
+		await expect(page.getByText(account.email)).toHaveCount(0);
+		await page.goto('/settings');
+		await expect(page.getByText(account.email)).toBeVisible();
 
 		await page.getByRole('button', { name: 'Sign out' }).click();
-		await expect(page.getByRole('link', { name: 'Sign in with Google to sync' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Sign in with Google' })).toBeVisible();
 		const me = await page.request.get('/api/me');
 		expect(await me.json()).toEqual({ user: null });
 	});

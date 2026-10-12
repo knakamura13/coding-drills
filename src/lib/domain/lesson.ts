@@ -5,6 +5,7 @@ import { shuffled, type Rng } from './shuffle';
  * The lesson loop as a pure state machine.
  *
  *   question --select--> question --check--> feedback
+ *     With immediate feedback, select checks in the same step.
  *     feedback (right)  --advance--> next question
  *     feedback (wrong)  --advance--> follow-up (keyed by the wrong option picked)
  *       follow-up --select/check--> feedback --advance--> next question
@@ -128,10 +129,12 @@ function activeOptionIds(state: LessonState): string[] {
 	return state.mainPick === null ? [] : (planned.followUpOrders[state.mainPick] ?? []);
 }
 
-export function select(state: LessonState, optionId: string): LessonState {
+/** Records the pick. When `immediate` is set, the pick is checked in the same step. */
+export function select(state: LessonState, optionId: string, immediate = false): LessonState {
 	if (isFinished(state) || state.checked) return state;
 	if (!activeOptionIds(state).includes(optionId)) return state;
-	return { ...state, selected: optionId };
+	const next = { ...state, selected: optionId };
+	return immediate ? check(next) : next;
 }
 
 export function check(state: LessonState): LessonState {
