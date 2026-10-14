@@ -11,7 +11,7 @@
 <main class="page">
 	<h1>{page.status === 404 ? 'Not found' : 'Something went wrong'}</h1>
 	<p>{page.error?.message ?? 'Unexpected error'}</p>
-	<div class="home"><Button href="/">Back to decks</Button></div>
+	<div class="home"><Button href="/">Home</Button></div>
 </main>
 
 <style>
