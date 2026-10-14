@@ -95,10 +95,6 @@
 	</div>
 
 	<p class="browse"><a href="/decks">Browse all {data.deckCount} decks</a></p>
-
-	<footer>
-		<a class="settings" href="/settings">Settings</a>
-	</footer>
 </main>
 
 <style>
@@ -132,19 +128,6 @@
 		color: var(--accent-glow);
 		font-size: 13px;
 		font-weight: 800;
-	}
-
-	footer {
-		margin-top: 28px;
-	}
-
-	.settings {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 44px;
-		font-weight: 700;
-		text-decoration: none;
 	}
 
 	.cards {

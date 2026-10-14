@@ -7,7 +7,9 @@ const TWO_DAYS_MS = 2 * 86_400_000;
 test.describe('accounts and sync', () => {
 	test('signed out, settings offers Google sign-in and everything still works locally', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+		await openMenu(page);
+		const menu = page.getByRole('dialog', { name: 'Menu' });
+		await expect(menu.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
 		await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
 
