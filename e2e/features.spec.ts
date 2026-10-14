@@ -48,7 +48,8 @@ test.describe('progress', () => {
 	test('shows streak, calendar, topics, and decks from the answer history', async ({ page }) => {
 		await seed(page, [...history(2, true), ...history(1, true), ...history(0)]);
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Progress' }).click();
+		await page.getByRole('button', { name: /^Menu/ }).click();
+		await page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: 'Progress' }).click();
 		await expect(page).toHaveURL('/progress');
 
 		const totals = page.getByRole('region', { name: 'Totals' });

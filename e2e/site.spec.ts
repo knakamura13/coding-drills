@@ -69,11 +69,9 @@ async function expectNoViolations(page: Page) {
 test.describe('accessibility', () => {
 	test('home', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByRole('heading', { name: 'Coding Drills' })).toBeVisible();
-		// Every deck link needs its own name, so a list of links is not six identical "Start"s.
-		const names = await page.getByRole('link', { name: /^Start/ }).evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')));
-		expect(names.length).toBeGreaterThan(1);
-		expect(new Set(names).size).toBe(names.length);
+		await expect(page.getByRole('heading', { name: 'Coding Drills', level: 1 })).toBeVisible();
+		// The next-up card names its deck, so its "Start" says where it leads.
+		await expect(page.getByRole('link', { name: /^Start / })).toBeVisible();
 		await expectNoViolations(page);
 	});
 

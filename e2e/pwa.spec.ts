@@ -51,7 +51,8 @@ test.describe('installable and offline', () => {
 		await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Coding Drills', level: 1 })).toBeVisible();
-		await expect(page.getByRole('article', { name: deck.title })).toBeVisible();
+		await page.goto('/decks');
+		await expect(page.locator(`a[href="/play/${deck.id}"]`)).toBeVisible();
 		const apiFailed = await page.evaluate(() => fetch('/api/me').then(() => false, () => true));
 		expect(apiFailed).toBe(true);
 
