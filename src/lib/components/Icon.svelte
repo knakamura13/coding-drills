@@ -1,5 +1,5 @@
 <script lang="ts">
-	type Name = 'close' | 'flag' | 'check-circle' | 'x-circle' | 'book';
+	type Name = 'close' | 'flag' | 'check-circle' | 'x-circle' | 'book' | 'menu';
 
 	let { name, size = 24 }: { name: Name; size?: number } = $props();
 </script>
@@ -10,6 +10,8 @@
 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
 	{#if name === 'close'}
 		<path d="M4 4l16 16M20 4L4 20" stroke="currentColor" stroke-width="2.5" />
+	{:else if name === 'menu'}
+		<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
 	{:else if name === 'flag'}
 		<path
 			d="M5.7 20.3V4.6h7v2.1h5.7v7.9h-5.7v-2.2h-7"

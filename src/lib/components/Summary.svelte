@@ -3,9 +3,9 @@
 	import { focusOnMount } from '$lib/actions';
 	import { localDay } from '$lib/domain/days';
 	import type { Summary } from '$lib/domain/lesson';
-	import { reviewStatus, type ReviewStatus } from '$lib/review/queue';
+	import { scheduleCounts, type ScheduleCounts } from '$lib/review/queue';
 	import { getRepository } from '$lib/storage';
-	import { decks } from 'virtual:decks';
+	import { decks } from 'virtual:deck-index';
 	import { plainText } from '$lib/markdown/render';
 	import type { Flag } from '$lib/storage/types';
 	import Button from './Button.svelte';
@@ -25,9 +25,9 @@
 	const perfect = $derived(summary.total > 0 && summary.correctFirstTry === summary.total);
 
 	// What the schedule holds now that this session's answers are in it.
-	let upcoming = $state<ReviewStatus | null>(null);
+	let upcoming = $state<ScheduleCounts | null>(null);
 	onMount(() => {
-		upcoming = reviewStatus(decks, getRepository().attempts(), localDay(new Date()));
+		upcoming = scheduleCounts(decks, getRepository().attempts(), localDay(new Date()));
 	});
 </script>
 
@@ -94,7 +94,7 @@
 
 	<div class="actions">
 		<Button onclick={onretry}>Take it again</Button>
-		<Button variant="outline" href="/">Back to decks</Button>
+		<Button variant="outline" href="/">Home</Button>
 	</div>
 </main>
 

@@ -5,6 +5,7 @@
 	import { plainText } from '$lib/markdown/render';
 	import { playAnswerSound, vibrateAnswer } from '$lib/preferences/feedback';
 	import { initPreferences, preferences } from '$lib/preferences/store.svelte';
+	import { shortcuts } from '$lib/settings/shortcuts.svelte';
 	import Button from './Button.svelte';
 	import FeedbackSheet from './FeedbackSheet.svelte';
 	import FlagDialog from './FlagDialog.svelte';
@@ -91,7 +92,8 @@
 		const target = event.target instanceof HTMLElement ? event.target : null;
 		if (target?.closest('textarea, select, dialog')) return;
 
-		if (/^[1-9]$/.test(event.key) && !verdict) {
+		// Number keys are single-character shortcuts, so the menu can switch them off (WCAG 2.1.4).
+		if (shortcuts.enabled && /^[1-9]$/.test(event.key) && !verdict) {
 			const option = screen.options[Number(event.key) - 1];
 			if (option) {
 				event.preventDefault();
