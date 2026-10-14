@@ -12,7 +12,7 @@ import { z } from 'zod';
  * code blocks). Option text is inline Markdown.
  */
 
-import { TOPIC_TAGS } from './tags.ts';
+import { TOPIC_TAGS, type TopicTag } from './tags.ts';
 
 const id = z
 	.string()
@@ -147,6 +147,17 @@ export type Question = Deck['questions'][number];
 export type QuestionOption = Question['options'][number];
 export type FollowUp = Question['followUps'][string];
 export type FollowUpOption = FollowUp['options'][number];
+
+/**
+ * A deck without its prompts, options, and explanations. Counts, progress, and
+ * the menu need only this, so pages that do not play questions never load them.
+ */
+export interface DeckSummary {
+	id: string;
+	title: string;
+	description: string;
+	questions: { id: string; tags?: readonly TopicTag[] }[];
+}
 
 export function formatIssues(source: string, issues: readonly z.core.$ZodIssue[]): string {
 	return issues

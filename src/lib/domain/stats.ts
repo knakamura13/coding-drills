@@ -1,4 +1,4 @@
-import type { Deck } from '$lib/content/schema';
+import type { DeckSummary } from '$lib/content/schema';
 import type { Attempt } from '$lib/storage/types';
 import { addDays, weekday } from './days';
 import { cardKey, countedAttempts, replay } from './srs';
@@ -77,7 +77,7 @@ export interface TopicStat {
 }
 
 /** Per-topic progress. A question with several tags counts toward each. */
-export function topicStats(decks: readonly Deck[], attempts: readonly Attempt[]): TopicStat[] {
+export function topicStats(decks: readonly DeckSummary[], attempts: readonly Attempt[]): TopicStat[] {
 	const cards = replay(attempts);
 	const counted = countedAttempts(attempts);
 	const tagsOf = new Map<string, readonly string[]>();

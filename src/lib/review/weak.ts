@@ -1,10 +1,18 @@
-import type { Deck, Question } from '$lib/content/schema';
+import type { Deck, DeckSummary, Question } from '$lib/content/schema';
 import type { LessonEntry } from '$lib/domain/lesson';
 import { cardKey, replay } from '$lib/domain/srs';
 import type { Attempt } from '$lib/storage/types';
 
 /** Questions in one weak-spots sitting. */
 export const WEAK_SIZE = 10;
+
+/** How many questions have been failed at least once, from deck and question ids alone. */
+export function weakCount(decks: readonly DeckSummary[], attempts: readonly Attempt[]): number {
+	const known = new Set(decks.flatMap((deck) => deck.questions.map((question) => cardKey(deck.id, question.id))));
+	return [...replay(attempts).values()].filter(
+		(card) => card.lapses > 0 && known.has(cardKey(card.deckId, card.questionId))
+	).length;
+}
 
 export interface WeakStatus {
 	/** Questions you have failed at least once, before the sitting limit. */
