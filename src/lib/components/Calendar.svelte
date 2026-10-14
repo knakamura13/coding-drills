@@ -30,6 +30,7 @@
 
 <style>
 	figure {
+		max-width: 520px;
 		margin: 0;
 	}
 
@@ -56,20 +57,21 @@
 		background: transparent;
 	}
 
+	/* Each active level stays at 3:1 or more against the page, so the shading is visible (WCAG 1.4.11). */
 	.level-0 {
 		background: color-mix(in srgb, var(--line) 55%, var(--bg));
 	}
 
 	.level-1 {
-		background: color-mix(in srgb, var(--accent) 30%, var(--bg));
+		background: color-mix(in srgb, var(--accent) 78%, var(--bg));
 	}
 
 	.level-2 {
-		background: color-mix(in srgb, var(--accent) 50%, var(--bg));
+		background: color-mix(in srgb, var(--accent) 88%, var(--bg));
 	}
 
 	.level-3 {
-		background: color-mix(in srgb, var(--accent) 75%, var(--bg));
+		background: color-mix(in srgb, var(--accent-glow) 80%, var(--bg));
 	}
 
 	.level-4 {
