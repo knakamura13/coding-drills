@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { localDay } from '$lib/domain/days';
@@ -8,8 +7,8 @@
 	import { deckProgress, type DeckProgress } from '$lib/review/queue';
 	import { tagLabel } from '$lib/review/practice';
 	import { getRepository } from '$lib/storage';
-	import { account, initSync } from '$lib/sync/store.svelte';
-	import { decks } from 'virtual:decks';
+	import { account } from '$lib/sync/store.svelte';
+	import { decks } from 'virtual:deck-index';
 
 	const WEEKS = 12;
 
@@ -25,16 +24,16 @@
 		const attempts = getRepository().attempts();
 		const today = localDay(new Date());
 		const counts = activity(attempts);
-		weeks = calendar(counts, today, WEEKS);
-		activeDays = weeks.flat().filter((cell) => cell !== null && cell.count > 0).length;
+		// Work from the local value: reading `weeks` right after writing it would make this effect re-run forever.
+		const grid = calendar(counts, today, WEEKS);
+		weeks = grid;
+		activeDays = grid.flat().filter((cell) => cell !== null && cell.count > 0).length;
 		summary = totals(attempts);
 		streakDays = streak(counts.keys(), today);
 		topics = topicStats(decks, attempts);
 		byDeck = deckProgress(decks, attempts, today);
 		ready = true;
 	}
-
-	onMount(() => void initSync());
 
 	// Runs on load, and again whenever a sync brings another device's answers.
 	$effect(() => {
@@ -50,8 +49,7 @@
 	<title>Progress · {APP_NAME}</title>
 </svelte:head>
 
-<main class="page">
-	<a class="back" href="/">← Decks</a>
+<main class="page wide">
 	<h1>Progress</h1>
 
 	{#if ready && summary.answered === 0}
@@ -116,14 +114,6 @@
 </main>
 
 <style>
-	.back {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		font-weight: 700;
-		text-decoration: none;
-	}
-
 	h1 {
 		font-size: 28px;
 		font-weight: 800;
