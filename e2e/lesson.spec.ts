@@ -31,7 +31,7 @@ test.describe('the lesson loop', () => {
 		);
 		// Question order is shuffled, so read which question came up.
 		const first = await currentQuestion(page);
-		await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.heading ?? deck.heading!);
+		await expect(page.getByRole('heading', { level: 2 })).toHaveText(first.heading ?? deck.heading!);
 	});
 
 	test('a correct answer explains itself inline and skips the follow-up', async ({ page }) => {
@@ -78,7 +78,7 @@ test.describe('the lesson loop', () => {
 			text(question.prompt).slice(0, 30)
 		);
 		// And the follow-up is the one authored for the option that was picked.
-		await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+		await expect(page.getByRole('heading', { level: 2 })).toHaveText(
 			text(question.followUps[wrongId].prompt)
 		);
 		await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeDisabled();
@@ -98,7 +98,7 @@ test.describe('the lesson loop', () => {
 			}
 			await answerMain(page, question, option.id);
 			await continueButton(page).click();
-			prompts.add((await page.getByRole('heading', { level: 1 }).innerText()).trim());
+			prompts.add((await page.getByRole('heading', { level: 2 }).innerText()).trim());
 		}
 		expect(prompts.size).toBe(question.options.length - 1);
 	});

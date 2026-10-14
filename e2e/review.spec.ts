@@ -30,6 +30,7 @@ test.describe('spaced review', () => {
 		await expect(page.getByText(`${deck.questions.length} questions due`)).toBeVisible();
 		await page.getByRole('link', { name: `Review ${deck.questions.length}` }).click();
 		await expect(page).toHaveURL('/review');
+		await expect(page.getByRole('heading', { name: 'Review', level: 1, exact: true })).toBeVisible();
 
 		// A miss in review still gets its follow-up, exactly like a deck session.
 		const first = await currentQuestion(page);

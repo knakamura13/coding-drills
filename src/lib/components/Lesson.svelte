@@ -18,7 +18,7 @@
 	import SeeWhySheet from './SeeWhySheet.svelte';
 	import Summary from './Summary.svelte';
 
-	let { source }: { source: LessonSource } = $props();
+	let { source, title, subtitle }: { source: LessonSource; title: string; subtitle: string } = $props();
 
 	// Client-only lesson routes: read the stored mode before the first paint of Check.
 	initPreferences();
@@ -122,16 +122,21 @@
 		<ProgressHeader progress={lesson.progress} onclose={requestQuit} />
 
 		<main>
+			<header class="intro">
+				<h1>{title}</h1>
+				<p>{subtitle}</p>
+			</header>
+
 			{#if screen.stage === 'followUp'}
 				<p class="followup-label"><Icon name="book" size={24} /> Follow-up</p>
 				<div class="pinned followup-pinned"><ProblemCard prompt={screen.prompt} /></div>
-				<h1 class="question" tabindex="-1" bind:this={heading}>
+				<h2 class="question" tabindex="-1" bind:this={heading}>
 					<Markdown source={screen.followUpPrompt ?? ''} inline />
-				</h1>
+				</h2>
 			{:else}
-				<h1 class="question" tabindex="-1" bind:this={heading}>
+				<h2 class="question" tabindex="-1" bind:this={heading}>
 					{screen.heading ?? 'Choose the best answer'}
-				</h1>
+				</h2>
 				<div class="pinned"><ProblemCard prompt={screen.prompt} /></div>
 			{/if}
 
@@ -208,6 +213,24 @@
 	main {
 		flex: 1;
 		padding: 8.25px var(--gutter) calc(24px + var(--sheet-h, 0px));
+	}
+
+	/* The page's name and goal stay on screen for the whole sitting. */
+	.intro {
+		margin-bottom: 18px;
+	}
+
+	.intro h1 {
+		font-size: 16px;
+		font-weight: 800;
+		line-height: 1.3;
+	}
+
+	.intro p {
+		margin-top: 2px;
+		color: var(--text-muted);
+		font-size: 14px;
+		line-height: 1.45;
 	}
 
 	/* The lesson heading: 19px bold, one 26.6px line. The reference sets the glyphs 1px lower in

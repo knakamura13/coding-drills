@@ -14,5 +14,5 @@
 </svelte:head>
 
 {#key data.deck.id}
-	<Lesson {source} />
+	<Lesson {source} title={data.deck.title} subtitle={data.deck.description} />
 {/key}

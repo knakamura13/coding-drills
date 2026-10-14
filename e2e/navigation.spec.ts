@@ -68,7 +68,7 @@ test.describe('decks', () => {
 		await page.locator(`a[href="/play/${deck.id}"]`).click();
 		await expect(page).toHaveURL(DECK_URL);
 		const first = await currentQuestion(page);
-		await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.heading ?? deck.heading!);
+		await expect(page.getByRole('heading', { level: 2 })).toHaveText(first.heading ?? deck.heading!);
 	});
 
 	test('filters by words in the title or description, and "/" moves to the filter', async ({ page }) => {
@@ -114,6 +114,18 @@ test.describe('single-key shortcuts', () => {
 		await currentQuestion(page);
 		await page.keyboard.press('1');
 		await expect(page.getByRole('radio', { checked: true })).toHaveCount(1);
+	});
+});
+
+test.describe('lesson pages', () => {
+	test('practice and a deck name the page and its goal', async ({ page }) => {
+		await page.goto('/practice');
+		await expect(page.getByRole('heading', { name: 'Mixed practice', level: 1, exact: true })).toBeVisible();
+		await expect(page.getByText('Random questions from every deck. Nothing needs to be due.')).toBeVisible();
+
+		await page.goto(DECK_URL);
+		await expect(page.getByRole('heading', { name: deck.title, level: 1, exact: true })).toBeVisible();
+		await expect(page.getByText(deck.description)).toBeVisible();
 	});
 });
 
