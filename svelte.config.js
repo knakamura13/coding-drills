@@ -12,6 +12,8 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({ precompress: true }),
+		// Stylesheets this small are written into each page, so first paint needs no extra request.
+		inlineStyleThreshold: 10000,
 		// Registered by hand in src/lib/pwa/register.ts, and only in production.
 		serviceWorker: { register: false },
 		prerender: {
