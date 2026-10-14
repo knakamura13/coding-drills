@@ -507,3 +507,82 @@ questions:
           `RecursionError` under the default limit, while the bottom-up loop returns 169 for the same
           input. Raising `sys.setrecursionlimit` lets deeper inputs run, and a
           loop avoids recursion entirely.
+
+  - id: dp-state-transition-base
+    heading: Which state definition is correct?
+    tags: [dp]
+    prompt: >-
+      Each move climbs 1 or 2 stairs, starting from stair 0. You want to know how many routes from stair 0
+      end exactly on stair `n`. You will fill one array `dp` with one number per index,
+      so that `dp[n]` equals that answer and each entry is computed from earlier entries. Which meaning
+      for `dp[i]` makes this work?
+    options:
+      - id: last-move-size
+        text: "`dp[i]` is the size, 1 or 2, of the last move in one sequence that lands on stair `i`"
+        explanation: >-
+          This records a property of one sequence, not how many sequences land there. Stair 2 is reached
+          by `1+1` and by `2`, two sequences that end with different sizes, and one size cannot count them.
+          A size is 1 or 2, so it can never hold the answer 5 for stair 4.
+      - id: fewest-moves
+        text: "`dp[i]` is the least number of moves in any route that can reach stair `i`"
+        explanation: >-
+          This is a valid 1D quantity, but it answers a minimum, not a count. For stair 4 the fewest is 2
+          (`2+2`), while five sequences land there: `1+1+1+1`, `1+1+2`, `1+2+1`, `2+1+1`, and `2+2`.
+      - id: ways-to-reach
+        text: "`dp[i]` is the number of distinct move sequences that land exactly on stair `i`"
+        explanation: >-
+          For `i >= 2`, every sequence that lands on stair `i` ends with a 1-move from stair `i-1` or a 2-move
+          from stair `i-2`. The two groups never overlap, so their counts add: `dp[i] = dp[i-1] + dp[i-2]`, with
+          `dp[0] = 1` for the empty sequence and `dp[1] = 1` for the single 1-move. Stairs 0 to 4 give 1, 1, 2, 3, 5, so `dp[4] = 5`.
+      - id: furthest-moves
+        text: "`dp[i]` is the furthest stair one can reach after making exactly `i` moves"
+        explanation: >-
+          The index is a move count, so the table tracks how far moves can travel: 2 per move here, so
+          `dp[3] = 6`. It is a real 1D table, but it never counts sequences, so `dp[n]` is not the answer.
+    correct: ways-to-reach
+    followUps:
+      last-move-size:
+        prompt: >-
+          Stair 2 is reached by `1+1` and by `2`. What must one number per stair record so that `dp[n]` is the answer
+          the main question asks for, and each stair's number can be built from the two stairs before it?
+        options:
+          - id: last-size
+            text: The size of the last move, since that tells how each sequence ended
+          - id: sequence-count
+            text: How many sequences reach that stair, since the two ways in never overlap
+          - id: fewest-moves
+            text: The fewest moves to reach that stair, since only the shortest route is kept
+        correct: sequence-count
+        explanation: >-
+          The recurrence adds counts. Each sequence that reaches stair `i` ends with a 1-move or a 2-move, and
+          those two groups never overlap, so their counts add. A last-move size or a move total describes one
+          sequence and cannot be summed across sequences.
+      fewest-moves:
+        prompt: >-
+          For stair 4, the fewest moves to reach it is 2, using `2+2`. How many different move sequences land on stair 4?
+        options:
+          - id: same-as-minimum
+            text: 2, the same as the fewest moves, since a count and a minimum always agree
+          - id: only-minimum
+            text: 1, since `2+2` is the only sequence that uses the fewest moves at all
+          - id: order-counts
+            text: 5, since each different ordering of the moves counts as its own sequence
+        correct: order-counts
+        explanation: >-
+          A minimum keeps only the best value, while a count adds up every sequence. Order matters, so `1+2` and
+          `2+1` are two sequences. The five for stair 4 are `1+1+1+1`, `1+1+2`, `1+2+1`, `2+1+1`, and `2+2`.
+      furthest-moves:
+        prompt: >-
+          A table holds `0, 2, 4, 6` at indexes 0 to 3, so `dp[3] = 6`. Which question does that value answer?
+        options:
+          - id: far-moves
+            text: How far 3 moves can go at most, since each move covers 2 stairs and 3 moves cover 6
+          - id: ways-to-six
+            text: How many sequences land on stair 6, since each table entry counts sequences at its index
+          - id: length-count
+            text: How many sequences of exactly 3 moves exist, since the table counts by length
+        correct: far-moves
+        explanation: >-
+          The index is a move count, so the value is how far those moves go. The problem asks which sequences land
+          on stair `n`, so the index has to be the stair and the value has to count sequences. Exactly 3 moves give
+          8 sequences and stair 6 has 13, so the value 6 answers neither count.

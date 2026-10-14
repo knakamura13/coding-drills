@@ -474,3 +474,161 @@ questions:
           A large dictionary is not the problem, because resizing keeps it spread out. Collisions are.
           With a key type that hashes every instance to the same value, lookups probe through every
           colliding entry, and building the dictionary becomes O(n²).
+
+  - id: str-char-codes
+    heading: Which index is right?
+    tags: [string, array]
+    prompt: >-
+      You count lowercase letters with `counts = [0] * 26`, so that index 0 holds `a` and index 25 holds
+      `z`. For a one-character string `c` that is a lowercase letter, which expression gives the index to
+      increment?
+    options:
+      - id: code-point
+        text: "`ord(c)`, the character's Unicode code point"
+        explanation: >-
+          `ord("a")` is 97 and `ord("z")` is 122, so the indices would run from 97 to 122. The list has
+          indices 0 to 25 only. `counts[ord(c)] += 1` raises `IndexError: list index out of range` on the
+          first letter.
+      - id: uppercase-base
+        text: '`ord(c) - ord("A")`, the gap from the capital letter A'
+        explanation: >-
+          `ord("A")` is 65, so `a` would go to index 32 and `z` to index 57. Both are past the end of a
+          26-slot list, so counting `a` raises `IndexError: list index out of range`. Subtracting the
+          uppercase base would suit uppercase input, not these lowercase letters.
+      - id: off-by-one
+        text: '`ord(c) - ord("a") + 1`, the one-based position'
+        explanation: >-
+          `a` would go to index 1 and `z` to index 26. Index 26 is past the end of a 26-slot list, so
+          counting `z` raises `IndexError: list index out of range`. Every letter shifts up by one, which
+          breaks the layout the question asks for.
+      - id: offset-from-a
+        text: '`ord(c) - ord("a")`, the offset from the letter a'
+        explanation: >-
+          `a` maps to 0 and `z` maps to 25, so every lowercase letter gets its own slot and none falls
+          outside the list.
+    correct: offset-from-a
+    followUps:
+      code-point:
+        prompt: >-
+          The answer subtracts `ord("a")`. What does that subtraction change for a 26-slot list?
+        options:
+          - id: index-in-range
+            text: It moves `a` to index 0 and `z` to index 25, so every letter fits
+          - id: ignores-case
+            text: It makes the counts case-insensitive, so `A` and `a` share one slot
+          - id: style-only
+            text: It only tidies the code, and the list works without it
+        correct: index-in-range
+        explanation: >-
+          `ord("a")` is 97 and `ord("z")` is 122, both far past index 25. Subtracting `ord("a")` maps them
+          to 0 and 25. Without it, `counts[ord(c)] += 1` raises `IndexError` on the first letter.
+      uppercase-base:
+        prompt: >-
+          What is `ord("a") - ord("A")`, and why does it fail as an index into `counts`?
+        options:
+          - id: thirty-two
+            text: 32, which puts `a` at index 32, past the last index of a 26-slot list
+          - id: one-apart
+            text: 1, with uppercase and lowercase letters side by side in the code table
+          - id: alphabet-size
+            text: 26, the number of letters in the alphabet, which fills the list exactly
+        correct: thirty-two
+        explanation: >-
+          `ord("A")` is 65 and `ord("a")` is 97, so the difference is 32. The list has indices 0 to 25, so
+          `counts[32]` raises `IndexError: list index out of range`. The uppercase base suits uppercase input,
+          not these lowercase letters.
+      off-by-one:
+        prompt: >-
+          The answer puts `a` at index 0. What happens to the last letter if you add 1 to the offset?
+        options:
+          - id: index-26
+            text: "`z` lands at index 26, past the last slot, which raises `IndexError`"
+          - id: cancels-offset
+            text: The `+ 1` cancels the subtraction, and `a` still lands at index 0
+          - id: wraps-around
+            text: Index 26 wraps around to slot 0, and the count is stored without an error
+        correct: index-26
+        explanation: >-
+          Each letter moves up one slot, so `a` goes to 1 and `z` goes to 26. Index 26 is past the end of a
+          26-slot list, so `counts[26] += 1` raises `IndexError: list index out of range`. The shift does not
+          make two letters share a slot; it only pushes the last one out of range.
+
+  - id: hash-frequency-counter
+    heading: Which starting value is safe?
+    tags: [hash-map]
+    prompt: >-
+      You tally how often each value appears in a list `nums` of integers with a loop and the line `counts[x] += 1`.
+      Assume every name the options use has already been imported. Which of these lines creates `counts`
+      so that the increment works on the first occurrence of every value?
+    options:
+      - id: plain-dict
+        text: "`counts = {}`, a plain empty dict with no default value"
+        explanation: >-
+          The read in `counts[x] += 1` runs before the write, and a new key has no entry to read. The first
+          occurrence raises `KeyError`. On `[7, 7, 3]` it raises `KeyError: 7` on the first 7.
+      - id: empty-list
+        text: "`counts = []`, an empty list that grows through `append`"
+        explanation: >-
+          A list accepts only indices that already exist, and an empty list has none. The first increment
+          raises `IndexError: list index out of range`, and every value fails, including `0`. With string values it raises `TypeError` instead.
+      - id: list-default
+        text: "`counts = defaultdict(list)`, where missing values start as `[]`"
+        explanation: >-
+          The factory does fill a missing key, but with `[]`. Then `[] += 1` needs an iterable on its right
+          side, so Python raises `TypeError: 'int' object is not iterable`. The default must be something
+          that `+ 1` works on.
+      - id: int-default
+        text: "`counts = defaultdict(int)`, where missing values start at 0"
+        explanation: >-
+          A missing key gets `int()`, which is 0, so the first occurrence stores 1 and later ones add to it.
+          On `[7, 7, 3]` it gives `defaultdict(<class 'int'>, {7: 2, 3: 1})`. `Counter()` gives the same counts here too, but it is not
+          one of these four lines.
+    correct: int-default
+    followUps:
+      plain-dict:
+        prompt: >-
+          `counts[x] += 1` is a read followed by a write. What happens in the read on the first occurrence
+          of `x` in a plain `{}`?
+        options:
+          - id: keyerror
+            text: The read has no entry to return, so it raises `KeyError`
+          - id: write-first
+            text: The write happens first and stores 1, so the read finds it
+          - id: none-value
+            text: The read returns `None`, which `+=` quietly treats as 0
+        correct: keyerror
+        explanation: >-
+          `counts[x] += 1` works like `counts[x] = counts[x] + 1`, so Python reads `counts[x]` before it stores
+          anything. A plain dict has no entry for a new key, so that read raises `KeyError: 7` on the first 7.
+          A `defaultdict(int)` supplies the 0 for that read, and `counts[x] = counts.get(x, 0) + 1` avoids the KeyError, because `.get` supplies the 0.
+      empty-list:
+        prompt: >-
+          Why does `counts[x] += 1` fail when `counts` is `[]`, for every integer `x`?
+        options:
+          - id: no-existing-index
+            text: A list accepts only indices that already exist, and an empty list has none
+          - id: string-keys
+            text: A list accepts only string indices, so the integer value is rejected
+          - id: dict-only
+            text: "`+=` only updates dict entries, not list elements, so the list is rejected"
+        correct: no-existing-index
+        explanation: >-
+          Assigning through `lst[i]` needs `i` to be an existing position, so `[][0] += 1` raises
+          `IndexError: list index out of range`. A list grows through methods such as `append`, but an index
+          write never adds a slot. A list is indexed by position, not by value, so counting arbitrary values
+          usually needs a dict.
+      list-default:
+        prompt: >-
+          `defaultdict(list)` supplies a new `[]` for a missing key. Why does `counts[x] += 1` still fail?
+        options:
+          - id: needs-iterable
+            text: "`+=` on a list needs an iterable on its right, and `1` is not one"
+          - id: appends-one
+            text: "`+= 1` appends 1 to the list, making the count a list instead of a number"
+          - id: wrong-type-key
+            text: The factory must return a string, and only strings support `+=`
+        correct: needs-iterable
+        explanation: >-
+          `[] += 1` runs the list's in-place extend, which iterates over its right side, so Python raises
+          `TypeError: 'int' object is not iterable`. The factory has to return a value that `+ 1` works on, and
+          `int` does, because `int()` returns 0.

@@ -564,3 +564,261 @@ questions:
           With heights in nodes, `left + right` is the number of edges on the path through a node, so
           adding 1 changes the unit to nodes. Decide what is counted first, nodes or edges, and make
           the formula match.
+
+  - id: bfs-dfs-memory-tradeoff
+    heading: Which traversal uses less extra memory?
+    tags: [tree, bfs, dfs]
+    prompt: |-
+      A binary tree is complete: every level is full except possibly the last, which fills from the left.
+      Leave out the output list, which both walks need. On a complete tree of 1023 nodes, which walk needs
+      less extra memory at its peak: a breadth-first walk that keeps a queue, or a depth-first walk written
+      with recursion?
+    options:
+      - id: dfs-recursion
+        text: "Depth-first: the recursion holds about log n frames, one per level, so few calls wait"
+        explanation: >-
+          Recursion keeps one frame per level on the path from the root to the current node. On a complete tree
+          of 1023 nodes that is 10 frames for the real nodes (11 if the call on `None` is counted), close to
+          log₂ n. The queue of a breadth-first walk holds the frontier, which grows to the widest level, about
+          n/2 in a complete tree. Shape changes the answer, though: on a
+          chain the recursion goes n deep while the queue holds one node.
+      - id: bfs-queue
+        text: "Breadth-first: the queue holds only one level at a time, so it stays small"
+        explanation: >-
+          A level is not small in a complete tree. Once a node is processed its children are queued, so the queue
+          reaches the whole bottom level. For a complete tree of 1023 nodes the peak is 512 queued nodes, against
+          10 frames for the recursion (11 if the call on `None` is counted). Only a chain keeps the queue at one node.
+      - id: neither-record
+        text: "Neither: each walk keeps a record of every node it visits, so both need about n slots"
+        explanation: >-
+          Recursion frees a call when it returns, so a finished subtree takes no memory, and a tree walk needs no
+          visited record. The breadth-first queue holds the frontier, not every node visited. Only a visited list
+          would grow to n, and neither walk builds one.
+      - id: same-memory
+        text: "Both: each walk visits every node once, so the extra memory is the same"
+        explanation: >-
+          Time and extra memory measure different things. Both walks visit each node once, but memory at any moment
+          counts the nodes still waiting: a queue's frontier against a recursion's path. Those counts differ on the
+          same tree.
+    correct: dfs-recursion
+    followUps:
+      bfs-queue:
+        prompt: >-
+          On a complete binary tree of 1023 nodes, how many nodes can sit in the BFS queue at the peak?
+        options:
+          - id: about-512
+            text: "About 512, the width of the widest level, which is the bottom one"
+          - id: about-10
+            text: "About 10, one per level, which is the height of the tree"
+          - id: one-node
+            text: "1, with each node leaving the queue before its children join"
+        correct: about-512
+        explanation: >-
+          A breadth-first walk queues a node's children as soon as it processes the parent, so the queue fills up
+          to the widest level, about half of a complete tree's nodes. Only a chain keeps the queue at one node.
+      neither-record:
+        prompt: >-
+          Once a depth-first walk has finished a node's whole subtree, does the walk still hold that node
+          in its extra memory? The tree itself does not count.
+        options:
+          - id: path-only
+            text: "No, only the path from the root down to the current node is held"
+          - id: all-visited
+            text: "Yes, every visited node stays in the walk's extra memory until the walk ends"
+          - id: leaves-only
+            text: "Only the leaves stay in the extra memory, one for each finished subtree"
+        correct: path-only
+        explanation: >-
+          A recursive call's frame is released when the call returns, so a finished subtree leaves nothing behind.
+          At any moment the memory is the chain of active calls from the root down, which is about the tree's
+          height. Keeping every visited node is the job of a visited set, and tree walks do not need one.
+      same-memory:
+        prompt: >-
+          Both walks take O(n) time. What decides which one holds more nodes at once?
+        options:
+          - id: frontier-vs-path
+            text: "The widest frontier for a queue, against the deepest path for recursion"
+          - id: leaf-count
+            text: "The number of leaves, with each leaf stored once in memory by both walks"
+          - id: child-order
+            text: "The order the children are visited in, with left-first costing more memory"
+        correct: frontier-vs-path
+        explanation: >-
+          Peak memory is the most nodes waiting at the same moment, and that depends on the shape: a queue holds a
+          frontier that can reach a whole level, while recursion's peak is the longest root-to-node path. Child order
+          can change a queue's peak on an uneven tree, but it never changes the recursion's peak, which is the number
+          of nodes on that path. In a root whose left child A has children A1 and A2 and whose right child B is a
+          leaf, the queue peaks at 3 with the left child first and at 2 with the right child first, while recursion
+          holds 3 frames either way, not counting the call on `None`.
+
+  - id: tree-bst-operations
+    heading: Which step removes the node?
+    tags: [tree, binary-search]
+    prompt: |-
+      A binary search tree has distinct values. The node `10` has two children, as in this tree:
+
+      ```text
+              10
+             /  \
+            5    15
+             \   / \
+              7 12  18
+      ```
+
+      Which step removes the node `10` and keeps every other value in a valid binary search tree in every case?
+    options:
+      - id: successor
+        text: "Copy the in-order successor's value in, then delete the successor"
+        explanation: >-
+          The in-order successor is the smallest value in the right subtree, here 12. It is bigger than everything in
+          the left subtree and smaller than everything else on the right, so it can stand in the node's place. It has
+          no left child, so removing it is the easy case. The inorder result is 5, 7, 12, 15, 18, and the tree stays a
+          valid search tree. The predecessor (the largest value in the left subtree) works by mirror-image reasoning.
+      - id: left-up
+        text: "Move the left child up into its place and drop the right subtree"
+        explanation: >-
+          The left child can take the node's place, but then nothing links to the right subtree. In the tree above
+          the values 12, 15 and 18 would be lost, and only 5 and 7 would remain. The result is still a valid search
+          tree (5 with 7 on its right), so this loses values rather than breaking the order.
+      - id: right-up
+        text: "Move the right child up into its place and drop the left subtree"
+        explanation: >-
+          The mirror of the step above. The right child 15 takes the node's place, and the left subtree (5 and 7) is no
+          longer linked to the root. Only 12, 15 and 18 would remain, so this also loses values.
+      - id: min-of-left
+        text: "Copy the minimum of its left subtree into it, then delete that minimum"
+        explanation: >-
+          In the tree above the minimum of the left subtree is 5, and copying it gives a root of 5 with 7 still on its
+          left side. Since 7 is larger than 5, the rule breaks. This works only when the left subtree is a single node,
+          because otherwise its other values stay on the left of the new value and are larger than it.
+    correct: successor
+    followUps:
+      left-up:
+        prompt: >-
+          In the tree above, the left child 5 takes the place of 10. Which values can a search still reach from the root?
+        options:
+          - id: only-five-seven
+            text: "Only 5 and 7, since no link from the root leads to the right subtree any more"
+          - id: all-values
+            text: "All of them, because the BST order keeps every value reachable from the root"
+          - id: only-twelve
+            text: "Only 12, because it is the value closest to 10 and the root keeps it"
+        correct: only-five-seven
+        explanation: >-
+          Moving the left child up keeps only its subtree, so the right subtree (12, 15 and 18) loses its only link and
+          no search can reach it. The result is still a valid search tree, so the bug shows up as lost values, not as
+          broken order. Copying the successor keeps every value.
+      right-up:
+        prompt: >-
+          In the tree above, the right child 15 takes the place of 10. Which values can a search still reach from the root?
+        options:
+          - id: only-right-side
+            text: "Only 12, 15 and 18, since the left subtree (5 and 7) has no link to the root"
+          - id: all-values-two
+            text: "All of them, because each value stays on the side of the tree its order puts it"
+          - id: only-fifteen-eighteen
+            text: "Only 15 and 18, because 12 belonged to the deleted node and went with it"
+        correct: only-right-side
+        explanation: >-
+          Moving the right child up keeps 15 with its children 12 and 18, but the left subtree (5 and 7) loses its only
+          link to the root. The result is still a valid search tree with fewer values, so the mistake is lost data, not
+          broken order. Copying the successor keeps every value.
+      min-of-left:
+        prompt: >-
+          In the tree above, 5 replaces 10 and is removed from the left side. Which rule of the search tree breaks?
+        options:
+          - id: left-smaller
+            text: "Left-subtree values must be smaller, and 7 now sits left of 5"
+          - id: root-largest
+            text: "The root must hold the largest value in the tree, and 5 does not"
+          - id: smaller-fine
+            text: "Nothing breaks, since the replacement is smaller than the old value"
+        correct: left-smaller
+        explanation: >-
+          A search tree needs every value in the left subtree to be smaller than the node. The minimum replacement
+          puts 7, which is larger than 5, on the left of 5, so the rule fails. The shortcut works only when the left
+          subtree is one node, so there is nothing else to move; copying the successor leaves the left subtree untouched.
+
+  - id: tree-recursion-none-base
+    heading: Which check runs in one pass?
+    tags: [tree, recursion, complexity]
+    prompt: |-
+      A binary tree is height-balanced when, at every node, the heights of its left and right subtrees differ by
+      at most 1. Here `None` has height 0. Which approach decides this in a single pass that visits each node once?
+    options:
+      - id: helper-minus-one
+        text: "A helper returns each node's height, or -1 once any subtree is unbalanced"
+        explanation: >-
+          The helper works bottom-up, so each child's height is ready when its parent needs it, and a node does constant
+          work after its children return. The -1 is a safe signal because real heights are never negative, so a -1 from
+          either side passes straight up. Each node is visited at most once, so the cost is O(n). The base case is
+          `None`, which the helper returns as height 0.
+      - id: recompute
+        text: "Recompute each node's height from scratch, then compare its two children's heights"
+        explanation: >-
+          This gives the right answer, but it does not visit each node once. Each height call walks its whole subtree
+          again. Counting only the two children's heights at each node, with no early stop, a chain of 100 nodes costs
+          4950 node visits against 100 for the postorder pass. An early stop at the first failure can lower that count,
+          so 4950 is the count with no early stop.
+      - id: root-only
+        text: "Compare only the root's two child heights, and skip the nodes below"
+        explanation: >-
+          Only the root is compared, so a node lower down can fail while the root passes. In
+          `TreeNode(1, TreeNode(2, TreeNode(3, TreeNode(4))), TreeNode(5, TreeNode(6, TreeNode(8)), TreeNode(7)))` both
+          children of the root have height 3, yet node 2 has heights 2 and 0 under it. The check has to run at every node.
+      - id: leaf-spread
+        text: "Compare the shallowest and deepest leaf depths; a spread of at most 1 is balanced"
+        explanation: >-
+          Leaf depths measure something else. In
+          `TreeNode(1, TreeNode(2, TreeNode(3, TreeNode(4, TreeNode(5)))), TreeNode(6, None, TreeNode(7, TreeNode(8), TreeNode(9))))`
+          with the root at depth 0 the leaves sit at depths 3, 3 and 4, a spread of 1, yet node 2 has heights 3
+          and 0 under it and is unbalanced.
+    correct: helper-minus-one
+    followUps:
+      recompute:
+        prompt: >-
+          Recomputing each node's two children's heights, with no early stop, on a chain of 100 nodes costs how many node visits?
+        options:
+          - id: quadratic
+            text: "4950, about n²/2, since each node walks every node below it"
+          - id: one-each
+            text: "100, one per node, because the heights are remembered between calls"
+          - id: halving
+            text: "About 664, since each height walk takes about log n steps"
+        correct: quadratic
+        explanation: >-
+          On a chain, each child's height walk visits that child and every node below it, so the counts add up to
+          1 + 2 + ... + 99 = 4950 for 100 nodes. A postorder pass visits each node once, which is 100 here. An early
+          stop at the first failure can lower that count, so 4950 is the count with no early stop.
+      root-only:
+        prompt: >-
+          In `TreeNode(1, TreeNode(2, TreeNode(3, TreeNode(4))), TreeNode(5, TreeNode(6, TreeNode(8)), TreeNode(7)))` the
+          root's two children both have height 3. Which node fails the check?
+        options:
+          - id: node-two
+            text: "Node 2: its left child has height 2 and its right side is empty"
+          - id: none-fails
+            text: "None: the root is balanced, and every node below it is balanced too"
+          - id: leaf-four
+            text: "Node 4, a leaf, which is the only kind of node that can fail the check"
+        correct: node-two
+        explanation: >-
+          A balance check applies at every node, and a passing root says nothing about the nodes below it. Here the root
+          passes and node 2 fails, so one bad node is enough to make the whole tree unbalanced. Only a check at each node
+          finds it.
+      leaf-spread:
+        prompt: >-
+          In `TreeNode(1, TreeNode(2, TreeNode(3, TreeNode(4, TreeNode(5)))), TreeNode(6, None, TreeNode(7, TreeNode(8), TreeNode(9))))`
+          the leaves sit at depths 3, 3 and 4 (the root is at depth 0). Under the balance rule, is this tree balanced?
+        options:
+          - id: unbalanced-at-two
+            text: "No: at node 2 the left side has height 3 and the right side is empty"
+          - id: leaves-close
+            text: "Yes: the leaf depths differ by only 1, and every node passes the check"
+          - id: root-sides
+            text: "Yes: the root's sides have heights 4 and 3, which differ by 1"
+        correct: unbalanced-at-two
+        explanation: >-
+          The rule applies at every node, and leaf depths do not decide it. Two sides can look close at the top while a
+          node lower down is far off, as node 2 is here. Checking only the root, or only the leaf depths, can wrongly
+          call an unbalanced tree balanced.

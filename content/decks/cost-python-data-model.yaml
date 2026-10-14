@@ -492,3 +492,424 @@ questions:
           O(n log n). Costs multiply only when one step runs inside another, which is how the `n`
           loop iterations multiply that per-iteration cost. Treating the sort as O(n²) would also
           give a cubic total, but a comparison sort costs about n log n.
+
+  - id: arr-append-amortized-cost
+    tags: [array, complexity]
+    prompt: |-
+      `lst` is a Python list that grows by one `lst.append(x)` at a time. What is the amortized cost of one `append`?
+    options:
+      - id: constant
+        text: O(1)
+        explanation: >-
+          Most appends write into spare slots the list already has. A resize may copy the items into a bigger
+          block, but each resize leaves spare room for later appends, so the copying averages out to a constant
+          per append.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          A resize can copy all `n` items, so one unlucky append is O(n). That describes a single worst call,
+          not the amortized cost, which spreads those rare copies over many appends.
+      - id: log-n
+        text: O(log n)
+        explanation: >-
+          A Python list is not a tree. CPython stores it as one contiguous array of references, and `append`
+          usually writes the next free slot.
+      - id: every-call
+        text: O(1) for every call
+        explanation: >-
+          A list does not start with room for an unlimited number of items. It keeps some spare slots, and when
+          they run out it allocates a larger block and may copy the items into it. That one call can be O(n).
+    correct: constant
+    followUps:
+      linear:
+        prompt: Across many appends, how many copies does resizing add per append on average?
+        options:
+          - id: per-call-n
+            text: "About `n` per append, because each resize copies all `n` items"
+          - id: constant-copies
+            text: "A constant number, because each resize leaves room for many later appends"
+          - id: nothing
+            text: "Nothing, because a resize only updates the list's length counter"
+        correct: constant-copies
+        explanation: >-
+          A resize may copy all `n` items, so one call can be O(n), but resizes are spread over many appends. The
+          amortized cost is still O(1), because each resize leaves spare room for later appends.
+      log-n:
+        prompt: What structure holds a Python list's items in CPython?
+        options:
+          - id: tree
+            text: A balanced binary tree, so each insert is O(log n)
+          - id: array
+            text: One contiguous array of references to the items
+          - id: linked
+            text: A linked list with one node per item
+        correct: array
+        explanation: >-
+          CPython's list stores an array of references, which is why `lst[i]` is O(1). A linked list would make
+          indexing O(n), and a list has no tree shape that would need rebalancing.
+      every-call:
+        prompt: Does a Python list have room for unlimited items before it must grow?
+        options:
+          - id: unlimited
+            text: Yes, it has unlimited capacity, so it never copies
+          - id: finite
+            text: No, it has spare slots and must grow once they run out
+          - id: machine
+            text: Yes, a new block is allocated on every append
+        correct: finite
+        explanation: >-
+          A list has spare capacity, but that capacity is finite. When it runs out, Python allocates a bigger block
+          and may copy the items, which is why `append` is amortized O(1), not O(1) in every single call.
+
+  - id: arr-mutate-while-iterating
+    heading: What does this leave in the list?
+    tags: [array, python]
+    prompt: |-
+      What does `nums` hold after this loop finishes?
+
+      ```python
+      nums = [0, 0, 1]
+      for x in nums:
+          if x == 0:
+              nums.remove(x)
+      ```
+    options:
+      - id: zero-one
+        text: "`[0, 1]`"
+        explanation: >-
+          The first `remove` deletes one `0`, and the second `0` slides into index 0, which the loop has already
+          passed. The loop never checks it, so exactly one `0` goes.
+      - id: only-one
+        text: "`[1]`"
+        explanation: >-
+          Removing both zeros would need the loop to see the second `0`. After the first removal the loop moves on
+          to index 1.
+      - id: both-kept
+        text: "`[0, 0, 1]`"
+        explanation: >-
+          Leaving both zeros would need the first `remove` call to do nothing, and it does not.
+      - id: runtime-error
+        text: Raises `RuntimeError`
+        explanation: >-
+          A loop over a list does not raise when the list changes size. This loop only reads `nums` by
+          position, so it finishes without an exception.
+    correct: zero-one
+    followUps:
+      only-one:
+        prompt: After the first `remove(0)`, why is the second `0` never checked?
+        options:
+          - id: snapshot
+            text: The loop iterates a copy made before the first removal, so it sees both zeros
+          - id: shift
+            text: "`remove` shifts later items left, so the second `0` lands at index 0, out of view"
+          - id: remove-all
+            text: "`remove` deletes every copy of the value, so the second `0` goes with the first"
+        correct: shift
+        explanation: >-
+          `remove` deletes only the first match and shifts later items left. The loop then moves on to index 1, which
+          holds `1` now, so the `0` at index 0 is passed over. The final result is `[0, 1]`.
+      both-kept:
+        prompt: Does calling `nums.remove(x)` inside the loop change `nums` itself?
+        options:
+          - id: copy
+            text: No, the loop iterates over a copy, so `nums` stays the same
+          - id: in-place
+            text: Yes, it deletes the first matching item from `nums` in place
+          - id: last-only
+            text: Only if `x` is the sole copy of its value in the list
+        correct: in-place
+        explanation: >-
+          `list.remove` mutates the list it is called on, and a `for` loop over a list does not copy it first. So each
+          removal is visible to the loop as it runs.
+      runtime-error:
+        prompt: Which container raises `RuntimeError` when its size changes during a `for` loop?
+        options:
+          - id: list
+            text: A `list`
+          - id: dict
+            text: A `dict`
+          - id: tuple
+            text: A `tuple`
+        correct: dict
+        explanation: >-
+          A `dict` raises `RuntimeError` if its size changes during iteration. A `list` does not, and a `tuple` cannot
+          change size at all.
+
+  - id: str-immutable-concat
+    heading: Which expression builds the string?
+    tags: [string, python]
+    prompt: |-
+      `pieces` is a list of `n` short strings. Which expression combines them into one string, in order and with no separator, in a single call?
+    options:
+      - id: join
+        text: "`''.join(pieces)`"
+        explanation: >-
+          `join` receives all the pieces in one call and builds the result from them. This is the usual way to build
+          a string from many parts in Python.
+      - id: plus-equals
+        text: "A loop with `s += piece`, starting from `s = ''`"
+        explanation: >-
+          The loop builds the same string, but it takes several statements, not one call, so the single-call requirement rules it out.
+          CPython sometimes optimizes repeated `+=`, but that is an implementation
+          detail and not a language guarantee, so `join` is the portable choice.
+      - id: sum
+        text: "`sum(pieces, '')`"
+        explanation: >-
+          `sum` refuses a `str` start value. It raises `TypeError`, so the call never returns a string.
+      - id: method-on-list
+        text: "`pieces.join('')`"
+        explanation: >-
+          A list has no `join` method, so this call raises `AttributeError`.
+    correct: join
+    followUps:
+      plus-equals:
+        prompt: As a language rule, does `s += piece` extend the string `s` in place, the way `list.extend` does?
+        options:
+          - id: spare-room
+            text: Yes, a string keeps spare room at its end for more pieces
+          - id: rebinds
+            text: No, a `str` cannot change, so `+=` rebinds `s` to a new string value
+          - id: only-empty
+            text: Only while `s` is still empty, before the first piece is added
+        correct: rebinds
+        explanation: >-
+          A `str` is immutable, so `s += piece` rebinds `s` to a new string value. Any other name that held the old
+          string keeps its old value. CPython sometimes optimizes this case, but that is an implementation detail,
+          so `join` is the portable choice.
+      sum:
+        prompt: What does `sum(pieces, '')` do when `pieces` holds strings?
+        options:
+          - id: type-error
+            text: "Raises `TypeError`, and the message suggests `''.join`"
+          - id: joined
+            text: Returns the joined text, because `sum` works with any `+`
+          - id: char-count
+            text: Returns the total number of characters in all the pieces
+        correct: type-error
+        explanation: >-
+          `sum` is designed for numbers, and it refuses a `str` start value. The real error is
+          `sum() can't sum strings [use ''.join(seq) instead]`.
+      method-on-list:
+        prompt: Which type defines the `join` method that glues a list of pieces together?
+        options:
+          - id: separator
+            text: "`str`, the class of the separator string `''`"
+          - id: list
+            text: "`list`, the class that holds the pieces to join"
+          - id: string-module
+            text: The `string` module, which has a `join` function
+        correct: separator
+        explanation: >-
+          `join` is a method of `str`. The separator is the object it is called on, and the iterable is its argument,
+          so `sep.join(items)` puts `sep` between the items. Lists have no `join` method, and `string.join` does not
+          exist in Python 3.
+
+  - id: bit-operators
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      What does this code print?
+
+      ```python
+      print(~5)
+      ```
+    options:
+      - id: minus-six
+        text: "`-6`"
+        explanation: >-
+          For any int `x`, `~x` equals `-x - 1`, so `~5` is `-6`. `bin(~5)` shows `-0b110`. Python ints have no fixed
+          width, so the result is never wrapped.
+      - id: minus-five
+        text: "`-5`"
+        explanation: >-
+          `~` is bitwise NOT, not negation. For `x = 5`, `~x` is `-6`, not `-5`.
+      - id: eight-bit
+        text: "`250`"
+        explanation: >-
+          `250` is what `~5` gives in an 8-bit unsigned byte, which is `~5 & 0xFF`. Plain `~5` is negative and
+          never becomes 250.
+      - id: logical
+        text: "`False`"
+        explanation: >-
+          `~` is a bitwise operator on ints, not a logical one. `not 5` gives `False`, but that is a different
+          operator.
+    correct: minus-six
+    followUps:
+      minus-five:
+        prompt: For a Python int `x`, what is `~x` equal to?
+        options:
+          - id: neg-x
+            text: "`-x`, which is the same as unary minus"
+          - id: x-plus-one
+            text: "`x + 1`, which is one more than `x`"
+          - id: neg-x-minus-one
+            text: "`-x - 1`, which is one less than `-x`"
+        correct: neg-x-minus-one
+        explanation: >-
+          Bitwise NOT flips every bit, and for an int the result works out to `-x - 1`. So `~` is one less than unary
+          minus, and `~5` is `-6`, not `-5`.
+      eight-bit:
+        prompt: Why does `~5` not give 250 in Python?
+        options:
+          - id: no-width
+            text: Python ints have no fixed width, so `~x` is `-x - 1` and never wraps
+          - id: wrap-256
+            text: Python ints wrap at 256, the same width as a single byte
+          - id: word-64
+            text: "`~` works on a 64-bit machine word, so the result is 2**64 minus 6"
+        correct: no-width
+        explanation: >-
+          Python integers have no fixed size, so `~5` cannot wrap at 8 bits. It is defined as `-x - 1`, which gives
+          `-6`. The value 250 appears once you reduce to 8 bits, for example with `& 0xFF` or `% 256`, which is a separate step.
+      logical:
+        prompt: Which Python operator negates a value and always returns `True` or `False`?
+        options:
+          - id: not-kw
+            text: "`not`, the logical operator"
+          - id: tilde
+            text: "`~`, the bitwise NOT operator"
+          - id: bang
+            text: "`!`, which C uses for logical NOT"
+        correct: not-kw
+        explanation: >-
+          `not` is the logical operator, and `not 5` gives `False`. `~` flips bits and works on ints. `!` is not a
+          Python operator, and `!5` raises a `SyntaxError`.
+
+  - id: bit-shift-arithmetic
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      What does this code print?
+
+      ```python
+      print(-7 >> 1)
+      ```
+    options:
+      - id: minus-four
+        text: "`-4`"
+        explanation: >-
+          `>>` on a Python int rounds toward negative infinity, the same direction as `//`. So `-7 >> 1` is `-4`, and
+          `-7 // 2` is also `-4`.
+      - id: minus-three
+        text: "`-3`"
+        explanation: >-
+          `-3` is truncation toward zero, which `int(-7 / 2)` gives. A right shift does not truncate, so for a
+          negative number it lands one step further from zero.
+      - id: minus-three-point-five
+        text: "`-3.5`"
+        explanation: >-
+          `-3.5` is what `-7 / 2` gives, and that is float division. A shift returns an int, so it is a different
+          operation.
+      - id: minus-seven
+        text: "`-7`"
+        explanation: >-
+          For `-7`, a right shift by one changes the value, and the result is still negative.
+    correct: minus-four
+    followUps:
+      minus-three:
+        prompt: Which rounding rule does `>>` follow for a negative int?
+        options:
+          - id: toward-neg-inf
+            text: "Round toward negative infinity, like `//`"
+          - id: toward-zero
+            text: "Round toward zero, like `int(-7 / 2)`"
+          - id: keep-value
+            text: "Leave negative numbers unchanged by a shift"
+        correct: toward-neg-inf
+        explanation: >-
+          For a Python int `x` and a shift count `k` of zero or more, `x >> k` equals `x // (1 << k)`. Floor division
+          rounds toward negative infinity, so the shift does too, not toward zero.
+      minus-three-point-five:
+        prompt: Which expression gives the same value as `-7 >> 1` for a Python int?
+        options:
+          - id: floor-div
+            text: "`-7 // 2`, which is integer floor division by 2"
+          - id: true-div
+            text: "`-7 / 2`, which is true division with a fraction"
+          - id: times-two
+            text: "`-7 * 2`, since a right shift scales up by two"
+        correct: floor-div
+        explanation: >-
+          `-7 >> 1` equals `-7 // 2`, which is `-4`. `-7 / 2` is true division and returns the float `-3.5`. A right
+          shift moves bits toward the low end, so `-7 * 2`, which is `-14`, is never the result.
+      minus-seven:
+        prompt: What does a right shift by one do to the value of a negative int?
+        options:
+          - id: unchanged
+            text: It leaves the value unchanged, because shifts only move bits
+          - id: divides-down
+            text: It divides by two and rounds down, because `x >> 1` is `x // 2`
+          - id: doubles
+            text: It doubles the value, because each shift moves bits up one place
+        correct: divides-down
+        explanation: >-
+          A right shift by one is floor division by two: `x >> 1` equals `x // 2`, so `-7 >> 1` is `-4`. Moving the bits
+          right halves each bit's worth, so the value changes, and it is `<<` that doubles. For a negative int the rounding
+          goes toward negative infinity, not toward zero.
+
+  - id: bit-clear-lowest-set
+    heading: Which test is correct?
+    tags: [bit-manipulation]
+    prompt: For an integer `n` greater than 0, which test is true exactly when `n` is a power of two?
+    options:
+      - id: clear-lowest
+        text: "`(n & (n - 1)) == 0`"
+        explanation: >-
+          For `n > 0`, `n & (n - 1)` clears the lowest set bit of `n`. The result is `0` only when `n` had a single set
+          bit, which is what a power of two looks like in binary. The test also passes for `n = 0`, which is why the
+          question says `n` is greater than 0.
+      - id: even
+        text: "`n % 2 == 0`"
+        explanation: >-
+          This checks only the last binary digit, so it passes for 12 (`0b1100`). It also rejects 1, which is
+          `2 ** 0`.
+      - id: masked-next
+        text: "`(n & (n + 1)) == 0`"
+        explanation: >-
+          This passes for 1, 3, 7, 15, and so on, and it rejects 2, 4, and 8. For `n = 7`, `7 & 8` is `0`.
+      - id: bit-length
+        text: "`n.bit_length() == n`"
+        explanation: >-
+          `bit_length` counts the binary digits. The test only holds for 1 and 2 when `n > 0`, so it rejects 4, 8,
+          and every other power of two above 2.
+    correct: clear-lowest
+    followUps:
+      even:
+        prompt: Which property separates powers of two from even numbers in general?
+        options:
+          - id: one-bit
+            text: Exactly one bit is set in binary
+          - id: div-four
+            text: Each one from 4 up is divisible by 4
+          - id: last-zero
+            text: Each one from 2 up ends in binary 0
+        correct: one-bit
+        explanation: >-
+          Every power of two from 2 up is even, so evenness cannot tell them apart. The count of set bits can: 4 (`0b100`)
+          and 12 (`0b1100`) are both even, but only 4 has exactly one set bit. Every even number ends in 0, and 12 is divisible by 4 without being a power of two.
+      masked-next:
+        prompt: With `n = 7`, `(n & (n + 1)) == 0` is True. What does that show?
+        options:
+          - id: accepts-seven
+            text: "The test accepts 7, since 7 is `2**3 - 1`, not a power of two"
+          - id: odd-rejected
+            text: "Only even numbers can break the test, so the 7 result is fine"
+          - id: test-correct
+            text: "The test is correct, because `7 & 8` is `0` only for powers of two"
+        correct: accepts-seven
+        explanation: >-
+          The test passes for numbers of the form `2**k - 1`, such as 3, 7, and 15. Among those, only 1 is a power of
+          two, so the test is wrong for 7.
+      bit-length:
+        prompt: What does `(8).bit_length()` return?
+        options:
+          - id: log-base
+            text: "3, because `bit_length` is the base-2 logarithm of 8"
+          - id: four-digits
+            text: "4, because `bin(8)` is `0b1000`, which has four digits"
+          - id: value-itself
+            text: "8, because `bit_length` returns the value itself"
+        correct: four-digits
+        explanation: >-
+          `bit_length` returns how many binary digits the number needs, and `bin(8)` is `0b1000`, which has four. The
+          test compares that count with `n`, so it holds only for 1 and 2 when `n > 0`.

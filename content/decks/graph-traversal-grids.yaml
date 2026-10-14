@@ -508,3 +508,90 @@ questions:
           The visited mark is shared by every traversal, so a cell already covered is never expanded
           again, whatever start reaches it. Expansion is bounded by the number of cells, and each
           expansion does a constant number of neighbor checks.
+
+  - id: bfs-path-reconstruction
+    heading: How do you get the route, not just its length?
+    tags: [bfs, grid]
+    prompt: >-
+      A BFS from `start` finds the fewest moves to `target` in a grid with walls. Each move goes up, down,
+      left, or right and costs 1. The move count alone is not enough: you need the cells of one shortest
+      route. Assume the target is reachable. Which approach always returns that list of cells?
+    options:
+      - id: record-parent
+        text: Record each cell's parent when it is first enqueued, then walk back from the target
+        explanation: >-
+          The first time a neighbor is enqueued, the cell that enqueued it is saved as its parent. The
+          first arrival is along a shortest route, so following parents back from the target gives one
+          shortest route, read backward. Reverse it for start-to-target order. That costs one parent entry
+          per cell and no second search.
+      - id: distance-numbers
+        text: Store each cell's distance, then return the list of distances from 0 to the target
+        explanation: >-
+          Those numbers say how many moves each cell is from start, not which cells to visit, so they are not
+          a route of cells. The distances can still rebuild one: from the target, step to any neighbor one
+          closer to start, and repeat. That second pass steps back one cell at a time, and this option
+          does not do it.
+      - id: visit-order
+        text: Append each cell to a list when it is dequeued, and return that list as the route
+        explanation: >-
+          Removal covers everything reachable, so the list includes every cell reached,
+          most of them off the route. On an open 3 x 3 grid from (0, 0), a run to completion removes 9 cells,
+          and 6 of them are off the 2-move route to (0, 2). With neighbors tried down, up, right, left,
+          stopping at (0, 2) does not fix it: the list (0, 0), (1, 0), (0, 1), (2, 0), (1, 1), (0, 2) still has
+          3 off-route cells and jumps between branches.
+      - id: dfs-stack
+        text: Run a DFS, keep the cells on the recursion stack, and return them at the target
+        explanation: >-
+          DFS returns the first path that reaches the target, which
+          depends on direction order. On a 3 x 3 grid from (0, 0) to (0, 2), with a visited mark set on each cell as it is entered and directions tried in
+          the order down, right, up, left, that path is (0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2):
+          6 moves, where 2 suffice. The question asks for a shortest route, so this path is not the one
+          asked for.
+    correct: record-parent
+    followUps:
+      distance-numbers:
+        prompt: Which record gives the previous cell on the route directly, so no neighbor has to be checked at any step?
+        options:
+          - id: distance-map
+            text: The distance from start to each cell, which names the cell that came before it
+          - id: removal-order
+            text: The order in which the cells were removed from the queue, one layer at a time
+          - id: parent-link
+            text: The cell each cell was first reached from, which points back toward start
+        correct: parent-link
+        explanation: >-
+          A distance says how far a cell is from start, but not which neighbor the search came through, and removal order does not name one either. A
+          parent link names that neighbor, so walking links back from the target gives the route in one pass.
+          Stepping back by distance also works, but at each step it checks neighbors for one closer to start,
+          which the parent record avoids.
+      visit-order:
+        prompt: In what order does BFS remove cells from its queue, and what does that order cover?
+        options:
+          - id: one-path
+            text: A single path, made up of only the cells that lie on a shortest route
+          - id: layers
+            text: Distance layer by layer, so consecutive entries can sit in different branches
+          - id: depth-first
+            text: Depth first, so each removed cell touches the one removed just before it
+        correct: layers
+        explanation: >-
+          Removal follows distance, so it sweeps every reachable layer, including dead ends and cells off the
+          route. On an open 3 x 3 grid from (0, 0), with neighbors tried down, up, right, left, the first
+          three removed are (0, 0), (1, 0), and (0, 1). The last two, (1, 0) and (0, 1), share no edge, so consecutive entries
+          need not be adjacent, and the route cannot be read off the removal order; a stored record such as parent links or distances has to supply it.
+      dfs-stack:
+        prompt: When DFS reaches the target, the recursion stack holds one path. Which statement is true of it?
+        options:
+          - id: valid-not-shortest
+            text: It is a valid route to target, not necessarily one with the fewest moves
+          - id: shortest-first
+            text: It is probably the shortest route, found when DFS stops at the first arrival
+          - id: backed-out
+            text: It is a broken path, and it still holds cells that DFS backed out of
+        correct: valid-not-shortest
+        explanation: >-
+          Each frame on the stack is a cell on the current path, and each step goes to an adjacent cell, so
+          the stack is a valid route. DFS returns the first arrival along the branch it tries first, so its
+          length depends on direction order: with down, right, up, left tried in that order, the 3 x 3
+          example from (0, 0) to (0, 2) takes 6 moves where 2 suffice. BFS is the search whose first arrival is always a
+          shortest one.

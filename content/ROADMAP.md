@@ -47,31 +47,33 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 
 | Source | Topic | Deck | Status |
 | --- | --- | --- | --- |
-| 001 arrays | Arrays | – | planned |
+| 001 arrays | Arrays | `cost-python-data-model` | done |
 | 002 hash maps | Hash maps | `hash-maps-prefix-sums` | done |
-| 003 sorting | Sorting | `sorting-interval-sweeps` | partial |
-| 004 string manipulation | Strings | – | planned |
-| 005 greedy algorithms | Greedy | `two-dimensional-dp-greedy` | partial |
-| 006 search | Search | `binary-search-on-answer` | partial |
-| 007 dynamic programming | Dynamic programming | `one-dimensional-dp` | partial |
-| 008 stacks and queues | Stacks and queues | `monotonic-stack` | partial |
+| 003 sorting | Sorting | `sorting-interval-sweeps` | done |
+| 004 string manipulation | Strings | `two-pointers-sliding-window` | done |
+| 005 greedy algorithms | Greedy | `two-dimensional-dp-greedy` | done |
+| 006 search | Search | `binary-search-on-answer` | done |
+| 007 dynamic programming | Dynamic programming | `one-dimensional-dp` | done |
+| 008 stacks and queues | Stacks and queues | `monotonic-stack` | done |
 | 009 heaps | Heaps | `heaps-top-k` | done |
 | 010 graphs | Graphs | `graph-algorithms` | done |
 | 011 linked lists | Linked lists | `linked-lists` | done |
-| 011 trees | Trees | `trees-traversals-bst` | partial |
+| 011 trees | Trees | `trees-traversals-bst` | done |
 | 012 recursion and backtracking | Recursion and backtracking | `recursion-backtracking` | done |
-| 013 bit manipulation | Bit manipulation | – | out of scope |
+| 013 bit manipulation | Bit manipulation | `cost-python-data-model` | done |
 
-Bit manipulation is out of scope because the curriculum drops it to a single cheat-sheet page, unless an interview needs it.
+Each row names the deck that holds most of the topic's questions. Several topics also have questions in other decks, which the audit mapped item by item. Bit manipulation is spread over four decks: `cost-python-data-model` (operators, shifts, the `n & (n - 1)` test), `complexity-analysis` (the cost of popcount), `recursion-backtracking` (bitmask subsets), and `pattern-identification` (XOR for the single non-duplicate). It was out of scope until the audit of `fundamental_concepts/` widened the scope to every topic in those notebooks.
 
 ## `fundamental_algorithms/` notebooks
 
 | Source | Topic | Deck | Status |
 | --- | --- | --- | --- |
 | 001 binary search | Binary search | `binary-search-on-answer` | done |
-| 002 DFS | Depth-first search | `graph-traversal-grids` | partial |
-| 003 BFS | Breadth-first search | `graph-traversal-grids` | partial |
+| 002 DFS | Depth-first search | `graph-traversal-grids` | done |
+| 003 BFS | Breadth-first search | `graph-traversal-grids` | done |
 | 004 sliding window | Sliding window | `two-pointers-sliding-window` | done |
+
+The DFS notebook names Tarjan's strongly connected components as a variant, and the BFS notebook names bidirectional BFS. No deck covers either yet, so the two notebooks are not fully covered.
 
 ## `cracking_the_coding_interview/`
 
