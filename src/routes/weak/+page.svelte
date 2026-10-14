@@ -14,4 +14,8 @@
 	<title>Weak spots · {APP_NAME}</title>
 </svelte:head>
 
-<Lesson {source} />
+<Lesson
+	{source}
+	title="Weak spots"
+	subtitle="The questions you miss most often, whether or not they are due."
+/>

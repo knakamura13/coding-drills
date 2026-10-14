@@ -25,6 +25,7 @@ test.describe('weak spots', () => {
 		await expect(page.getByRole('heading', { name: `${deck.questions.length} questions you have missed` })).toBeVisible();
 		await page.getByRole('link', { name: `Drill ${deck.questions.length} weak spots` }).click();
 		await expect(page).toHaveURL('/weak');
+		await expect(page.getByRole('heading', { name: 'Weak spots', level: 1, exact: true })).toBeVisible();
 
 		await playDeck(page, () => ({ main: 'right' }));
 		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();

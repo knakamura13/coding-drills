@@ -14,4 +14,8 @@
 	<title>Review · {APP_NAME}</title>
 </svelte:head>
 
-<Lesson {source} />
+<Lesson
+	{source}
+	title="Review"
+	subtitle="Questions due today, most overdue first. Each answer sets when you see it next."
+/>
