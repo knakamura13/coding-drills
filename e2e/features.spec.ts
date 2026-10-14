@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { allDecks, answerMain, continueButton, currentQuestionAny, deck, playDeck } from './helpers';
+import { allDecks, answerMain, continueButton, currentQuestionAny, deck, openMenu, playDeck } from './helpers';
 import { failedHistory, history, seed } from './seed';
 
 async function expectNoViolations(page: Page) {
@@ -48,7 +48,7 @@ test.describe('progress', () => {
 	test('shows streak, calendar, topics, and decks from the answer history', async ({ page }) => {
 		await seed(page, [...history(2, true), ...history(1, true), ...history(0)]);
 		await page.goto('/');
-		await page.getByRole('button', { name: /^Menu/ }).click();
+		await openMenu(page);
 		await page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: 'Progress' }).click();
 		await expect(page).toHaveURL('/progress');
 

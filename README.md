@@ -18,9 +18,9 @@ Status: early. Sixteen decks, spaced review, weak-spot and mixed practice, a pro
 
 ## Finding your way
 
-Every page outside a lesson has a top bar. The app name goes home, and the menu button opens a drawer with every section, the review and weak-spot counts, the account, settings, and the install prompt. A lesson has no top bar, so leaving one uses the lesson's own control, which asks first.
+Every page outside a lesson has a top bar. The app name goes home, and the menu button opens a drawer with every section, the review and weak-spot counts, a link to Settings, and the install prompt. Settings holds sound, haptics, appearance, the shortcut switch, and sign-in. A lesson has no top bar, so leaving one uses the lesson's own control, which asks first.
 
-Single-key shortcuts are on by default: 1 to 9 choose an answer in a lesson, and `/` moves to the filter on the Decks page. The menu turns them off.
+Single-key shortcuts are on by default: 1 to 9 choose an answer in a lesson, and `/` moves to the filter on the Decks page. Settings turns them off.
 
 ## Spaced review
 
@@ -100,7 +100,7 @@ Decks are YAML files in `content/decks/`. The build validates them, and a deck w
 - The lesson is a pure state machine (`src/lib/domain/lesson.ts`) with unit tests, including randomized play over every shipped deck. Svelte wraps it in `src/lib/lesson/controller.svelte.ts`.
 - Attempts and flags are stored in `localStorage` first, so the app works offline and signed out. A signed-in device also syncs them to Postgres through `/api/sync`.
 - `/play/[deckId]` renders on the client because option order is shuffled each run. Other pages are prerendered.
-- Accessibility: the target is WCAG 2.2 AA. Options are native radio buttons, dialogs are native `<dialog>` elements that keep Tab inside while open, and axe scans run in the e2e suite. Single-key shortcuts can be switched off in the menu.
+- Accessibility: the target is WCAG 2.2 AA. Options are native radio buttons, dialogs are native `<dialog>` elements that keep Tab inside while open, and axe scans run in the e2e suite. Single-key shortcuts can be switched off on the Settings page.
 - Performance: each deck is its own module, so a lesson downloads one deck's content. The home screen reserves space for stored progress, and the e2e suite checks that it does not shift.
 
 ## Deploy on Railway

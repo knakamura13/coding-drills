@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, allDecks, currentQuestion, deck } from './helpers';
+import { DECK_URL, allDecks, currentQuestion, deck, openMenu } from './helpers';
 import { failedHistory, history, seed } from './seed';
 
 async function expectNoViolations(page: Page) {
@@ -17,7 +17,7 @@ test.describe('the menu', () => {
 	test('opens from the top bar, lists the sections, and closes when a page is chosen', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.locator('button[aria-haspopup="dialog"]')).toHaveAttribute('aria-expanded', 'false');
-		await menuButton(page).click();
+		await openMenu(page);
 		await expect(drawer(page)).toBeVisible();
 		await expect(page.locator('button[aria-haspopup="dialog"]')).toHaveAttribute('aria-expanded', 'true');
 		for (const name of ['Home', 'Mixed practice', 'All decks', 'Progress', 'Flagged questions']) {
@@ -32,7 +32,7 @@ test.describe('the menu', () => {
 
 	test('Escape closes it and returns focus to the menu button', async ({ page }) => {
 		await page.goto('/');
-		await menuButton(page).click();
+		await openMenu(page);
 		await expect(drawer(page)).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(drawer(page)).toBeHidden();
@@ -55,7 +55,7 @@ test.describe('the menu', () => {
 
 	test('the open menu has no accessibility violations', async ({ page }) => {
 		await page.goto('/');
-		await menuButton(page).click();
+		await openMenu(page);
 		await expect(drawer(page)).toBeVisible();
 		await expectNoViolations(page);
 	});
@@ -73,9 +73,12 @@ test.describe('decks', () => {
 
 	test('filters by words in the title or description, and "/" moves to the filter', async ({ page }) => {
 		await page.goto('/decks');
-		await page.keyboard.press('/');
 		const filter = page.getByRole('searchbox', { name: 'Filter decks' });
-		await expect(filter).toBeFocused();
+		// The page is prerendered, so "/" works only once it has hydrated. WebKit can finish that after the load event.
+		await expect(async () => {
+			await page.keyboard.press('/');
+			await expect(filter).toBeFocused({ timeout: 500 });
+		}).toPass({ timeout: 10_000 });
 
 		await filter.fill('zzqx');
 		await expect(page.getByText('No decks match “zzqx”.')).toBeVisible();
@@ -96,9 +99,8 @@ test.describe('decks', () => {
 
 test.describe('single-key shortcuts', () => {
 	test('can be switched off, and number keys then do nothing in a lesson', async ({ page }) => {
-		await page.goto('/');
-		await menuButton(page).click();
-		await drawer(page).getByRole('checkbox', { name: /Single-key shortcuts/ }).uncheck();
+		await page.goto('/settings');
+		await page.getByRole('switch', { name: 'Single-key shortcuts' }).uncheck();
 
 		await page.goto(DECK_URL);
 		await currentQuestion(page);
@@ -106,9 +108,8 @@ test.describe('single-key shortcuts', () => {
 		await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
 
 		// Switching them back on restores the number keys.
-		await page.goto('/');
-		await menuButton(page).click();
-		await drawer(page).getByRole('checkbox', { name: /Single-key shortcuts/ }).check();
+		await page.goto('/settings');
+		await page.getByRole('switch', { name: 'Single-key shortcuts' }).check();
 		await page.goto(DECK_URL);
 		await currentQuestion(page);
 		await page.keyboard.press('1');

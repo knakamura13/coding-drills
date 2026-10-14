@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createAccount, serverState, signIn } from './account';
-import { DECK_URL, answerMain, continueButton, currentQuestion, deck, firstWrongId, playDeck } from './helpers';
+import { DECK_URL, answerMain, continueButton, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
 
 const TWO_DAYS_MS = 2 * 86_400_000;
 
@@ -82,7 +82,7 @@ test.describe('accounts and sync', () => {
 		await signIn(other, account, baseURL!);
 		const phone = await other.newPage();
 		await phone.goto('/');
-		await phone.getByRole('button', { name: /^Menu/ }).click();
+		await openMenu(phone);
 		await expect(phone.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: /Flagged questions\s*1/ })).toBeVisible();
 		await other.close();
 	});

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import type { Question } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
@@ -71,6 +71,18 @@ export async function answerFollowUp(page: Page, question: Question, mainPick: s
 }
 
 export const continueButton = (page: Page) => page.getByRole('button', { name: 'Continue', exact: true });
+
+/**
+ * Opens the menu from the top bar. A prerendered page ignores a click until it has hydrated, and WebKit can
+ * finish that after the load event, so the click is repeated until the drawer is open.
+ */
+export async function openMenu(page: Page): Promise<void> {
+	const drawer = page.getByRole('dialog', { name: 'Menu' });
+	await expect(async () => {
+		if (!(await drawer.isVisible())) await page.getByRole('button', { name: /^Menu/ }).click();
+		await expect(drawer).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 15_000 });
+}
 
 export interface Plan {
 	/** Option to pick on the main question: 'right' or a wrong option id. */

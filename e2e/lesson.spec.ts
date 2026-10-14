@@ -7,6 +7,7 @@ import {
 	currentQuestion,
 	deck,
 	firstWrongId,
+	openMenu,
 	optionOf,
 	playDeck
 } from './helpers';
@@ -217,7 +218,7 @@ test.describe('flagging', () => {
 		await dialog.getByRole('button', { name: 'Save flag' }).click();
 
 		await page.goto('/');
-		await page.getByRole('button', { name: /^Menu/ }).click();
+		await openMenu(page);
 		await expect(page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: /Flagged questions\s*1/ })).toBeVisible();
 	});
 });
