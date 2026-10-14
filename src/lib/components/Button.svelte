@@ -45,7 +45,8 @@
 		justify-content: center;
 		width: 100%;
 		min-height: 46px;
-		padding: 0 20px;
+		/* Room above and below, so a label that wraps to two lines is not cramped. */
+		padding: 6px 20px;
 		border: 0;
 		border-bottom: 4px solid transparent;
 		border-radius: 12px;
@@ -83,6 +84,7 @@
 	.outline {
 		min-height: 47px;
 		padding-top: 0.4px;
+		padding-bottom: 0.4px;
 		border: 2px solid var(--line);
 		border-bottom-width: 4px;
 		background: var(--bg);
