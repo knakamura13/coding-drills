@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { plainText } from '../src/lib/markdown/render.ts';
-import { DECK_URL, answerMain, continueButton, currentQuestion, firstWrongId, optionOf } from './helpers';
+import { DECK_URL, answerMain, continueButton, currentQuestion, firstWrongId, openMenu, optionOf } from './helpers';
 
 async function expectNoViolations(page: Page) {
 	await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
@@ -12,9 +12,10 @@ async function expectNoViolations(page: Page) {
 }
 
 test.describe('settings', () => {
-	test('is linked from home and has a back control', async ({ page }) => {
+	test('is linked from the menu and has a back control', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Settings', exact: true }).click();
+		await openMenu(page);
+		await page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: 'Settings', exact: true }).click();
 		await expect(page).toHaveURL('/settings');
 		await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 		await page.getByRole('link', { name: 'Back' }).click();
