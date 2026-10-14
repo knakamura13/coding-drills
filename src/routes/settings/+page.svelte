@@ -6,6 +6,7 @@
 	import { APP_NAME } from '$lib/config';
 	import { THEME_CHOICES, type ThemeChoice } from '$lib/preferences/preferences';
 	import { initPreferences, preferences, setPreference } from '$lib/preferences/store.svelte';
+	import { setShortcuts, shortcuts } from '$lib/settings/shortcuts.svelte';
 	import { account, initSync } from '$lib/sync/store.svelte';
 
 	type ToggleKey = 'sound' | 'haptics' | 'immediateFeedback';
@@ -75,6 +76,23 @@
 					</span>
 				</label>
 			{/each}
+			<label class="row">
+				<span class="copy">
+					<span id="shortcuts-label" class="name">Single-key shortcuts</span>
+					<span id="shortcuts-hint" class="hint">1 to 9 choose an answer, and / filters the decks.</span>
+				</span>
+				<span class="switch">
+					<input
+						type="checkbox"
+						role="switch"
+						aria-labelledby="shortcuts-label"
+						aria-describedby="shortcuts-hint"
+						checked={shortcuts.enabled}
+						onchange={(event) => setShortcuts(event.currentTarget.checked)}
+					/>
+					<span class="track" aria-hidden="true"></span>
+				</span>
+			</label>
 		</section>
 
 		<fieldset class="appearance">
