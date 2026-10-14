@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Deck } from '$lib/content/schema';
 import type { Attempt } from '$lib/storage/types';
-import { REVIEW_SIZE, deckProgress, reviewStatus } from './queue';
+import { REVIEW_SIZE, deckProgress, reviewStatus, scheduleCounts } from './queue';
 
 function deck(id: string, questionIds: string[], heading?: string): Deck {
 	return {
@@ -107,5 +107,28 @@ describe('deckProgress', () => {
 		const progress = deckProgress(decks, attempts, '2026-10-12');
 		expect(progress.get('alpha')).toEqual({ seen: 2, learned: 1, due: 1 });
 		expect(progress.get('beta')).toEqual({ seen: 0, learned: 0, due: 0 });
+	});
+});
+
+describe('scheduleCounts', () => {
+	const decks = [deck('alpha', ['a1', 'a2']), deck('beta', ['b1'])];
+
+	it('agrees with reviewStatus on what is due and when the next question is', () => {
+		const attempts = [
+			attempt('beta', 'b1', '2026-10-05'),
+			attempt('alpha', 'a1', '2026-10-01'),
+			attempt('alpha', 'a2', '2026-10-09')
+		];
+		for (const today of ['2026-10-03', '2026-10-10']) {
+			const full = reviewStatus(decks, attempts, today);
+			expect(scheduleCounts(decks, attempts, today)).toEqual({ dueCount: full.dueCount, nextInDays: full.nextInDays });
+		}
+	});
+
+	it('ignores attempts on questions that no longer exist', () => {
+		expect(scheduleCounts(decks, [attempt('gone', 'x', '2026-10-01')], '2026-10-10')).toEqual({
+			dueCount: 0,
+			nextInDays: null
+		});
 	});
 });

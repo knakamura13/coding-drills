@@ -1,4 +1,4 @@
-import type { Deck } from '$lib/content/schema';
+import type { Deck, DeckSummary } from '$lib/content/schema';
 import type { LessonEntry } from '$lib/domain/lesson';
 import { shuffled, type Rng } from '$lib/domain/shuffle';
 
@@ -11,7 +11,7 @@ export interface TopicCount {
 }
 
 /** Every topic tag across the decks, with how many questions carry it. */
-export function topics(decks: readonly Deck[]): TopicCount[] {
+export function topics(decks: readonly DeckSummary[]): TopicCount[] {
 	const counts = new Map<string, number>();
 	for (const deck of decks) {
 		for (const question of deck.questions) {
