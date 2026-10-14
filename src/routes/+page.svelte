@@ -2,115 +2,108 @@
 	import { onMount } from 'svelte';
 	import ActionCard from '$lib/components/ActionCard.svelte';
 	import AuthNotice from '$lib/components/AuthNotice.svelte';
-	import DeckCard from '$lib/components/DeckCard.svelte';
-	import InstallHint from '$lib/components/InstallHint.svelte';
 	import PracticeCard from '$lib/components/PracticeCard.svelte';
 	import ReviewCard from '$lib/components/ReviewCard.svelte';
 	import { APP_NAME } from '$lib/config';
-	import { localDay } from '$lib/domain/days';
-	import { streak } from '$lib/domain/streak';
-	import { REVIEW_SIZE, deckProgress, reviewStatus, type DeckProgress, type ReviewStatus } from '$lib/review/queue';
-	import { WEAK_SIZE, weakStatus } from '$lib/review/weak';
-	import { getRepository } from '$lib/storage';
-	import { account, initSync } from '$lib/sync/store.svelte';
-	import { decks } from 'virtual:decks';
+	import { status } from '$lib/nav/status.svelte';
+	import { REVIEW_SIZE } from '$lib/review/queue';
+	import { WEAK_SIZE } from '$lib/review/weak';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	let flagCount = $state(0);
-	let review = $state<ReviewStatus | null>(null);
 	let notice = $state('');
-	let progress = $state<Map<string, DeckProgress>>(new Map());
-	let streakDays = $state(0);
-	let weakCount = $state(0);
-
-	/** Reads local data again. Runs on load and whenever a sync brings something new. */
-	function refresh() {
-		const repository = getRepository();
-		flagCount = repository.flags().length;
-		const attempts = repository.attempts();
-		const today = localDay(new Date());
-		progress = deckProgress(decks, attempts, today);
-		streakDays = streak(
-			attempts.map((attempt) => attempt.day),
-			today
-		);
-		weakCount = weakStatus(decks, attempts).count;
-		const status = reviewStatus(decks, attempts, today);
-		// Nothing scheduled yet: the card would only say "Nothing due" before any deck was played.
-		review = status.dueCount > 0 || status.nextInDays !== null ? status : null;
-	}
 
 	onMount(() => {
 		notice = new URLSearchParams(location.search).get('auth') ?? '';
 		// The message is shown once. Keep the URL clean so a reload or a shared link does not repeat it.
 		if (notice) history.replaceState(history.state, '', location.pathname);
-		void initSync();
 	});
 
-	$effect(() => {
-		void account.version;
-		refresh();
-	});
+	const snap = $derived(status.snapshot);
+	const next = $derived(snap.suggested);
+	const nextStat = $derived(next ? snap.progress.get(next.id) : undefined);
+	const nextPercent = $derived(nextStat && next ? Math.round((nextStat.learned / next.questions.length) * 100) : 0);
+	const weakTaking = $derived(Math.min(snap.weak, WEAK_SIZE));
 </script>
 
 <svelte:head>
 	<title>{APP_NAME}</title>
 </svelte:head>
 
-<main class="page">
-	<header>
+<main class="page wide home">
+	<header class="intro">
 		<h1>{APP_NAME}</h1>
 		<p>Every wrong answer gets a follow-up that checks why it was wrong.</p>
-		{#if streakDays >= 2}
-			<p class="streak">{streakDays} day streak</p>
-		{/if}
+		<!-- The line is always there, so the cards below do not move when a streak appears. -->
+		<p class="streak-line">
+			{#if snap.streak >= 2}
+				<span class="streak">{snap.streak} day streak</span>
+			{/if}
+		</p>
 	</header>
 
 	<AuthNotice {notice} />
 
-	{#if review}
-		<div class="review"><ReviewCard dueCount={review.dueCount} sitting={REVIEW_SIZE} nextInDays={review.nextInDays} /></div>
-	{/if}
+	<div class="cards">
+		<!-- Each slot holds its height before the stored progress arrives, so nothing below it moves. -->
+		<div class="slot review-slot">
+			{#if snap.ready}
+				<ReviewCard
+					dueCount={snap.review?.dueCount ?? 0}
+					sitting={REVIEW_SIZE}
+					nextInDays={snap.review?.nextInDays ?? null}
+				/>
+			{/if}
+		</div>
 
-	{#if weakCount > 0}
-		<div class="review">
+		<div class="slot next-slot">
+			{#if snap.ready && next}
+				<ActionCard
+					id="next"
+					kicker="Next up"
+					title={next.title}
+					description={next.description}
+					href="/play/{next.id}"
+					action="Start {next.title}"
+				>
+					{#if nextStat}
+						<div class="meter" aria-hidden="true"><span style:width="{nextPercent}%"></span></div>
+						<p class="learned">
+							{nextStat.learned} of {next.questions.length} learned{nextStat.due > 0 ? ` · ${nextStat.due} due` : ''}
+						</p>
+					{/if}
+				</ActionCard>
+			{/if}
+		</div>
+
+		<div class="full">
+			<PracticeCard topics={data.topics} total={data.totalQuestions} />
+		</div>
+
+		<!-- Appended below the practice card, so when it appears nothing above it moves. -->
+		{#if snap.weak > 0}
 			<ActionCard
 				id="weak"
 				kicker="Weak spots"
-				title="{weakCount} {weakCount === 1 ? 'question' : 'questions'} you have missed"
+				title="{snap.weak} {snap.weak === 1 ? 'question' : 'questions'} you have missed"
 				description="Practice the ones you fail most often, whether or not they are due."
 				href="/weak"
-				action="Drill {Math.min(weakCount, WEAK_SIZE)} weak {Math.min(weakCount, WEAK_SIZE) === 1 ? 'spot' : 'spots'}"
+				action="Drill {weakTaking} weak {weakTaking === 1 ? 'spot' : 'spots'}"
 			/>
-		</div>
-	{/if}
-
-	<div class="review"><PracticeCard topics={data.topics} total={data.totalQuestions} /></div>
-
-	<section class="decks" aria-label="Decks">
-		{#each data.decks as deck (deck.id)}
-			<DeckCard {...deck} progress={progress.get(deck.id)} />
-		{/each}
-	</section>
-
-	<nav class="links" aria-label="More">
-		<a href="/progress">Progress</a>
-		{#if flagCount > 0}
-			<a href="/flags">{flagCount} flagged {flagCount === 1 ? 'question' : 'questions'}</a>
 		{/if}
-	</nav>
+	</div>
+
+	<p class="browse"><a href="/decks">Browse all {data.deckCount} decks</a></p>
 
 	<footer>
 		<a class="settings" href="/settings">Settings</a>
-		<InstallHint />
 	</footer>
 </main>
 
 <style>
-	header {
-		margin-bottom: 28px;
+	.intro {
+		margin-bottom: 16px;
 		text-align: center;
 	}
 
@@ -120,24 +113,25 @@
 		line-height: 1.15;
 	}
 
-	header p {
+	.intro p {
 		margin-top: 8px;
 		color: var(--text-muted);
 	}
 
+	.streak-line {
+		min-height: 32px;
+		margin-top: 8px;
+	}
+
 	.streak {
 		display: inline-block;
-		margin-top: 12px;
+		margin-top: 4px;
 		padding: 3px 12px;
 		border-radius: 999px;
 		background: var(--accent-soft);
 		color: var(--accent-glow);
 		font-size: 13px;
 		font-weight: 800;
-	}
-
-	.review {
-		margin-bottom: 15.5px;
 	}
 
 	footer {
@@ -153,23 +147,81 @@
 		text-decoration: none;
 	}
 
-	.decks {
+	.cards {
 		display: grid;
 		gap: 15.5px;
 	}
 
-	.links {
+	/* A slot is a flex column whose one child fills it, so a card that is a little shorter
+	   than its slot leaves no gap, and a card that is a little taller does not push content. */
+	.slot {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 4px 24px;
-		margin-top: 20px;
+		flex-direction: column;
 	}
 
-	.links a {
+	.slot > :global(*) {
+		flex: 1;
+	}
+
+	.review-slot {
+		min-height: 204px;
+	}
+
+	.next-slot {
+		min-height: 252px;
+	}
+
+	.meter {
+		height: 6px;
+		margin-top: 14px;
+		overflow: hidden;
+		border-radius: 3px;
+		background: var(--line);
+	}
+
+	.meter span {
+		display: block;
+		height: 100%;
+		border-radius: 3px;
+		background: var(--right-btn);
+		transition: width 400ms ease;
+	}
+
+	.learned {
+		margin-top: 6px;
+		color: var(--text-muted);
+		font-size: 13px;
+		line-height: 18px;
+	}
+
+	.browse {
+		margin-top: 20px;
+		text-align: center;
+	}
+
+	.browse a {
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
 		font-weight: 700;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.meter span {
+			transition: none;
+		}
+	}
+
+	/* Two columns on a tablet or desktop: review beside the next deck, practice beside weak spots. */
+	@media (min-width: 720px) {
+		.cards {
+			grid-template-columns: 1fr 1fr;
+			align-items: stretch;
+		}
+
+		/* Practice spans both columns, so the row under the two cards has no empty cell. */
+		.full {
+			grid-column: 1 / -1;
+		}
 	}
 </style>

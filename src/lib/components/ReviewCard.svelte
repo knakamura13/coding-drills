@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { PRACTICE_SIZE } from '$lib/review/practice';
 	import Button from './Button.svelte';
 
 	interface Props {
 		dueCount: number;
 		/** Questions in one sitting. */
 		sitting: number;
-		/** Days until the next question is due, when none is due now. */
+		/** Days until the next question is due, when none is due now. Null when nothing is scheduled. */
 		nextInDays: number | null;
 	}
 
@@ -13,7 +14,11 @@
 
 	const taking = $derived(Math.min(dueCount, sitting));
 	const nextText = $derived(
-		nextInDays === null ? '' : nextInDays <= 1 ? 'Next review tomorrow.' : `Next review in ${nextInDays} days.`
+		nextInDays === null
+			? 'Each answer joins the review schedule.'
+			: nextInDays <= 1
+				? 'Next review tomorrow.'
+				: `Next review in ${nextInDays} days.`
 	);
 </script>
 
@@ -26,13 +31,18 @@
 		</p>
 		<div class="start"><Button href="/review">Review {taking}</Button></div>
 	{:else}
-		<h2 id="review-heading">Nothing due</h2>
+		<!-- Nothing is due, so the card offers practice rather than an empty space. -->
+		<h2 id="review-heading">{nextInDays === null ? 'Nothing scheduled yet' : 'Nothing due'}</h2>
 		<p class="description">{nextText}</p>
+		<div class="start"><Button variant="outline" href="/practice">Practice {PRACTICE_SIZE}</Button></div>
 	{/if}
 </article>
 
 <style>
+	/* A column, so the button sits at the bottom and lines up with the other cards in its row. */
 	.review {
+		display: flex;
+		flex-direction: column;
 		padding: 19px;
 		border: 2px solid var(--accent);
 		border-radius: 16px;
@@ -63,6 +73,7 @@
 	}
 
 	.start {
-		margin-top: 16.2px;
+		margin-top: auto;
+		padding-top: 16.2px;
 	}
 </style>
