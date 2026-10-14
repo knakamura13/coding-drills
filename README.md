@@ -124,7 +124,7 @@ Railway never reads `.railway/railway.ts` during a deploy. Pushing or merging an
 
 ## Roadmap
 
-Not built yet: the remaining decks in [content/ROADMAP.md](content/ROADMAP.md), XP, and the settings screen ([#1](https://github.com/knakamura13/coding-drills/issues/1)).
+Not built yet: the remaining decks in [content/ROADMAP.md](content/ROADMAP.md) and XP.
 
 ## License
 
