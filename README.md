@@ -16,6 +16,12 @@ Status: early. Sixteen decks, spaced review, weak-spot and mixed practice, a pro
 4. The follow-up gets the same Check and feedback. A missed follow-up shows the answer and its explanation and moves on. Follow-ups do not have follow-ups.
 5. The summary lists misses and follow-up results. The flag icon on any feedback sheet saves a bad question, and the summary links flags to prefilled GitHub issues.
 
+## Finding your way
+
+Every page outside a lesson has a top bar. The app name goes home, and the menu button opens a drawer with every section, the review and weak-spot counts, the account, settings, and the install prompt. A lesson has no top bar, so leaving one uses the lesson's own control, which asks first.
+
+Single-key shortcuts are on by default: 1 to 9 choose an answer in a lesson, and `/` moves to the filter on the Decks page. The menu turns them off.
+
 ## Spaced review
 
 Every question you answer enters a schedule, and the home screen shows a **Review** card with what is due today (the ten most overdue per sitting). A review runs through the same lesson loop, follow-ups included.
@@ -24,7 +30,7 @@ Every question you answer enters a schedule, and the home screen shows a **Revie
 - **The first attempt of the day counts.** Retaking a deck the same day is logged but does not move the schedule.
 - **Intervals** follow the SM-2 family from learning-korean: 1 day, 3 days, then growing by the question's ease, capped at a year. *Again* resets to tomorrow.
 - **The schedule is derived, never stored.** `src/lib/domain/srs.ts` replays the attempt log, so every device that holds the same attempts shows the same Review card. It is pure and takes the clock as a parameter.
-- The home screen also shows a day streak and per-deck progress, and the summary says when the next review is due.
+- The home screen shows the day streak and the next deck to study. The Decks page shows progress for every deck, and the summary says when the next review is due.
 
 ## More ways to practice
 
@@ -41,7 +47,7 @@ The app is a PWA. `static/manifest.webmanifest` makes it installable (with Revie
 - Page loads go to the network first (4 second timeout) and fall back to the cache, so a deploy shows up on the next load. `/api/*` is never cached.
 - A new version takes over immediately (`skipWaiting` and `clients.claim`) and the page reloads when the worker changes, so a deploy during a lesson can reload the page. Answered questions are already saved.
 - The service worker is registered only in production builds (`src/lib/pwa/register.ts`), because in development it would cache stale modules.
-- On Android, Chromium offers an Install button. On iPhone there is no install prompt, so the home screen shows "tap Share, then Add to Home Screen" until dismissed.
+- On Android, Chromium offers an Install button. On iPhone there is no install prompt, so the menu shows "tap Share, then Add to Home Screen" until dismissed.
 
 ## Accounts and sync
 
@@ -90,11 +96,12 @@ Decks are YAML files in `content/decks/`. The build validates them, and a deck w
 ## How it is built
 
 - SvelteKit 2, Svelte 5, TypeScript, pnpm. Plain CSS with design tokens. No runtime dependencies in the client bundle beyond the framework.
-- A Vite plugin compiles `content/decks/*.yaml` into a typed virtual module and validates it with zod at build time.
+- A Vite plugin compiles `content/decks/*.yaml` into virtual modules and validates them with zod at build time: a small index of deck titles and question ids for the menu, home, decks, and progress; and one lazily loaded module per deck, so a lesson downloads only its own deck.
 - The lesson is a pure state machine (`src/lib/domain/lesson.ts`) with unit tests, including randomized play over every shipped deck. Svelte wraps it in `src/lib/lesson/controller.svelte.ts`.
 - Attempts and flags are stored in `localStorage` first, so the app works offline and signed out. A signed-in device also syncs them to Postgres through `/api/sync`.
 - `/play/[deckId]` renders on the client because option order is shuffled each run. Other pages are prerendered.
-- Accessibility: options are native radio buttons, dialogs are native `<dialog>` elements, and axe scans run in the e2e suite.
+- Accessibility: the target is WCAG 2.2 AA. Options are native radio buttons, dialogs are native `<dialog>` elements that keep Tab inside while open, and axe scans run in the e2e suite. Single-key shortcuts can be switched off in the menu.
+- Performance: each deck is its own module, so a lesson downloads one deck's content. The home screen reserves space for stored progress, and the e2e suite checks that it does not shift.
 
 ## Deploy on Railway
 
