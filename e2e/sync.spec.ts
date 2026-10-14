@@ -82,7 +82,8 @@ test.describe('accounts and sync', () => {
 		await signIn(other, account, baseURL!);
 		const phone = await other.newPage();
 		await phone.goto('/');
-		await expect(phone.getByRole('link', { name: '1 flagged question' })).toBeVisible();
+		await phone.getByRole('button', { name: /^Menu/ }).click();
+		await expect(phone.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: /Flagged questions\s*1/ })).toBeVisible();
 		await other.close();
 	});
 

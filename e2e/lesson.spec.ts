@@ -19,12 +19,10 @@ test.describe('the lesson loop', () => {
 		await page.goto(DECK_URL);
 	});
 
-	test('starts from the home screen', async ({ page }) => {
-		await page.goto('/');
-		await expect(page.getByRole('heading', { name: 'Coding Drills', level: 1 })).toBeVisible();
-		const card = page.getByRole('article', { name: deck.title });
-		await expect(card.getByText(`${deck.questions.length} questions`)).toBeVisible();
-		await card.getByRole('link', { name: 'Start' }).click();
+	test('starts from the decks page', async ({ page }) => {
+		await page.goto('/decks');
+		await expect(page.getByRole('heading', { name: 'Decks', level: 1 })).toBeVisible();
+		await page.locator(`a[href="/play/${deck.id}"]`).click();
 		await expect(page).toHaveURL(DECK_URL);
 		await expect(page.getByRole('progressbar', { name: 'Lesson progress' })).toHaveAttribute(
 			'aria-valuenow',
@@ -219,7 +217,8 @@ test.describe('flagging', () => {
 		await dialog.getByRole('button', { name: 'Save flag' }).click();
 
 		await page.goto('/');
-		await expect(page.getByRole('link', { name: '1 flagged question' })).toBeVisible();
+		await page.getByRole('button', { name: /^Menu/ }).click();
+		await expect(page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: /Flagged questions\s*1/ })).toBeVisible();
 	});
 });
 
@@ -272,7 +271,7 @@ test.describe('leaving and keyboard use', () => {
 	test('an unknown deck shows the not-found page', async ({ page }) => {
 		await page.goto('/play/does-not-exist');
 		await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
-		await page.getByRole('link', { name: 'Back to decks' }).click();
+		await page.getByRole('link', { name: 'Home' }).click();
 		await expect(page).toHaveURL('/');
 	});
 });

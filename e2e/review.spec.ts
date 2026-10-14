@@ -4,10 +4,11 @@ import { DECK_URL, answerFollowUp, answerMain, continueButton, currentQuestion, 
 import { history, seed } from './seed';
 
 test.describe('spaced review', () => {
-	test('a fresh device shows no review card', async ({ page }) => {
+	test('a fresh device explains the review schedule instead of listing anything due', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Coding Drills' })).toBeVisible();
-		await expect(page.getByRole('article', { name: /due|Nothing due/ })).toHaveCount(0);
+		await expect(page.getByRole('heading', { name: 'Nothing scheduled yet' })).toBeVisible();
+		await expect(page.getByRole('article', { name: /due/ })).toHaveCount(0);
 		await expect(page.getByRole('link', { name: /^Review/ })).toHaveCount(0);
 	});
 
@@ -20,7 +21,7 @@ test.describe('spaced review', () => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Nothing due' })).toBeVisible();
 		await expect(page.getByText('Next review tomorrow.')).toBeVisible();
-		await expect(page.getByText(/\d of \d learned/)).toBeVisible();
+		await expect(page.getByText(/\d+ of \d+ learned/)).toBeVisible();
 	});
 
 	test('the questions due are the ones from earlier days, reviewed through the usual lesson loop', async ({ page }) => {
