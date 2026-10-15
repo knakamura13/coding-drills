@@ -69,6 +69,47 @@ const followUpSchema = z
 		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
 	});
 
+/** Tokens used to compare an explanation with a follow-up option. */
+export function contentTokens(value: string): string[] {
+	return value
+		.toLowerCase()
+		.replace(/[`*_#>[\]()]/g, ' ')
+		.replace(/[^\p{L}\p{N}\s]/gu, ' ')
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+}
+
+function containsTokens(haystack: readonly string[], needle: readonly string[]): boolean {
+	if (needle.length === 0 || haystack.length < needle.length) return false;
+	for (let start = 0; start <= haystack.length - needle.length; start++) {
+		let same = true;
+		for (let offset = 0; offset < needle.length; offset++) {
+			if (haystack[start + offset] !== needle[offset]) {
+				same = false;
+				break;
+			}
+		}
+		if (same) return true;
+	}
+	return false;
+}
+
+/**
+ * True when `optionText` appears inside `explanation`.
+ * Options shorter than 6 tokens must appear whole.
+ * Longer options fail on any contiguous 6-token slice.
+ */
+export function repeatsFollowUpAnswer(explanation: string, optionText: string): boolean {
+	const haystack = contentTokens(explanation);
+	const needle = contentTokens(optionText);
+	if (needle.length === 0) return false;
+	if (needle.length < 6) return containsTokens(haystack, needle);
+	for (let start = 0; start <= needle.length - 6; start++) {
+		if (containsTokens(haystack, needle.slice(start, start + 6))) return true;
+	}
+	return false;
+}
+
 const questionSchema = z
 	.object({
 		id,
