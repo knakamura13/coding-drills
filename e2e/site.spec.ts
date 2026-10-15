@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerMain, continueButton, currentQuestion, currentQuestionAny, firstWrongId, playDeck } from './helpers';
+import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, currentQuestionAny, firstWrongId, playDeck } from './helpers';
 
 test.describe('deployment surface', () => {
 	test('the health check answers ok', async ({ request }) => {
@@ -84,7 +84,7 @@ test.describe('accessibility', () => {
 		await expect(page.getByRole('heading', { name: 'Not quite.' })).toBeVisible();
 		await expectNoViolations(page);
 
-		await page.getByRole('button', { name: 'See why again' }).click();
+		await page.getByRole('button', { name: 'Why?', exact: true }).click();
 		await expect(page.getByRole('dialog', { name: 'Why the answers differ' })).toBeVisible();
 		await expectNoViolations(page);
 	});
@@ -93,7 +93,7 @@ test.describe('accessibility', () => {
 		await page.goto(DECK_URL);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, firstWrongId(question));
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
 		await expectNoViolations(page);
 	});
@@ -144,7 +144,7 @@ test.describe('layout on a phone', () => {
 				const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 				expect(await overflow(), `${question.id}`).toBeLessThanOrEqual(0);
 				await answerMain(page, question, firstWrongId(question));
-				await continueButton(page).click();
+				await continuePastWrong(page);
 				await page.getByText('Follow-up', { exact: true }).waitFor();
 				expect(await overflow(), `${question.id} follow-up`).toBeLessThanOrEqual(0);
 				await page.getByRole('radio').first().check();
