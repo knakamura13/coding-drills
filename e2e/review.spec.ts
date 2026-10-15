@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerFollowUp, answerMain, continueButton, currentQuestion, deck, firstWrongId, playDeck } from './helpers';
+import { DECK_URL, answerFollowUp, answerMain, continueButton, continuePastWrong, currentQuestion, deck, firstWrongId, playDeck } from './helpers';
 import { history, seed } from './seed';
 
 test.describe('spaced review', () => {
@@ -35,7 +35,7 @@ test.describe('spaced review', () => {
 		// A miss in review still gets its follow-up, exactly like a deck session.
 		const first = await currentQuestion(page);
 		await answerMain(page, first, firstWrongId(first));
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await page.getByText('Follow-up', { exact: true }).waitFor();
 		await answerFollowUp(page, first, firstWrongId(first), true);
 		await continueButton(page).click();

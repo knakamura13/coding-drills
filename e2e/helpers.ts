@@ -72,6 +72,13 @@ export async function answerFollowUp(page: Page, question: Question, mainPick: s
 
 export const continueButton = (page: Page) => page.getByRole('button', { name: 'Continue', exact: true });
 
+/** Leaves a wrong main answer: Why?, Got it, Continue. Does not answer the follow-up. */
+export async function continuePastWrong(page: Page) {
+	await page.getByRole('button', { name: 'Why?', exact: true }).click();
+	await page.getByRole('dialog', { name: 'Why the answers differ' }).getByRole('button', { name: 'Got it' }).click();
+	await continueButton(page).click();
+}
+
 /**
  * Opens the menu from the top bar. A prerendered page ignores a click until it has hydrated, and WebKit can
  * finish that after the load event, so the click is repeated until the drawer is open.
@@ -108,7 +115,7 @@ export async function playDeck(
 			await continueButton(page).click();
 		} else {
 			await answerMain(page, question, step.main);
-			await continueButton(page).click();
+			await continuePastWrong(page);
 			await page.getByText('Follow-up', { exact: true }).waitFor();
 			await answerFollowUp(page, question, step.main, step.followUpRight ?? false);
 			await continueButton(page).click();

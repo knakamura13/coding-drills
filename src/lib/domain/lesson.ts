@@ -200,7 +200,7 @@ export interface OptionView {
 export interface Verdict {
 	correct: boolean;
 	correctText: string;
-	/** Shown inline in the sheet. Empty on a wrong main answer, where it hides behind "See why again". */
+	/** Shown inline on a correct answer and on follow-up feedback. Empty on a wrong main answer, where Why? opens seeWhy. */
 	explanation: string;
 }
 

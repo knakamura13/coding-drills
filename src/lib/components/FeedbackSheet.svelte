@@ -9,19 +9,20 @@
 		/** Rendered height, so the page can leave room for the sheet. */
 		height?: number;
 		onflag: () => void;
-		/** Present only after a wrong main answer. */
+		/** Outline button above the primary action. Present on W2 only. */
 		onseewhy?: () => void;
-		oncontinue: () => void;
+		primary: 'Continue' | 'Why?';
+		onprimary: () => void;
 		children: Snippet;
 	}
 
-	let { tone, title, height = $bindable(0), onflag, onseewhy, oncontinue, children }: Props = $props();
+	let { tone, title, height = $bindable(0), onflag, onseewhy, primary, onprimary, children }: Props = $props();
 
-	let continueButton: HTMLElement | undefined = $state();
+	let primaryButton: HTMLElement | undefined = $state();
 
-	// Keyboard users land on Continue as soon as the verdict appears.
+	// Keyboard users land on the primary action as soon as the verdict appears.
 	$effect(() => {
-		continueButton?.focus({ preventScroll: true });
+		primaryButton?.focus({ preventScroll: true });
 	});
 </script>
 
@@ -39,8 +40,8 @@
 			{#if onseewhy}
 				<Button variant="outline" onclick={onseewhy}>See why again</Button>
 			{/if}
-			<Button variant={tone === 'correct' ? 'success' : 'danger'} bind:el={continueButton} onclick={oncontinue}>
-				Continue
+			<Button variant={tone === 'correct' ? 'success' : 'danger'} bind:el={primaryButton} onclick={onprimary}>
+				{primary}
 			</Button>
 		</div>
 	</div>
