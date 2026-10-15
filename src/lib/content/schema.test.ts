@@ -130,6 +130,21 @@ describe('deckSchema', () => {
 	it('formats a root-level issue with (root) as its location', () => {
 		expect(issuesFor('not a deck')).toContain('deck.yaml: (root):');
 	});
+
+	it('rejects an explanation that repeats the follow-up answer', () => {
+		const deck = validDeck();
+		deck.questions[0].options[1].explanation =
+			'Wrong A fails because Reason X is the one you needed here today';
+		deck.questions[0].followUps['wrong-a'].options[0].text =
+			'Reason X is the one you needed here today';
+		const result = deckSchema.safeParse(deck);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(formatIssues('sample.yaml', result.error.issues)).toContain(
+				'questions.0.options.1.explanation'
+			);
+		}
+	});
 });
 
 describe('repeatsFollowUpAnswer', () => {

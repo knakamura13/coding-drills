@@ -24,7 +24,7 @@ const optionSchema = z
 	.object({
 		id,
 		text: text(90),
-		/** Shown in "See why again". Says why this option is right or wrong here. */
+		/** Shown from Why? before a follow-up, or inline when this option is the correct answer. */
 		explanation: text(600)
 	})
 	.strict();
@@ -156,6 +156,25 @@ const questionSchema = z
 				issues.push({
 					message: `follow-up key "${key}" is not an option id`,
 					path: ['followUps', key]
+				});
+			}
+		}
+		const correctOption = question.options.find((option) => option.id === question.correct);
+		for (const [optionId, followUp] of Object.entries(question.followUps)) {
+			if (!correctOption || optionId === question.correct || !ids.includes(optionId)) continue;
+			const picked = question.options.find((option) => option.id === optionId);
+			const followUpCorrect = followUp.options.find((option) => option.id === followUp.correct);
+			if (!picked || !followUpCorrect) continue;
+			if (repeatsFollowUpAnswer(picked.explanation, followUpCorrect.text)) {
+				issues.push({
+					message: `explanation repeats the follow-up answer "${followUpCorrect.text}"`,
+					path: ['options', ids.indexOf(optionId), 'explanation']
+				});
+			}
+			if (repeatsFollowUpAnswer(correctOption.explanation, followUpCorrect.text)) {
+				issues.push({
+					message: `explanation repeats the follow-up answer for "${optionId}"`,
+					path: ['options', ids.indexOf(question.correct), 'explanation']
 				});
 			}
 		}
