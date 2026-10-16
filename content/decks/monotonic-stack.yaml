@@ -521,3 +521,87 @@ questions:
           A pop needs a taller newcomer, and these heights only fall, so every index stays. The stack
           reaches size `n` in the worst case, which makes its space O(n). Popping shrinks it only when
           taller stalls actually arrive.
+
+  - id: stack-queue-conversion
+    heading: Which queue design is correct?
+    tags: [stack, queue, complexity]
+    prompt: >-
+      A FIFO queue hands items back in the order they were enqueued. A design may keep an inbox, a
+      stack that `enqueue` pushes onto, and an outbox, a stack that `dequeue` pops from. Which design
+      is a correct queue whose every sequence of `n` operations, in which each dequeue finds an item,
+      takes O(n) total time, that is, amortized O(1) per operation?
+    options:
+      - id: refill-when-empty
+        text: Move the whole inbox to the outbox only when the outbox is empty
+        explanation: >-
+          Enqueue is one push. Dequeue refills the outbox only when it is empty, and each item crosses
+          from the inbox to the outbox at most once and never returns, so `n` operations move at most `n`
+          items. One dequeue can cost O(n) when it triggers a refill, but the items it moves pay for
+          that work, so the cost per operation is amortized O(1).
+      - id: move-every-dequeue
+        text: On each dequeue, move all items across to reach the oldest, then move them back
+        explanation: >-
+          The order comes out right, but a dequeue with `m` items left moves all `m` across and then
+          `m - 1` back, which is 2m - 1 moves. Enqueuing `n` items and dequeuing them all costs n²
+          moves (25 for n = 5, 100 for n = 10), so the cost per operation grows with the queue.
+          Refill-when-empty moves each item at most once, which is what keeps it amortized O(1).
+      - id: refill-every-dequeue
+        text: Pour the inbox onto the outbox on every dequeue, even when the outbox has items
+        explanation: >-
+          The order breaks once an item is enqueued while the outbox still holds items, because the next dequeue moves it on top of them. After enqueuing 1, 2, 3 and
+          dequeuing once, the outbox holds 3 and 2 with 2 on top, so enqueuing 4 and dequeuing puts 4
+          on top of them and returns 4 where FIFO requires 2.
+      - id: one-stack
+        text: "One stack: enqueue pushes onto it, and dequeue pops the item on top"
+        explanation: >-
+          A stack hands back the most recently pushed item, so this is last-in, first-out. After pushing
+          1, 2, 3, pop returns 3, while a queue must return 1 first.
+    correct: refill-when-empty
+    followUps:
+      move-every-dequeue:
+        prompt: >-
+          Refill-when-empty also moves items between the stacks. What stops an item from being moved
+          again and again?
+        options:
+          - id: moves-once
+            text: An item reaches the outbox once, is popped there, and never returns to the inbox
+          - id: free-moves
+            text: Moves cost nothing in big-O notation, so only the pops and enqueues count
+          - id: one-at-a-time
+            text: The outbox never holds more than one item, so each refill moves a single item
+        correct: moves-once
+        explanation: >-
+          A refill moves a batch of items, but an item in the outbox is only popped, and the inbox
+          receives only new enqueues. Each item therefore moves at most once, so the total number of
+          moves stays at most the number of enqueues. Moving every item on every dequeue sends the same
+          items back and forth again and again.
+      refill-every-dequeue:
+        prompt: >-
+          Under this rule, enqueue 1, 2, 3, dequeue once, enqueue 4, and dequeue again. Why does the
+          second dequeue return 4 when FIFO requires 2?
+        options:
+          - id: newest-on-top
+            text: Moving 4 onto the outbox puts the newest item on top, so it is the first to leave
+          - id: reversed-twice
+            text: Moving items between stacks reverses their order twice, so the arrival order comes back
+          - id: arrival-order
+            text: The outbox keeps items in arrival order, so the top is always the oldest item in it
+        correct: newest-on-top
+        explanation: >-
+          The outbox is a stack, so the item on top leaves first. Moving the inbox onto a non-empty
+          outbox puts the newest item above older items that are still waiting. Refilling only when the
+          outbox is empty keeps the oldest item on top.
+      one-stack:
+        prompt: >-
+          A stack and a queue both store items and return them later. What is the difference that matters here?
+        options:
+          - id: lifo-fifo
+            text: A stack returns the newest item first, and a queue returns the oldest first
+          - id: same-order
+            text: A stack returns items in the order they were pushed, so it behaves like a queue
+          - id: from-bottom
+            text: A stack takes items from the bottom, which holds the oldest one, not the newest
+        correct: lifo-fifo
+        explanation: >-
+          A stack is last-in, first-out: after pushing 1, 2, 3, pop returns 3. A queue is first-in,
+          first-out, so it must return 1 first. The difference is which item leaves, not how fast it leaves.

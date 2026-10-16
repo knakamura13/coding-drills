@@ -381,24 +381,26 @@ questions:
         explanation: >-
           A probe is useful only if it settles a whole side. That needs an order (or, for an answer
           search, a yes/no test that flips once) and cheap access to the middle, which a Python
-          `list` gives in O(1). A sorted array satisfies both. Missing either one removes the
-          O(log n) bound.
+          `list` gives in O(1). A sorted array satisfies both. Missing cheap access loses the O(log n)
+          bound. Missing order loses correctness: a probe no longer shows which side holds `t`, so a
+          present value can be reported as absent.
     correct: needs-access-and-order
     followUps:
       linked-list-ok:
-        prompt: Binary search on a sorted linked list makes O(log n) comparisons. Why is its total time still O(n)?
+        prompt: Binary search on a sorted linked list makes O(log n) comparisons. Why is its total time still O(n) when the search keeps a pointer at the range start?
         options:
           - id: walk-cost
-            text: Reaching each middle node means walking along the links, and the walks add up to about `n` steps
+            text: Walking the links to each middle node adds up to about `n` steps
           - id: compare-cost
-            text: Comparing two nodes costs O(n)
+            text: Each comparison of two nodes walks the list from its head, costing O(n)
           - id: cannot-sort
-            text: A linked list cannot be kept in sorted order
+            text: A linked list cannot be kept in sorted order once values are inserted
         correct: walk-cost
         explanation: >-
           Time is the number of probes times the cost of each probe. An array reaches `a[mid]` in
-          O(1). A linked list walks about n/2 links for the first probe, n/4 for the next, and so on,
-          which sums to about n. Counting only comparisons hides that cost.
+          O(1), but a linked list walks about half the current range on each probe, and with a pointer
+          at the range start those walks sum to about `n`. Re-walking from the head on every probe can
+          instead cost about `n log n`, as it does for a target above the maximum.
       unsorted-ok:
         prompt: On an unsorted array, what is wrong with discarding the right half after seeing `a[mid] > t`?
         options:
@@ -417,11 +419,11 @@ questions:
         prompt: When does `(lo + hi) // 2` overflow in a language like Java or C?
         options:
           - id: fixed-width
-            text: When `lo + hi` exceeds the largest value of a fixed-width integer, such as 2,147,483,647 for a 32-bit `int`
+            text: When `lo + hi` passes the largest value of a fixed-width int, such as 2^31 - 1
           - id: any-large
-            text: Whenever the array is large, in any language
+            text: Whenever the array is large, because `lo` and `hi` are then stored as floats
           - id: odd-sum
-            text: Whenever `lo + hi` is odd, because of the rounding
+            text: Whenever `lo + hi` is odd, since integer division then rounds the sum down
         correct: fixed-width
         explanation: >-
           Fixed-width integer types wrap around (Java) or have undefined behavior (signed C) when the sum is too big. Python's `int` grows
@@ -522,3 +524,252 @@ questions:
           larger one passes. That discards half of the remaining candidates per probe, leaving about
           `log2 R` probes. The sizes need not be sorted, and the answer, 16 in the sample, need not
           equal any single size.
+
+  - id: bs-recursive
+    heading: Which recursive helper is correct?
+    tags: [binary-search, recursion]
+    prompt: >-
+      Write a recursive search over `a`, a sorted ascending list of distinct integers (0-based indexes).
+      The helper is `search(a, t, lo, hi)`. It returns the index of `t` within `a[lo..hi]`, or `-1` if
+      `t` is absent. The top-level call is `search(a, t, 0, len(a) - 1)`. Each call sets `mid = (lo + hi) // 2`. If `a[mid] == t`, it returns `mid`.
+      Which version is correct?
+    options:
+      - id: gt-base
+        text: "`lo > hi` returns -1; if `a[mid] < t`, recurse on `(mid + 1, hi)`, else `(lo, mid - 1)`"
+        explanation: >-
+          The bounds are inclusive, so an empty range is `lo > hi`, and that base case is the only place -1
+          comes from. Each miss removes `mid` from the range, so every call sees a smaller range and the recursion ends.
+      - id: ge-base
+        text: "`lo >= hi` returns -1; if `a[mid] < t`, recurse on `(mid + 1, hi)`, else `(lo, mid - 1)`"
+        explanation: >-
+          A one-element range (`lo == hi`) still holds a candidate. This base case returns before that element
+          is compared, so `[2, 5]` with `t = 5` returns -1 instead of 1.
+      - id: mid-no-plus-one
+        text: "`lo > hi` returns -1; if `a[mid] < t`, recurse on `(mid, hi)`, else `(lo, mid - 1)`"
+        explanation: >-
+          `mid` is already ruled out, but `(mid, hi)` keeps it in range, so the range can stop shrinking once `mid == lo`, which happens when one or two elements remain. On `[1, 2]`
+          with `t = 2`, the calls repeat `(0, 1)` until Python raises RecursionError. The recursion must start at `mid + 1`.
+      - id: swapped-branches
+        text: "`lo > hi` returns -1; if `a[mid] < t`, recurse on `(lo, mid - 1)`, else `(mid + 1, hi)`"
+        explanation: >-
+          In an ascending array, `a[mid] < t` means `t` lies to the right of `mid`. This version searches the left
+          part, so `[1, 3, 5, 7]` with `t = 7` returns -1 instead of 3.
+    correct: gt-base
+    followUps:
+      ge-base:
+        prompt: >-
+          On `a = [2, 5]` with `t = 5`, the outer call probes `mid = 0`, sees `2 < 5`, and returns the result of
+          `search(a, t, 1, 1)`. With the base case `lo >= hi`, what does the outer call return?
+        options:
+          - id: child-minus-one
+            text: "-1, since the child's -1 is passed up unchanged and `a[1]` is never read"
+          - id: outer-compares
+            text: "1, because the outer call compares the second value itself once the child misses"
+          - id: outer-returns-mid
+            text: "0, because the outer call returns the `mid` it probed, once the child has failed"
+        correct: child-minus-one
+        explanation: >-
+          The outer call does not compare `a[1]`. After `mid = 0` it only returns the child's answer, and the child
+          `search(a, t, 1, 1)` hits the base case `lo >= hi` and returns -1 before reading `a[1]`. So the whole search
+          returns -1, not 1, which is the bug in this version.
+      mid-no-plus-one:
+        prompt: >-
+          On `a = [1, 2]` with `t = 2`, the first probe is `mid = 0`, and `a[0] = 1 < 2`. The version recurses on
+          `(mid, hi)`, which is `(0, 1)`. What happens next?
+        options:
+          - id: repeats
+            text: "The same call `(0, 1)` repeats until Python raises RecursionError"
+          - id: right-half
+            text: "It probes `mid = 1` next and returns `1`, because the right half is searched next"
+          - id: too-small
+            text: "It returns -1, because a two-element range is too small to search"
+        correct: repeats
+        explanation: >-
+          Recursing on `(mid, hi)` keeps `mid` in the range after it has been ruled out. Under floor division, `mid`
+          equals `lo` when two elements remain, so the bounds never shrink. The recursion must start at `mid + 1`.
+      swapped-branches:
+        prompt: >-
+          In an ascending array, suppose `a[mid] < t`. Which part of `a[lo..hi]` can hold `t`?
+        options:
+          - id: after-mid
+            text: "Only indexes after `mid`, so the call recurses on `(mid + 1, hi)`"
+          - id: before-mid
+            text: "Only indexes before `mid`, so the call recurses on `(lo, mid - 1)`"
+          - id: either-side
+            text: "Either side, since one probe says nothing about where `t` lies"
+        correct: after-mid
+        explanation: >-
+          In an ascending array, every element left of `mid` is at most `a[mid]`, so when `a[mid] < t` the target
+          cannot be at or left of `mid`. Swapping the branches searches the wrong part: on `[1, 3, 5, 7]` with
+          `t = 7`, the swapped version returns -1 instead of 3.
+
+  - id: bs-recursive-space
+    heading: What extra space does each version use?
+    tags: [binary-search, complexity, recursion]
+    prompt: >-
+      Assume Python 3, a sorted ascending list `a` of `n` distinct integers (0-based indexes). Two versions look
+      for `t`. One is an iterative loop that keeps `lo`, `hi`, and `mid` in variables. The other is a recursive
+      helper `search(a, t, lo, hi)` that passes the same bounds. Ignoring the list itself, what
+      extra space does each one use?
+    options:
+      - id: o1-and-log-n
+        text: "Iterative: O(1). Recursive: O(log n), since each unfinished probe keeps a frame"
+        explanation: >-
+          The loop keeps `lo`, `hi`, and `mid`, so its extra space is O(1). The recursive version keeps one frame for
+          each probe still in progress, plus the final call on the empty range. Each call halves the range, so the
+          depth is about `log2 n`. Measured on CPython 3.12, the deepest point had 11 `search()` frames at n = 1,000 (10 probes)
+          and 21 at n = 1,000,000 (20 probes).
+      - id: both-log-n
+        text: "Both O(log n), since the loop also stores one step for each halving"
+        explanation: >-
+          The loop does not store one bound for every halving. It keeps a fixed handful of names and replaces the
+          active bound on each probe, so the extra space stays O(1) however many probes happen.
+      - id: tail-call-reuse
+        text: "Iterative: O(1). Recursive: O(1), since a `return` of a call reuses the frame"
+        explanation: >-
+          CPython does not turn a call in `return` position into a loop. Each probe adds a frame, plus a final call on
+          the empty range, so the deepest point had 11 `search()` frames at n = 1,000 (10 probes) and 21 at n = 1,000,000
+          (20 probes). That is O(log n), not O(1).
+      - id: slice-copies
+        text: "Iterative: O(1). Recursive: O(n), since each call copies its slice of `a`"
+        explanation: >-
+          The version in this question makes no slices. A slicing version keeps a copy of the remaining elements at
+          each level. For n = 1,024, with `mid = (len - 1) // 2`, the same rule as the question, the copies alive at once total 1,013 references when the target is below every
+          element (the copy is always `a[:mid]`), and 1,023 when it is above every element (always `a[mid + 1:]`).
+          Either way the total is about n. Passing bounds avoids that, so it stays O(log n).
+    correct: o1-and-log-n
+    followUps:
+      both-log-n:
+        prompt: >-
+          The iterative loop keeps `lo`, `hi`, and `mid` in three variables. Over many halvings, how many earlier
+          bounds or midpoints does it keep?
+        options:
+          - id: none-kept
+            text: "None. Each step overwrites `lo` or `hi`, so the same variables serve every step"
+          - id: one-per-halving
+            text: "One per halving, stored in a list so the search can undo a step"
+          - id: all-probes
+            text: "Every `mid` it has probed, because each one is needed to confirm a miss"
+        correct: none-kept
+        explanation: >-
+          A miss discards `mid` and everything on one side, so older bounds are never read again. The loop therefore
+          needs the same fixed number of variables however many halvings happen, which is O(1) extra space. A recursive
+          version holds one frame per probe still in progress, and that is what makes its space O(log n).
+      tail-call-reuse:
+        prompt: >-
+          A recursive search ends with `return search(a, t, mid + 1, hi)`. Does CPython drop the caller's frame before
+          that call, so the stack stays flat?
+        options:
+          - id: frames-pile-up
+            text: "No. Each call adds a frame, and the recursion limit caps how deep the calls can go"
+          - id: reused-as-loop
+            text: "Yes. A call in `return` position is turned into a loop, so the stack stays flat"
+          - id: small-frames
+            text: "No, but each frame is small, so the total stack stays O(1)"
+        correct: frames-pile-up
+        explanation: >-
+          CPython does not eliminate tail calls. A function whose body is only `return f(n + 1)` raises RecursionError
+          on Python 3.12, because each call adds a frame and the default limit is 1000. So the stack grows with the
+          frame count, which is about log n for this search.
+      slice-copies:
+        prompt: >-
+          In Python, what does the slice `a[lo:mid]` create?
+        options:
+          - id: new-references
+            text: "A new list whose slots reference the same elements, so its cost grows with its length"
+          - id: element-copies
+            text: "A new list with a copy of each element, so every element is duplicated in memory"
+          - id: shared-view
+            text: "A view that shares `a`'s memory, so the slice costs O(1)"
+        correct: new-references
+        explanation: >-
+          A slice makes a new list object and copies one reference per slot, so its time and memory grow with its
+          length. The elements themselves are not copied: for `b = a[1:]` on `a = [[1], [2], [3]]`, `b[0] is a[1]` is `True`.
+          The bounds-passing version makes no slices, so it pays none of this cost.
+
+  - id: search-method-choice
+    heading: Which method fits this one check?
+    tags: [array, binary-search, hash-map]
+    prompt: |-
+      A script defines this list of 8 names. The names are in no particular order:
+
+      ```python
+      names = ["mira", "omar", "rosa", "theo", "lena", "kofi", "ada", "yuki"]
+      ```
+
+      It checks once whether `"ada"` is in `names`, and the list is never used again. Which method does this
+      check with the least total work and the least extra memory?
+    options:
+      - id: linear-scan
+        text: 'A linear scan, `"ada" in names`, since it reads names one by one and builds nothing'
+        explanation: >-
+          The names are not sorted, so the scan must read them in order until it reaches `"ada"`, at index 6, the seventh name.
+          That is 7 comparisons here. Any correct method must read every name in the worst case, so for one check
+          on unsorted data the scan is already the cheapest choice.
+      - id: binary-search-unsorted
+        text: 'Binary search on `names`, since each probe halves what is left to check'
+        explanation: >-
+          The list is not sorted, so a probe's comparison says nothing about which side holds `"ada"`. The halving
+          search probes `"theo"`, then `"omar"`, then `"mira"`, and returns -1, although `"ada"` sits at index 6.
+          Halving is valid only after sorting, and sorting first costs more than the scan here.
+      - id: set-lookup
+        text: "Build a set from `names`, then test membership, since an average set lookup is O(1)"
+        explanation: >-
+          Building the set reads all 8 names first, so it does the same O(n) work as the scan and also allocates a
+          hash table. A set is not incorrect, but for one lookup it is worse. On CPython 3.12 the list object takes
+          120 bytes and `set(names)` takes 728, while the scan needs no extra structure.
+      - id: sort-then-search
+        text: "Sort `names`, then binary search it, since binary search is O(log n) per lookup"
+        explanation: >-
+          The O(log n) search is cheap, but the sort in front of it is not. On CPython 3.12, sorting this list makes 16
+          comparisons, and the scan needed 7. Sorting costs O(n log n) in the worst case, which is
+          more than the single O(n) pass it would replace.
+    correct: linear-scan
+    followUps:
+      binary-search-unsorted:
+        prompt: >-
+          What property of `names` does binary search need here?
+        options:
+          - id: sorted-order
+            text: "The names must be sorted, so `names[mid]` shows which side can hold the target"
+          - id: odd-length
+            text: "The list must have an odd number of names, so there is a single middle index"
+          - id: unique-names
+            text: "Names cannot repeat, because a repeated name confuses the midpoint"
+        correct: sorted-order
+        explanation: >-
+          Binary search depends on order: once `names` is sorted, every name left of `mid` is at most `names[mid]`, so
+          one probe discards a side. Length does not matter: an even count such as the 8 names here still has a middle
+          index under floor division. Repeated names do not break the discard either, because a probe that finds
+          `names[mid] < t` still rules out everything at or left of `mid`.
+      set-lookup:
+        prompt: >-
+          What does building the set cost, compared with the single scan?
+        options:
+          - id: same-order-plus-memory
+            text: "It adds O(n) work and O(n) memory, so one lookup is no cheaper than the scan"
+          - id: free-reuse
+            text: "Nothing extra, because the set reuses the list's memory"
+          - id: amortized-once
+            text: "O(1) in total, because the build is paid once and the lookup is O(1)"
+        correct: same-order-plus-memory
+        explanation: >-
+          A set builds its own hash table, with more slots than names (32 slots for these 8 on CPython 3.12), so the
+          build reads every name and allocates new memory. The scan needs no setup and only constant extra space. A set
+          pays off only after enough lookups to cover its build.
+      sort-then-search:
+        prompt: >-
+          Sorting `names` first means calling a sort before the search. For this list, is that sort more work or
+          less work than the one scan it replaces?
+        options:
+          - id: more-work
+            text: "More. Sorting this list takes 16 comparisons, more than twice the scan's 7"
+          - id: less-work
+            text: "Less. Log2 of 8 is only 3, so sorting is cheap beside a pass over 8 names"
+          - id: linear-sort
+            text: "The same. Python's sort is linear on any input, so it costs one pass"
+        correct: more-work
+        explanation: >-
+          On CPython 3.12, sorting this list makes 16 comparisons, and the scan needed 7. A sorted list and its strict
+          reverse each took 7, so the input order changes the cost even at the same n. Python's sort is O(n log n) in
+          the worst case, and here sorting before one lookup costs more than the lookup saves.

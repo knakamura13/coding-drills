@@ -226,10 +226,9 @@ questions:
         text: Union-find with path compression, hanging the smaller tree under the larger
         explanation: >-
           `find` follows parents to the root and points the nodes it passed straight at it; `union`
-          hangs the smaller tree under the larger one. `same(a, b)` compares two roots, and a link
-          closes a cycle exactly when `find(a) == find(b)` before it is merged. With both tricks the
-          amortized cost per operation is O(α(n)), where α is the inverse Ackermann function: below 5
-          for any n that fits in memory, so effectively constant.
+          hangs the smaller tree under the larger one. `same(a, b)` compares two roots. With both
+          tricks the amortized cost per operation is O(α(n)), where α is the inverse Ackermann
+          function: below 5 for any n that fits in memory, so effectively constant.
     correct: union-find-optimized
     followUps:
       bfs-each-query:
@@ -548,3 +547,305 @@ questions:
           The queue empties when no unvisited neighbor is left, which happens once per search, and
           the search covers only what node 0 can reach. Nodes in other components stay unvisited, and
           the outer loop finds them.
+
+  - id: dfs-cycle-detection
+    heading: Which check finds a directed cycle?
+    tags: [graph, dfs]
+    prompt: >-
+      A depth-first search runs on a directed graph. Each node is open while its visit is in progress
+      and finished once that visit ends. Which check, made during the search, reports a cycle exactly
+      when the graph has one?
+    options:
+      - id: back-edge
+        text: An edge that leads to a node still open on the search path, a back edge
+        explanation: >-
+          A back edge leads to a node whose visit has not finished, so that node is an ancestor of the
+          current node. The path down from that ancestor, plus the edge back up, is a cycle. Checking for
+          back edges therefore reports a cycle exactly when one exists.
+      - id: visited-node
+        text: An edge that leads to any node the search has already reached, open or finished
+        explanation: >-
+          A forward or cross edge also leads to a visited node, but a finished one, which is off the open
+          path. The graph `0 -> 1`, `0 -> 2`, `2 -> 1` has no cycle, yet some edge points into a visited node
+          (`2 -> 1` is a cross edge when `0 -> 1` is explored first), so this test reports a cycle wrongly.
+      - id: new-tree
+        text: Starting a new DFS tree from a node that the search has not reached yet
+        explanation: >-
+          A restart happens whenever some node cannot be reached from the earlier starts, and that can
+          happen in a graph with no cycle. The graph `0 -> 1`, `2 -> 3` gives two trees and no cycle.
+      - id: sink
+        text: Reaching a node with no outgoing edges, a sink, before the search ends
+        explanation: >-
+          A sink can appear in a graph with no cycle, such as `0 -> 1`. No cycle can pass through a sink,
+          because every node on a cycle has an outgoing edge. Finding a sink does not show that the graph has a cycle.
+    correct: back-edge
+    followUps:
+      visited-node:
+        prompt: >-
+          A forward or cross edge also points at a visited node. What separates a back edge from those?
+        options:
+          - id: ancestor
+            text: The target is still open on the stack, so it is an ancestor of the tail
+          - id: smaller-label
+            text: The target has a smaller label than the tail, so the edge runs against the numbering
+          - id: earlier
+            text: The target was discovered before the tail, so the edge points back in time
+        correct: ancestor
+        explanation: >-
+          A back edge points to a node whose visit is still open, which makes that node an ancestor of the tail.
+          A forward edge points to a finished descendant, and a cross edge points to a finished node in another
+          branch. Labels do not separate them. Discovery order separates a back edge from a forward edge, because a back edge's target was discovered no later than its tail (equal only for a self-loop), and a forward edge's target later. It does not separate a back edge from a cross edge, since a cross edge also points to an earlier-discovered node.
+      new-tree:
+        prompt: >-
+          The outer loop starts a new tree from a node the search has not reached. Why does a restart alone not reveal a cycle?
+        options:
+          - id: unreachable
+            text: Only that some node was unreachable from the earlier starts, which acyclic graphs also have
+          - id: unreachable-cycle
+            text: A restart means some node was unreachable, and an unreachable node must lie on a cycle
+          - id: cross-edge-loop
+            text: A restart means an edge from the new tree reaches back into an earlier tree, so it closes a loop
+        correct: unreachable
+        explanation: >-
+          A restart says only that some node was not reachable from the earlier starts. The graph `0 -> 1`,
+          `2 -> 3` gives two trees and no cycle, so counting restarts cannot detect one. Only a back edge does,
+          and an edge from a later tree into an earlier one is a cross edge, which closes no loop.
+      sink:
+        prompt: >-
+          What can a sink tell you about whether the graph has a cycle?
+        options:
+          - id: nothing
+            text: Nothing about whether a cycle exists, only that the sink lies on no cycle
+          - id: behind
+            text: That a cycle lies somewhere behind it, on the walk that reached it
+          - id: sinks-sources
+            text: That a cycle exists only if the graph has more sinks than sources overall
+        correct: nothing
+        explanation: >-
+          Every node on a cycle has an outgoing edge that stays on the cycle, so a sink is never on one. The
+          graph `0 -> 1` has the sink 1 and no cycle, while `0 -> 1`, `1 -> 0`, `1 -> 2` has the sink 2 and a cycle. A sink shows only where a walk stopped.
+
+  - id: graph-union-find
+    heading: How does union-find spot the cycle?
+    tags: [graph]
+    prompt: >-
+      Undirected links arrive one at a time between `n` nodes. Each link joins two different nodes, and no
+      pair of nodes is linked twice. Union-find processes them in arrival order. Just before a new link is
+      processed, which rule tells you that the link closes a cycle?
+    options:
+      - id: same-root
+        text: "The two endpoints already share a root, so `find(a) == find(b)` before the union"
+        explanation: >-
+          Equal roots mean the endpoints are already joined by a chain of earlier links, and the new link closes
+          a loop through that chain. Checking this before each union flags every cycle, and only the link that
+          closes one is flagged.
+      - id: different-root
+        text: "The two endpoints have different roots, so `find(a) != find(b)` before the union"
+        explanation: >-
+          Different roots mean no earlier chain joins the endpoints. The link then merges two groups and closes
+          nothing, so this test is inverted, and it would flag the first link of two fresh nodes.
+      - id: count-at-end
+        text: Compare the total number of links with `n - 1` once all links have arrived
+        explanation: >-
+          The count is a whole-stream test, and it misses cycles. Three links on four nodes can form a triangle
+          plus an isolated node: the count equals `n - 1`, yet a cycle exists. The count also cannot say which
+          link closed the loop.
+      - id: equal-height
+        text: The two endpoints sit in trees of equal height, so the link closes a loop between them
+        explanation: >-
+          Height only decides which root goes under which, to keep trees shallow. Equal heights say nothing
+          about whether the endpoints are already connected, and many merges of equal-height trees close no
+          cycle at all.
+    correct: same-root
+    followUps:
+      different-root:
+        prompt: >-
+          Before a union, the endpoints of a new link have different roots. What does that link do?
+        options:
+          - id: merges
+            text: It joins two separate groups and closes no loop
+          - id: loop-through-roots
+            text: It closes a loop that runs through both roots
+          - id: needs-old-link
+            text: It closes a loop as soon as one endpoint was linked earlier
+        correct: merges
+        explanation: >-
+          A cycle needs a path between the link's endpoints that already exists. Different roots mean the two
+          endpoints lie in different sets, so no such path exists. The link merges the sets and closes nothing.
+      count-at-end:
+        prompt: >-
+          Four nodes have three links that form a triangle on three of them, with the fourth node alone. Does
+          comparing 3 links with `n - 1` reveal the cycle?
+        options:
+          - id: no-cycle-reported
+            text: No. The count equals n - 1, so no cycle is reported, yet the triangle is a cycle
+          - id: three-always
+            text: Yes. Any three links close a cycle once there are four nodes, whatever order they arrive in
+          - id: order-matters
+            text: Yes, but only if the links arrive in order around the triangle, one after the other
+        correct: no-cycle-reported
+        explanation: >-
+          A forest on `n` nodes has at most `n - 1` links, so more than `n - 1` does prove that a cycle exists
+          somewhere. A count of exactly `n - 1` can still hide a cycle, as this triangle does, and union-find
+          flags the third link as it arrives.
+      equal-height:
+        prompt: >-
+          Union by height or size chooses which root goes under which. What is that choice for?
+        options:
+          - id: shallow
+            text: Shallow trees, so each find walks fewer parent pointers; it does not test for cycles
+          - id: early-cycle
+            text: Finding cycles early, so the taller tree must already hold a loop before the merge
+          - id: shared-root
+            text: Making equal roots appear, so that a shared root reveals a cycle at once
+        correct: shallow
+        explanation: >-
+          Union by height or size only decides which root goes under which, and that keeps `find` fast. The cycle
+          test is a separate step: compare the two roots before the union.
+
+  - id: bfs-two-colour-bipartite
+    heading: Which rule decides bipartiteness?
+    tags: [graph, bfs]
+    prompt: >-
+      A graph is bipartite when its nodes split into two colour classes, and every edge joins a node in one
+      class to a node in the other. Which test decides this?
+    options:
+      - id: two-colour
+        text: "Colour each newly reached node opposite its parent, and reject any edge whose ends match"
+        explanation: >-
+          Colouring each node opposite the node that reached it fixes every colour once the start is chosen. An
+          edge whose ends share a colour is the only way the split fails. Starting a new search at each uncoloured
+          node covers graphs with several pieces.
+      - id: odd-node-count
+        text: "A graph is bipartite exactly when its node count is even, so a parity check decides it"
+        explanation: >-
+          Node count does not decide it. The path `0 - 1 - 2` has 3 nodes and is bipartite, with 0 and 2 in one
+          class and 1 in the other. A triangle plus one isolated node has 4 nodes and is not bipartite.
+      - id: visited-set-bfs
+        text: Run BFS with a visited set, and reject at the first edge to a visited node but the parent
+        explanation: >-
+          This rejects every cycle, not only odd ones. The square `0 - 1 - 2 - 3 - 0` is bipartite, with colours
+          `A B A B`, yet node 2 touches both 1 and 3, so the second of those to be processed finds 2 already visited
+          and rejects the square.
+      - id: even-degrees
+        text: A graph is bipartite exactly when every node has even degree, so degree parity decides it
+        explanation: >-
+          Degree parity does not decide it. A triangle has every degree 2 and is not bipartite, and the path
+          `0 - 1 - 2` has degrees 1, 2, 1 and is bipartite.
+    correct: two-colour
+    followUps:
+      odd-node-count:
+        prompt: >-
+          The path `0 - 1 - 2` has 3 nodes and is still bipartite. What decides bipartiteness?
+        options:
+          - id: odd-cycle
+            text: Whether the graph contains an odd cycle, one with an odd number of edges
+          - id: even-edges
+            text: Whether the number of edges is even, so each class has matched edges
+          - id: connected
+            text: Whether the graph is connected, so one search from any node reaches every node
+        correct: odd-cycle
+        explanation: >-
+          A graph is bipartite exactly when it has no odd cycle. Node count plays no part: the path on three
+          nodes has no cycle, while a triangle plus an isolated node has four nodes and does contain an odd cycle.
+      visited-set-bfs:
+        prompt: >-
+          The square `0 - 1 - 2 - 3 - 0` contains a cycle and is bipartite. Which cycles break bipartiteness?
+        options:
+          - id: odd
+            text: Odd cycles, meaning those with an odd number of edges, such as a triangle
+          - id: covering
+            text: Only cycles that pass through every node of the graph, not just some of them
+          - id: long
+            text: Only cycles with more than four nodes, and short cycles always two-colour
+        correct: odd
+        explanation: >-
+          Colours must alternate along every edge. An even cycle can alternate all the way round, but an odd cycle
+          cannot, so at least one edge joins two nodes of the same colour. A triangle is short and still breaks
+          the test, so length alone does not decide it.
+      even-degrees:
+        prompt: >-
+          The path `0 - 1 - 2` has end nodes of odd degree and is still bipartite. What do degrees tell you about colouring?
+        options:
+          - id: nothing-decisive
+            text: "Nothing decisive: the split turns on whether an odd cycle exists, not on any degree"
+          - id: odd-mismatch
+            text: Every odd-degree node must take the second colour, so a parity mismatch breaks the test
+          - id: odd-pair
+            text: Two odd-degree nodes must take different colours, so a pair of them breaks the test
+        correct: nothing-decisive
+        explanation: >-
+          Bipartiteness depends on whether an odd cycle exists, not on degrees. The path colours as `A B A`, with two
+          odd-degree ends and no problem.
+
+  - id: graph-representation
+    heading: Which representation fits?
+    tags: [graph, complexity]
+    prompt: >-
+      A road map has 1,000,000 junctions (`V`) and 1,500,000 two-way roads (`E`). Each road joins two different
+      junctions. The program runs a breadth-first search over the whole network. Which representation fits best?
+    options:
+      - id: adjacency-list
+        text: "Adjacency list: O(V + E) space, with each junction's neighbours listed in O(degree) time"
+        explanation: >-
+          The list stores only the roads that exist. A BFS then touches each junction once and each road from both
+          ends, about V + 2E steps. A single-pair check costs O(degree) on a plain list, which this workload rarely needs.
+      - id: matrix-check
+        text: An adjacency matrix, which checks whether two junctions share a road in O(1) time
+        explanation: >-
+          The O(1) check is real, but a BFS asks for neighbours, not single pairs. Finding a junction's neighbours
+          means reading its whole row of V cells, so the search reads about V × V cells.
+      - id: edge-list
+        text: An edge list, which stores each road once in O(E) space with no per-junction lists
+        explanation: >-
+          An edge list is not too big: its O(E) space is no more than the list's O(V + E). But each neighbour lookup
+          scans all E roads, and a BFS does that for every junction, about V × E reads.
+      - id: bit-matrix
+        text: A bit-packed adjacency matrix, which uses one bit per cell instead of one byte
+        explanation: >-
+          Packing saves a constant factor in memory, but each row still has V cells and the search still reads the
+          row of every junction it reaches, so the time stays O(V²) and far above the list's.
+    correct: adjacency-list
+    followUps:
+      matrix-check:
+        prompt: >-
+          The matrix answers `has_road(a, b)` in O(1). What does a BFS need that this check does not supply?
+        options:
+          - id: neighbours
+            text: The neighbours of each junction, which a matrix finds only by scanning its row
+          - id: road-count
+            text: The number of roads at each junction, which the matrix keeps on its diagonal
+          - id: visited-flags
+            text: A visited flag for each junction, which only an adjacency list can hold in memory
+        correct: neighbours
+        explanation: >-
+          BFS asks for neighbours. In a matrix, junction `v`'s neighbours sit in row `v`, and finding them costs V reads.
+          A full BFS therefore reads about V × V = 10^12 cells on this map, while the list needs about V + 2E = 4 million steps.
+      edge-list:
+        prompt: >-
+          The edge list stores each road once. Why is a BFS over it still slow?
+        options:
+          - id: full-pass-each
+            text: A full pass over every road, which the BFS repeats once for each junction it visits
+          - id: memory
+            text: An edge list needs more memory than an adjacency list, so the search runs out of room
+          - id: undirected
+            text: An edge list cannot describe two-way roads, so the BFS would miss half the neighbours
+        correct: full-pass-each
+        explanation: >-
+          An edge list needs O(E) space, no more than an adjacency list's O(V + E), so memory is not its weakness. The
+          weakness is time: a naive neighbour lookup reads all E roads, and the BFS does one lookup per junction, about V × E reads in total.
+      bit-matrix:
+        prompt: >-
+          Bit-packing stores one matrix cell per bit instead of per byte. What does that change for the BFS?
+        options:
+          - id: memory-only
+            text: It cuts memory about eightfold, but a BFS still reads about V × V cells
+          - id: sparse-zero
+            text: It makes the matrix O(V + E) in memory, with zero bits needing no storage
+          - id: skip-rows
+            text: It lets the BFS skip empty rows, so only junctions with roads are visited
+        correct: memory-only
+        explanation: >-
+          Bit-packing saves a constant factor of about eight in memory. The matrix still has V × V cells, and constant
+          factors do not change big-O, so the time stays O(V²) while the list's O(V + E) stays far ahead.

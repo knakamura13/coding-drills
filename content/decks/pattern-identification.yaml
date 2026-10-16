@@ -373,3 +373,82 @@ questions:
           A subarray is a run of neighbors, so choosing where it starts and ends determines it. That
           gives a quadratic number of subarrays. Counting subsets (`2^n`) or orderings (`n!`) allows
           elements that are not adjacent.
+
+  - id: bit-xor-cancels-pairs
+    tags: [bit-manipulation, array]
+    prompt: >-
+      You receive a non-empty list of integers in no particular order. Every value in it has exactly
+      one duplicate, except one value that has none. Report that unpaired value in O(n) time and
+      O(1) extra space, and leave the list as it was.
+    options:
+      - id: xor-reduction
+        text: Reduce with XOR
+        explanation: >-
+          XOR every element into one running value. Equal values cancel, because `x ^ x` is 0 and
+          `x ^ 0` is `x`. XOR does not depend on order, so only the single value is left. One pass
+          gives O(n) time, assuming each integer fits in a machine word, and one variable, which is
+          O(1) extra space. The list is never changed.
+      - id: hash-counts
+        text: Hash Map of Counts
+        explanation: >-
+          Counting each value in a hash map finds the one with count 1, and it runs in O(n) expected
+          time, so it meets the time limit on average and the answer is right. But the map keeps a key
+          for every distinct value. Here that is about n/2 keys, so the extra space is O(n), which
+          breaks the limit.
+      - id: nested-count
+        text: Nested Count Scan
+        explanation: >-
+          For each element, count how many list entries equal it, including itself. The element whose
+          count is 1 is the answer. The extra space is O(1), since it needs only one counter. But each
+          of the n scans reads all n elements, which is O(n^2) time and breaks the O(n) limit.
+      - id: sort-scan
+        text: Sort, Then Scan
+        explanation: >-
+          Sorting puts equal values next to each other, so one scan can spot the value with no partner.
+          The scan is fine, but the setup breaks the rules: ordering the values either mutates the input
+          or allocates a second list of the same length. The usual comparison sorts also take O(n log n) time.
+    correct: xor-reduction
+    followUps:
+      hash-counts:
+        prompt: Assuming average-case hash lookups, which limit does a hash map of counts break?
+        options:
+          - id: time-scan
+            text: The time limit, because each lookup walks the map from the start to find its key
+          - id: space-keys
+            text: The extra-space limit, because the map keeps about n/2 keys, one per distinct value
+          - id: single-variables
+            text: The space limit is not broken, because only single variables are counted as extra space
+        correct: space-keys
+        explanation: >-
+          The map stores one key per distinct value, so its extra space grows with the list. A hash
+          lookup takes O(1) expected time and does not scan the map, so time is not what it breaks.
+          The limit counts all extra memory, not just single variables, so those keys break it.
+      nested-count:
+        prompt: Why does the nested count miss the O(n) time limit?
+        options:
+          - id: full-scan-each
+            text: It rescans the whole list for each of the n elements, about n^2 comparisons
+          - id: list-count-constant
+            text: It calls `list.count` on each element, which runs in O(1) time on a list
+          - id: stops-at-first-match
+            text: It stops each count at the first match, and most counts finish before the end
+        correct: full-scan-each
+        explanation: >-
+          Each of the n counts reads all n elements, so the comparisons grow as n times n, and
+          `list.count` does the same, never stopping at the first match. The scan never copies the
+          list, and only one counter is alive at a time, so the space is O(1). The problem is the
+          repeated scanning, not the memory.
+      sort-scan:
+        prompt: Setting running time aside, what in this problem's rules does sorting break?
+        options:
+          - id: rewrites-or-copies
+            text: An in-place sort rewrites the list, and a sorted copy needs O(n) extra space
+          - id: needs-hash
+            text: Sorting needs a hash table to remember which values the scan has already passed
+          - id: splits-pairs
+            text: Sorting splits equal values apart, and a scan can no longer pair them up
+        correct: rewrites-or-copies
+        explanation: >-
+          An in-place sort rewrites the list, which the question forbids, and a sorted copy needs O(n)
+          extra space. Sorting puts equal values side by side, so the pairing idea is not the problem,
+          and it needs no hash table.

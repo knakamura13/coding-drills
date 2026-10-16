@@ -546,3 +546,153 @@ questions:
         explanation: >-
           `n` limits the depth only through the base case. With the check present the stack is at most
           `n + 1` calls deep, and without it the depth is bounded only by Python's limit.
+
+  - id: bt-k-combinations-count
+    heading: How many results does it record?
+    tags: [backtracking, recursion]
+    prompt: |-
+      A search must choose exactly `k = 2` items from `items = [1, 2, 3, 4]`. The code below appends a
+      copy of `path` whenever it holds `k` items.
+
+      ```python
+      def subsets(items, k):
+          out, path = [], []
+
+          def pick(start):
+              if len(path) == k:
+                  out.append(path[:])
+                  return
+              for i in range(start, len(items)):
+                  path.append(items[i])
+                  pick(i + 1)
+                  path.pop()
+
+          pick(0)
+          return out
+      ```
+
+      How many lists does `subsets([1, 2, 3, 4], 2)` return?
+    options:
+      - id: six
+        text: "6, one for each pair the loop reaches, since each pick comes after the last one"
+        explanation: >-
+          The loop never goes back before `start`, so each call takes only items after the last one chosen.
+          Each unordered pair is reached once, with its smaller index first. The run records 6 lists.
+      - id: twelve
+        text: "12, the number of ordered pairs, since each pair can be written in two orders"
+        explanation: >-
+          Ordered pairs would need each position to try any unused item. This loop only moves forward from
+          `start`, so `[3, 1]` is never produced and `out` holds 6 lists, not 12.
+      - id: sixteen
+        text: "16, every subset of the four items, because the search records them all"
+        explanation: >-
+          The append runs only when `len(path) == k`. Subsets of size 0, 1, 3 and 4 never reach it, so the
+          16 subsets are not all recorded. Only the six of size 2 are.
+      - id: twenty-four
+        text: "24, every ordering of the four items, since order matters and all items are used"
+        explanation: >-
+          Each recorded list has length `k = 2`, not 4, because the leaf test stops at 2 items. The 4! = 24
+          orderings of all four items are never built, so the count is 6, not 24.
+    correct: six
+    followUps:
+      twelve:
+        prompt: >-
+          The loop begins at `start`, and each call passes `i + 1` down. Which pairs can end up in `out`?
+        options:
+          - { id: increasing, text: "Only pairs where the second item comes later in `items`, since the loop moves forward" }
+          - { id: any-order, text: "Pairs in either order, such as `[1, 3]` and `[3, 1]`, because the lists are not sorted" }
+          - { id: repeats, text: "Pairs that may repeat an item, such as `[2, 2]`, since the loop never checks for repeats" }
+        correct: increasing
+        explanation: >-
+          Each call starts after the item it just took, so no item is picked twice and no later item is placed
+          before an earlier one. Each pair appears in one order only. Counting every ordering needs a different
+          search, one that tries each unused item at every position.
+      sixteen:
+        prompt: >-
+          The leaf test is `len(path) == k`. Which selections does `out` receive?
+        options:
+          - { id: exact-k, text: "Only selections with exactly `k` items, since shorter ones are only passed down" }
+          - { id: at-most-k, text: "Every selection with at most `k` items, since the search keeps each one it builds" }
+          - { id: every-visit, text: "Every selection the search visits, since each call represents one selection" }
+        correct: exact-k
+        explanation: >-
+          `out.append` runs only in the branch where `path` holds exactly `k` items. Shorter selections are
+          passed down the tree and never recorded. With four items the 16 subsets split 1, 4, 6, 4, 1 by size,
+          so `out` gets only the six of size 2.
+      twenty-four:
+        prompt: >-
+          Each recorded list is a copy of `path` taken at a leaf. How many items does each one hold here?
+        options:
+          - { id: k-items, text: "Two, because a leaf is reached as soon as `path` holds `k` items" }
+          - { id: all-items, text: "Four, since every item is tried and the list keeps all of them" }
+          - { id: one-item, text: "One, because each call adds a single item before it recurses" }
+        correct: k-items
+        explanation: >-
+          The leaf test is `len(path) == k` with `k = 2`, so every recorded list has length 2. The number of
+          input items sets how many choices exist, not how long each recorded list is. Four-item orderings would
+          need lists of length 4, which this search never builds.
+
+  - id: bit-mask-subsets
+    heading: Which loop visits every subset?
+    tags: [bit-manipulation]
+    prompt: |-
+      A routine must visit every subset of `n` distinct items exactly once, including the empty set and the full
+      set. It encodes each subset as a bitmask: bit `j` of the mask is `1` when item `j` is in the subset.
+
+      Which loop visits every subset without recursion?
+    options:
+      - id: full-range
+        text: "`for mask in range(1 << n):`, since `1 << n` equals `2 ** n`, one mask per subset"
+        explanation: >-
+          The masks run from `0` to `2 ** n - 1`, which covers all 2 ** n subsets, and `mask >> j & 1` reads
+          bit `j`. For n = 3 this visits all 8 subsets, including the empty set and the full set.
+      - id: drop-full
+        text: "`for mask in range(2 ** n - 1):`, since the full set adds nothing and can be skipped"
+        explanation: >-
+          `range(2 ** n - 1)` stops one mask early, so the full set is never visited. For n = 3 the loop visits
+          masks 0 to 6, which are 7 of the 8 subsets. The missing one, mask 7, is the full set.
+      - id: drop-empty
+        text: "`for mask in range(1, 1 << n):`, since the empty set is not a selection of items"
+        explanation: >-
+          Starting at 1 skips mask `0`, which is the empty set. The empty set is still a subset, so for n = 3 this
+          loop visits 7 of the 8 subsets.
+      - id: n-masks
+        text: "`for mask in range(n):`, since each item is one bit, so each mask stands for one item"
+        explanation: >-
+          The loop runs only n times, so it visits at most n masks. For n = 3 it visits masks 0, 1 and 2, which
+          give 3 of the 8 subsets.
+    correct: full-range
+    followUps:
+      drop-full:
+        prompt: >-
+          With `n = 3`, which mask encodes the full set?
+        options:
+          - { id: seven, text: "`7`, binary `111`, with every bit set" }
+          - { id: six, text: "`6`, binary `110`, with bit 0 unset" }
+          - { id: zero, text: "`0`, binary `000`, with no bit set at all" }
+        correct: seven
+        explanation: >-
+          The full set sets every bit, so its mask is `2 ** n - 1`, which is 7 for n = 3. `range(2 ** n - 1)` stops
+          before that value, so the full set is never visited. Use `range(1 << n)` to include it.
+      drop-empty:
+        prompt: >-
+          Mask `0` has no bits set. Which subset does it stand for?
+        options:
+          - { id: empty-set, text: "The empty set, since no item is chosen and the empty selection is still a subset" }
+          - { id: full-set, text: "The full set, because clearing every bit is the same as selecting every item" }
+          - { id: not-valid, text: "Nothing, since `0` is not a valid bitmask and no subset can use it" }
+        correct: empty-set
+        explanation: >-
+          A subset with no items is the empty set, one of the 2 ** n subsets. `range(1, 1 << n)` starts at 1 and
+          skips mask `0`, so the empty set is never produced. Start the loop at `0`.
+      n-masks:
+        prompt: >-
+          How many masks must a loop visit so that each subset of `n` items appears exactly once?
+        options:
+          - { id: two-to-n, text: "`2 ** n`, since each of the `n` bits is independently in or out" }
+          - { id: n-count, text: "`n`, because each item gets one bit, so there is one mask per item" }
+          - { id: n-factorial, text: "`n!`, because different orders of the items give different subsets" }
+        correct: two-to-n
+        explanation: >-
+          Each of the `n` bits is independent, so there are 2 ** n distinct masks, from `0` to `2 ** n - 1`. One
+          mask per item gives only `n` of them, which for n = 3 reaches 3 of the 8 subsets.

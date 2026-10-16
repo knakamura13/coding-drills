@@ -363,3 +363,73 @@ questions:
           Each iteration adds one item and keeps the earlier ones, so the list ends with `n` items
           and takes O(n) memory. Time and space differ here: copying on every append would cost time,
           but it would not leave more items behind.
+
+  - id: bit-popcount
+    heading: How many passes does the loop make?
+    tags: [bit-manipulation, complexity]
+    prompt: |-
+      The loop below runs on a non-negative integer `n`.
+
+      ```python
+      count = 0
+      while n:
+          n &= n - 1
+          count += 1
+      ```
+
+      For `n = 1 << 40`, how many times does the loop body run?
+    options:
+      - id: once
+        text: Exactly one time
+        explanation: >-
+          `1 << 40` has exactly one set bit. The first pass clears it, `n` becomes 0, and the `while n`
+          test fails, so the body runs once. In general the loop runs once per set bit, so for `n` ≥ 1
+          it runs at most floor(log₂ n) + 1 times, which is O(log n) for `n` ≥ 2.
+      - id: per-position
+        text: Forty times in all
+        explanation: >-
+          The loop does not walk through bit positions. Each pass clears the lowest set bit, so the
+          number of passes equals the number of set bits. Here that is one, and the 40 zero bits
+          below it add no passes.
+      - id: bit-length
+        text: Forty-one passes
+        explanation: >-
+          `1 << 40` has 41 binary digits, but the loop does not visit each digit. Only set bits cause a
+          pass, and this number has just one.
+      - id: count-values
+        text: Two to the fortieth
+        explanation: >-
+          That would be the cost of counting down from `n` one step at a time. Each pass clears a set
+          bit instead of subtracting one, so the loop jumps from `1 << 40` straight to 0.
+    correct: once
+    followUps:
+      per-position:
+        prompt: Starting from `n = 20`, how many passes does the loop make?
+        options:
+          - { id: two-set-bits, text: "Two, the total number of set bits" }
+          - { id: five-positions, text: "Five, the number of bit positions" }
+          - { id: count-down, text: "Twenty, if each pass subtracts one" }
+        correct: two-set-bits
+        explanation: >-
+          `20` is `0b10100`, which has two set bits. `20 & 19` is 16 and `16 & 15` is 0, so the loop makes
+          two passes. The five bit positions add no passes, and subtracting one per pass would take 20.
+      bit-length:
+        prompt: How many set bits does `0b11100000` (224) have?
+        options:
+          - { id: three, text: "Three, one for each 1 digit" }
+          - { id: all-digits, text: "Eight, one for each digit" }
+          - { id: zero-digits, text: "Five, one for each 0 digit" }
+        correct: three
+        explanation: >-
+          `0b11100000` has three 1 digits and five 0 digits. The loop counts the 1 digits, so the zeros add
+          no passes.
+      count-values:
+        prompt: Starting from `n = 12`, how many different values does `n` hold until the `while n` test fails, counting the starting value?
+        options:
+          - { id: two, text: "Two values: `12` and `0`, with nothing between" }
+          - { id: three, text: "Three values: `12`, `8`, and `0`, in that order" }
+          - { id: thirteen, text: "Thirteen values: every integer from `12` down to `0`" }
+        correct: three
+        explanation: >-
+          `12 & 11` is 8, and `8 & 7` is 0, so `n` holds 12, then 8, then 0. Each pass clears a set bit, and the
+          loop never visits the integers in between.

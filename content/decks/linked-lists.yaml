@@ -9,8 +9,9 @@ questions:
     tags: [linked-list]
     prompt: |-
       A singly linked list uses this node class. The loop below should reverse the list in place and
-      return the new head. Its body is four statements: save the following node in `after`, point
-      `node` backwards, and advance `done` and `node`. Which order is correct for every list?
+      return the new head. Its body has four statements, listed in no particular order: advance `node`,
+      save the following node in `after`, advance `done`, and point `node` backwards. Which order is
+      correct for every list?
 
       ```python
       class Node:
@@ -28,8 +29,8 @@ questions:
         text: "`node.link = done`, `after = node.link`, `done = node`, `node = after`"
         explanation: >-
           `node.link` is overwritten before it is saved, so `after` receives `done` and the rest of the
-          list is lost. On `41 -> 17 -> 8 -> 93` the loop ends after one pass and the function returns
-          a list holding only `[41]`. On `[5, 6]` it returns `[5]`.
+          list is lost. On `41 -> 17 -> 8 -> 93` the function returns a list holding only `[41]`. On
+          `[5, 6]` it returns `[5]`.
       - id: done-too-early
         text: "`after = node.link`, `done = node`, `node.link = done`, `node = after`"
         explanation: >-
@@ -39,9 +40,10 @@ questions:
       - id: advance-before-done
         text: "`after = node.link`, `node.link = done`, `node = after`, `done = node`"
         explanation: >-
-          The save and the link are right, but `done = node` runs after `node` has advanced, so `done`
-          holds the following node instead of the node just relinked. The loop ends with `done` equal
-          to `None`, so the function returns `None` for every non-empty list.
+          The save and the first link are right, but `done = node` runs after `node` has advanced, so
+          `done` holds the following node instead of the node just relinked. On the next pass that node
+          is linked to itself, and the loop ends with `done` equal to `None`, so the function returns
+          `None` for every non-empty list.
       - id: save-link-advance
         text: "`after = node.link`, `node.link = done`, `done = node`, `node = after`"
         explanation: >-
@@ -57,7 +59,7 @@ questions:
           store?
         options:
           - id: overwritten-value
-            text: "`None`, the value `done` just put into `node.link`, so the loop then ends after one pass"
+            text: "`None`, the value `done` just wrote, so the loop ends after one pass"
           - id: original-next
             text: The second node, because `after` is assigned after the loop starts
           - id: saved-copy
@@ -198,7 +200,8 @@ questions:
 
       It is right when the first node is kept, but `remove_all` on `7 -> 7 -> 52 -> 7 -> 19` with
       `target = 7` returns `[7, 52, 19]`, and on `[7]` it returns `[7]`. The fix creates
-      `dummy = Node(0, head)` and starts the loop with `node = dummy`. What does the dummy node change?
+      `dummy = Node(0, head)`, where `Node(value, link)` makes a node that links to `link`, and starts
+      the loop with `node = dummy`. What does the dummy node change?
     options:
       - id: faster
         text: Removing every match drops from O(n) to O(1), because the dummy does the work
@@ -228,9 +231,9 @@ questions:
         prompt: How many nodes must be tested to remove every match from a list of `n` nodes?
         options:
           - id: all
-            text: All `n`, once each, so the cost is O(n) either way
+            text: All `n`, once each, since no node is known to match until it is examined
           - id: only-matches
-            text: Only the matching nodes, since the others are left alone
+            text: Only the matching nodes, since the loop never reaches the others
           - id: skip-head
             text: Only `n - 1` with a dummy node, since the first node is handled for free
         correct: all
@@ -239,12 +242,12 @@ questions:
           dummy node changes where the loop starts, not how many nodes it must visit, and the first
           node is tested like any other.
       keeps-head:
-        prompt: After the first node is unlinked, what does the local `head` refer to?
+        prompt: In the fixed version, after the first node is unlinked, what does the local `head` refer to?
         options:
           - id: removed-node
-            text: Still the removed node, which stays alive because `head` refers to it
+            text: Still the removed node, which stays alive because some name still holds it
           - id: new-first
-            text: The new first node, because `head` follows the list
+            text: The new first node, because `head` follows the list as nodes are removed
           - id: none
             text: "`None`, because Python deletes a node once the list no longer links to it"
         correct: removed-node
@@ -522,3 +525,180 @@ questions:
           middle, so it costs about `n / 2` rather than `n`. A fast and slow pointer pass also moves
           about 1.5n pointers in total (`n / 2` for `slow`, `n` for `fast`), so it saves a second pass
           but not the O(n) bound.
+
+  - id: node-unlink-held
+    heading: Which structure fits this operation?
+    tags: [linked-list, complexity]
+    prompt: >-
+      You hold a reference to one node in the middle of a list. You want the node object you hold to be
+      no longer in the list, with no other node object removed, in O(1) time, without walking from the head.
+      Which structure allows this?
+    options:
+      - id: doubly
+        text: "A doubly linked list, where each node has `prev` and `next` links"
+        explanation: >-
+          The held node already has links to both neighbours. Setting `prev.next` to its `next`, and
+          `next.prev` to its `prev`, unlinks it in constant time. At the head or tail, the list's own head or tail reference
+          must also be updated. The cost stays O(1).
+      - id: singly
+        text: "A singly linked list, where each node has one `link`"
+        explanation: >-
+          The held node cannot reach its predecessor, and only the predecessor's `link` can skip it.
+          Copying the next node's value into the held node and then dropping the next node is O(1), but it
+          removes a different node object, and it fails when the held node is the tail.
+      - id: tail-pointer
+        text: "A singly linked list with a `tail` pointer kept next to the head"
+        explanation: >-
+          A `tail` pointer makes appending at the end O(1). It gives no route backwards, so a held node in
+          the middle still cannot reach its predecessor.
+      - id: python-list
+        text: "A Python `list`, where deleting an element you hold is O(1)"
+        explanation: >-
+          Holding an element does not tell you its index, and deleting from the middle moves every later item
+          one slot left. Deleting the last item moves nothing, but the question is about a node in the middle
+          of the list.
+    correct: doubly
+    followUps:
+      singly:
+        prompt: >-
+          To unlink a node you hold in a singly linked list, which `link` has to change?
+        options:
+          - id: predecessor
+            text: "The predecessor's `link`, so it skips over the held node"
+          - id: own
+            text: "The held node's own `link`, so it stops pointing forward"
+          - id: dropped
+            text: "Nothing, because the node leaves the list once no variable refers to it"
+        correct: predecessor
+        explanation: >-
+          A node stays in the list while some `link` points at it, and only the predecessor's `link` does that
+          here. The held node cannot reach that predecessor without walking from the head, which the question rules out, so it cannot be unlinked in O(1) without removing a different node. Changing the held node's own `link` leaves the predecessor pointing at it, so the node stays linked.
+      tail-pointer:
+        prompt: >-
+          A `tail` pointer is added to a singly linked list. Which operation does it make O(1) where it was O(n)
+          before?
+        options:
+          - id: append
+            text: Appending a new node after the current last node
+          - id: reverse
+            text: Reversing the whole list in place, changing every link
+          - id: unlink
+            text: Unlinking a middle node that you already hold in the list
+        correct: append
+        explanation: >-
+          The `tail` is the last node, so a new node goes after it with no walk from the head. Reversal still has
+          to change every link, and unlinking a held middle node still needs its predecessor, which `tail` does not
+          provide.
+      python-list:
+        prompt: >-
+          Why does deleting an item from the middle of a Python `list` take O(n) time?
+        options:
+          - id: shift
+            text: Every later item moves one slot left to close the gap, up to n - 1 items in all
+          - id: gap
+            text: Python marks the slot empty and leaves a gap, so the deletion itself costs O(1)
+          - id: free
+            text: Python frees the deleted item's memory, and freeing scales with the list's length
+        correct: shift
+        explanation: >-
+          A `list` keeps its items in one block of slots, so closing a gap in the middle moves each later item one
+          place. The number of items that move depends on where the gap is, so the worst case is O(n). A `list`
+          keeps no gap markers, and freeing one item does not depend on the list's length.
+
+  - id: merge-dummy-head
+    heading: Which setup and return merge the lists?
+    tags: [linked-list, python]
+    prompt: |-
+      `a` and `b` are sorted singly linked lists. The loop below attaches the smaller node to `tail`
+      and then moves `tail` onto it. Fill in the setup before the loop and the return line. Which pair
+      lets every node, including the first, go through the same attach step, and makes the function return exactly the merged nodes?
+
+      ```python
+      class Node:
+          def __init__(self, value, link=None):
+              self.value = value
+              self.link = link
+
+      def merge(a, b):
+          # setup goes here
+          while a and b:
+              if a.value <= b.value:
+                  tail.link = a
+                  a = a.link
+              else:
+                  tail.link = b
+                  b = b.link
+              tail = tail.link
+          tail.link = a or b
+          # return goes here
+      ```
+    options:
+      - id: dummy-first
+        text: "`dummy = Node(0)` and `tail = dummy`; return `dummy.link` at the end"
+        explanation: >-
+          `dummy` sits in front of the head, so the first attach is `tail.link = ...`, the same line as every other
+          attach. `tail` then moves onto the node just attached, and `dummy.link` is the merged head. Two empty
+          inputs also give `None`, with no special case.
+      - id: pick-head
+        text: "Pick the smaller head by hand, advance past it, start `tail` on it, and return it"
+        explanation: >-
+          With both lists non-empty it returns the same merged list, so the objection is to its shape, not its
+          output. It handles the first node in a separate branch before the loop, which the question rules out. A naive version that compares the two heads without a `None` check
+          fails whenever either list is empty, because it reads `.value` from `None`.
+      - id: none-tail
+        text: "`tail = None` before the loop, no dummy in front of the head, and return the merged head"
+        explanation: >-
+          `None` is not a node, so the first attach, `tail.link = a`, raises AttributeError before any node is
+          merged. A dummy node gives `tail` a real object to attach to before the first merged node exists.
+      - id: return-dummy
+        text: "`dummy = Node(0)` and `tail = dummy`, but return `dummy` at the end"
+        explanation: >-
+          `dummy` is the placeholder with value `0`, so the caller gets a `0` in front of the merged list. The merged
+          head is `dummy.link`, and that is what the function must return.
+    correct: dummy-first
+    followUps:
+      pick-head:
+        prompt: >-
+          The pick-by-hand version also returns the right list when both inputs are non-empty. What does the dummy
+          node remove from the code?
+        options:
+          - id: branch
+            text: The separate branch for the first node, since the dummy lets every node use one attach step
+          - id: advance
+            text: The need to advance `a` and `b` inside the loop, since the dummy node moves them forward
+          - id: leftover
+            text: The `tail.link = a or b` line after the loop, since the dummy node attaches the leftover nodes
+        correct: branch
+        explanation: >-
+          With both inputs non-empty, the two setups give the same merged list, so the difference is code shape, not
+          correctness. Picking the head by hand adds a branch that handles the first node in a different way from the
+          loop. The dummy puts a node in front of the head, so every attach is `tail.link = ...`.
+      none-tail:
+        prompt: >-
+          With `tail = None` before the loop, what does `tail.link = a` do on the first pass?
+        options:
+          - id: raises
+            text: It raises AttributeError, because `None` has no `link` attribute to set
+          - id: sets-tail
+            text: It sets `tail` to the first node, so later attaches can use it
+          - id: ignores
+            text: It does nothing, because Python skips assignments to `None`
+        correct: raises
+        explanation: >-
+          `None` is not a node, and Python does not allow setting an attribute on it. A dummy node gives `tail` a real
+          object to attach to before the first merged node exists.
+      return-dummy:
+        prompt: >-
+          The function returns `dummy` instead of `dummy.link`. What does the caller see when it walks the list from
+          the returned node?
+        options:
+          - id: placeholder
+            text: The placeholder value `0` first, because walking forward starts at `dummy`
+          - id: skipped
+            text: Only the merged values, because the placeholder is skipped when walking
+          - id: appended
+            text: The merged values, then a `0`, because `dummy` is linked after the last node
+        correct: placeholder
+        explanation: >-
+          `dummy` is a real node whose value is the placeholder `0`, and walking forward from it visits that node first.
+          Returning `dummy.link` skips the placeholder, which is why the function must return it.
