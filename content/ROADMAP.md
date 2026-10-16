@@ -69,11 +69,11 @@ Each row names the deck that holds most of the topic's questions. Several topics
 | Source | Topic | Deck | Status |
 | --- | --- | --- | --- |
 | 001 binary search | Binary search | `binary-search-on-answer` | done |
-| 002 DFS | Depth-first search | `graph-traversal-grids` | done |
-| 003 BFS | Breadth-first search | `graph-traversal-grids` | done |
+| 002 DFS | Depth-first search | `graph-traversal-grids` | partial |
+| 003 BFS | Breadth-first search | `graph-traversal-grids` | partial |
 | 004 sliding window | Sliding window | `two-pointers-sliding-window` | done |
 
-The DFS notebook names Tarjan's strongly connected components as a variant, and the BFS notebook names bidirectional BFS. No deck covers either yet, so the two notebooks are not fully covered.
+DFS is partial because no deck covers Tarjan's strongly connected components. BFS is partial because no deck covers bidirectional BFS. The notebooks name both as variants.
 
 ## `cracking_the_coding_interview/`
 
