@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deckSchema, formatIssues, type Deck } from './schema.ts';
+import { deckSchema, formatIssues, repeatsFollowUpAnswer, type Deck } from './schema.ts';
 
 function validDeck(): Deck {
 	return {
@@ -129,5 +129,51 @@ describe('deckSchema', () => {
 
 	it('formats a root-level issue with (root) as its location', () => {
 		expect(issuesFor('not a deck')).toContain('deck.yaml: (root):');
+	});
+
+	it('rejects an explanation that repeats the follow-up answer', () => {
+		const deck = validDeck();
+		deck.questions[0].options[1].explanation =
+			'Wrong A fails because Reason X is the one you needed here today';
+		deck.questions[0].followUps['wrong-a'].options[0].text =
+			'Reason X is the one you needed here today';
+		const result = deckSchema.safeParse(deck);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(formatIssues('sample.yaml', result.error.issues)).toContain(
+				'questions.0.options.1.explanation'
+			);
+		}
+	});
+});
+
+describe('repeatsFollowUpAnswer', () => {
+	it('matches a contiguous 6-word slice', () => {
+		expect(
+			repeatsFollowUpAnswer(
+				'You would still need to repeatedly remove and re-insert overlapping intervals as you expand.',
+				'Repeated removals and re-insertions as the merged range grows'
+			)
+		).toBe(false);
+		expect(
+			repeatsFollowUpAnswer(
+				'The heap holds all n scores, so the bound is the whole input.',
+				'The heap holds all n scores and nothing is dropped'
+			)
+		).toBe(true);
+	});
+
+	it('ignores a shared phrase shorter than 6 words when the option is longer', () => {
+		expect(
+			repeatsFollowUpAnswer(
+				'Sorting the array is O(n log n) before the scan.',
+				'The sort costs O(n log n) and then a linear scan finishes the job'
+			)
+		).toBe(false);
+	});
+
+	it('matches a whole option that is shorter than 6 words', () => {
+		expect(repeatsFollowUpAnswer('Use a hash map as a key here.', 'a hash map')).toBe(true);
+		expect(repeatsFollowUpAnswer('Use a tree.', 'a hash map')).toBe(false);
 	});
 });

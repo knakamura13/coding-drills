@@ -4,6 +4,7 @@ import {
 	answerFollowUp,
 	answerMain,
 	continueButton,
+	continuePastWrong,
 	currentQuestion,
 	deck,
 	firstWrongId,
@@ -51,7 +52,7 @@ test.describe('the lesson loop', () => {
 		await expect(page.getByText('Follow-up', { exact: true })).toHaveCount(0);
 	});
 
-	test('a wrong answer opens See why again, then its own follow-up', async ({ page }) => {
+	test('a wrong answer opens Why?, then See why again, then its own follow-up', async ({ page }) => {
 		const question = await currentQuestion(page);
 		const wrongId = firstWrongId(question);
 		const wrong = optionOf(question, wrongId);
@@ -61,29 +62,27 @@ test.describe('the lesson loop', () => {
 		await expect(sheet.getByRole('heading', { name: 'Not quite.' })).toBeVisible();
 		await expect(sheet).toContainText('The correct answer:');
 		await expect(sheet).toContainText(text(optionOf(question, question.correct).text));
-		// The explanation hides behind See why again, as in the reference.
 		await expect(sheet).not.toContainText(text(wrong.explanation).slice(0, 40));
+		await expect(sheet.getByRole('button', { name: 'Why?', exact: true })).toBeFocused();
+		await expect(sheet.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+		await expect(sheet.getByRole('button', { name: 'See why again' })).toHaveCount(0);
 
-		await sheet.getByRole('button', { name: 'See why again' }).click();
+		await page.keyboard.press('Enter');
 		const why = page.getByRole('dialog', { name: 'Why the answers differ' });
 		await expect(why).toContainText('You picked');
 		await expect(why).toContainText(text(wrong.text));
 		await expect(why).toContainText(text(wrong.explanation).slice(0, 40));
 		await expect(why).toContainText('Correct answer');
 		await expect(why).toContainText(text(optionOf(question, question.correct).explanation).slice(0, 40));
+		await expect(why.getByRole('button', { name: 'Flag this question' })).toHaveCount(0);
 		await why.getByRole('button', { name: 'Got it' }).click();
 		await expect(why).toBeHidden();
 
+		await expect(sheet.getByRole('button', { name: 'See why again' })).toBeVisible();
 		await continueButton(page).click();
 		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
-		// The original problem stays pinned above the follow-up question.
-		await expect(page.getByRole('region', { name: 'Problem' })).toContainText(
-			text(question.prompt).slice(0, 30)
-		);
-		// And the follow-up is the one authored for the option that was picked.
-		await expect(page.getByRole('heading', { level: 2 })).toHaveText(
-			text(question.followUps[wrongId].prompt)
-		);
+		await expect(page.getByRole('region', { name: 'Problem' })).toContainText(text(question.prompt).slice(0, 30));
+		await expect(page.getByRole('heading', { level: 2 })).toHaveText(text(question.followUps[wrongId].prompt));
 		await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeDisabled();
 	});
 
@@ -100,7 +99,7 @@ test.describe('the lesson loop', () => {
 				current = await currentQuestion(page);
 			}
 			await answerMain(page, question, option.id);
-			await continueButton(page).click();
+			await continuePastWrong(page);
 			prompts.add((await page.getByRole('heading', { level: 2 }).innerText()).trim());
 		}
 		expect(prompts.size).toBe(question.options.length - 1);
@@ -110,7 +109,7 @@ test.describe('the lesson loop', () => {
 		const question = await currentQuestion(page);
 		const wrongId = firstWrongId(question);
 		await answerMain(page, question, wrongId);
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await answerFollowUp(page, question, wrongId, true);
 
 		const sheet = page.getByRole('region', { name: 'Answer feedback' });
@@ -125,7 +124,7 @@ test.describe('the lesson loop', () => {
 		const wrongId = firstWrongId(question);
 		const followUp = question.followUps[wrongId];
 		await answerMain(page, question, wrongId);
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await answerFollowUp(page, question, wrongId, false);
 
 		const sheet = page.getByRole('region', { name: 'Answer feedback' });
@@ -213,7 +212,7 @@ test.describe('flagging', () => {
 		const question = await currentQuestion(page);
 		const wrongId = firstWrongId(question);
 		await answerMain(page, question, wrongId);
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await answerFollowUp(page, question, wrongId, true);
 		await page.getByRole('button', { name: 'Flag this question' }).click();
 		const dialog = page.getByRole('dialog', { name: 'Flag this question' });

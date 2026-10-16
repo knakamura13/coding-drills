@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerMain, continueButton, currentQuestion, deck, firstWrongId } from './helpers';
+import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, deck, firstWrongId } from './helpers';
 
 /** Waits until the service worker controls the page and has cached `path`. */
 async function waitForOfflineReady(page: Page, path: string) {
@@ -41,7 +41,7 @@ test.describe('installable and offline', () => {
 		await page.goto(DECK_URL);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, firstWrongId(question));
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await page.getByText('Follow-up', { exact: true }).waitFor();
 		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
 		expect(saved).toBe(0); // The attempt is written when the follow-up finishes.

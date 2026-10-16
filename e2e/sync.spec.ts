@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createAccount, serverState, signIn } from './account';
-import { DECK_URL, answerMain, continueButton, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
+import { DECK_URL, answerMain, continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
 
 const TWO_DAYS_MS = 2 * 86_400_000;
 
@@ -76,7 +76,7 @@ test.describe('accounts and sync', () => {
 		await page.getByRole('button', { name: 'Flag this question' }).click();
 		await page.getByRole('textbox').fill('The second option is also defensible.');
 		await page.getByRole('button', { name: 'Save flag' }).click();
-		await continueButton(page).click();
+		await continuePastWrong(page);
 
 		await expect.poll(async () => (await serverState(request, account, baseURL!)).flags.length).toBe(1);
 

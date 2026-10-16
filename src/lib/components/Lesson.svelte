@@ -27,6 +27,7 @@
 	const lesson = createLessonController(untrack(() => source));
 
 	let seeWhyOpen = $state(false);
+	let whySeen = $state(false);
 	let flagOpen = $state(false);
 	let quitOpen = $state(false);
 	let flagNote = $state('');
@@ -35,6 +36,7 @@
 
 	const screen = $derived(lesson.screen);
 	const verdict = $derived(screen?.verdict ?? null);
+	const whyGate = $derived(Boolean(screen?.seeWhy) && verdict !== null && !verdict.correct);
 
 	let heard = '';
 
@@ -59,16 +61,41 @@
 			: ''
 	);
 
+	// `stepKey` reads a `$state.raw` object, so the getter re-runs on every answer.
+	// Compare the string so focus and the Why? gate reset only for a new step.
+	let headingStep = '';
+	let whyStep = '';
+
 	// New question or follow-up: move focus to its heading so the change is announced.
 	$effect(() => {
-		void lesson.stepKey;
+		const key = lesson.stepKey;
+		if (key === headingStep) return;
+		headingStep = key;
 		void tick().then(() => heading?.focus({ preventScroll: true }));
+	});
+
+	$effect(() => {
+		const key = lesson.stepKey;
+		if (key === whyStep) return;
+		whyStep = key;
+		whySeen = false;
+		seeWhyOpen = false;
 	});
 
 	function proceed() {
 		seeWhyOpen = false;
 		lesson.advance();
 		window.scrollTo({ top: 0 });
+	}
+
+	function openWhy() {
+		whySeen = true;
+		seeWhyOpen = true;
+	}
+
+	function onPrimary() {
+		if (whyGate && !whySeen) openWhy();
+		else proceed();
 	}
 
 	function openFlag() {
@@ -104,8 +131,10 @@
 		}
 		if (event.key === 'Enter' && !target?.closest('button, a')) {
 			event.preventDefault();
-			if (verdict) proceed();
-			else if (screen.canCheck) {
+			if (verdict) {
+				if (whyGate && !whySeen) openWhy();
+				else proceed();
+			} else if (screen.canCheck) {
 				lesson.check();
 				cue();
 			}
@@ -172,8 +201,9 @@
 			title={verdict.correct ? 'Well done!' : 'Not quite.'}
 			bind:height={sheetHeight}
 			onflag={openFlag}
-			onseewhy={screen.seeWhy ? () => (seeWhyOpen = true) : undefined}
-			oncontinue={proceed}
+			onseewhy={whyGate && whySeen ? openWhy : undefined}
+			primary={whyGate && !whySeen ? 'Why?' : 'Continue'}
+			onprimary={onPrimary}
 		>
 			{#if verdict.correct}
 				<Markdown source={verdict.explanation} />

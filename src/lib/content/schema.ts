@@ -24,7 +24,7 @@ const optionSchema = z
 	.object({
 		id,
 		text: text(90),
-		/** Shown in "See why again". Says why this option is right or wrong here. */
+		/** Shown from Why? before a follow-up, or inline when this option is the correct answer. */
 		explanation: text(600)
 	})
 	.strict();
@@ -68,6 +68,47 @@ const followUpSchema = z
 		}
 		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
 	});
+
+/** Tokens used to compare an explanation with a follow-up option. */
+export function contentTokens(value: string): string[] {
+	return value
+		.toLowerCase()
+		.replace(/[`*_#>[\]()]/g, ' ')
+		.replace(/[^\p{L}\p{N}\s]/gu, ' ')
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+}
+
+function containsTokens(haystack: readonly string[], needle: readonly string[]): boolean {
+	if (needle.length === 0 || haystack.length < needle.length) return false;
+	for (let start = 0; start <= haystack.length - needle.length; start++) {
+		let same = true;
+		for (let offset = 0; offset < needle.length; offset++) {
+			if (haystack[start + offset] !== needle[offset]) {
+				same = false;
+				break;
+			}
+		}
+		if (same) return true;
+	}
+	return false;
+}
+
+/**
+ * True when `optionText` appears inside `explanation`.
+ * Options shorter than 6 tokens must appear whole.
+ * Longer options fail on any contiguous 6-token slice.
+ */
+export function repeatsFollowUpAnswer(explanation: string, optionText: string): boolean {
+	const haystack = contentTokens(explanation);
+	const needle = contentTokens(optionText);
+	if (needle.length === 0) return false;
+	if (needle.length < 6) return containsTokens(haystack, needle);
+	for (let start = 0; start <= needle.length - 6; start++) {
+		if (containsTokens(haystack, needle.slice(start, start + 6))) return true;
+	}
+	return false;
+}
 
 const questionSchema = z
 	.object({
@@ -115,6 +156,25 @@ const questionSchema = z
 				issues.push({
 					message: `follow-up key "${key}" is not an option id`,
 					path: ['followUps', key]
+				});
+			}
+		}
+		const correctOption = question.options.find((option) => option.id === question.correct);
+		for (const [optionId, followUp] of Object.entries(question.followUps)) {
+			if (!correctOption || optionId === question.correct || !ids.includes(optionId)) continue;
+			const picked = question.options.find((option) => option.id === optionId);
+			const followUpCorrect = followUp.options.find((option) => option.id === followUp.correct);
+			if (!picked || !followUpCorrect) continue;
+			if (repeatsFollowUpAnswer(picked.explanation, followUpCorrect.text)) {
+				issues.push({
+					message: `explanation repeats the follow-up answer "${followUpCorrect.text}"`,
+					path: ['options', ids.indexOf(optionId), 'explanation']
+				});
+			}
+			if (repeatsFollowUpAnswer(correctOption.explanation, followUpCorrect.text)) {
+				issues.push({
+					message: `explanation repeats the follow-up answer for "${optionId}"`,
+					path: ['options', ids.indexOf(question.correct), 'explanation']
 				});
 			}
 		}

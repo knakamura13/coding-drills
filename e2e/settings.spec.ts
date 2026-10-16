@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { plainText } from '../src/lib/markdown/render.ts';
-import { DECK_URL, answerMain, continueButton, currentQuestion, firstWrongId, openMenu, optionOf } from './helpers';
+import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, firstWrongId, openMenu, optionOf } from './helpers';
 
 async function expectNoViolations(page: Page) {
 	await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
@@ -109,7 +109,7 @@ test.describe('settings', () => {
 		const wrong = plainText(optionOf(question, firstWrongId(question)).text, 1000);
 		await page.getByRole('radio', { name: wrong, exact: true }).check();
 		await expect(page.getByRole('heading', { name: 'Not quite.' })).toBeVisible();
-		await continueButton(page).click();
+		await continuePastWrong(page);
 		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Check', exact: true })).toHaveCount(0);
 	});
