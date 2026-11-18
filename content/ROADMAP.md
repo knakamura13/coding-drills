@@ -147,6 +147,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Interval merging: teaching levels | `interval-merging` | in review |
 | Sequences and search #11 | Interval merging: review variants | `interval-merging-review` | in review |
 | Sequences and search #11 | Interval merging: checkpoint | `interval-merging-checkpoint` | in review |
+| Sequences and search #11 | Event sweeps: teaching levels | `event-sweeps` | in review |
+| Sequences and search #11 | Event sweeps: review variants | `event-sweeps-review` | in review |
+| Sequences and search #11 | Event sweeps: checkpoint | `event-sweeps-checkpoint` | in review |
 | Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
 | Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
 | Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |

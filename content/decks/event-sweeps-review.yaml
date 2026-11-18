@@ -1,0 +1,577 @@
+id: event-sweeps-review
+title: "Event sweeps: review"
+description: Fresh inputs for the Event sweeps skills, for recall on later days. No worked examples this time.
+heading: What does the sweep see?
+
+questions:
+  - id: event-count-review
+    heading: How many events?
+    tags: [intervals, python]
+    prompt: |-
+      A list of six meetings goes through this loop:
+
+      ```python
+      events = []
+      for s, e in meetings:
+          events.append((s, 1))
+          events.append((e, -1))
+      ```
+
+      How many events does `events` hold afterward, and how many of them carry -1?
+    options:
+      - id: right
+        text: 12 events, 6 of them -1
+        explanation: >-
+          Every pass appends two tuples, a start and an end, so six meetings give twelve events.
+          Each meeting contributes exactly one end.
+      - id: per-meeting
+        text: 6 events, 3 of them -1
+        explanation: >-
+          That counts one event per meeting. The loop body calls `append` twice, once with `s` and
+          once with `e`.
+      - id: merged
+        text: Fewer than 12 whenever two meetings share a time
+        explanation: >-
+          A list keeps every item it is given, repeats included. Two meetings ending at the same
+          time leave two separate end tuples.
+    correct: right
+    followUps:
+      per-meeting:
+        prompt: How many times does one pass of the loop call `append`?
+        options:
+          - id: twice
+            text: Twice, once for the start and once for the end
+          - id: once-tuple
+            text: Once, with the start and end in one tuple
+          - id: once-start
+            text: Once for the start, with the end added later by the sort
+        correct: twice
+        explanation: >-
+          A meeting changes the count twice, when it begins and when it ends, so it becomes two
+          events. The sort only reorders them.
+      merged:
+        prompt: Two meetings both end at 10. What does `events` hold for those ends?
+        options:
+          - id: two-tuples
+            text: Two separate `(10, -1)` tuples
+          - id: one-tuple
+            text: One `(10, -1)`, since the list skips a repeat
+          - id: combined
+            text: One `(10, -2)` that combines both ends
+        correct: two-tuples
+        explanation: >-
+          A Python list does not remove repeats. Each end lowers the count by one on its own pass,
+          and together they lower it by two.
+
+  - id: swapped-signs-review
+    heading: What does this print?
+    tags: [intervals, python]
+    prompt: |-
+      ```python
+      def rooms(meetings):
+          events = []
+          for s, e in meetings:
+              events.append((s, -1))
+              events.append((e, 1))
+          events.sort()
+          active = peak = 0
+          for t, d in events:
+              active += d
+              peak = max(peak, active)
+          return peak
+
+      print(rooms([[5, 8], [6, 9]]))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "0"
+        explanation: >-
+          The signs are swapped, so each start lowers the count. `active` runs -1, -2, -1, 0 and
+          never climbs above its starting value, so `peak` is never raised.
+      - id: two
+        text: "2"
+        explanation: >-
+          Two rooms is the true answer for these overlapping meetings, but this code gives each
+          start -1 and each end 1.
+      - id: minus-two
+        text: "-2"
+        explanation: >-
+          `active` does reach -2. `peak` is a separate number that starts out larger and is only
+          ever replaced by a larger value.
+    correct: right
+    followUps:
+      two:
+        prompt: What does `active` hold after the events at 5 and 6 in this code?
+        options:
+          - id: minus-two
+            text: -2, because each start subtracts one
+          - id: plus-two
+            text: 2, because two meetings are running
+          - id: fixed
+            text: 2, because the sort fixes the signs
+        correct: minus-two
+        explanation: >-
+          The code pairs each start with -1. A sweep counts only what the events say, so swapped
+          signs turn every start into a drop.
+      minus-two:
+        prompt: "`peak` starts at 0. What is `max(0, -2)`?"
+        options:
+          - id: zero
+            text: 0, the larger of the two values
+          - id: minus
+            text: -2, the newer value
+          - id: plus
+            text: 2, the size of the larger value
+        correct: zero
+        explanation: >-
+          `max` returns the larger argument, and 0 is larger than -2. Since `active` never goes
+          above 0 here, `peak` stays at its starting value.
+
+  - id: free-room-tap-review
+    format: tap-cell
+    heading: Tap the event
+    tags: [intervals, python]
+    prompt: >-
+      The cells are the list this code builds, written without spaces. Tap the event that frees the
+      room used by `[12, 14]`.
+    code: |
+      meetings = [[14, 16], [12, 14], [13, 18]]
+      events = []
+      for s, e in meetings:
+          events.append((s, 1))
+          events.append((e, -1))
+    sequence:
+      kind: array
+      name: events
+      cells: ["(14,1)", "(16,-1)", "(12,1)", "(14,-1)", "(13,1)", "(18,-1)"]
+    correct: 3
+    explanation: >-
+      `[12, 14]` ends at 14, so its end event is `(14, -1)`. The loop appends it on the second pass,
+      right after the meeting's start.
+    misses:
+      - index: 0
+        explanation: >-
+          `(14, 1)` has the right time but the wrong change. It is the start of `[14, 16]`, which
+          takes a room at 14.
+      - index: 1
+        explanation: "`(16, -1)` is an end, but of `[14, 16]`, the first meeting."
+      - index: 2
+        explanation: "`(12, 1)` is where `[12, 14]` begins and takes its room."
+      - index: 4
+        explanation: "`(13, 1)` is the start of `[13, 18]`."
+      - index: 5
+        explanation: "`(18, -1)` frees the room of `[13, 18]`, the last meeting."
+
+  - id: tie-landing-tap-review
+    format: tap-cell
+    heading: Tap the event
+    tags: [intervals, sorting, python]
+    prompt: >-
+      The cells are `events` before the sort, written without spaces. Tap the event that
+      `events.sort()` puts at index 4.
+    code: |
+      meetings = [[6, 9], [4, 6], [2, 3]]
+      events = []
+      for s, e in meetings:
+          events.append((s, 1))
+          events.append((e, -1))
+      events.sort()
+      print(events[4])
+    sequence:
+      kind: array
+      name: events
+      cells: ["(6,1)", "(9,-1)", "(4,1)", "(6,-1)", "(2,1)", "(3,-1)"]
+    correct: 0
+    explanation: >-
+      The sorted list is `[(2, 1), (3, -1), (4, 1), (6, -1), (6, 1), (9, -1)]`. At time 6 the end
+      comes first, because -1 < 1, so the start `(6, 1)` lands at index 4.
+    misses:
+      - index: 1
+        explanation: "`(9, -1)` has the latest time, so it lands last, at index 5."
+      - index: 2
+        explanation: "`(4, 1)` comes after the events at 2 and 3, so it lands at index 2."
+      - index: 3
+        explanation: >-
+          `(6, -1)` ties with `(6, 1)` on the time. The second values decide, and -1 < 1, so the end
+          goes first, at index 3.
+      - index: 4
+        explanation: >-
+          `(2, 1)` sat at index 4 before the sort. It has the earliest time, so it lands at index 0.
+      - index: 5
+        explanation: "`(3, -1)` has the second-earliest time, so it lands at index 1."
+
+  - id: inclusive-rooms-review
+    heading: What does this print?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      ```python
+      meetings = [[10, 13], [13, 15], [15, 17]]
+      events = []
+      for s, e in meetings:
+          events.append((s, 1))
+          events.append((e, -1))
+      events.sort(key=lambda ev: (ev[0], -ev[1]))
+      active = peak = 0
+      for t, d in events:
+          active += d
+          peak = max(peak, active)
+      print(peak)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "2"
+        explanation: >-
+          The key puts a start ahead of an end at the same time. At 13 and again at 15 the next
+          meeting is added before the previous one is removed, so `active` runs 1, 2, 1, 2, 1, 0.
+      - id: one
+        text: "1"
+        explanation: >-
+          The plain `events.sort()` would print 1, because it applies the end at 13 first. This key
+          negates the change before comparing.
+      - id: three
+        text: "3"
+        explanation: >-
+          The meetings chain through shared times, but the first one is over long before the last
+          one starts.
+    correct: right
+    followUps:
+      one:
+        prompt: "With `key=lambda ev: (ev[0], -ev[1])`, which event comes first at time 13?"
+        options:
+          - id: start
+            text: "`(13, 1)`, because its key is `(13, -1)`"
+          - id: end
+            text: "`(13, -1)`, because -1 is less than 1"
+          - id: appended
+            text: Whichever of the two was appended first
+        correct: start
+        explanation: >-
+          The key compares `-d`, so a start's 1 becomes -1 and sorts ahead of an end. That is how
+          the sweep counts touching meetings as a clash.
+      three:
+        prompt: Is `[10, 13]` ever in progress at the same time as `[15, 17]`?
+        options:
+          - id: never
+            text: No, it ends at 13, before 15
+          - id: chain
+            text: Yes, they are joined through `[13, 15]`
+          - id: list
+            text: Yes, every meeting in the list counts toward the peak
+        correct: never
+        explanation: >-
+          `active` counts meetings in progress at one moment. Each touching pair can clash, but no
+          moment has all three running.
+
+  - id: tie-rule-review
+    heading: Which goes first?
+    tags: [intervals, sorting]
+    prompt: >-
+      Clinic visits are `[start, end]` pairs in minutes. A visit that ends at minute 30 frees its
+      room for a visit that starts at minute 30. When an end and a start share a time, which should
+      the sweep apply first?
+    options:
+      - id: right
+        text: The end, so the room is free before the next visit takes it
+        explanation: >-
+          The rule says the room is free at the end time. Applying the end first lets the next visit
+          reuse it, which is the tuple order a plain sort gives.
+      - id: start-first
+        text: The start, so the new visit is counted at once
+        explanation: >-
+          Counting the start first briefly holds both visits at the shared minute. That reports a
+          clash the rule says does not happen.
+      - id: either
+        text: Either one, since both orders give the same peak
+        explanation: >-
+          The order inside a tie changes the count in between the two events, and the peak reads
+          every count along the way.
+      - id: booked-first
+        text: Whichever visit was booked first
+        explanation: >-
+          Booking order is not part of the rule. The sweep needs a fixed order between a start and
+          an end at the same time.
+    correct: right
+    followUps:
+      start-first:
+        prompt: "For `[[0, 30], [30, 45]]`, what peak does the sweep report if the start at 30 goes first?"
+        options:
+          - id: two
+            text: 2, though one room is enough
+          - id: one
+            text: 1, the right count
+          - id: zero
+            text: 0, since the events cancel
+        correct: two
+        explanation: >-
+          The count goes 1, 2, 1, 0 instead of 1, 0, 1, 0. The extra room exists only for the
+          instant between the two events.
+      either:
+        prompt: "For `[[15, 30], [30, 60]]`, do the two tie orders give the same peak?"
+        options:
+          - id: differ
+            text: No, end first gives 1 and start first gives 2
+          - id: yes-one
+            text: Yes, both give 1
+          - id: yes-two
+            text: Yes, both give 2
+        correct: differ
+        explanation: >-
+          Only touching visits are affected, but they are affected every time. That is why a sweep
+          has to pick the order from the rule.
+      booked-first:
+        prompt: What does an event in the sweep hold?
+        options:
+          - id: time-change
+            text: Only a time and a change of 1 or -1
+          - id: visit
+            text: The time, the change and the visit's booking date
+          - id: index
+            text: The time and the visit's place in the input
+        correct: time-change
+        explanation: >-
+          Once a visit is turned into events, nothing else about it is kept. The tie order has to
+          come from the change itself.
+
+  - id: trace-peak-review
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, sorting, python]
+    prompt: >-
+      The cells are the sorted events of `[[1, 6], [2, 3], [3, 8], [5, 7]]`, written without spaces.
+      After the passes with `i` at 0 and 1, `active` is 2. Predict each step before it is shown.
+    code: |
+      events.sort()
+      active = peak = 0
+      for i, (t, d) in enumerate(events):
+          active += d
+          peak = max(peak, active)
+    sequence:
+      kind: array
+      name: events
+      cells: ["(1,1)", "(2,1)", "(3,-1)", "(3,1)", "(5,1)", "(6,-1)", "(7,-1)", "(8,-1)"]
+    start:
+      - { name: i, at: 1 }
+    steps:
+      - line: 4
+        ask: On the pass with `i` at 2, what does `active` become?
+        options:
+          - id: one
+            text: "1"
+            explanation: "`(3, -1)` is the end of `[2, 3]`, so the count drops from 2 to 1."
+          - id: three
+            text: "3"
+            explanation: >-
+              That adds 1 for every event. This one is an end, `[2, 3]` finishing at 3, so it adds
+              -1.
+          - id: two
+            text: "2"
+            explanation: >-
+              That leaves the end for later. The pass applies `d` at once, so `active` falls on
+              this pass.
+        correct: one
+        also:
+          - { name: i, at: 2 }
+      - line: 4
+        ask: On the pass with `i` at 4, what does `active` become?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              The start at 3 brought `active` back to 2, and `(5, 1)` adds one more: `[1, 6]`,
+              `[3, 8]` and `[5, 7]` are running.
+          - id: two
+            text: "2"
+            explanation: That is the count before this pass. The start at 5 adds 1.
+          - id: four
+            text: "4"
+            explanation: >-
+              That counts every start so far without the end at 3. `[2, 3]` is over, so only three
+              meetings are running.
+        correct: three
+        also:
+          - { name: i, at: 4 }
+      - line: 4
+        ask: After the pass with `i` at 5, what is `peak`?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              `active` drops to 2 at `(6, -1)`, but `peak` keeps the 3 it reached on the previous
+              pass.
+          - id: two
+            text: "2"
+            explanation: >-
+              That is `active` after this pass. `peak` is updated with `max`, so it never comes
+              down.
+          - id: four
+            text: "4"
+            explanation: >-
+              The count never went above 3. An end event cannot raise `peak`.
+        correct: three
+        also:
+          - { name: i, at: 5 }
+
+  - id: peak-event-tap-review
+    format: tap-cell
+    heading: Tap the event
+    tags: [intervals, python]
+    prompt: >-
+      The cells are the sorted events of `[[10, 14], [11, 13], [12, 16], [13, 15]]`, written
+      without spaces. Tap the event on whose pass `active` first reaches the final `peak`.
+    code: |
+      events.sort()
+      active = peak = 0
+      for t, d in events:
+          active += d
+          peak = max(peak, active)
+    sequence:
+      kind: array
+      name: events
+      cells: ["(10,1)", "(11,1)", "(12,1)", "(13,-1)", "(13,1)", "(14,-1)", "(15,-1)", "(16,-1)"]
+    correct: 2
+    explanation: >-
+      `active` runs 1, 2, 3, 2, 3, 2, 1, 0, so the peak is 3. It first gets there at `(12, 1)`,
+      while `[10, 14]`, `[11, 13]` and `[12, 16]` are running.
+    misses:
+      - index: 0
+        explanation: After `(10, 1)` only one meeting is running.
+      - index: 1
+        explanation: After `(11, 1)` the count is 2. One more start comes before the peak.
+      - index: 3
+        explanation: "`(13, -1)` is an end. It lowers the count from 3 to 2, so the peak came before it."
+      - index: 4
+        explanation: >-
+          `(13, 1)` brings the count back to 3, but not for the first time. It would reach 4 only if
+          the start at 13 came before the end at 13, and the plain sort puts the end first.
+      - index: 5
+        explanation: "`(14, -1)` is an end. Once the starts are over, the count only falls."
+      - index: 6
+        explanation: "`(15, -1)` lowers the count to 1."
+      - index: 7
+        explanation: "`(16, -1)` is the last end, and the count reaches 0."
+
+  - id: return-active-review
+    heading: What does this print?
+    tags: [intervals, python]
+    prompt: |-
+      ```python
+      def rooms(meetings):
+          events = []
+          for s, e in meetings:
+              events.append((s, 1))
+              events.append((e, -1))
+          events.sort()
+          active = peak = 0
+          for t, d in events:
+              active += d
+              peak = max(peak, active)
+          return active
+
+      print(rooms([[4, 9], [5, 7], [8, 10]]))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "0"
+        explanation: >-
+          The function returns `active`, not `peak`. After the last event every meeting has ended,
+          so the count is back where it started.
+      - id: peak
+        text: "2"
+        explanation: >-
+          2 is the value of `peak`, the busiest moment. The function returns the other variable,
+          which keeps changing after that moment.
+      - id: count
+        text: "3"
+        explanation: >-
+          Three meetings take part, but `active` counts only those still running, and it drops with
+          every end event.
+    correct: right
+    followUps:
+      peak:
+        prompt: What does `active` hold once every event has been applied?
+        options:
+          - id: zero
+            text: 0, since every start is matched by an end
+          - id: largest
+            text: The largest count seen during the loop
+          - id: meetings
+            text: The number of meetings
+        correct: zero
+        explanation: >-
+          Each meeting adds 1 and later takes 1 away, so the final count is always 0. The answer
+          has to come from `peak`, which records the largest count.
+      count:
+        prompt: "What is `active` right after the event `(7, -1)`?"
+        options:
+          - id: one
+            text: 1, since only `[4, 9]` is still running
+          - id: three
+            text: 3, since three meetings have been listed
+          - id: two
+            text: 2, since ends are only applied at the finish
+        correct: one
+        explanation: >-
+          `[5, 7]` ends at 7 and `[8, 10]` has not started. `active` counts meetings in progress at
+          this moment, not meetings seen so far.
+
+  - id: start-update-review
+    heading: What do they become?
+    tags: [intervals, python]
+    prompt: |-
+      The sweep has `active = 4` and `peak = 5`. The next event is `(20, 1)`:
+
+      ```python
+      active += d
+      peak = max(peak, active)
+      ```
+
+      What are `active` and `peak` after this event?
+    options:
+      - id: right
+        text: "`active = 5`, `peak = 5`"
+        explanation: >-
+          The start adds 1, so `active` is 5. `max(5, 5)` is 5, so `peak` matches the earlier
+          busiest moment without passing it.
+      - id: peak-plus
+        text: "`active = 5`, `peak = 6`"
+        explanation: >-
+          `peak` is not a count of starts. It changes only through `max`, and 5 does not beat the
+          old value of 5.
+      - id: minus
+        text: "`active = 3`, `peak = 5`"
+        explanation: >-
+          That lowers the count for a start. `(20, 1)` stores a change of 1: a meeting begins at 20.
+    correct: right
+    followUps:
+      peak-plus:
+        prompt: When does `peak` change?
+        options:
+          - id: above
+            text: Only when `active` goes above it
+          - id: start
+            text: On every start event
+          - id: every
+            text: On every event
+        correct: above
+        explanation: >-
+          `max(peak, active)` replaces `peak` only with a larger value. A tie leaves it as it was,
+          and an end can never raise it.
+      minus:
+        prompt: "`active` counts meetings in progress. What does a start do to it?"
+        options:
+          - id: raise
+            text: Raises it by one
+          - id: lower
+            text: Lowers it by one, since a room is taken
+          - id: wait
+            text: Leaves it alone until the meeting ends
+        correct: raise
+        explanation: >-
+          One more meeting is in progress from the start time on. The change is stored in the event
+          as 1, and the loop adds it.

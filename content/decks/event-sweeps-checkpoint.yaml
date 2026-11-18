@@ -1,0 +1,263 @@
+id: event-sweeps-checkpoint
+title: "Event sweeps: checkpoint"
+description: Determine how many rooms a schedule needs, on new inputs. Each item combines turning meetings into events, ordering ties, and tracking the peak count.
+heading: How many rooms?
+
+questions:
+  - id: checkpoint-rooms-count
+    heading: How many rooms?
+    tags: [intervals, sorting]
+    prompt: >-
+      Find the fewest rooms that can hold these meetings. A meeting that ends at time `t` frees its
+      room for one that starts at `t`.
+
+
+      `[[9, 13], [10, 11], [11, 14], [13, 16], [12, 13]]`
+    options:
+      - id: right
+        text: "3"
+        explanation: >-
+          Sorted with each end ahead of a start at the same time, the events take `active` through
+          1, 2, 1, 2, 3, 2, 1, 2, 1, 0. The peak is 3, at 12, while `[9, 13]`, `[11, 14]` and
+          `[12, 13]` are running.
+      - id: starts-first
+        text: "4"
+        explanation: At time 11 and at time 13, which event does the rule say to apply first?
+      - id: per-meeting
+        text: "5"
+        explanation: Can a room be used again once its meeting has ended?
+      - id: merged
+        text: "1"
+        explanation: Does one unbroken busy stretch tell you how many meetings run at once?
+    correct: right
+    followUps:
+      starts-first:
+        prompt: >-
+          At 13, `[9, 13]` and `[12, 13]` end and `[13, 16]` starts. Under this rule, how many
+          meetings are in progress just after time 13?
+        options:
+          - id: two
+            text: 2, since both ends are applied before the start
+          - id: four
+            text: 4, since the start is counted before the ends
+          - id: three
+            text: 3, since one end and the start cancel out
+        correct: two
+        explanation: >-
+          `[11, 14]` and `[13, 16]` remain. Applying the start first would show 4 for an instant
+          that the rule says never happens, and that false 4 would become the peak.
+      per-meeting:
+        prompt: "`[10, 11]` ends at 11 and `[11, 14]` starts at 11. How many rooms do those two need?"
+        options:
+          - id: one
+            text: One, since the first frees its room at 11
+          - id: two-each
+            text: Two, one for each meeting
+          - id: two-touch
+            text: Two, because they share the time 11
+        correct: one
+        explanation: >-
+          Rooms are reused, so the answer is the most meetings running at one moment, not the
+          number of meetings.
+      merged:
+        prompt: "Merging these meetings gives `[[9, 16]]`. What does that tell you about the rooms?"
+        options:
+          - id: no-gap
+            text: Only that some meeting is running at every moment from 9 to 16
+          - id: one-room
+            text: That one room can hold all five meetings
+          - id: five-rooms
+            text: That all five meetings need their own room
+        correct: no-gap
+        explanation: >-
+          Merging answers whether there is a gap. The number of rooms depends on how many meetings
+          overlap at the busiest moment, which only the count of active meetings shows.
+
+  - id: checkpoint-peak-meeting
+    format: tap-cell
+    heading: Tap the meeting
+    tags: [intervals, sorting, python]
+    prompt: >-
+      The cells are the meetings, written without spaces. Tap the meeting whose start first lifts
+      `active` to the final `peak`.
+    code: |
+      meetings = [[1, 5], [2, 4], [4, 8], [6, 9], [3, 7]]
+      events = []
+      for s, e in meetings:
+          events.append((s, 1))
+          events.append((e, -1))
+      events.sort()
+      active = peak = 0
+      for t, d in events:
+          active += d
+          peak = max(peak, active)
+    sequence:
+      kind: array
+      name: meetings
+      cells: ["[1,5]", "[2,4]", "[4,8]", "[6,9]", "[3,7]"]
+    correct: 4
+    explanation: >-
+      The starts at 1, 2 and 3 take `active` to 3, the peak. After that it only returns to 3 and
+      never passes it, so `[3, 7]` is the meeting that gets there first.
+    misses:
+      - index: 0
+        explanation: "`[1, 5]` starts first, when `active` becomes 1."
+      - index: 1
+        explanation: "`[2, 4]` starts at 2, when `active` becomes 2. The peak is higher."
+      - index: 2
+        explanation: >-
+          At 4 the plain sort applies the end of `[2, 4]` first, so this start only brings `active`
+          back to 3. Reading the start first would give a false peak of 4.
+      - index: 3
+        explanation: >-
+          `[6, 9]` starts after `[1, 5]` has ended, and brings `active` back to 3. It reaches the
+          peak again, but not first.
+
+  - id: checkpoint-inclusive-bookings
+    heading: How many instruments?
+    tags: [intervals, sorting]
+    prompt: >-
+      A lab books identical instruments. A booking `[start, end]` uses an instrument at both its
+      start and end hours, so a booking ending at 15 clashes with one starting at 15. How many
+      instruments do these bookings need?
+
+
+      `[[12, 15], [15, 18], [13, 15], [18, 20]]`
+    options:
+      - id: right
+        text: "3"
+        explanation: >-
+          Under this rule the sweep applies a start before an end at the same hour. At 15,
+          `[12, 15]` and `[13, 15]` are still in use when `[15, 18]` begins, so `active` reaches 3.
+          At 18 only two bookings overlap.
+      - id: ends-first
+        text: "2"
+        explanation: Does a booking that ends at 15 still hold its instrument at 15?
+      - id: all
+        text: "4"
+        explanation: Are all four bookings ever in use at the same hour?
+      - id: merged
+        text: "1"
+        explanation: Does an unbroken stretch from 12 to 20 mean one instrument covers it?
+    correct: right
+    followUps:
+      ends-first:
+        prompt: Which bookings are using an instrument at hour 15?
+        options:
+          - id: three
+            text: "`[12, 15]`, `[13, 15]` and `[15, 18]`"
+          - id: one
+            text: Only `[15, 18]`, since the other two have ended
+          - id: two
+            text: "`[12, 15]` and `[13, 15]`, since `[15, 18]` waits for them"
+        correct: three
+        explanation: >-
+          The stated rule makes an end hour busy. The plain sort, which applies ends first, would
+          free both instruments before `[15, 18]` starts and report only 2.
+      all:
+        prompt: Is `[12, 15]` ever in use at the same hour as `[18, 20]`?
+        options:
+          - id: never
+            text: No, it is finished three hours before 18
+          - id: listed
+            text: Yes, both are in the same list
+          - id: chained
+            text: Yes, they are joined through `[15, 18]`
+        correct: never
+        explanation: >-
+          A sweep counts bookings in use at one moment. Bookings linked through a chain of clashes
+          need not all clash with each other.
+      merged:
+        prompt: "The bookings form one busy stretch, `[12, 20]`. What does that show about the instruments needed?"
+        options:
+          - id: nothing
+            text: Not the number needed, which depends on the busiest moment
+          - id: one
+            text: One instrument covers the whole stretch
+          - id: each
+            text: One instrument for each booking in the stretch
+        correct: nothing
+        explanation: >-
+          A merged range says when the lab is busy, not how busy. The peak count of active bookings
+          is the number of instruments.
+
+  - id: checkpoint-time-only-key
+    heading: What does this print?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      A meeting that ends at `t` frees its room for one that starts at `t`.
+
+      ```python
+      def rooms(meetings):
+          events = []
+          for s, e in meetings:
+              events.append((s, 1))
+              events.append((e, -1))
+          events.sort(key=lambda ev: ev[0])
+          active = peak = 0
+          for t, d in events:
+              active += d
+              peak = max(peak, active)
+          return peak
+
+      print(rooms([[8, 11], [5, 8], [6, 9]]))
+      ```
+
+      What does it print, and is that the right number of rooms?
+    options:
+      - id: right
+        text: 3, but 2 rooms are enough
+        explanation: >-
+          The key compares times only, so the two events at 8 keep their appended order, and
+          `(8, 1)` was appended first. `active` runs 1, 2, 3, 2, 1, 0. With the end first it would
+          run 1, 2, 1, 2, 1, 0, which is the right answer, 2.
+      - id: right-count
+        text: 2, which is right
+        explanation: With a key of `ev[0]`, what decides the order of the two events at 8?
+      - id: three-needed
+        text: 3, and 3 rooms are needed
+        explanation: Does `[5, 8]` still need its room when `[8, 11]` starts?
+      - id: zero
+        text: 0, because the key drops the changes
+        explanation: Does a sort key change the tuples the loop reads?
+    correct: right
+    followUps:
+      right-count:
+        prompt: "With `key=lambda ev: ev[0]`, which event comes first at time 8?"
+        options:
+          - id: appended
+            text: "`(8, 1)`, since it was appended first and the sort is stable"
+          - id: end
+            text: "`(8, -1)`, since -1 is less than 1"
+          - id: random
+            text: Either one, chosen at random on each run
+        correct: appended
+        explanation: >-
+          The key makes both events compare as 8, so they tie and keep their input order. `[8, 11]`
+          is listed before `[5, 8]`, so its start is ahead of the other's end.
+      three-needed:
+        prompt: Do `[5, 8]` and `[8, 11]` need two rooms between them?
+        options:
+          - id: share
+            text: No, `[5, 8]` frees its room at 8 for `[8, 11]`
+          - id: both
+            text: Yes, both meetings use time 8
+          - id: apart
+            text: Yes, because they are not next to each other in the list
+        correct: share
+        explanation: >-
+          The rule frees a room at its end time. Under it, at most two meetings run at once, so the
+          code's 3 is one too many.
+      zero:
+        prompt: After the sort, what does the loop read as `d`?
+        options:
+          - id: stored
+            text: The 1 or -1 stored in each tuple, unchanged
+          - id: key
+            text: The key, which is the time
+          - id: nothing
+            text: Nothing, since the key replaces each tuple
+        correct: stored
+        explanation: >-
+          A key only decides the order. The sort returns the original tuples, so each change is
+          still there for the loop.
