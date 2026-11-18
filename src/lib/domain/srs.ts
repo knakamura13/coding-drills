@@ -102,12 +102,11 @@ export function replay(attempts: readonly Attempt[]): Map<string, Card> {
 		const grade = gradeOf(attempt);
 		const credit = (key: string, target: QuestionRef) => {
 			const dayKey = `${key}@${attempt.day}`;
-			if (credited.has(dayKey)) return false;
+			if (credited.has(dayKey)) return;
 			credited.add(dayKey);
 			cards.set(key, review(cards.get(key), grade, attempt.day, target));
-			return true;
 		};
-		if (!credit(cardKey(attempt.deckId, attempt.questionId), attempt)) continue;
+		credit(cardKey(attempt.deckId, attempt.questionId), attempt);
 
 		const original = attempt.reviewOf;
 		if (!original) continue;
