@@ -37,9 +37,12 @@ export function practiceEntries(
 }
 
 const ACRONYMS = new Set(['bfs', 'dfs', 'dp']);
+const LABELS = new Map([['arrays-strings', 'Arrays and strings']]);
 
 /** "sliding-window" as "Sliding window", and acronyms in capitals. */
 export function tagLabel(tag: string): string {
+	const label = LABELS.get(tag);
+	if (label) return label;
 	if (ACRONYMS.has(tag)) return tag.toUpperCase();
 	const text = tag.replace(/-/g, ' ');
 	return text.charAt(0).toUpperCase() + text.slice(1);

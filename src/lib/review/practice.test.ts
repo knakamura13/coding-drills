@@ -57,4 +57,8 @@ describe('tagLabel', () => {
 		expect(tagLabel('dfs')).toBe('DFS');
 		expect(tagLabel('dp')).toBe('DP');
 	});
+
+	it('uses a written-out label where the tag alone reads badly', () => {
+		expect(tagLabel('arrays-strings')).toBe('Arrays and strings');
+	});
 });
