@@ -1,0 +1,461 @@
+id: exact-search
+title: Exact search
+description: Discard the half a probe rules out, drop the probed index, and tell one candidate from none. Each card opens with a worked example, then asks for one decision.
+heading: What happens next?
+
+questions:
+  - id: which-half-remains
+    heading: Which cells are left?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** `a = [2, 6, 9, 13, 17, 21, 30]` is sorted and the target is 17. The
+      first probe reads `a[3] = 13`, too small. Every value left of index 3 is smaller still, so
+      none of indices 0 to 3 can hold 17. The search goes on in indices 4 to 6.
+
+      Now `a = [3, 7, 11, 18, 24, 29, 35]` and the target is 11. The first probe reads
+      `a[3] = 18`. Which indices can still hold 11?
+    options:
+      - id: left
+        text: Indices 0 to 2
+        explanation: >-
+          18 is too big. The list is sorted, so 24, 29 and 35 are bigger still, and none of
+          indices 3 to 6 can be 11. Only the cells left of the probe stay in play.
+      - id: right
+        text: Indices 4 to 6
+        explanation: >-
+          Those cells hold 24, 29 and 35, all larger than the 18 that already overshot. A probe
+          that is too big sends the search toward the smaller values.
+      - id: all-but-probe
+        text: Every index except 3
+        explanation: >-
+          That rules out only the cell that was compared. In a sorted list one comparison also
+          settles every cell right of the probe, since each holds an even larger value.
+      - id: keep-probe
+        text: Indices 0 to 3
+        explanation: >-
+          Index 3 holds 18, and the probe has just compared it with 11. It is not a match, so it
+          can't stay a candidate.
+    correct: left
+    followUps:
+      right:
+        prompt: 18 is too big for a target of 11. In this sorted list, where are the values smaller than 18?
+        options:
+          - id: left-side
+            text: Left of index 3
+          - id: right-side
+            text: Right of index 3
+          - id: anywhere
+            text: Anywhere, the probe can't tell
+        correct: left-side
+        explanation: >-
+          Sorted ascending means values only grow to the right. So a probe that overshoots
+          points the search left, toward the smaller values.
+      all-but-probe:
+        prompt: The probe read `a[3] = 18` and the target is 11. Which cells does that one comparison rule out?
+        options:
+          - id: probe-and-right
+            text: Index 3 and every index after it
+          - id: probe-only
+            text: Only index 3
+          - id: none-yet
+            text: None, each cell needs its own comparison
+        correct: probe-and-right
+        explanation: >-
+          Every cell right of the probe holds at least 18, so it can't hold 11 either. That is how
+          one comparison discards about half the list.
+      keep-probe:
+        prompt: The probe compared `a[3] = 18` with the target 11. Can index 3 still hold 11?
+        options:
+          - id: no
+            text: No, it holds 18, which was just checked
+          - id: yes-mid
+            text: Yes, the range always keeps the probed cell
+          - id: yes-end
+            text: Yes, until the loop ends
+        correct: no
+        explanation: >-
+          A probe that misses has settled its own cell. Keeping it in the range only means
+          comparing the same 18 again.
+
+  - id: order-makes-discard-safe
+    heading: What does it return?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** in the sorted list `[1, 4, 6, 10, 12]` with target 10, the first probe
+      reads 6, too small. Because the list is sorted, 1 and 4 are smaller than 6 as well, so the
+      search can drop the whole left side without looking at it.
+
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+      ```
+
+      What does `search([6, 2, 8, 1, 4], 1)` return? The list is not sorted.
+    options:
+      - id: minus-one
+        text: "`-1`"
+        explanation: >-
+          The first probe reads 8, larger than 1, so `hi` becomes 1 and indices 2 to 4 are
+          dropped. The 1 sits at index 3, in the dropped part. The next probe reads 6, `hi`
+          becomes -1, and the loop ends without ever seeing the 1.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          The 1 is at index 3, but the search never looks there. Dropping a side is safe only
+          when the order says what that side holds.
+      - id: never-returns
+        text: It never returns
+        explanation: >-
+          Every miss moves `lo` past `mid` or `hi` below it, so the range shrinks each pass and
+          the loop ends after two probes.
+      - id: error
+        text: It raises an error, because the list isn't sorted
+        explanation: >-
+          Nothing in `search` checks the order. It compares values and moves the bounds the same
+          way on any list, so it runs and returns an answer.
+    correct: minus-one
+    followUps:
+      three:
+        prompt: "The first probe reads `a[2] = 8`, larger than 1. In `[6, 2, 8, 1, 4]`, what does that say about indices 3 and 4?"
+        options:
+          - id: nothing
+            text: Nothing, without order a small value can sit right of a larger one
+          - id: larger
+            text: They hold values larger than 8
+          - id: smaller
+            text: They hold values smaller than 1
+        correct: nothing
+        explanation: >-
+          The discard step borrows its safety from the order. Here index 3 holds 1, smaller than
+          8, so dropping the right side throws the target away.
+      never-returns:
+        prompt: After each miss the loop sets `lo = mid + 1` or `hi = mid - 1`. What happens to the range?
+        options:
+          - id: shrinks
+            text: It loses at least one cell every pass
+          - id: same
+            text: It can stay the same size on an unsorted list
+          - id: grows
+            text: It can grow when a value is out of order
+        correct: shrinks
+        explanation: >-
+          Both updates step past `mid`, whatever the values are. So the range always shrinks and
+          the loop always ends. On an unsorted list it ends with a wrong answer.
+      error:
+        prompt: Which line of `search` would notice that `[6, 2, 8, 1, 4]` is out of order?
+        options:
+          - id: none
+            text: None of them, every line works the same on any list
+          - id: compare
+            text: "`if a[mid] < t`, which fails on unsorted values"
+          - id: mid
+            text: "`mid = (lo + hi) // 2`, which needs sorted values"
+        correct: none
+        explanation: >-
+          Comparing two numbers and averaging two indices both work on any list. Sorted order is
+          a promise the caller makes, and the loop never checks it.
+
+  - id: tap-next-probe
+    format: tap-cell
+    heading: Tap the next probe
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** with `lo = 2` and `hi = 5` the probe is `(2 + 5) // 2 = 3`, the lower
+      of the two middle cells. Now the search below has read `a[3] = 15`, too small for 33, so
+      indices 0 to 3 are gone and the range is `lo = 4`, `hi = 7`. Tap the cell the second probe
+      reads.
+    code: |
+      a = [4, 9, 12, 15, 21, 26, 33, 40]
+      t = 33
+      # first probe: mid = 3, a[3] = 15 < 33
+      lo, hi = 4, 7
+      mid = (lo + hi) // 2
+    sequence:
+      kind: array
+      name: a
+      cells: [4, 9, 12, 15, 21, 26, 33, 40]
+    markers:
+      - { name: lo, at: 4 }
+      - { name: hi, at: 7 }
+    correct: 5
+    explanation: >-
+      `(4 + 7) // 2` is 11 // 2, which is 5. The probe reads 26, too small again, so the next
+      range is indices 6 to 7.
+    misses:
+      - index: 0
+        explanation: Index 0 was dropped by the first probe. 15 was too small, so 4 is smaller still.
+      - index: 1
+        explanation: >-
+          `(7 - 4) // 2` is 1, but that is a distance from `lo`, not an index. Add it to `lo` and
+          the probe is index 5.
+      - index: 2
+        explanation: Index 2 was dropped by the first probe, along with everything else left of 15.
+      - index: 3
+        explanation: Index 3 is the first probe. It has been compared, and the range now starts at 4.
+      - index: 4
+        explanation: That is `lo`, the left end of the range. The probe goes to the middle of 4 to 7.
+      - index: 6
+        explanation: >-
+          33 sits here, but the loop can't see that yet. It probes the middle, and `//` rounds
+          5.5 down to 5, not up to 6.
+      - index: 7
+        explanation: That is `hi`, the right end of the range. The probe goes to the middle of 4 to 7.
+
+  - id: drop-the-probe
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** on `[3, 6, 10]` with target 3, the probe reads 6 at index 1, too big.
+      Index 1 has been checked, so `hi = mid - 1 = 0`, not 1. Now the search below runs its first
+      pass with `mid = 3`. Drag `lo` and `hi` to where they sit when that pass ends.
+    code: |
+      a = [1, 5, 8, 12, 14, 19, 25, 31]
+      t = 19
+      lo, hi = 0, len(a) - 1
+      while lo <= hi:
+          mid = (lo + hi) // 2
+          if a[mid] == t:
+              break
+          if a[mid] < t:
+              lo = mid + 1
+          else:
+              hi = mid - 1
+    sequence:
+      kind: array
+      name: a
+      cells: [1, 5, 8, 12, 14, 19, 25, 31]
+    markers:
+      - { name: mid, at: 3 }
+    pointers:
+      - name: lo
+        start: 0
+        correct: 4
+        explanation: >-
+          12 is below 19, so index 3 and everything left of it are out. `lo = mid + 1` puts `lo`
+          on index 4, the first cell that could still hold 19.
+        misses:
+          - index: 3
+            explanation: >-
+              That is `lo = mid`. Index 3 holds 12, which was just compared with 19, so it can't
+              stay in the range.
+          - index: 5
+            explanation: >-
+              19 does sit at index 5, but the loop hasn't seen it. One pass drops only the cells
+              the probe ruled out.
+        elsewhere: A probe of 12 rules out index 3 and every cell before it, so `lo` moves to 3 + 1 = 4.
+      - name: hi
+        start: 7
+        correct: 7
+        explanation: '`hi` stays on 31. A probe that is too small says nothing against the right end.'
+        misses:
+          - index: 2
+            explanation: >-
+              That is `hi = mid - 1`, the update for a probe that is too big. 12 is below 19, so
+              the right side is where 19 must be.
+          - index: 6
+            explanation: A too-small probe moves only `lo`. `hi` keeps its place on index 7.
+        elsewhere: The probe was too small, so this pass leaves `hi` on index 7.
+
+  - id: update-after-high-probe
+    heading: Which update is right?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** in `[2, 9, 16, 21, 30]` with target 21, the probe reads 16 at index 2,
+      too small. 16 and the cells left of it are out, so `lo = mid + 1 = 3` and the range is
+      indices 3 to 4.
+
+      Now `a = [6, 10, 13, 17, 22]`, the target is 10, `lo = 0` and `hi = 4`, and the bounds are
+      inclusive. The probe reads 13 at index 2, too big. Which update keeps every cell that could
+      hold 10 and drops every cell the probe ruled out?
+    options:
+      - id: mid-minus-one
+        text: "`hi = mid - 1`"
+        explanation: >-
+          13 overshoots, so index 2 and everything after it are out. `hi` becomes 1, and the
+          range is indices 0 to 1, which holds the 10.
+      - id: mid
+        text: "`hi = mid`"
+        explanation: >-
+          That keeps index 2 in the range. It holds 13, which has already been compared with 10.
+      - id: minus-one
+        text: "`hi -= 1`"
+        explanation: >-
+          That drops only index 4 and keeps 13 and 17, which the probe already ruled out. The
+          search still works, but one cell per probe makes it a linear scan.
+      - id: lo-up
+        text: "`lo = mid + 1`"
+        explanation: >-
+          That keeps 17 and 22 and drops 6 and 10. A probe that is too big rules out the right
+          side, not the left.
+    correct: mid-minus-one
+    followUps:
+      mid:
+        prompt: The probe compared `a[2] = 13` with the target 10. Is index 2 still a candidate?
+        options:
+          - id: no
+            text: No, 13 isn't 10, so index 2 is settled
+          - id: yes
+            text: Yes, `mid` stays in the range until the loop ends
+          - id: maybe
+            text: Only if the list has duplicates
+        correct: no
+        explanation: >-
+          With inclusive bounds every cell from `lo` to `hi` is still a candidate. A cell that has
+          been compared and missed must leave, which is what the `- 1` does.
+      minus-one:
+        prompt: The probe read 13, larger than 10. Which cells does that rule out?
+        options:
+          - id: two-to-four
+            text: Index 2 and every index after it
+          - id: four
+            text: Only index 4, the current `hi`
+          - id: two
+            text: Only index 2, the probe
+        correct: two-to-four
+        explanation: >-
+          Every cell from the probe rightward holds at least 13. Dropping all of them at once is
+          what makes each probe halve the range.
+      lo-up:
+        prompt: 13 is larger than the target 10. In a sorted list, which side of index 2 could hold 10?
+        options:
+          - id: left
+            text: The left side, where the values are smaller
+          - id: right
+            text: The right side, past the probe
+          - id: both
+            text: Either side
+        correct: left
+        explanation: >-
+          A probe that overshoots means the target, if present, is smaller. So `hi` moves down
+          and `lo` stays where it is.
+
+  - id: one-candidate-left
+    heading: What should the loop do?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** with inclusive bounds the candidates are `a[lo]` through `a[hi]`, both
+      ends included. `lo = 2, hi = 4` leaves three cells: indices 2, 3 and 4.
+
+      The `search` below runs on `a = [5, 8, 14, 20, 27, 31]` with target 20. After two passes
+      `lo = 3` and `hi = 3`. What should happen next?
+
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+      ```
+    options:
+      - id: run-again
+        text: Run once more, since index 3 is still an unchecked candidate
+        explanation: >-
+          `lo = hi = 3` is a range of one cell. The pass probes `mid = 3`, reads 20, and returns
+          3. That is why the loop test is `lo <= hi`.
+      - id: stop-empty
+        text: Stop and return `-1`, since `lo == hi` means nothing is left
+        explanation: >-
+          That treats one cell as none. Index 3 holds 20, the target, and it hasn't been compared
+          yet.
+      - id: return-three
+        text: Return 3 without comparing, since the last candidate must be the target
+        explanation: >-
+          The last candidate is only where the target would be. It still has to be compared to
+          know whether it is there.
+    correct: run-again
+    followUps:
+      stop-empty:
+        prompt: With inclusive bounds, how many cells does `lo = 3, hi = 3` hold?
+        options:
+          - id: one
+            text: One, index 3
+          - id: zero
+            text: Zero, the bounds have met
+          - id: two
+            text: Two, the cell at `lo` and the cell at `hi`
+        correct: one
+        explanation: >-
+          The range is `hi - lo + 1` cells, so equal bounds hold exactly one. The range is empty
+          only once `lo` passes `hi`.
+      return-three:
+        prompt: >-
+          With target 21 instead, the same list narrows to `lo = hi = 3` too, and `a[3]` is 20.
+          Should the search return 3?
+        options:
+          - id: compare
+            text: No, 20 isn't 21, so it must compare and then return `-1`
+          - id: yes-last
+            text: Yes, the last candidate is always the answer
+          - id: yes-close
+            text: Yes, 20 is the closest value to 21
+        correct: compare
+        explanation: >-
+          Narrowing the range finds where the target would be, not whether it is there. Only the
+          comparison tells a present target from a missing one.
+
+  - id: bounds-cross
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** on `[3, 10]` with target 10, the probe reads 3 at index 0, too small, so
+      `lo = 1`. Now `lo = hi = 1`: one cell is left, and the loop runs again to find the 10. Below,
+      one pass has run and the range is indices 3 to 4. The second pass probes `mid = 3`. Drag
+      `lo` and `hi` to where they sit when that pass ends.
+    code: |
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+
+      search([6, 13, 18, 25, 31], 21)
+    sequence:
+      kind: array
+      name: a
+      cells: [6, 13, 18, 25, 31]
+    pointers:
+      - name: lo
+        start: 3
+        correct: 3
+        explanation: '`lo` stays on index 3. Only a probe that is too small moves `lo`, and 25 is too big.'
+        misses:
+          - index: 4
+            explanation: '`lo` moves only after a probe that is too small. 25 is larger than 21.'
+        elsewhere: The probe was too big, so this pass leaves `lo` on index 3.
+      - name: hi
+        start: 4
+        correct: 2
+        explanation: >-
+          25 is too big, so `hi = mid - 1 = 2`. Now `hi` sits left of `lo`, so no cell is left.
+          `while lo <= hi` fails and the call returns -1. 21 would fall between 18 and 25.
+        misses:
+          - index: 3
+            explanation: >-
+              That keeps index 3, the 25 that was just ruled out. `hi` may pass `lo`: an empty
+              range is how the loop learns the target is absent.
+          - index: 4
+            explanation: 25 is larger than 21, so a probe this big must move `hi` below `mid`.
+        elsewhere: '`hi` moves to `mid - 1`, which is 2, one cell left of `lo`.'
