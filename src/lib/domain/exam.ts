@@ -71,7 +71,11 @@ export function examPassed(drills: readonly CurriculumDrill[], mix: readonly str
 
 	const days = new Map<string, Attempt[]>();
 	for (const attempt of countedAttempts([...attempts].sort(compareAttempts))) {
-		if (!byKey.has(cardKey(attempt.deckId, attempt.questionId))) continue;
+		const drill = byKey.get(cardKey(attempt.deckId, attempt.questionId));
+		if (!drill) continue;
+		if (attempt.correct && drill.legacyPassBefore && (attempt.examRulesVersion ?? 1) < drill.legacyPassBefore) {
+			return true;
+		}
 		const sitting = days.get(attempt.day) ?? [];
 		sitting.push(attempt);
 		days.set(attempt.day, sitting);

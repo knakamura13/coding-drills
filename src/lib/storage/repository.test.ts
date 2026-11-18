@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KEYS, MAX_ATTEMPTS, Repository, flagId, type KeyValueStore } from './repository';
-import { MAX_NOTE_LENGTH, type Attempt, type Flag } from './types';
+import { EXAM_RULES_VERSION, MAX_NOTE_LENGTH, type Attempt, type Flag } from './types';
 
 function memoryStore(initial: Record<string, string> = {}): KeyValueStore & { data: Map<string, string> } {
 	const data = new Map(Object.entries(initial));
@@ -47,11 +47,12 @@ describe('attempts', () => {
 		repo.recordAttempt(attempt('q1'));
 		repo.recordAttempt({ ...attempt('q2', false), followUp: { pickedId: 'x', correct: true } });
 		expect(repo.attempts()).toEqual([
-			{ id: 'a000001', at: AT, day: '2026-10-10', deckId: 'deck', questionId: 'q1', pickedId: 'a', correct: true },
+			{ id: 'a000001', at: AT, day: '2026-10-10', deckId: 'deck', questionId: 'q1', pickedId: 'a', correct: true, examRulesVersion: EXAM_RULES_VERSION },
 			{
 				id: 'a000002',
 				at: AT,
 				day: '2026-10-10',
+				examRulesVersion: EXAM_RULES_VERSION,
 				deckId: 'deck',
 				questionId: 'q2',
 				pickedId: 'a',
