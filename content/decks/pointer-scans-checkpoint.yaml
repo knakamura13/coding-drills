@@ -1,0 +1,290 @@
+id: pointer-scans-checkpoint
+title: "Pointer scans: checkpoint"
+description: Return unique pairs or trace an in-place compaction on new inputs. Each item combines moving the right end, keeping indices apart, and handling repeats.
+heading: What does this print?
+
+questions:
+  - id: checkpoint-unique-pairs
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      def unique_pairs(nums, target):
+          out = []
+          l, r = 0, len(nums) - 1
+          while l < r:
+              s = nums[l] + nums[r]
+              if s < target:
+                  l += 1
+              elif s > target:
+                  r -= 1
+              else:
+                  out.append((nums[l], nums[r]))
+                  l += 1
+                  while l < r and nums[l] == nums[l - 1]:
+                      l += 1
+                  r -= 1
+                  while l < r and nums[r] == nums[r + 1]:
+                      r -= 1
+          return out
+
+      print(unique_pairs([1, 1, 4, 4, 7, 7, 7], 8))
+      ```
+    options:
+      - id: both-pairs
+        text: "`[(1, 7), (4, 4)]`"
+        explanation: >-
+          `1 + 7` matches at indices 0 and 6. `l` steps over both 1s to index 2, and `r` steps
+          over the 7s to index 3. `4 + 4` then matches at indices 2 and 3, which are two
+          separate 4s. After that `l` moves to 3, `r` moves to 2, and the loop stops.
+      - id: repeated
+        text: "`[(1, 7), (1, 7), (4, 4)]`"
+        explanation: >-
+          This records `(1, 7)` from a second copy of each value. Check where `l` and `r` land
+          after the two inner loops.
+      - id: no-equal-pair
+        text: "`[(1, 7)]`"
+        explanation: >-
+          This drops `(4, 4)`. Check what `l` and `r` are after the first match, and whether
+          they name the same slot.
+    correct: both-pairs
+    followUps:
+      repeated:
+        prompt: After the first match, `l` becomes 1. Does `while l < r and nums[l] == nums[l - 1]` move it again?
+        options:
+          - id: moves
+            text: Yes, `nums[1]` and `nums[0]` are both 1, so `l` moves to 2
+          - id: stays
+            text: No, the loop only runs when the sum is wrong
+          - id: past-four
+            text: Yes, it moves until it passes every 4 as well
+        correct: moves
+        explanation: >-
+          The inner loop skips copies of the value just paired, and stops on the first new value.
+          So no second `(1, 7)` can form.
+      no-equal-pair:
+        prompt: "After the first match, `l` is 2 and `r` is 3. Is `nums[2] + nums[3]` a pair of separate items?"
+        options:
+          - id: separate
+            text: Yes, they are two different 4s at indices 2 and 3
+          - id: same
+            text: No, two equal values count as one item
+          - id: skipped
+            text: No, the inner loops skipped all the 4s
+        correct: separate
+        explanation: >-
+          The loops skip only copies of 1 and 7. Two 4s at different indices make a valid pair,
+          and `l < r` still holds.
+
+  - id: checkpoint-compact-dupes
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      def compact(nums):
+          write = 0
+          for read in range(len(nums)):
+              if write == 0 or nums[read] != nums[write - 1]:
+                  nums[write] = nums[read]
+                  write += 1
+          return write
+
+      vals = [0, 0, 3, 3, 3, 5, 8, 8]
+      k = compact(vals)
+      print(k, vals)
+      ```
+    options:
+      - id: tail-kept
+        text: "`4 [0, 3, 5, 8, 3, 5, 8, 8]`"
+        explanation: >-
+          The first 0 is written because nothing is kept yet. Each later item is written only
+          when it differs from the last kept value, so 3, 5 and 8 fill slots 1 to 3 and
+          `write` ends at 4. Slots 4 to 7 are never written and keep their old values.
+      - id: shrunk
+        text: "`4 [0, 3, 5, 8]`"
+        explanation: >-
+          Check whether anything in `compact` changes the length of `vals`.
+      - id: dupes-to-back
+        text: "`4 [0, 3, 5, 8, 0, 3, 3, 8]`"
+        explanation: >-
+          This moves the skipped copies to the back. Check which slots the loop ever assigns.
+      - id: in-place
+        text: "`4 [0, 0, 3, 3, 3, 5, 8, 8]`"
+        explanation: >-
+          This leaves every value where it was read. Check where `nums[write]` points when the
+          first 3 is kept.
+    correct: tail-kept
+    followUps:
+      shrunk:
+        prompt: "`compact` returns 4. What is `len(vals)` afterwards?"
+        options:
+          - id: eight
+            text: 8, as before
+          - id: four
+            text: 4, the number of values kept
+          - id: zero-four
+            text: 4, because the duplicates were deleted
+        correct: eight
+        explanation: >-
+          Assigning to a slot never adds or removes slots. The answer is `vals[:k]`, and the rest
+          of the list is leftover.
+      dupes-to-back:
+        prompt: Which slots does `compact` assign to on this input?
+        options:
+          - id: front
+            text: Only slots 0 to 3, one for each kept value
+          - id: all
+            text: All eight slots, kept values at the front and copies at the back
+          - id: read-slots
+            text: The slots where the skipped copies were read
+        correct: front
+        explanation: >-
+          The only assignment is `nums[write] = ...`, and `write` stops at 4. A skipped copy is
+          never moved anywhere.
+      in-place:
+        prompt: When the first 3 is read at `read = 2`, what is `write`?
+        options:
+          - id: one
+            text: 1, so the 3 goes into slot 1
+          - id: two
+            text: 2, so the 3 stays in slot 2
+          - id: zero
+            text: 0, because only the 0s have been read
+        correct: one
+        explanation: >-
+          One value, the first 0, has been kept. So the 3 is copied into slot 1, over the second
+          0.
+
+  - id: checkpoint-keep-two
+    tags: [two-pointers]
+    prompt: |-
+      This keeps each value at most twice.
+
+      ```python
+      def keep_two(nums):
+          write = 0
+          for read in range(len(nums)):
+              if write < 2 or nums[read] != nums[write - 2]:
+                  nums[write] = nums[read]
+                  write += 1
+          return write
+
+      vals = [1, 1, 1, 2, 2, 2, 2, 6]
+      k = keep_two(vals)
+      print(vals[:k])
+      ```
+    options:
+      - id: two-each
+        text: "`[1, 1, 2, 2, 6]`"
+        explanation: >-
+          The first two items are written because fewer than two values are kept. After that, an
+          item is written only when it differs from the value two kept slots back. So the third
+          1 and the third and fourth 2s are skipped, and the 6 is kept.
+      - id: one-each
+        text: "`[1, 2, 6]`"
+        explanation: >-
+          This keeps one copy of each value. Check which kept slot `nums[write - 2]` reads.
+      - id: three-free
+        text: "`[1, 1, 1, 2, 2, 6]`"
+        explanation: >-
+          This lets three items in before any comparison. Check how many reads pass
+          `write < 2`.
+      - id: read-back
+        text: "`[1, 1, 2, 6]`"
+        explanation: >-
+          This compares with the item two reads back instead of two kept slots back. Check
+          which cursor the test uses.
+    correct: two-each
+    followUps:
+      one-each:
+        prompt: "`write` is 3 and the kept slots hold `[1, 1, 2]`. Which value is `nums[write - 2]`?"
+        options:
+          - id: second
+            text: The 1 in slot 1, two kept slots back
+          - id: last
+            text: The 2 in slot 2, the most recent kept value
+          - id: first
+            text: The 1 in slot 0, the first kept value
+        correct: second
+        explanation: >-
+          `nums[write - 1]` is the newest kept value and `nums[write - 2]` is the one before it.
+          Comparing two back allows a second copy, but not a third.
+      three-free:
+        prompt: For which values of `write` is `write < 2` true?
+        options:
+          - id: zero-one
+            text: 0 and 1, so only the first two reads skip the comparison
+          - id: zero-two
+            text: 0, 1 and 2
+          - id: one-two
+            text: 1 and 2
+        correct: zero-one
+        explanation: >-
+          The kept prefix has fewer than two items only while `write` is 0 or 1. The third 1 is
+          read with `write` at 2, so it is compared with slot 0 and skipped.
+      read-back:
+        prompt: In `nums[read] != nums[write - 2]`, which cursor picks the slot being compared with?
+        options:
+          - id: write
+            text: "`write`, so the comparison looks at kept values"
+          - id: read
+            text: "`read`, so it looks two items back in the input"
+          - id: either
+            text: Either one, because they always match
+        correct: write
+        explanation: >-
+          Slots before `write` hold the kept values, so `nums[write - 2]` is a kept value. Once
+          an item is skipped, `read` runs ahead of `write`, and the two give different slots.
+
+  - id: checkpoint-compact-then-pair
+    tags: [two-pointers]
+    prompt: |-
+      `dedupe` is the read/write loop that keeps one copy of each value and returns how many it
+      kept. `has_pair` scans from both ends with `while l < r`.
+
+      ```python
+      vals = [1, 3, 3, 4, 8]
+      k = dedupe(vals)
+      print(k, has_pair(vals[:k], 6))
+      ```
+    options:
+      - id: lost-pair
+        text: "`4 False`"
+        explanation: >-
+          `dedupe` keeps 1, 3, 4 and 8, so `k` is 4 and `vals[:4]` is `[1, 3, 4, 8]`. The only
+          pair for 6 was the two 3s, and one of them is gone. No two items in what is left add
+          up to 6.
+      - id: pair-kept
+        text: "`4 True`"
+        explanation: >-
+          `3 + 3` needs two separate 3s. Check what `vals[:k]` holds after `dedupe`.
+      - id: whole-length
+        text: "`5 True`"
+        explanation: >-
+          Check what `dedupe` returns: the length of the list, or the number of values kept?
+    correct: lost-pair
+    followUps:
+      pair-kept:
+        prompt: What is `vals[:k]` after `dedupe`?
+        options:
+          - id: one-three
+            text: "`[1, 3, 4, 8]`, with one 3"
+          - id: two-threes
+            text: "`[1, 3, 3, 4]`, with both 3s"
+          - id: original
+            text: "`[1, 3, 3, 4, 8]`, unchanged"
+        correct: one-three
+        explanation: >-
+          Compaction keeps one copy of each value, so the second 3 is skipped. A pair of equal
+          values needs both copies, so deduplicating first can lose it.
+      whole-length:
+        prompt: What does `dedupe` return?
+        options:
+          - id: kept
+            text: How many values it kept, which is `write`
+          - id: length
+            text: The length of the list
+          - id: removed
+            text: How many copies it skipped
+        correct: kept
+        explanation: >-
+          The list keeps its length, so the return value is the only way to know where the kept
+          values end. Here that is 4.

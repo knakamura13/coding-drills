@@ -1,0 +1,694 @@
+id: pointer-scans-review
+title: "Pointer scans: review"
+description: Fresh inputs for the Pointer scans skills, for recall on later days. No worked examples this time.
+heading: What does this give?
+
+questions:
+  - id: next-move-review
+    heading: What happens next?
+    tags: [two-pointers]
+    prompt: >-
+      `nums = [2, 3, 7, 10, 12]` is sorted and the target is 15. With `l = 0` and `r = 4` the
+      sum is `2 + 12 = 14`. What are `l` and `r` after the next step?
+    options:
+      - id: l-moves
+        text: "`l = 1`, `r = 4`"
+        explanation: >-
+          14 is below 15. The 2 can't reach 15 with any partner, since 12 is the largest, so `l`
+          moves right. The next sum, `3 + 12`, is exactly 15.
+      - id: r-moves
+        text: "`l = 0`, `r = 3`"
+        explanation: >-
+          Moving `r` left swaps 12 for a smaller value, so the sum can only go down. It is
+          already too small.
+      - id: both-move
+        text: "`l = 1`, `r = 3`"
+        explanation: >-
+          The sum condemns only the 2. Moving `r` too drops the 12, and `3 + 12` is the pair
+          that works.
+      - id: stops
+        text: The scan returns `False`
+        explanation: >-
+          A single miss rules out one value. The scan returns `False` only when `l` and `r` meet
+          with no match.
+    correct: l-moves
+    followUps:
+      r-moves:
+        prompt: The sum 14 is below the target 15. Which move can raise it?
+        options:
+          - id: move-l
+            text: Moving `l` right
+          - id: move-r
+            text: Moving `r` left
+          - id: either
+            text: Either move
+        correct: move-l
+        explanation: >-
+          In a sorted list, values to the right of `l` are at least as large, and values to the
+          left of `r` are at most as large. Only moving `l` can raise the sum.
+      both-move:
+        prompt: After the sum `2 + 12 = 14`, can the 12 still be part of a pair?
+        options:
+          - id: still-open
+            text: Yes, a sum that is too small says nothing against the 12
+          - id: used
+            text: No, the 12 was already in a sum that missed
+          - id: largest
+            text: No, the largest value can never be in a pair
+        correct: still-open
+        explanation: >-
+          A too-small sum condemns the value at `l`, because even the largest partner was not
+          enough. The 12 may still pair with something bigger than 2, and here `3 + 12` works.
+      stops:
+        prompt: When does a scan from both ends return `False`?
+        options:
+          - id: met
+            text: When `l` and `r` meet without a match
+          - id: first-miss
+            text: After the first sum that misses
+          - id: two-misses
+            text: After two misses in a row
+        correct: met
+        explanation: >-
+          Each miss rules out one value and the scan carries on with the rest. It gives up only
+          when no pair of separate items is left.
+
+  - id: trace-pairs-review
+    heading: Which pairs does it check?
+    tags: [two-pointers]
+    prompt: >-
+      `has_pair` scans from both ends with `while l < r`, moving `l` right when the sum is too
+      small and `r` left when it is too large. For `has_pair([2, 3, 5, 9, 12], 8)`, which `(l, r)`
+      pairs does it check, in order?
+    options:
+      - id: correct-trace
+        text: "`(0, 4)`, `(0, 3)`, `(0, 2)`, `(1, 2)`"
+        explanation: >-
+          `2 + 12` and `2 + 9` are too large, so `r` steps left twice. `2 + 5` is too small, so
+          `l` moves. `3 + 5` is 8, and the call returns `True`.
+      - id: wrong-end
+        text: "`(0, 4)`, `(1, 4)`, `(2, 4)`, `(3, 4)`"
+        explanation: >-
+          That moves `l` on a sum that is too large, which raises the sum further. This version
+          returns `False`.
+      - id: both-ends
+        text: "`(0, 4)`, `(1, 3)`"
+        explanation: >-
+          That moves both ends after each miss. It skips `3 + 5` and returns `False`.
+      - id: nested
+        text: "`(0, 1)`, `(0, 2)`, `(0, 3)`, `(0, 4)`, `(1, 2)`"
+        explanation: >-
+          That is a nested loop checking pairs from the left. A scan from both ends starts at the
+          outside and moves inward.
+    correct: correct-trace
+    followUps:
+      wrong-end:
+        prompt: The first sum is `2 + 12 = 14`, above 8. Which value can't be in any pair?
+        options:
+          - id: twelve
+            text: 12, since even `2 + 12` is too big
+          - id: two
+            text: 2, since it is the smallest
+          - id: neither
+            text: Neither, both may still pair
+        correct: twelve
+        explanation: >-
+          2 is the smallest partner 12 can have, and that sum is still too large. So 12 is out,
+          and `r` moves left.
+      both-ends:
+        prompt: After `2 + 12 = 14`, is a pair that uses the 2 still possible?
+        options:
+          - id: possible
+            text: Possibly, since a sum that is too large rules out only the 12
+          - id: ruled-out
+            text: No, both values were in a sum that missed
+          - id: smallest
+            text: No, the smallest value never pairs
+        correct: possible
+        explanation: >-
+          A too-large sum condemns only the value at `r`. The 2 has smaller partners left to try,
+          so `l` must stay.
+      nested:
+        prompt: Where do `l` and `r` start in a scan from both ends?
+        options:
+          - id: ends
+            text: At the first and last index
+          - id: front
+            text: At indices 0 and 1
+          - id: middle
+            text: In the middle, moving outward
+        correct: ends
+        explanation: >-
+          The scan starts with the smallest and largest values, so each sum tells it which end
+          to move. It checks at most `n - 1` sums.
+
+  - id: self-pair-review
+    heading: What does it return?
+    tags: [two-pointers]
+    prompt: >-
+      This version of `has_pair` loops `while l <= r` instead of `while l < r`. Otherwise it moves
+      `l` right on a sum that is too small and `r` left on one that is too large. What does
+      `has_pair([1, 4, 6], 8)` return?
+    options:
+      - id: self-true
+        text: "`True`, by adding the 4 to itself"
+        explanation: >-
+          `1 + 6` is too small, so `l` moves to 1. `4 + 6` is too large, so `r` moves to 1. With
+          `l` and `r` equal, the loop still runs and adds `4 + 4`. The list has one 4, so this
+          answer is wrong.
+      - id: real-true
+        text: "`True`, because two different items add up to 8"
+        explanation: >-
+          No two different items do. Add up each pair of separate items, then look at what the
+          last pass adds.
+      - id: says-false
+        text: "`False`, because no two items add up to 8"
+        explanation: >-
+          That would be the answer with `l < r`. Check whether this loop stops when `l` equals
+          `r`.
+      - id: forever
+        text: It never stops, because `l` and `r` never cross
+        explanation: >-
+          Every pass moves one end, so `l` would pass `r` soon. Here the loop returns before
+          that happens.
+    correct: self-true
+    followUps:
+      real-true:
+        prompt: Which index pairs of `[1, 4, 6]` add up to 8?
+        options:
+          - id: none
+            text: None, the sums are 5, 7 and 10
+          - id: one-two
+            text: Indices 1 and 2
+          - id: zero-two
+            text: Indices 0 and 2
+        correct: none
+        explanation: >-
+          `1 + 4`, `1 + 6` and `4 + 6` are the only pairs of separate items. A `True` here can
+          come only from adding one item to itself.
+      says-false:
+        prompt: With `while l <= r`, does the loop run when `l` and `r` are both 1?
+        options:
+          - id: runs
+            text: Yes, `1 <= 1` is true, so it adds `nums[1] + nums[1]`
+          - id: stops
+            text: No, the loop stops when the indices meet
+          - id: skips
+            text: It runs, but skips the sum because the indices match
+        correct: runs
+        explanation: >-
+          `<=` lets the loop run one extra time, with both indices on one item. That pass adds a
+          value to itself.
+      forever:
+        prompt: If `l == r` and the sum is too small, what happens on the next test?
+        options:
+          - id: crosses
+            text: "`l` moves past `r`, so `l <= r` is false and the loop stops"
+          - id: stuck
+            text: Neither index moves, so the loop repeats
+          - id: error
+            text: The next read goes out of range
+        correct: crosses
+        explanation: >-
+          Every pass moves one end by one. Even with `<=`, the indices cross after at most `n`
+          passes.
+
+  - id: equal-copies-review
+    heading: What does it return?
+    tags: [two-pointers]
+    prompt: >-
+      `pair_indices` scans from both ends with `while l < r` and returns `(l, r)` on a match or
+      `None` if there is none. What does `pair_indices([3, 5, 5, 5, 8], 10)` return?
+    options:
+      - id: one-three
+        text: "`(1, 3)`"
+        explanation: >-
+          `3 + 8` is too large, so `r` moves to 3. `3 + 5` is too small, so `l` moves to 1.
+          `5 + 5` is 10, and indices 1 and 3 are two separate 5s.
+      - id: none
+        text: "`None`"
+        explanation: >-
+          That treats equal values as one item. The list holds three separate 5s.
+      - id: one-two
+        text: "`(1, 2)`"
+        explanation: >-
+          That is the first matching pair from the left. Trace where `r` is when the scan finds
+          the match.
+      - id: values
+        text: "`(5, 5)`"
+        explanation: >-
+          Those are the values. The function returns their indices.
+    correct: one-three
+    followUps:
+      none:
+        prompt: "`nums[1]` and `nums[3]` both hold 5. Do they make a valid pair for target 10?"
+        options:
+          - id: valid
+            text: Yes, they are different items
+          - id: values-differ
+            text: No, the two values must differ
+          - id: adjacent
+            text: Only if they are next to each other
+        correct: valid
+        explanation: >-
+          A pair needs two indices, not two distinct values. Only adding one item to itself is
+          ruled out.
+      one-two:
+        prompt: When the scan finds `5 + 5`, where is `r`?
+        options:
+          - id: three
+            text: At 3, after one step left from 4
+          - id: two
+            text: At 2, next to `l`
+          - id: four
+            text: At 4, where it started
+        correct: three
+        explanation: >-
+          `r` moved once, after `3 + 8` was too large. The scan doesn't look for the nearest
+          copy. It reports the first match its two ends reach.
+      values:
+        prompt: What does `pair_indices` put in the tuple it returns?
+        options:
+          - id: indices
+            text: The indices `l` and `r`
+          - id: stored
+            text: The values `nums[l]` and `nums[r]`
+          - id: sum
+            text: The sum and the target
+        correct: indices
+        explanation: >-
+          The function returns positions. Reading those positions gives the values, so
+          `(1, 3)` points at two 5s.
+
+  - id: skip-right-run-review
+    heading: Where does `r` stop?
+    tags: [two-pointers]
+    prompt: |-
+      `nums = [1, 3, 4, 9, 9, 9]` and the target is 10. A match is recorded with `l = 0` and
+      `r = 5`, and `l` has already moved to 1. Then `r` steps over its run:
+
+      ```python
+      r -= 1
+      while l < r and nums[r] == nums[r + 1]:
+          r -= 1
+      ```
+
+      Where is `r` after these lines?
+    options:
+      - id: two
+        text: "`r = 2`"
+        explanation: >-
+          The first line moves `r` to 4. Indices 4 and 3 hold copies of 9, so the loop moves on
+          twice. Index 2 holds 4, which differs from the 9 after it, so `r` stops there.
+      - id: four
+        text: "`r = 4`"
+        explanation: >-
+          That is where `r` is after the first line alone. The `while` loop runs next.
+      - id: three
+        text: "`r = 3`"
+        explanation: >-
+          That is the first copy of 9. The loop compares `nums[r]` with the item after it, so
+          check whether index 3 passes that test.
+      - id: one
+        text: "`r = 1`"
+        explanation: >-
+          The loop stops on the first value that differs, and it also stops at `l`. Check
+          `nums[2]` against `nums[3]`.
+    correct: two
+    followUps:
+      four:
+        prompt: After `r -= 1`, `r` is 4 and `nums[4] == nums[5]`. Does the loop body run?
+        options:
+          - id: runs
+            text: Yes, both are 9, so `r` moves on
+          - id: sum-only
+            text: No, the loop runs only when the sum is wrong
+          - id: once
+            text: No, `r` moves only once per match
+        correct: runs
+        explanation: >-
+          Another 9 at `r` would make `(1, 9)` again once `l` moves, so the loop skips every copy
+          of the value just used.
+      three:
+        prompt: "`r` is 3. Does `nums[3] == nums[4]` hold?"
+        options:
+          - id: holds
+            text: Yes, both are 9, so `r` moves to 2
+          - id: first-copy
+            text: No, index 3 is the first 9, so `r` stays
+          - id: stop-two
+            text: It doesn't matter, the loop stops after two checks
+        correct: holds
+        explanation: >-
+          The test looks one item to the right. Index 3 is still a copy of 9, so `r` moves on
+          until it reaches a different value.
+      one:
+        prompt: "`r` is 2, `nums[2]` is 4 and `l` is 1. Why does the loop stop?"
+        options:
+          - id: differs
+            text: 4 differs from the 9 at index 3
+          - id: met
+            text: "`r` has reached `l`"
+          - id: limit
+            text: The loop runs at most twice
+        correct: differs
+        explanation: >-
+          `l < r` still holds, since 1 is less than 2. The loop stops because the value at `r`
+          is no longer a copy of the one just paired.
+
+  - id: repeat-trace-review
+    heading: What does it return?
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      def pairs(nums, target):
+          out = []
+          l, r = 0, len(nums) - 1
+          while l < r:
+              s = nums[l] + nums[r]
+              if s == target:
+                  out.append((nums[l], nums[r]))
+                  l += 1
+                  r -= 1
+              elif s < target:
+                  l += 1
+              else:
+                  r -= 1
+          return out
+      ```
+
+      What does `pairs([2, 2, 4, 6, 6], 8)` return?
+    options:
+      - id: twice
+        text: "`[(2, 6), (2, 6)]`"
+        explanation: >-
+          The first match uses indices 0 and 4. Stepping each end by one lands on the second 2
+          and the second 6, which match again. Then `l` and `r` both reach index 2, and the loop
+          stops.
+      - id: once
+        text: "`[(2, 6)]`"
+        explanation: >-
+          That assumes one step lands on a new value. Check what indices 1 and 3 hold.
+      - id: self
+        text: "`[(2, 6), (2, 6), (4, 4)]`"
+        explanation: >-
+          The list has a single 4. Check the loop test when `l` and `r` both reach index 2.
+      - id: all-copies
+        text: "`[(2, 6), (2, 6), (2, 6), (2, 6)]`"
+        explanation: >-
+          That counts every copy of 2 with every copy of 6. A scan from both ends moves
+          past each index once.
+    correct: twice
+    followUps:
+      once:
+        prompt: After the first match, `l` is 1 and `r` is 3. What do those slots hold?
+        options:
+          - id: again
+            text: 2 and 6, which add up to 8 again
+          - id: new
+            text: 4 and 6, since a step skips repeats
+          - id: done
+            text: Nothing, the scan ends after a match
+        correct: again
+        explanation: >-
+          One step moves one index, whatever the value there. A run of copies needs a loop that
+          steps past all of them.
+      self:
+        prompt: When `l` and `r` are both 2, does the loop body run?
+        options:
+          - id: stops
+            text: No, `l < r` is false
+          - id: four-four
+            text: Yes, `4 + 4` is 8
+          - id: one-more
+            text: Yes, once more before it stops
+        correct: stops
+        explanation: >-
+          Index 2 is one item. With `l < r` the loop never adds an item to itself.
+      all-copies:
+        prompt: Does the scan ever test the first 2 with the second 6?
+        options:
+          - id: never
+            text: No, both ends move after `(0, 4)`, so index 0 is never used again
+          - id: always
+            text: Yes, every 2 is tested with every 6
+          - id: return
+            text: Yes, on a second pass back out
+        correct: never
+        explanation: >-
+          Each index is passed once and never revisited. Counting every pair of copies takes
+          other bookkeeping, such as multiplying the sizes of the two runs.
+
+  - id: remove-value-review
+    heading: What is `nums` afterwards?
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      nums = [9, 9, 2, 9, 4]
+      write = 0
+      for read in range(len(nums)):
+          if nums[read] != 9:
+              nums[write] = nums[read]
+              write += 1
+      ```
+
+      What is `nums` after the loop?
+    options:
+      - id: packed
+        text: "`[2, 4, 2, 9, 4]`"
+        explanation: >-
+          The 2 is copied into slot 0 and the 4 into slot 1, and `write` ends at 2. Slots 2 to
+          4 are never written, so they keep the 2, 9 and 4 they started with.
+      - id: shrunk
+        text: "`[2, 4]`"
+        explanation: >-
+          The loop only assigns to slots. The kept values are `nums[:write]`, and the list keeps
+          its length.
+      - id: swapped
+        text: "`[2, 4, 9, 9, 9]`"
+        explanation: >-
+          That is what a swap would give. The loop copies one slot onto another.
+      - id: unchanged
+        text: "`[9, 9, 2, 9, 4]`"
+        explanation: >-
+          That leaves each kept value where it was read. Check which slot `nums[write]` names.
+    correct: packed
+    followUps:
+      shrunk:
+        prompt: The loop ends with `write = 2`. What do slots 2 to 4 hold?
+        options:
+          - id: old
+            text: Their old values, because the loop never wrote there
+          - id: gone
+            text: Nothing, the list now has 2 items
+          - id: nines
+            text: 9s, moved there by the loop
+        correct: old
+        explanation: >-
+          In-place compaction overwrites the front and leaves the rest alone. The caller reads
+          `write` to know where the answer ends.
+      swapped:
+        prompt: At `read = 2`, `write` is 0. After `nums[0] = nums[2]`, what is `nums[2]`?
+        options:
+          - id: two
+            text: Still 2
+          - id: nine
+            text: 9, the value that was in slot 0
+          - id: empty
+            text: Empty, because the 2 moved
+        correct: two
+        explanation: >-
+          Only the slot on the left of `=` changes. The right side is read and left as it was.
+      unchanged:
+        prompt: At `read = 2`, which slot does the 2 go to?
+        options:
+          - id: zero
+            text: Slot 0, the one `write` names
+          - id: same
+            text: Slot 2, where it was read
+          - id: end
+            text: The end of the list
+        correct: zero
+        explanation: >-
+          Nothing has been kept yet, so `write` is 0 and the 2 is copied to the front.
+
+  - id: read-cursor-review
+    heading: What does this step write?
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      write = 0
+      for read in range(len(nums)):
+          if nums[read] % 2 == 0:
+              nums[write] = nums[read]
+              write += 1
+      ```
+
+      `nums = [5, 8, 1, 6, 3]`. What does the step with `read = 3` do?
+    options:
+      - id: six-into-one
+        text: Writes 6 into slot 1
+        explanation: >-
+          Before this step only the 8 has been kept, in slot 0, so `write` is 1. `nums[3]` is 6,
+          which is even, so it is copied into slot 1.
+      - id: three-into-one
+        text: Writes 3 into slot 1
+        explanation: >-
+          3 is the read position. The test and the copy use the value stored there.
+      - id: six-into-three
+        text: Writes 6 into slot 3
+        explanation: >-
+          The 6 already sits in slot 3. Check which variable names the slot being written.
+      - id: six-into-two
+        text: Writes 6 into slot 2
+        explanation: >-
+          Count how many values have been kept before this step. `write` equals that count.
+    correct: six-into-one
+    followUps:
+      three-into-one:
+        prompt: At `read = 3`, what does the step test and copy?
+        options:
+          - id: item
+            text: "`nums[read]`, the value stored at position 3"
+          - id: cursor
+            text: "`read` itself, the number 3"
+          - id: target
+            text: "`nums[write]`, the slot about to be written"
+        correct: item
+        explanation: >-
+          `read` is a position. The `%` test and the copy both use what is stored there, which
+          is 6.
+      six-into-three:
+        prompt: "`nums[write] = nums[read]` runs with `write = 1` and `read = 3`. Which slot changes?"
+        options:
+          - id: write-slot
+            text: The slot `write` names, on the left of `=`
+          - id: read-slot
+            text: The slot `read` names, where the value sits
+          - id: both
+            text: Both slots, because the values trade places
+        correct: write-slot
+        explanation: >-
+          The left side is written, and the right side is only read. The kept values pack toward
+          the front.
+      six-into-two:
+        prompt: How many values have been kept before the step with `read = 3`?
+        options:
+          - id: one
+            text: "One: the 8, since 5 and 1 are odd"
+          - id: two
+            text: "Two: the 5 and the 8"
+          - id: none
+            text: None yet
+        correct: one
+        explanation: >-
+          Odd values are skipped, so only the 8 was written. One value kept means `write` is 1.
+
+  - id: decide-write-review
+    heading: Is this item written?
+    tags: [two-pointers]
+    prompt: |-
+      ```python
+      def dedupe(nums):
+          write = 0
+          for read in range(len(nums)):
+              if write == 0 or nums[read] != nums[write - 1]:
+                  nums[write] = nums[read]
+                  write += 1
+          return write
+      ```
+
+      `dedupe([1, 3, 3, 4, 4])` has finished reads 0, 1 and 2, so `write` is 2 and the list is
+      still `[1, 3, 3, 4, 4]`. What happens at `read = 3`?
+    options:
+      - id: slot-two
+        text: The 4 is written into slot 2
+        explanation: >-
+          The last kept value is `nums[1]`, which is 3. The 4 differs, so it is copied into slot
+          2 and `write` becomes 3.
+      - id: slot-three
+        text: The 4 is written into slot 3
+        explanation: >-
+          Slot 3 is where the 4 was read. Writes go to the slot `write` names.
+      - id: skipped
+        text: The 4 is skipped, because the next item is also 4
+        explanation: >-
+          The test looks back at the last kept value, not ahead. The second 4 is the one that
+          gets skipped.
+    correct: slot-two
+    followUps:
+      slot-three:
+        prompt: "`write` is 2 before this step. Which slots hold the values kept so far?"
+        options:
+          - id: zero-one
+            text: Slots 0 and 1, holding 1 and 3
+          - id: zero-two
+            text: Slots 0, 1 and 2
+          - id: two
+            text: Only slot 2
+        correct: zero-one
+        explanation: >-
+          Two values have been kept, so they fill the first two slots. Slot 2 is the next free
+          one.
+      skipped:
+        prompt: At `read = 3`, which value does the test compare the 4 with?
+        options:
+          - id: last-kept
+            text: "`nums[write - 1]`, the last kept value, 3"
+          - id: next
+            text: "`nums[read + 1]`, the next value, 4"
+          - id: write-slot
+            text: "`nums[write]`, the slot about to be written"
+        correct: last-kept
+        explanation: >-
+          Everything before `write` is final, so `nums[write - 1]` is the newest kept value. A
+          sorted item starts a new value exactly when it differs from that one.
+
+  - id: first-write-review
+    heading: What does it return?
+    tags: [two-pointers]
+    prompt: >-
+      `dedupe` is the read/write loop that writes an item when `write == 0 or nums[read] !=
+      nums[write - 1]`, and returns `write`. What does `dedupe([7, 7, 7])` return?
+    options:
+      - id: one
+        text: "`1`"
+        explanation: >-
+          At read 0 nothing is kept yet, so the first 7 is written and `write` becomes 1. The
+          other two 7s equal the last kept value and are skipped.
+      - id: zero
+        text: "`0`"
+        explanation: >-
+          That never keeps the first 7. Check what `write == 0` does at read 0.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          That is the length of the list. The function returns how many values it kept.
+    correct: one
+    followUps:
+      zero:
+        prompt: At `read = 0`, `write` is 0. Which part of the test decides the step?
+        options:
+          - id: left
+            text: "`write == 0`, which is true, so the 7 is written"
+          - id: right
+            text: "`nums[0] != nums[-1]`, which is false, so the 7 is skipped"
+          - id: neither
+            text: Neither, the first item is never written since it is already in place
+        correct: left
+        explanation: >-
+          `or` stops at its first true side. The empty-prefix check makes the first item start
+          the kept values, whatever the last item holds.
+      three:
+        prompt: Which reads of `[7, 7, 7]` write a value?
+        options:
+          - id: first
+            text: Only `read = 0`
+          - id: all
+            text: All three
+          - id: last
+            text: Only the last one
+        correct: first
+        explanation: >-
+          After the first 7 is kept, each later 7 equals `nums[write - 1]`. So `write` stops at
+          1, the number of distinct values.
