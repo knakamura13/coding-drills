@@ -47,7 +47,7 @@ export function reviewStatus(
 	limit = REVIEW_SIZE,
 	/** Card keys to limit the sitting to, such as the drills of one skill. */
 	only?: ReadonlySet<string>,
-	drills: readonly CurriculumDrill[] = []
+	bySkill: ReadonlyMap<string, readonly CurriculumDrill[]> = new Map()
 ): ReviewStatus {
 	const questions = new Map<string, LessonEntry>();
 	for (const deck of decks) {
@@ -62,14 +62,14 @@ export function reviewStatus(
 	const lastSeen = new Map(attempts.map((attempt) => [cardKey(attempt.deckId, attempt.questionId), attempt.day]));
 	const skillByQuestion = new Map<string, string>();
 	const variantsBySkill = new Map<string, string[]>();
-	for (const drill of drills) {
-		if (!drill.skillId || (drill.disposition !== 'keep' && drill.disposition !== 'rewrite')) continue;
-		const key = cardKey(drill.deckId, drill.questionId);
-		skillByQuestion.set(key, drill.skillId);
-		if (!drill.variant || !questions.has(key)) continue;
-		const variants = variantsBySkill.get(drill.skillId) ?? [];
-		variants.push(key);
-		variantsBySkill.set(drill.skillId, variants);
+	for (const [skill, drills] of bySkill) {
+		const variants: string[] = [];
+		for (const drill of drills) {
+			const key = cardKey(drill.deckId, drill.questionId);
+			skillByQuestion.set(key, skill);
+			if (drill.variant && questions.has(key)) variants.push(key);
+		}
+		if (variants.length > 0) variantsBySkill.set(skill, variants);
 	}
 	for (const keys of variantsBySkill.values()) {
 		keys.sort((a, b) => {

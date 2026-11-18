@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { CurriculumDrill } from '$lib/content/curriculum';
 import { advance, check, createReviewLesson, select } from '$lib/domain/lesson';
+import { teachingBySkill } from '$lib/domain/mastery';
+import { curriculum } from 'virtual:curriculum';
+import { decks as publishedDecks } from 'virtual:decks';
 import { replay } from '$lib/domain/srs';
 import type { Deck } from '$lib/content/schema';
 import type { Attempt } from '$lib/storage/types';
@@ -166,6 +169,22 @@ describe('fresh review variants', () => {
 		mapping('beta', 'other-skill', 'different', true)
 	];
 
+	const bySkill = new Map([
+		['same', drills.filter((drill) => drill.skillId === 'same')],
+		['different', drills.filter((drill) => drill.skillId === 'different')]
+	]);
+
+	it('uses the tree’s positional assignment for a legacy drill', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'recursive-calls')!;
+		const resolved = teachingBySkill(path, curriculum.drills);
+		const original = attempt('recursion-backtracking', 'base-case-depth', '2026-10-09');
+		const status = reviewStatus(publishedDecks, [original], '2026-10-10', undefined, undefined, resolved);
+		expect(status.entries[0]).toMatchObject({
+			deckId: 'recursive-calls-review',
+			reviewOf: { deckId: original.deckId, questionId: original.questionId }
+		});
+	});
+
 	it('uses distinct fresh siblings without displacing due misses or using unmarked drills', () => {
 		const log = [
 			attempt('beta', 'older', '2026-10-07'),
@@ -174,7 +193,7 @@ describe('fresh review variants', () => {
 			attempt('alpha', 'a2', '2026-10-09'),
 			attempt('alpha', 'a3', '2026-10-09', false)
 		];
-		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, drills);
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, bySkill);
 		expect(status.dueCount).toBe(3);
 		expect(status.entries.map((entry) => entry.question.id)).toEqual(['fresh', 'older', 'a3']);
 	});
@@ -184,7 +203,7 @@ describe('fresh review variants', () => {
 			attempt('alpha', 'a1', '2026-10-08'),
 			attempt('beta', 'older', '2026-10-09', false)
 		];
-		const status = reviewStatus(decks, log, '2026-10-10', undefined, new Set(['alpha/a1']), drills);
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, new Set(['alpha/a1']), bySkill);
 		expect(status.entries.map((entry) => entry.question.id)).toEqual(['fresh']);
 		const lesson = createReviewLesson(status.entries);
 		const [completed] = advance(check(select(lesson, 'right'))).completed;
@@ -203,7 +222,7 @@ describe('fresh review variants', () => {
 			attempt('alpha', 'a1', '2026-10-08'),
 			attempt('beta', 'fresh', '2026-10-10')
 		];
-		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, drills);
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, bySkill);
 		expect(status.entries.map((entry) => entry.question.id)).toEqual(['older', 'a1']);
 		expect(status.entries.every((entry) => !entry.reviewOf)).toBe(true);
 	});
