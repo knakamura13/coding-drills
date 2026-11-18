@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { isChoiceQuestion, isTapCellQuestion } from './schema.ts';
 import { ContentError, deckFiles, loadDecks, parseDeck } from './loadDecks.ts';
 
 const MINIMAL_DECK = `
@@ -44,9 +45,17 @@ describe('shipped decks', () => {
 		expect(decks.length).toBeGreaterThan(0);
 	});
 
-	it('give every wrong option a follow-up with at least two options', () => {
+	it('give every wrong option a follow-up, and every wrong cell an explanation', () => {
 		for (const deck of decks) {
 			for (const question of deck.questions) {
+				if (isTapCellQuestion(question)) {
+					const count = question.sequence.cells.length + (question.sequence.pastEnd ? 1 : 0);
+					const indexes = question.misses.map((miss) => miss.index).sort((a, b) => a - b);
+					const expected = [...Array(count).keys()].filter((index) => index !== question.correct);
+					expect(indexes, question.id).toEqual(expected);
+					continue;
+				}
+				if (!isChoiceQuestion(question)) continue;
 				const wrong = question.options.filter((option) => option.id !== question.correct);
 				expect(Object.keys(question.followUps).sort()).toEqual(wrong.map((o) => o.id).sort());
 				for (const followUp of Object.values(question.followUps)) {

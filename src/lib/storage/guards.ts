@@ -24,7 +24,11 @@ function isFollowUp(value: unknown): boolean {
 	return isRecord(value) && isId(value.pickedId) && typeof value.correct === 'boolean';
 }
 
-/** An attempt as it travels between devices: every field present and well-formed. */
+/**
+ * An attempt as it travels between devices: every field present and well-formed.
+ * `pickedId` is an option id or a tap-cell index (`"0"`, `"1"`, …). A wrong tap
+ * omits `followUp`; the cell's explanation lives in the deck, not the attempt.
+ */
 export function isAttempt(value: unknown): value is Attempt {
 	if (!isRecord(value)) return false;
 	return (

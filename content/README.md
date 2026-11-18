@@ -37,6 +37,33 @@ questions:
 
 Prompts and explanations are Markdown: paragraphs, `` `inline code` ``, **bold**, *italics*, and fenced code blocks. Option text is inline Markdown. Quote any YAML value that starts with a backtick or contains `: `.
 
+## Tap the cell
+
+A question with `format: tap-cell` asks the learner to tap one cell of an array or a string. Leave `format` off, or set it to `choice`, for a multiple-choice question. Existing decks do not need a `format` field.
+
+```yaml
+- id: read-at-index
+  format: tap-cell
+  tags: [python]
+  prompt: Which cell does `nums[1]` read?
+  code: |
+    nums = [3, 0, 1, 2]
+    print(nums[1])
+  sequence:
+    kind: array # or string
+    name: nums # optional label drawn above the cells
+    cells: [3, 0, 1, 2] # numbers are stored as text; a string cell is one character
+    pastEnd: false # true adds a tappable slot at index len(cells)
+  markers: # optional pointers. They label the picture; they are not the answer.
+    - { name: i, at: 0 } # names such as left, right, i
+  correct: 1 # index of the cell that answers the question
+  explanation: Why that cell is right.
+  misses: # every other tappable index, including a past-the-end slot, and not the correct one
+    - { index: 0, explanation: Why this cell is the wrong one. }
+```
+
+In portrait the snippet sits above the sequence. In landscape they sit side by side. A wrong tap highlights that cell, shows its `explanation`, and then marks the right cell. There is no follow-up question: the miss is the targeted feedback. `code` is plain text, not Markdown.
+
 ## Tags
 
 Give every question one to three `tags`. They come from the fixed list in `src/lib/content/tags.ts` (`hash-map`, `sliding-window`, `dp`, and so on), and the build rejects any other value. Tags are the topics shown on the Progress screen and offered as filters in Mixed practice, so a fixed list stops near-duplicates such as `queue` and `queues`. To add a topic, add it to that list. A question with no tags is skipped by both screens.
@@ -44,6 +71,7 @@ Give every question one to three `tags`. They come from the fixed list in `src/l
 ## Rules the build enforces
 
 - Every wrong option has a follow-up, and the correct option has none.
+- A tap-cell question explains every wrong cell, and the correct index has no miss. Marker names are unique and land on a cell.
 - `correct` ids exist in their option lists. Option ids and option texts are unique within a question or follow-up.
 - Ids are lowercase kebab-case. Unknown keys are rejected, so typos do not pass silently.
 

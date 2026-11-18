@@ -42,6 +42,7 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 | --- | --- | --- | --- |
 | Diagnostic | Choosing a pattern from a problem statement (sliding window, two pointers, prefix sums, binary search) | `pattern-identification` | done |
 | Diagnostic | Reading time and space complexity off short code | `complexity-analysis` | done |
+| Demo | Tapping the cell an index or a pointer names | `tap-the-cell` | in review |
 
 ## `fundamental_concepts/` notebooks
 

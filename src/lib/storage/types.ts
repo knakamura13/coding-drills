@@ -11,10 +11,13 @@ export interface Attempt {
 	day: string;
 	deckId: string;
 	questionId: string;
-	/** The option picked on the main question. */
+	/**
+	 * The option picked on a multiple-choice question, or the cell index for a
+	 * tap-cell question (`"0"`, `"1"`, …).
+	 */
 	pickedId: string;
 	correct: boolean;
-	/** Present only when the main answer was wrong. */
+	/** Present only when a multiple-choice answer was wrong. A wrong tap has none. */
 	followUp?: { pickedId: string; correct: boolean };
 }
 

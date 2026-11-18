@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
+import { isChoiceQuestion } from '../content/schema.ts';
 import { LONG_CODE_CHARS, escapeHtml, plainText, renderInline, renderMarkdown } from './render';
 
 describe('escapeHtml', () => {
@@ -120,6 +121,7 @@ describe('plainText and renderInline agree on every shipped option', () => {
 
 	it.each(decks.map((deck) => [deck.id, deck] as const))('%s', (_id, deck) => {
 		for (const question of deck.questions) {
+			if (!isChoiceQuestion(question)) continue;
 			const options = [
 				...question.options.map((option) => option.text),
 				...Object.values(question.followUps).flatMap((followUp) => followUp.options.map((option) => option.text))
