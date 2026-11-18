@@ -5,6 +5,7 @@ import {
 	dispositionLabel,
 	drillsOfSkill,
 	drillsToReview,
+	examDrills,
 	examGate,
 	pairInOrder,
 	projectCurriculum,
@@ -369,5 +370,45 @@ describe('due drills in the tree', () => {
 	it('finds the drills of one skill wherever it sits, and none for an unknown skill', () => {
 		expect(drillsOfSkill(curriculum, 'a1').map((item) => item.questionId)).toEqual(['a1q']);
 		expect(drillsOfSkill(curriculum, 'nope')).toEqual([]);
+	});
+});
+
+describe('examDrills', () => {
+	const path = {
+		id: 'alpha',
+		title: 'Alpha',
+		summary: 'Two checkpoints.',
+		branchId: 'one',
+		after: [],
+		skills: [],
+		forks: [],
+		checkpoints: [
+			{ kind: 'checkpoint' as const, id: 'first', title: 'First', summary: 'One.', pathId: 'alpha', branchId: 'one', requires: [], mix: [] },
+			{ kind: 'checkpoint' as const, id: 'second', title: 'Second', summary: 'Two.', pathId: 'alpha', branchId: 'one', requires: [], mix: [] }
+		]
+	};
+	const ids = (map: Map<string, CurriculumDrill[]>, key: string) => (map.get(key) ?? []).map((item) => item.questionId);
+
+	it('puts a drill on the checkpoint it names and pairs the rest by list position', () => {
+		const drills: CurriculumDrill[] = [
+			drill('x1', 'alpha', 'exam'),
+			{ ...drill('x2', 'alpha', 'exam'), checkpointId: 'first' },
+			drill('x3', 'alpha', 'exam'),
+			{ ...drill('x4', 'alpha', 'exam'), checkpointId: 'first' }
+		];
+		const paired = examDrills(path, drills);
+		expect(ids(paired, 'first')).toEqual(['x1', 'x2', 'x4']);
+		expect(ids(paired, 'second')).toEqual(['x3']);
+	});
+
+	it('gives a drill that names a checkpoint to that one only', () => {
+		const drills: CurriculumDrill[] = [
+			{ ...drill('a', 'alpha', 'exam'), checkpointId: 'second' },
+			{ ...drill('b', 'alpha', 'exam'), checkpointId: 'second' },
+			{ ...drill('c', 'alpha', 'exam'), checkpointId: 'first' }
+		];
+		const paired = examDrills(path, drills);
+		expect(ids(paired, 'first')).toEqual(['c']);
+		expect(ids(paired, 'second')).toEqual(['a', 'b']);
 	});
 });

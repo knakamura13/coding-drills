@@ -130,16 +130,20 @@ export function skillState(drills: readonly DrillRef[], attempts: readonly Attem
 }
 
 /**
- * The exam drills each of a path's checkpoints draws from. A path with one
- * checkpoint gives it every exam drill. With two, drills are paired by list
- * position, as skills are, until exam drills name their checkpoint.
+ * The exam drills each of a path's checkpoints draws from. A drill that names
+ * its checkpoint goes there. The rest are paired by list position, so a path
+ * with one checkpoint gives it every unnamed exam drill.
  */
 export function examDrills(path: CurriculumPath, drills: readonly CurriculumDrill[]): Map<string, CurriculumDrill[]> {
 	const exams = drills.filter((drill) => drill.pathId === path.id && drill.disposition === 'exam');
-	return pairInOrder(
+	const paired = pairInOrder(
 		path.checkpoints.map((checkpoint) => checkpoint.id),
-		exams
+		exams.filter((drill) => !drill.checkpointId)
 	);
+	for (const drill of exams) {
+		if (drill.checkpointId) paired.get(drill.checkpointId)?.push(drill);
+	}
+	return paired;
 }
 
 /**
