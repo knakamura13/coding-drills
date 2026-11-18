@@ -1,0 +1,288 @@
+id: feasible-limits-checkpoint
+title: "Feasible limits: checkpoint"
+description: Find the smallest feasible limit on new inputs, and count what the search reads. Each item combines the skills that lead into the checkpoint.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-trace-limits
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search, greedy]
+    prompt: >-
+      `sessions(sizes, x)` packs the files in order and opens a new session when the next file
+      would push the load over `x`. Each cell is a candidate limit. Predict each step before it is
+      shown.
+    code: |
+      sizes, d = [4, 5, 3], 2
+      lo, hi = max(sizes), sum(sizes)
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if sessions(sizes, mid) <= d:
+              hi = mid
+          else:
+              lo = mid + 1
+      print(lo)
+    sequence:
+      kind: array
+      name: limits
+      cells: [5, 6, 7, 8, 9, 10, 11, 12]
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 5
+        ask: The first probe is 8. What does `sessions(sizes, 8)` return?
+        options:
+          - id: two-passes
+            text: 2, so the probe passes
+            explanation: >-
+              4 + 5 = 9 is over 8, so the 5 opens a second session. 5 + 3 = 8 is not over 8, so
+              the 3 joins it: [4] and [5, 3].
+          - id: three-fails
+            text: 3, so the probe fails
+            explanation: A load equal to the limit fits. Check 5 + 3 against 8.
+          - id: one-passes
+            text: 1, so the probe passes
+            explanation: Check whether the 5 fits beside the 4.
+        correct: two-passes
+      - line: 6
+        ask: Where does `hi` sit after the first pass?
+        pointer: hi
+        correct: 3
+        explanation: 8 passed, so no larger limit can be the smallest, and `hi = mid` keeps 8.
+        misses:
+          - index: 2
+            explanation: That is `mid - 1`. Could 8 itself be the answer?
+          - index: 7
+            explanation: Which bound does a passing probe move?
+        elsewhere: "`hi = mid` puts `hi` on 8."
+      - line: 8
+        ask: Where does `lo` sit after the second pass?
+        pointer: lo
+        correct: 2
+        explanation: >-
+          `mid` is (5 + 8) // 2 = 6. At 6 every file sits alone, three sessions, so 6 fails and
+          `lo = mid + 1` puts `lo` on 7.
+        misses:
+          - index: 1
+            explanation: That keeps the probe. Did 6 pass?
+          - index: 0
+            explanation: Run the pass at 6. Which bound does a failure move?
+        elsewhere: 6 needs three sessions, so `lo = mid + 1 = 7`.
+      - line: 8
+        ask: Where does `lo` sit after the third pass?
+        pointer: lo
+        correct: 3
+        explanation: >-
+          `mid` is (7 + 8) // 2 = 7. 4 + 5 = 9 and 5 + 3 = 8 are both over 7, so 7 needs three
+          sessions and fails. `lo` moves to 8 and meets `hi`.
+        misses:
+          - index: 2
+            explanation: Run the pass at 7. Which pairs fit under it?
+        elsewhere: 7 fails, so `lo = 8`.
+      - line: 9
+        ask: The loop prints 8. How many sizes did the `sessions` calls read in all?
+        options:
+          - id: nine
+            text: '9'
+            explanation: >-
+              Three probes, at 8, 6 and 7, and each `sessions` call reads all 3 sizes. The cost is
+              the number of probes times one pass.
+          - id: three
+            text: '3'
+            explanation: How many sizes does one probe read?
+          - id: twenty-four
+            text: '24'
+            explanation: Did the search run the pass at every candidate?
+        correct: nine
+
+  - id: checkpoint-tap-smallest-limit
+    format: tap-cell
+    heading: Tap the smallest feasible limit
+    tags: [binary-search, greedy]
+    prompt: >-
+      The files stay in order and can't be split, and a session's load may equal the limit. The
+      cells are the limits 11 to 18. Tap the smallest limit that fits the files in at most `d`
+      sessions.
+    code: |
+      sizes = [2, 11, 4, 6, 3, 7]
+      d = 3
+    sequence:
+      kind: array
+      name: limits
+      cells: [11, 12, 13, 14, 15, 16, 17, 18]
+    correct: 2
+    explanation: >-
+      At 13 the pass packs [2, 11], [4, 6, 3] and [7], three sessions. At 12 it needs four,
+      because 2 + 11 = 13 is over 12. So the answers turn from no to yes at 13.
+    misses:
+      - index: 0
+        explanation: >-
+          11 is the largest file and the even split, 33 / 3. Run the pass: where does the 2 go?
+      - index: 1
+        explanation: Run the pass at 12. Can the 2 and the 11 share a session?
+      - index: 3
+        explanation: 14 fits. Does a smaller limit fit too?
+      - index: 4
+        explanation: 15 fits. Does a smaller limit fit too?
+      - index: 5
+        explanation: 16 fits. Does a smaller limit fit too?
+      - index: 6
+        explanation: >-
+          17 is the first limit that needs only two sessions. Does the question ask for exactly
+          `d`, or at most `d`?
+      - index: 7
+        explanation: 18 fits, but it is not the smallest that does.
+
+  - id: checkpoint-fewer-than-d
+    heading: Which fix works?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def smallest_limit(sizes, d):
+          lo, hi = max(sizes), sum(sizes)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if sessions(sizes, mid) < d:
+                  hi = mid
+              else:
+                  lo = mid + 1
+          return lo
+      ```
+
+      `smallest_limit([2, 6, 7, 9, 4, 3], 3)` returns 16, but 15 already fits: [2, 6, 7], [9, 4]
+      and [3]. Which one-line change makes it correct for every list and every `d`?
+    options:
+      - id: at-most
+        text: "`if sessions(sizes, mid) <= d:`"
+        explanation: >-
+          With `<`, a limit that needs exactly `d` sessions counts as failing, so the search finds
+          the first limit that needs fewer. `<=` asks "at most `d`?", whose answers turn from no
+          to yes once. The call then returns 15.
+      - id: exactly
+        text: "`if sessions(sizes, mid) == d:`"
+        explanation: The first probe is 20, which needs 2 sessions. Which way does the search go?
+      - id: minus-one
+        text: "`return lo - 1`"
+        explanation: Try the same sizes with `d = 2`.
+      - id: hi-minus
+        text: "`hi = mid - 1`"
+        explanation: Which limits does the test still treat as failing?
+    correct: at-most
+    followUps:
+      exactly:
+        prompt: >-
+          With `== d`, the first probe, 20, needs 2 sessions, not 3. What does the search do
+          next?
+        options:
+          - id: goes-up
+            text: It moves `lo` to 21, away from 15, and ends up returning 31
+          - id: goes-down
+            text: It moves `hi` to 20 and keeps looking below
+          - id: stops
+            text: It stops, since 20 fits
+        correct: goes-up
+        explanation: >-
+          "Exactly `d`" holds only on a stretch in the middle, so a no can mean too small or too
+          large. "At most `d`" says no, then yes, so every answer tells the search which way to
+          go.
+      minus-one:
+        prompt: With `return lo - 1`, what does `smallest_limit([2, 6, 7, 9, 4, 3], 2)` return?
+        options:
+          - id: thirty
+            text: 30, although 16 already fits in 2 sessions
+          - id: fifteen
+            text: 15, one below 16
+          - id: sixteen
+            text: 16, the right answer
+        correct: thirty
+        explanation: >-
+          The strict test finds the first limit that needs fewer than `d` sessions. That can be
+          far past the answer, so subtracting 1 patches one list and not the next.
+      hi-minus:
+        prompt: With `< d` still in place, does a limit that needs exactly 3 sessions pass?
+        options:
+          - id: still-fails
+            text: No, so 15 still fails and the call still returns 16
+          - id: passes
+            text: Yes, since 3 is not more than 3
+          - id: last-probe
+            text: Only on the last probe
+        correct: still-fails
+        explanation: >-
+          The bug is the question the loop asks, not the bound it moves. `hi = mid - 1` also
+          throws away a probe that passed, which can be the answer.
+
+  - id: checkpoint-reads-per-search
+    heading: How many reads?
+    tags: [binary-search, complexity]
+    prompt: |-
+      ```python
+      lo, hi = max(sizes), sum(sizes)   # 1,000 and 8,999
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if sessions(sizes, mid) <= d:
+              hi = mid
+          else:
+              lo = mid + 1
+      ```
+
+      `sizes` holds 300 files, and each `sessions` call reads all of them. The range holds 8,000
+      candidate limits. At most how many sizes do the `sessions` calls read in all?
+    options:
+      - id: probes-times-pass
+        text: 3,900
+        explanation: >-
+          Each probe halves the 8,000 candidates, so the loop makes at most 13 probes, since
+          13 halvings bring even 8,192 down to one. Each probe is one full pass over 300 sizes:
+          13 × 300 = 3,900.
+      - id: probes-only
+        text: '13'
+        explanation: That counts the probes. What does one probe read?
+      - id: halves-files
+        text: 72,000
+        explanation: That is 9 × 8,000. Which range does each probe halve?
+      - id: every-limit
+        text: 2,400,000
+        explanation: That is one pass per candidate. Does the search run them all?
+    correct: probes-times-pass
+    followUps:
+      probes-only:
+        prompt: What does one probe cost?
+        options:
+          - id: full-pass
+            text: One `sessions` pass, which reads all 300 sizes
+          - id: one-read
+            text: One read, as with `a[mid]` in a sorted list
+          - id: log-reads
+            text: About 9 reads, the log of 300
+        correct: full-pass
+        explanation: >-
+          A probe asks "does this limit fit?", and only a pass over every file can answer. The
+          total is the number of probes times that pass.
+      halves-files:
+        prompt: What does each probe cut in half?
+        options:
+          - id: limits
+            text: The range of candidate limits, 8,000 at the start
+          - id: files
+            text: The list of 300 files
+          - id: both
+            text: Both the limits and the files
+        correct: limits
+        explanation: >-
+          The search runs over limits, about 13 halvings for 8,000. The files are read in full on
+          every probe, since the pass needs every one of them.
+      every-limit:
+        prompt: Why can the search skip most of the 8,000 limits?
+        options:
+          - id: settles-side
+            text: A pass rules out every larger limit, and a failure every smaller one
+          - id: below-largest
+            text: Most limits are below the largest file
+          - id: cached
+            text: The pass caches its results between probes
+        correct: settles-side
+        explanation: >-
+          Feasibility turns from no to yes once, so one probe settles half the range. That is
+          why the probe count grows with log R, not with R.
