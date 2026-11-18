@@ -197,6 +197,22 @@ describe('shipped curriculum', () => {
 		]);
 	});
 
+	it('puts every Arrays and strings and Pointer scans teaching drill on a skill, each skill with several', () => {
+		for (const pathId of ['arrays-and-strings', 'pointer-scans']) {
+			const item = paths.find((candidate) => candidate.id === pathId)!;
+			const teaching = curriculum.drills.filter(
+				(drill) => drill.pathId === pathId && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
+			);
+			const perSkill = new Map(item.skills.map((skill) => [skill.id, 0]));
+			for (const drill of teaching) {
+				if (drill.questionId === 'slow-fast-keep-distinct') continue;
+				expect(perSkill.has(drill.skillId ?? ''), drill.questionId).toBe(true);
+				perSkill.set(drill.skillId!, perSkill.get(drill.skillId!)! + 1);
+			}
+			for (const [skillId, count] of perSkill) expect(count, skillId).toBeGreaterThanOrEqual(3);
+		}
+	});
+
 	it('keeps the retired drills mapped and does not drop them', () => {
 		const retired = curriculum.drills.find((drill) => drill.questionId === 'subarray-sum-k');
 		expect(retired).toMatchObject({ disposition: 'retire', pathId: 'prefix-counts' });
@@ -272,6 +288,18 @@ describe('compileCurriculum', () => {
 		const compiled = compileCurriculum(mixed(['edits']), questions('one', 'two'));
 		expect(compiled.branches[0]!.paths[0]!.checkpoints[0]!.mix).toEqual(['pairs', 'edits']);
 		expect(compiled.drills.map((item) => item.covers)).toEqual([['pairs'], ['edits']]);
+	});
+
+	it('checks the skill a drill names against its path and its disposition', () => {
+		const make = (skill: string, disposition: 'keep' | 'exam' = 'keep'): BranchFile[] => [
+			branch('foundations', 1, [path('alpha'), path('beta')], [
+				{ questionId: 'one', disposition, path: 'alpha', skill, note: 'Teach it.' }
+			])
+		];
+		const compiled = compileCurriculum(make('alpha-b'), questions('one'));
+		expect(compiled.drills[0]).toMatchObject({ skillId: 'alpha-b' });
+		expect(() => compileCurriculum(make('beta-a'), questions('one'))).toThrow(/not on path "alpha"/);
+		expect(() => compileCurriculum(make('alpha-a', 'exam'), questions('one'))).toThrow(/only a keep or rewrite/);
 	});
 
 	it('rejects a mix on a path with two checkpoints', () => {

@@ -159,7 +159,7 @@
 						{:else if skill.drills.length === 0}
 							<p>No keep or rewrite drill is paired with this skill yet.</p>
 						{:else}
-							<p>Paired for now, in list order. This is not a lesson assignment.</p>
+							<p>Paired by the curriculum map, or by list order where it names no skill. This is not a lesson assignment.</p>
 							<ul class="facts">
 								{#each skill.drills as drill (drill.questionId)}
 									<li><code>{drill.questionId}</code> · {drill.dispositionLabel}</li>

@@ -193,6 +193,35 @@ function tree(): Curriculum {
 describe('projectCurriculum', () => {
 	const curriculum = tree();
 
+	it('puts a drill on the skill it names and pairs the others by position', () => {
+		const named: Curriculum = {
+			...curriculum,
+			drills: [
+				{ ...drill('a1q', 'alpha', 'keep'), skillId: 'a2' },
+				drill('a2q', 'alpha', 'keep'),
+				drill('a3q', 'alpha', 'keep')
+			]
+		};
+		const alpha = projectCurriculum(named, []).branches[0]!.paths[0]!;
+		expect(alpha.main.map((skill) => skill.drills.map((item) => item.questionId))).toEqual([
+			['a2q'],
+			['a3q', 'a1q']
+		]);
+	});
+
+	it('masters a skill from the drills it names, not from the last-skill pile', () => {
+		const named: Curriculum = {
+			...curriculum,
+			drills: [
+				{ ...drill('a1q', 'alpha', 'keep'), skillId: 'a1' },
+				{ ...drill('a2q', 'alpha', 'keep'), skillId: 'a2' },
+				{ ...drill('a3q', 'alpha', 'keep'), skillId: 'a2' }
+			]
+		};
+		const alpha = projectCurriculum(named, [attempt('a1q', true)]).branches[0]!.paths[0]!;
+		expect(alpha.main.map((skill) => skill.state)).toEqual(['mastered', 'unexplored']);
+	});
+
 	it('locks a converging exam while one incoming skill is unmastered, then unlocks it', () => {
 		const almost = [
 			attempt('a1q', true),
