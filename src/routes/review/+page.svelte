@@ -17,5 +17,7 @@
 <Lesson
 	{source}
 	title="Review"
-	subtitle="Questions due today, most overdue first. Each answer sets when you see it next."
+	subtitle={data.limited
+		? 'Questions due today on this skill, most overdue first. Each answer sets when you see it next.'
+		: 'Questions due today, most overdue first. Each answer sets when you see it next.'}
 />

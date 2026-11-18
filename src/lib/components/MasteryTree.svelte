@@ -174,6 +174,10 @@
 									<li><code>{drill.questionId}</code> · {drill.dispositionLabel}</li>
 								{/each}
 							</ul>
+							{#if skill.due > 0}
+								<p>{skill.due} {skill.due === 1 ? 'drill is' : 'drills are'} due for review today.</p>
+								<a class="practice" href={`${resolve('/review')}?skill=${skill.id}`}>Review this skill</a>
+							{/if}
 							{#if skill.lockedBy.length === 0}
 								{#each skill.decks as deck (deck.deckId)}
 									<a class="practice" href={resolve('/play/[deckId]', { deckId: deck.deckId })}>Practice in {deck.deckTitle}</a>
