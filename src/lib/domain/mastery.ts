@@ -1,4 +1,4 @@
-import type { Curriculum, CurriculumDrill, Disposition } from '$lib/content/curriculum';
+import type { Curriculum, CurriculumDrill, CurriculumPath, Disposition } from '$lib/content/curriculum';
 import { compareAttempts } from '$lib/storage/guards';
 import type { Attempt } from '$lib/storage/types';
 import { cardKey, countedAttempts } from './srs';
@@ -8,9 +8,10 @@ import { cardKey, countedAttempts } from './srs';
  * Change `skillState`, `pairInOrder`, and the two strings below together.
  *
  * Keep and rewrite drills are the teaching sequence. Exam drills are reserved
- * for checkpoints. Retired drills count toward neither. Drills are paired with
- * a path's skills in list order (main line, then each fork); extra drills pile
- * onto the last skill. That pairing is not a curriculum decision.
+ * for checkpoints. Retired drills count toward neither. A drill whose mapping
+ * names a `skill` belongs to it. Drills that name none are paired with the
+ * path's skills in list order (main line, then each fork); extra drills pile
+ * onto the last skill. That positional pairing is not a curriculum decision.
  *
  * A skill with no paired drill stays not started. A skill is mastered when
  * every paired drill has a counted correct attempt: the first attempt on that
@@ -30,7 +31,7 @@ import { cardKey, countedAttempts } from './srs';
  * are the only evidence that moves a skill.
  */
 export const MASTERY_RULE =
-	'Placeholder: keep and rewrite drills are paired with skills in list order. A skill is mastered when every paired drill was answered right on the first try of some day. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
+	'Placeholder: a keep or rewrite drill counts toward the skill its mapping names, or toward a skill chosen by list order when it names none. A skill is mastered when every paired drill was answered right on the first try of some day. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
 
 /**
  * PLACEHOLDER exam result. The lock itself is the real gate rule: every skill
@@ -209,10 +210,23 @@ export interface TreeView {
 	branches: readonly BranchView[];
 }
 
-function teaching(drills: readonly CurriculumDrill[], pathId: string): CurriculumDrill[] {
-	return drills.filter(
-		(drill) => drill.pathId === pathId && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
+/**
+ * A path's teaching drills grouped by skill. A drill that names its skill goes
+ * there. The rest are paired by position, as `pairInOrder` does, counting only
+ * the drills that name no skill.
+ */
+function teachingBySkill(path: CurriculumPath, drills: readonly CurriculumDrill[]): Map<string, CurriculumDrill[]> {
+	const teaching = drills.filter(
+		(drill) => drill.pathId === path.id && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
 	);
+	const paired = pairInOrder(
+		path.skills.map((skill) => skill.id),
+		teaching.filter((drill) => !drill.skillId)
+	);
+	for (const drill of teaching) {
+		if (drill.skillId) paired.get(drill.skillId)?.push(drill);
+	}
+	return paired;
 }
 
 function toDrillView(drill: CurriculumDrill, deckTitles: ReadonlyMap<string, string>): DrillView {
@@ -246,7 +260,7 @@ export function projectCurriculum(
 	const stateOf = new Map<string, SkillState>();
 	for (const branch of curriculum.branches) {
 		for (const path of branch.paths) {
-			const paired = pairInOrder(path.skills.map((skill) => skill.id), teaching(curriculum.drills, path.id));
+			const paired = teachingBySkill(path, curriculum.drills);
 			for (const skill of path.skills) {
 				stateOf.set(skill.id, skillState(paired.get(skill.id) ?? [], attempts));
 			}
@@ -276,7 +290,7 @@ export function projectCurriculum(
 
 	const branches: BranchView[] = curriculum.branches.map((branch) => {
 		const paths: PathView[] = branch.paths.map((path) => {
-			const paired = pairInOrder(path.skills.map((skill) => skill.id), teaching(curriculum.drills, path.id));
+			const paired = teachingBySkill(path, curriculum.drills);
 			const exams = curriculum.drills.filter((drill) => drill.pathId === path.id && drill.disposition === 'exam');
 			const examPaired = pairInOrder(
 				path.checkpoints.map((checkpoint) => checkpoint.id),

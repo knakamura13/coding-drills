@@ -73,6 +73,11 @@ const drillSchema = z
 		questionId: id,
 		disposition: z.enum(DISPOSITIONS),
 		path: id,
+		/**
+		 * Keep and rewrite drills only: the skill on `path` this drill teaches.
+		 * Without it, mastery pairs the drill with a skill by list position.
+		 */
+		skill: id.optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
 		note: text(400)
@@ -189,6 +194,8 @@ export interface CurriculumDrill {
 	deckId: string;
 	disposition: Disposition;
 	pathId: string;
+	/** The skill this drill teaches, when the mapping names one. */
+	skillId?: string;
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
 	note: string;
@@ -509,12 +516,21 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			if (drill.covers && drill.disposition !== 'exam') {
 				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
 			}
+			if (drill.skill) {
+				if (drill.disposition !== 'keep' && drill.disposition !== 'rewrite') {
+					throw new ContentError(`drill "${drill.questionId}" sets skill, which only a keep or rewrite drill can do`);
+				}
+				if (!compiledPaths.get(drill.path)!.skills.some((skill) => skill.id === drill.skill)) {
+					throw new ContentError(`drill "${drill.questionId}" names skill "${drill.skill}", which is not on path "${drill.path}"`);
+				}
+			}
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,
 				deckId: source.deckId,
 				disposition: drill.disposition,
 				pathId: drill.path,
+				...(drill.skill ? { skillId: drill.skill } : {}),
 				covers: dedupe(drill.covers ?? []),
 				note: drill.note
 			});
