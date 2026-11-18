@@ -563,7 +563,7 @@ describe('tap-cell lessons', () => {
 					questionId: 'read-cell',
 					pickedText: 'index 0, `3`',
 					correctText: 'index 1, `0`',
-					followUpCorrect: false
+					followUpCorrect: null
 				}
 			]
 		});

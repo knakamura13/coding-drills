@@ -399,7 +399,11 @@ export interface MissedQuestion {
 	prompt: string;
 	pickedText: string;
 	correctText: string;
-	followUpCorrect: boolean;
+	/**
+	 * Whether the follow-up was answered correctly.
+	 * Null when the question has no follow-up, such as a wrong tap.
+	 */
+	followUpCorrect: boolean | null;
 }
 
 export interface Summary {
@@ -430,21 +434,18 @@ export function summarize(state: LessonState): Summary {
 				prompt: question.prompt,
 				pickedText: cellLabel(question, Number(done.pickedId)),
 				correctText: cellLabel(question, question.correct),
-				followUpCorrect: false
+				followUpCorrect: null
 			});
 			continue;
 		}
-		const followUpCorrect = done.followUp?.correct ?? false;
-		if (done.followUp) {
-			followUpsAttempted += 1;
-			if (followUpCorrect) followUpsCorrect += 1;
-		}
+		if (done.followUp?.correct) followUpsCorrect += 1;
+		if (done.followUp) followUpsAttempted += 1;
 		missed.push({
 			questionId: question.id,
 			prompt: question.prompt,
 			pickedText: question.options.find((option) => option.id === done.pickedId)!.text,
 			correctText: question.options.find((option) => option.id === question.correct)!.text,
-			followUpCorrect
+			followUpCorrect: done.followUp ? done.followUp.correct : null
 		});
 	}
 	return {

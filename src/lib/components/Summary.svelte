@@ -62,9 +62,11 @@
 							<Icon name="check-circle" size={20} />
 							<span>Answer <strong><Markdown source={miss.correctText} inline /></strong></span>
 						</p>
-						<p class="followup" class:got-it={miss.followUpCorrect}>
-							Follow-up: {miss.followUpCorrect ? 'right' : 'missed'}
-						</p>
+						{#if miss.followUpCorrect !== null}
+							<p class={['followup', { 'got-it': miss.followUpCorrect }]}>
+								Follow-up: {miss.followUpCorrect ? 'right' : 'missed'}
+							</p>
+						{/if}
 					</li>
 				{/each}
 			</ul>
