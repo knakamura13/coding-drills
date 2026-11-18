@@ -73,6 +73,42 @@ describe('placeholder skill state', () => {
 	});
 });
 
+describe('mastery decay', () => {
+	const drills = [
+		{ deckId: 'deck', questionId: 'a' },
+		{ deckId: 'deck', questionId: 'b' }
+	];
+	const mastered = [attempt('a', true, '2026-01-01', 'a1'), attempt('b', true, '2026-01-01', 'b1')];
+
+	it('drops a mastered skill back to practicing after a later miss, and restores it after a later right answer', () => {
+		expect(skillState(drills, mastered)).toBe('mastered');
+		const missed = [...mastered, attempt('a', false, '2026-01-05', 'a2')];
+		expect(skillState(drills, missed)).toBe('practicing');
+		const restored = [...missed, attempt('a', true, '2026-01-09', 'a3')];
+		expect(skillState(drills, restored)).toBe('mastered');
+	});
+
+	it('goes by the latest counted attempt, not the order the log was written in', () => {
+		const shuffledLog = [attempt('a', true, '2026-01-09', 'a3'), attempt('a', false, '2026-01-05', 'a2'), ...mastered];
+		expect(skillState(drills, shuffledLog)).toBe('mastered');
+	});
+
+	it('does not let a same-day second attempt change the counted result', () => {
+		const sameDayMiss = [...mastered, attempt('a', true, '2026-01-05', 'first'), attempt('a', false, '2026-01-05', 'second')];
+		expect(skillState(drills, sameDayMiss)).toBe('mastered');
+	});
+
+	it('locks an exam that has not been passed when a skill decays, and keeps a passed one', () => {
+		const curriculum = tree();
+		const skills = ['a1q', 'a2q', 'b1q', 'forkq'].map((id, index) => attempt(id, true, `2026-01-0${index + 1}`, id));
+		expect(projectCurriculum(curriculum, skills).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
+		const decayed = [...skills, attempt('b1q', false, '2026-02-01', 'late-miss')];
+		expect(projectCurriculum(curriculum, decayed).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
+		const passed = [...decayed, attempt('beta-exam-q', true, '2026-02-02', 'exam')];
+		expect(projectCurriculum(curriculum, passed).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
+	});
+});
+
 describe('labels', () => {
 	it('names each disposition', () => {
 		const names: Disposition[] = ['keep', 'rewrite', 'exam', 'retire'];

@@ -14,25 +14,25 @@ import { cardKey, countedAttempts } from './srs';
  * path's skills in list order (main line, then each fork); extra drills pile
  * onto the last skill. That positional pairing is not a curriculum decision.
  *
- * A skill with no paired drill stays not started. A skill is mastered when
- * every paired drill has a counted correct attempt: the first attempt on that
- * question for some day was right. Any other attempt on a paired drill means
- * the skill is being practiced.
+ * A skill with no paired drill stays not started. A skill is mastered while
+ * every paired drill's latest counted attempt was right: the first attempt on
+ * that question on its most recent day. A miss on any paired drill drops the
+ * skill back to practicing, and a later right answer restores it. Nothing is
+ * stored: the log is replayed on each read, so every device agrees.
  *
  * The evidence is an attempt the log can count. Today that attempt is a
  * multiple-choice question. A richer lesson (#18) can feed `skillState` once
  * it writes an attempt, or replace the drill list here, without `examGate`
  * learning the lesson format.
  *
- * Recency is ignored, so one old correct attempt masters the skill for good.
- * Review decay (#19) belongs in `skillState`: drop the skill out of the
- * mastered set and every exam that requires it locks again, including one
- * that had passed. Whether a passed exam should stay passed is not decided.
- * Quizzes (#20) are not a node and not a disposition. Keep and rewrite drills
+ * Decay is by recent miss only. Decay by time alone (a drill left unreviewed
+ * far past its interval) is not decided. A skill that leaves the mastered set
+ * locks an exam that has not been passed. A passed exam stays passed
+ * (`examGate`). Quizzes (#20) are not a node and not a disposition. Keep and rewrite drills
  * are the only evidence that moves a skill.
  */
 export const MASTERY_RULE =
-	'Placeholder: a keep or rewrite drill counts toward the skill its mapping names, or toward a skill chosen by list order when it names none. A skill is mastered when every paired drill was answered right on the first try of some day. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
+	'Placeholder: a keep or rewrite drill counts toward the skill its mapping names, or toward a skill chosen by list order when it names none. A skill is mastered while the latest first-try-of-the-day answer on every paired drill was right, so a later miss drops it back to practicing. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
 
 /**
  * The lock is the gate rule: every skill in `requires` must be mastered,
@@ -108,27 +108,24 @@ interface DrillRef {
 	questionId: string;
 }
 
-function attemptKeys(drills: readonly DrillRef[], attempts: readonly Attempt[]): { correct: Set<string>; seen: Set<string> } {
+/** For each wanted drill that has a counted attempt: whether the latest one was right. */
+function latestResults(drills: readonly DrillRef[], attempts: readonly Attempt[]): Map<string, boolean> {
 	const wanted = new Set(drills.map((drill) => cardKey(drill.deckId, drill.questionId)));
-	const correct = new Set<string>();
-	const seen = new Set<string>();
-	const ordered = [...attempts].sort(compareAttempts);
-	for (const attempt of countedAttempts(ordered)) {
+	const latest = new Map<string, boolean>();
+	for (const attempt of countedAttempts([...attempts].sort(compareAttempts))) {
 		const key = cardKey(attempt.deckId, attempt.questionId);
-		if (!wanted.has(key)) continue;
-		seen.add(key);
-		if (attempt.correct) correct.add(key);
+		if (wanted.has(key)) latest.set(key, attempt.correct);
 	}
-	return { correct, seen };
+	return latest;
 }
 
 /** Placeholder skill state. See `MASTERY_RULE`. */
 export function skillState(drills: readonly DrillRef[], attempts: readonly Attempt[]): SkillState {
 	if (drills.length === 0) return 'unexplored';
-	const { correct, seen } = attemptKeys(drills, attempts);
+	const latest = latestResults(drills, attempts);
 	const keys = drills.map((drill) => cardKey(drill.deckId, drill.questionId));
-	if (keys.every((key) => correct.has(key))) return 'mastered';
-	if (keys.some((key) => seen.has(key))) return 'practicing';
+	if (keys.every((key) => latest.get(key) === true)) return 'mastered';
+	if (keys.some((key) => latest.has(key))) return 'practicing';
 	return 'unexplored';
 }
 
