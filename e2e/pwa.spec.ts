@@ -30,6 +30,15 @@ test.describe('installable and offline', () => {
 		expect(await response.json()).toContain(deck.id);
 	});
 
+	test('opening the installed app while already offline shows the indicator', async ({ page, context }) => {
+		await page.goto('/');
+		await waitForOfflineReady(page, '/');
+		await context.setOffline(true);
+		// A fresh document does not get an offline event; the badge has to read navigator.onLine.
+		await page.reload();
+		await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+	});
+
 	test('the service worker takes control and the app keeps working with no connection', async ({ page, context }) => {
 		await page.goto('/');
 		await waitForOfflineReady(page, DECK_URL);
