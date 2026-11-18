@@ -1,0 +1,514 @@
+id: feasible-limits
+title: Feasible limits
+description: Test one limit, find where the answers turn from no to yes, and shrink the range of limits. Each card opens with a worked example, then asks for one decision.
+heading: What happens next?
+
+questions:
+  - id: pack-one-limit
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search, greedy]
+    prompt: >-
+      **Worked example:** `sessions([3, 5, 4, 2], 8)` puts 3 and 5 in the first session. Their load
+      is exactly 8, which fits, since the test is `>`. Adding 4 would make 12, so a second session
+      opens at the 4 and takes the 2 as well. The call returns 2. Now the limit is 10 and `d = 3`.
+      Predict each step before it is shown.
+    code: |
+      def sessions(sizes, x):
+          count, load = 1, 0
+          for i, s in enumerate(sizes):
+              if load + s > x:
+                  count += 1
+                  load = 0
+              load += s
+          return count
+
+      sessions([6, 2, 5, 4, 3, 7, 1], 10)
+    sequence:
+      kind: array
+      name: sizes
+      cells: [6, 2, 5, 4, 3, 7, 1]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: At which `i` does `count` become 2?
+        pointer: i
+        correct: 2
+        explanation: >-
+          6 + 2 = 8 is within 10. Adding the 5 would make 13, more than 10, so the second session
+          opens at index 2.
+        misses:
+          - index: 1
+            explanation: 6 + 2 = 8, which is at most 10, so the 2 joins the first session.
+          - index: 3
+            explanation: >-
+              The test runs before a file is added. At the 5 the load is 8, and 8 + 5 = 13 is over
+              10, so the session closes before the 5.
+        elsewhere: The first session holds 6 and 2, a load of 8. The 5 would push it to 13, so a new session opens at index 2.
+      - line: 4
+        ask: At which `i` does `count` become 3?
+        pointer: i
+        correct: 4
+        explanation: >-
+          The second session holds 5 and 4, a load of 9. Adding the 3 would make 12, so the third
+          session opens at index 4.
+        misses:
+          - index: 3
+            explanation: 5 + 4 = 9 is within 10, so the 4 stays in the second session.
+          - index: 5
+            explanation: >-
+              The load is 9 when the pass reaches the 3, and 9 + 3 = 12 is over 10. So the 3
+              already starts a new session.
+        elsewhere: The second session is 5 and 4, a load of 9. The 3 would make 12, so a new session opens at index 4.
+      - line: 4
+        ask: At which `i` does `count` become 4?
+        pointer: i
+        correct: 6
+        explanation: >-
+          3 + 7 = 10 is not more than 10, so the 7 fits. Adding the 1 would make 11, so the fourth
+          session opens at index 6.
+        misses:
+          - index: 5
+            explanation: >-
+              3 + 7 = 10 is not more than 10, so the 7 fits. A load equal to the limit is allowed.
+        elsewhere: The third session holds 3 and 7, exactly 10. Only the 1 pushes it over.
+      - line: 8
+        ask: What does the call return, and is 10 a feasible limit for `d = 3`?
+        options:
+          - id: four-no
+            text: 4, so 10 is not feasible
+            explanation: >-
+              Four sessions: [6, 2], [5, 4], [3, 7] and [1]. `d = 3` allows three, so 10 is too
+              small, although the sizes add up to only 28.
+          - id: three-yes
+            text: 3, so 10 is feasible
+            explanation: >-
+              `count` starts at 1 and rose three times, at indices 2, 4 and 6. So it ends at 4,
+              not 3.
+          - id: four-total
+            text: "4, but 10 is feasible since 28 <= 3 * 10"
+            explanation: >-
+              28 <= 30 would hold if files could be split across sessions. They can't, and they
+              stay in order, so the pass's count of 4 decides.
+        correct: four-no
+
+  - id: file-over-limit
+    heading: Is this limit feasible?
+    tags: [binary-search, greedy]
+    prompt: |-
+      **Worked example:** with `sizes = [6, 3, 8]` and `x = 9`, the pass packs [6, 3] and then
+      [8], so `sessions` returns 2, and 9 is feasible for `d = 2`.
+
+      ```python
+      def sessions(sizes, x):
+          count, load = 1, 0
+          for s in sizes:
+              if load + s > x:
+                  count += 1
+                  load = 0
+              load += s
+          return count
+      ```
+
+      Now `sizes = [5, 13, 4, 6]`, `d = 3` and `x = 12`. `sessions(sizes, 12)` returns 3. Is 12
+      a feasible limit?
+    options:
+      - id: too-big-file
+        text: No. The 13 file is larger than 12, so no session can hold it
+        explanation: >-
+          A limit is feasible only when every session's load is at most `x`. The pass put the 13
+          in a session of its own with a load of 13 and counted it anyway. `sessions` assumes
+          each file fits by itself, which is why a search for the limit starts at `max(sizes)`.
+      - id: trust-count
+        text: Yes. `sessions` returns 3, which is at most `d`
+        explanation: >-
+          The count means something only when each file fits. Here the second session holds the
+          13 alone, a load of 13 under a limit of 12.
+      - id: total-fits
+        text: Yes. The total, 28, is at most 3 × 12 = 36
+        explanation: >-
+          That treats the files as if they could be split. A file larger than the limit can't be
+          placed anywhere, whatever the total.
+      - id: split-file
+        text: No. The 13 needs two sessions, so it takes 4
+        explanation: >-
+          Files can't be split, so the 13 never spreads over two sessions. 12 fails because the
+          13 can't fit at all, not because of a count.
+    correct: too-big-file
+    followUps:
+      trust-count:
+        prompt: The pass reaches the 13 with a load of 5. What does it do?
+        options:
+          - id: own-session
+            text: It opens a new session holding just the 13, and never compares 13 with `x`
+          - id: skips
+            text: It skips the 13, since it can't fit
+          - id: splits
+            text: It puts 7 of the 13 in the first session and the rest in the next
+        correct: own-session
+        explanation: >-
+          `load = 0` and then `load += s` admit the file whatever its size. So the count can look
+          fine while one session is over the limit. A file larger than `x` makes `x` infeasible.
+      total-fits:
+        prompt: "`sum(sizes) <= d * x` holds at 12. What does that test leave out?"
+        options:
+          - id: whole-files
+            text: That each file must fit, whole, inside one session
+          - id: rounding
+            text: Rounding. The total should be divided by `d` and rounded up
+          - id: order-only
+            text: The order of the files, which matters only when the total is too big
+        correct: whole-files
+        explanation: >-
+          The total test only says the load could fit if it were spread evenly. Feasibility needs
+          a real packing in which every session, file by file, stays at most `x`.
+      split-file:
+        prompt: Can one file be spread over two sessions?
+        options:
+          - id: never-split
+            text: No. Each file goes whole into a single session
+          - id: when-large
+            text: Yes, when it is larger than the limit
+          - id: when-adjacent
+            text: Yes, if the two sessions are next to each other
+        correct: never-split
+        explanation: >-
+          Files are indivisible. A file larger than `x` doesn't cost an extra session: it makes `x`
+          impossible. So every feasible limit is at least the largest file.
+
+  - id: larger-limit-fits
+    heading: What follows from one result?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** for `sizes = [5, 3, 6, 2]` and `d = 2`, the pass needs 4 sessions at
+      limits 6 and 7, then 2 at every limit from 8 to 15. Asked "at most 2 sessions?", the limits
+      answer no, no, yes, yes, and so on, and never turn back to no.
+
+      Now another list, with `d = 3`: `sessions(sizes, 14)` returns 3. Without running it, what
+      can you say about the limit 15?
+    options:
+      - id: also-fits
+        text: "15 is feasible too: a larger limit never needs more sessions"
+        explanation: >-
+          The three sessions that work under 14 work just as well under 15, so 15 needs at most 3.
+          Once a limit is feasible, every larger one is. That is why the answers flip from no to
+          yes exactly once, and why a search can discard half the limits per probe.
+      - id: must-run
+        text: "Nothing yet: the grouping at 15 can differ, so it has to be run"
+        explanation: >-
+          The groups can differ, but their number can't grow. A pass at 15 fills each session at
+          least as far as the pass at 14 did.
+      - id: one-answer
+        text: 15 is not feasible, because only one limit is the answer
+        explanation: >-
+          The answer is the smallest feasible limit. Larger limits are feasible too. They are just
+          not the smallest.
+      - id: exact-total
+        text: 15 is feasible only if some run of files adds up to exactly 15
+        explanation: >-
+          A session's load must stay within the limit. It doesn't have to reach it, so the
+          sessions that work under 14 need no change.
+    correct: also-fits
+    followUps:
+      must-run:
+        prompt: >-
+          At 14 the pass made three sessions, each with a load of at most 14. Do those same three
+          sessions fit under 15?
+        options:
+          - id: same-sessions
+            text: Yes. A load that is at most 14 is also at most 15
+          - id: repacked
+            text: Not necessarily, since the pass at 15 packs differently
+          - id: only-full
+            text: Only the sessions whose load is exactly 14
+        correct: same-sessions
+        explanation: >-
+          One packing that works is enough to show a limit is feasible. Keeping the packing from 14
+          proves 15 needs at most 3 sessions, without running anything.
+      one-answer:
+        prompt: What is the difference between a feasible limit and the answer?
+        options:
+          - id: smallest-of-them
+            text: Every limit that fits is feasible, and the answer is the smallest of them
+          - id: only-one
+            text: There is only one feasible limit, and it is the answer
+          - id: largest-of-them
+            text: The answer is the largest feasible limit
+        correct: smallest-of-them
+        explanation: >-
+          The feasible limits form a run that goes on upward. The search looks for where that run
+          starts.
+      exact-total:
+        prompt: Must a session's load equal the limit?
+        options:
+          - id: cap
+            text: No. The limit is a cap that a session's load may stay under
+          - id: target
+            text: Yes, or else the limit is too big
+          - id: last-only
+            text: Only the last session's load must
+        correct: cap
+        explanation: >-
+          The answer often equals one session's load, because it is the smallest cap that works.
+          Larger caps work too, without matching any load.
+
+  - id: first-within-d
+    format: tap-cell
+    heading: Tap the smallest feasible limit
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** if `needs = [6, 4, 3, 3]` lists the sessions needed at limits 20 to 23
+      and `d = 3`, the first entry that is at most 3 is `needs[2]`, so 22 is the smallest feasible
+      limit. Below, `needs[i]` is the count at limit `9 + i`, and `d = 4`. Tap the entry for the
+      smallest feasible limit.
+    code: |
+      sizes = [3, 2, 6, 5, 9, 6]
+      d = 4
+      needs = [sessions(sizes, x) for x in range(9, 17)]
+      # needs == [5, 5, 4, 4, 4, 3, 3, 2]
+    sequence:
+      kind: array
+      name: needs
+      cells: [5, 5, 4, 4, 4, 3, 3, 2]
+    correct: 2
+    explanation: >-
+      `needs[2]` is the count at limit 11: [3, 2, 6], [5], [9] and [6], four sessions, so 11 fits.
+      At 10 the pass needs 5. The answers turn from no to yes here, so 11 is the smallest feasible
+      limit.
+    misses:
+      - index: 0
+        explanation: "`needs[0]` is 5 at limit 9, more than `d = 4`, so 9 fails."
+      - index: 1
+        explanation: Limit 10 needs 5 sessions, one more than `d` allows.
+      - index: 3
+        explanation: Limit 12 fits, but so does 11, one cell earlier. The answer is the first limit that fits.
+      - index: 4
+        explanation: >-
+          Limit 13 is the last that needs exactly 4. The test is "at most `d`", so the answer is
+          the first limit with 4 or fewer, not the last with exactly 4.
+      - index: 5
+        explanation: >-
+          Limit 14 is the first that needs fewer than 4. Fewer than `d` sessions is allowed but not
+          required, so a smaller limit already fits.
+      - index: 6
+        explanation: Limit 15 fits, but so do three smaller limits.
+      - index: 7
+        explanation: >-
+          Limit 16 needs the fewest sessions. The question asks for the smallest limit that fits,
+          not for the fewest sessions.
+
+  - id: upper-bound
+    heading: Which `hi` is safe?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** every session must hold the largest file, so no limit below
+      `max(sizes)` is feasible. That makes `lo = max(sizes)` the bottom of the range.
+
+      ```python
+      lo, hi = max(sizes), ...  # which hi?
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if sessions(sizes, mid) <= d:
+              hi = mid
+          else:
+              lo = mid + 1
+      print(lo)
+      ```
+
+      This loop never probes `hi` itself, so `hi` must be a limit that is sure to fit. For
+      `sizes = [3, 5, 2, 4, 5, 1, 4, 3]` and `d = 2` the answer is 14. Which `hi` is safe for
+      every list and every `d`?
+    options:
+      - id: total
+        text: "`sum(sizes)`"
+        explanation: >-
+          A single session that holds every file has a load of `sum(sizes)`, so that limit needs
+          one session and fits any `d` of at least 1. Here the loop searches 5 to 27 and prints 14.
+      - id: even-split
+        text: "`sum(sizes) // d`"
+        explanation: >-
+          That is the even split, 13 here, and the answer is above it whenever the files can't
+          be divided evenly. The loop never probes `hi`, so it prints 13, which needs 3 sessions.
+      - id: max-times-d
+        text: "`max(sizes) * d`"
+        explanation: >-
+          That is 10 here. With many small files the answer can be far above it. The loop prints
+          10, which needs 3 sessions.
+      - id: largest
+        text: "`max(sizes)`"
+        explanation: >-
+          Then `lo == hi` before the loop starts, and it prints 5 without a single probe. Here a
+          limit of 5 needs 7 sessions.
+    correct: total
+    followUps:
+      even-split:
+        prompt: Why can the answer be larger than `sum(sizes) / d`?
+        options:
+          - id: whole-in-order
+            text: Files are whole and stay in order, so the loads usually can't be made equal
+          - id: rounding-fix
+            text: Only because `//` rounds down. Rounding up would always be safe
+          - id: never-larger
+            text: It can't. The answer is always the even split
+        correct: whole-in-order
+        explanation: >-
+          The even split is the best case, so it is a lower bound on the answer, not an upper one.
+          Only a limit known to fit, such as the total, is safe as `hi`.
+      max-times-d:
+        prompt: Can the answer be more than `d` times the largest file?
+        options:
+          - id: many-files
+            text: Yes. Ten files of size 5 with `d = 2` need a limit of 25, not 10
+          - id: always-covers
+            text: No. `d` sessions of the largest size always hold every file
+          - id: out-of-order
+            text: Only when the files are out of order
+        correct: many-files
+        explanation: >-
+          `d` sessions of size `max(sizes)` hold at most `d * max(sizes)` in total, which can be
+          less than the sum of the files. The total is the bound that fits every list.
+      largest:
+        prompt: With `hi = max(sizes)`, when is the printed limit right?
+        options:
+          - id: max-already-fits
+            text: Only when `sessions(sizes, max(sizes))` is already at most `d`
+          - id: always
+            text: Always, since the answer is one of the file sizes
+          - id: largest-first
+            text: Whenever the largest file comes first
+        correct: max-already-fits
+        explanation: >-
+          Starting with `lo == hi` skips the search, so the loop prints `max(sizes)` whether or not
+          it fits. The answer can be as large as the total, so `hi` has to start there.
+
+  - id: passing-probe
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** with candidates 40 to 47, the probe `mid = 43` fails. Then every limit up
+      to 43 fails too, so `lo = 44`, and `hi` stays. Here the cells are the candidate limits 15 to
+      22, and the first probe passes: `sessions(sizes, 18) <= d`. Drag `lo` and `hi` to where they
+      sit after this pass.
+    code: |
+      lo, hi = 15, 22
+      while lo < hi:
+          mid = (lo + hi) // 2      # 18
+          if sessions(sizes, mid) <= d:
+              hi = mid
+          else:
+              lo = mid + 1
+    sequence:
+      kind: array
+      name: limits
+      cells: [15, 16, 17, 18, 19, 20, 21, 22]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 0
+        explanation: A passing probe says nothing new about the limits below 18, so `lo` stays on 15.
+        misses:
+          - index: 4
+            explanation: That is `mid + 1`, the update for a failing probe. This probe passed.
+        elsewhere: Only a failing probe moves `lo`. This one passed.
+      - name: hi
+        start: 7
+        correct: 3
+        explanation: >-
+          18 fits, so 19 to 22 fit too, and none of them can be the smallest. 18 itself might be
+          the answer, so `hi = mid` keeps it.
+        misses:
+          - index: 2
+            explanation: >-
+              That is `mid - 1`. 18 fits and could be the smallest limit that does, so dropping it
+              can skip the answer.
+          - index: 7
+            explanation: A passing probe moves `hi`. Every limit above 18 is now ruled out as the smallest.
+        elsewhere: "`hi = mid` puts `hi` on the probe, 18."
+
+  - id: trace-limit-search
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search]
+    prompt: >-
+      **Worked example:** on the candidates 30 to 33, where every limit from 31 up fits, the probe
+      31 passes (`hi = 31`), then 30 fails (`lo = 31`), and the loop prints 31. Here the cells are
+      the limits 12 to 19, and `sessions(sizes, x) <= d` holds for every `x` from 16 up. Predict
+      each step before it is shown.
+    code: |
+      lo, hi = 12, 19
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if sessions(sizes, mid) <= d:
+              hi = mid
+          else:
+              lo = mid + 1
+      print(lo)
+    sequence:
+      kind: array
+      name: limits
+      cells: [12, 13, 14, 15, 16, 17, 18, 19]
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 3
+        ask: What is `mid` on the first pass, and does it fit?
+        options:
+          - id: fifteen-fails
+            text: 15, and it fails
+            explanation: (12 + 19) // 2 is 15, and only the limits from 16 up fit.
+          - id: sixteen-fits
+            text: 16, and it fits
+            explanation: (12 + 19) / 2 is 15.5, and `//` rounds it down to 15.
+          - id: fifteen-fits
+            text: 15, and it fits
+            explanation: The limits fit from 16 up, so 15 is one short.
+        correct: fifteen-fails
+      - line: 7
+        ask: Where does `lo` sit after the first pass?
+        pointer: lo
+        correct: 4
+        explanation: 15 failed, so every limit up to 15 fails, and `lo = mid + 1` puts `lo` on 16.
+        misses:
+          - index: 3
+            explanation: "`lo = mid` would keep 15, which just failed. The update is `mid + 1`."
+          - index: 0
+            explanation: A failing probe moves `lo` past it.
+        elsewhere: 15 failed, so `lo = mid + 1 = 16`.
+      - line: 5
+        ask: Where does `hi` sit after the second pass?
+        pointer: hi
+        correct: 5
+        explanation: "`mid` is (16 + 19) // 2 = 17, which fits, so `hi = mid` puts `hi` on 17."
+        misses:
+          - index: 4
+            explanation: That is `mid - 1`. 17 fits and could be the answer, so `hi = mid` keeps it.
+          - index: 7
+            explanation: The probe at 17 fits, so `hi` moves down onto it.
+        elsewhere: "`mid` is (16 + 19) // 2 = 17. It fits, so `hi = 17`."
+      - line: 5
+        ask: Where does `hi` sit after the third pass?
+        pointer: hi
+        correct: 4
+        explanation: "`mid` is (16 + 17) // 2 = 16, which fits, so `hi` moves onto 16."
+        misses:
+          - index: 5
+            explanation: The probe at 16 fits as well, so `hi` moves again.
+        elsewhere: "`mid` is 16, which fits, so `hi = 16`."
+      - line: 8
+        ask: What does the loop print?
+        options:
+          - id: sixteen
+            text: '16'
+            explanation: >-
+              `lo == hi == 16`, so the loop stops. Three probes found the first limit that fits,
+              out of eight candidates.
+          - id: seventeen
+            text: '17'
+            explanation: 17 fits, but the third pass showed that 16 fits too.
+          - id: fifteen
+            text: '15'
+            explanation: 15 failed on the first pass, so it can't be the answer.
+        correct: sixteen
