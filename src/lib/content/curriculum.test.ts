@@ -197,20 +197,23 @@ describe('shipped curriculum', () => {
 		]);
 	});
 
-	it('puts every Arrays and strings, Pointer scans and Exact search teaching drill on a skill, each skill with several', () => {
-		for (const pathId of ['arrays-and-strings', 'pointer-scans', 'exact-search']) {
+	it('puts every teaching drill drafted for a path on one of its skills, each skill with several', () => {
+		// A path is drafted once any of its drills names a skill. Audited drills that predate skill ids
+		// stay positional, so they are skipped (for example the rewrites a new drill replaces).
+		const drafted = new Set(curriculum.drills.filter((drill) => drill.skillId).map((drill) => drill.pathId));
+		expect([...drafted]).toEqual(expect.arrayContaining(['arrays-and-strings', 'pointer-scans']));
+		for (const pathId of drafted) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const teaching = curriculum.drills.filter(
 				(drill) => drill.pathId === pathId && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
 			);
 			const perSkill = new Map(item.skills.map((skill) => [skill.id, 0]));
 			for (const drill of teaching) {
-				// Audited rewrites that predate skill ids. Mastery pairs them by position.
-				if (drill.questionId === 'slow-fast-keep-distinct' || drill.questionId === 'binary-search-preconditions') continue;
+				if (AUDITED_DECKS.has(drill.deckId) && !drill.skillId) continue;
 				expect(perSkill.has(drill.skillId ?? ''), drill.questionId).toBe(true);
 				perSkill.set(drill.skillId!, perSkill.get(drill.skillId!)! + 1);
 			}
-			for (const [skillId, count] of perSkill) expect(count, skillId).toBeGreaterThanOrEqual(3);
+			for (const [skillId, count] of perSkill) expect(count, `${pathId}/${skillId}`).toBeGreaterThanOrEqual(3);
 		}
 	});
 
