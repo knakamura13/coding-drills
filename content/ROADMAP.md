@@ -135,3 +135,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Recursive calls: teaching levels | `recursive-calls` | in review |
 | Problem-solving patterns #14 | Recursive calls: review variants | `recursive-calls-review` | in review |
 | Problem-solving patterns #14 | Recursive calls: checkpoint | `recursive-calls-checkpoint` | in review |
+| Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
+| Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
+| Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |

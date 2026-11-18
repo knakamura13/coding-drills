@@ -1,0 +1,611 @@
+id: priority-order-review
+title: "Priority order: review"
+description: Fresh inputs for the Priority order skills, for recall on later days. No worked examples this time.
+heading: What comes out next?
+
+questions:
+  - id: deque-or-heap-review
+    heading: What does this print?
+    tags: [queue, heap, python]
+    prompt: |-
+      ```python
+      from collections import deque
+      from heapq import heappush, heappop
+
+      q, h = deque(), []
+      for x in [5, 8, 1, 7]:
+          q.append(x)
+          heappush(h, x)
+      print(q.popleft(), heappop(h))
+      ```
+
+      What does this print?
+    options:
+      - id: oldest-and-smallest
+        text: "`5 1`"
+        explanation: >-
+          The deque hands back the value that arrived first, 5. The heap hands back the smallest,
+          1. Same input, different rule.
+      - id: both-smallest
+        text: "`1 1`"
+        explanation: >-
+          The heap's half is right, but a deque never compares values. It hands back whatever has
+          waited longest.
+      - id: both-oldest
+        text: "`5 5`"
+        explanation: >-
+          The deque's half is right, but `heappop` does not follow arrival order. It compares the
+          values in the heap.
+      - id: newest
+        text: "`7 1`"
+        explanation: >-
+          7 arrived last. `popleft` removes from the other side of the deque, so the value that
+          arrived first comes out.
+    correct: oldest-and-smallest
+    followUps:
+      both-smallest:
+        prompt: After appending 5, 8, 1, 7, which value does `q.popleft()` return?
+        options:
+          - id: appended-first
+            text: 5, the value appended first
+          - id: smallest
+            text: 1, the smallest value
+          - id: appended-last
+            text: 7, the value appended last
+        correct: appended-first
+        explanation: >-
+          A deque used with `append` and `popleft` is a FIFO queue. It hands values back in the
+          order they arrived and never looks at their size.
+      both-oldest:
+        prompt: After pushing 5, 8, 1, 7, which value does `heappop(h)` return?
+        options:
+          - id: smallest
+            text: 1, the smallest value
+          - id: pushed-first
+            text: 5, the value pushed first
+          - id: largest
+            text: 8, the largest value
+        correct: smallest
+        explanation: >-
+          `heapq` keeps the smallest value at `h[0]`, and `heappop` removes that one. Push order
+          does not matter.
+      newest:
+        prompt: Which end of a deque does `popleft` take from?
+        options:
+          - id: left
+            text: The left end, where the oldest item waits
+          - id: right
+            text: The right end, where the newest item waits
+          - id: smaller
+            text: Whichever end holds the smaller value
+        correct: left
+        explanation: >-
+          `append` adds on the right and `popleft` removes on the left, so items leave in the order
+          they came. `pop()` would take the newest item from the right.
+
+  - format: drag-pointers
+    id: next-out-drag-review
+    heading: Which value leaves next?
+    tags: [queue, heap, python]
+    prompt: >-
+      A deque and a heap are both fed `arrivals`, and each has already handed out two values. Drag
+      `q` to the value the deque hands out next, and `h` to the value the heap hands out next.
+    code: |
+      from collections import deque
+      from heapq import heappush, heappop
+
+      arrivals = [4, 9, 2, 7, 5, 3]
+      q, h = deque(), []
+      for x in arrivals:
+          q.append(x)
+          heappush(h, x)
+      for _ in range(2):
+          q.popleft()
+          heappop(h)
+    sequence:
+      kind: array
+      name: arrivals
+      cells: [4, 9, 2, 7, 5, 3]
+    pointers:
+      - name: q
+        start: 0
+        correct: 2
+        explanation: >-
+          The deque handed out 4 and 9, the two oldest values. The next oldest is the 2 at index 2.
+        misses:
+          - index: 0
+            explanation: 4 was the first value the deque handed out. `popleft` removed it.
+          - index: 1
+            explanation: 9 was the second value the deque handed out.
+          - index: 5
+            explanation: 3 arrived last. A deque hands out the oldest value left, not the newest.
+        elsewhere: The deque hands out values in arrival order. Two are gone, so the next is index 2.
+      - name: h
+        start: 5
+        correct: 0
+        explanation: >-
+          The heap handed out 2 and then 3, the two smallest values. Of 4, 9, 7 and 5, the smallest
+          is the 4 at index 0.
+        misses:
+          - index: 2
+            explanation: 2 was the heap's first pop, so it is no longer in the heap.
+          - index: 5
+            explanation: 3 was the heap's second pop, so it is no longer in the heap.
+          - index: 4
+            explanation: 5 comes right after 4 in size. 4 has not been popped yet, so it comes first.
+          - index: 1
+            explanation: 9 is the largest. The heap hands out the smallest value left.
+        elsewhere: The heap hands out the smallest value left. 2 and 3 are gone, so 4 is next.
+
+  - id: which-rule-needs-priority-review
+    heading: Which rule needs a priority queue?
+    tags: [queue, heap]
+    prompt: Which rule calls for a priority queue, rather than a FIFO queue or a stack?
+    options:
+      - id: deadline
+        text: Run the job with the earliest deadline first
+        explanation: >-
+          Deadlines are not tied to arrival. A job that arrives later can be due sooner, so
+          something has to compare deadlines each time, which is what a priority queue does.
+      - id: order-sent
+        text: Print documents in the order they were sent
+        explanation: Order sent is arrival order, and handing items out in arrival order needs no comparison.
+      - id: undo
+        text: Undo the most recent edit first
+        explanation: >-
+          The most recent item first is last in, first out. Nothing has to be compared, since the
+          newest edit is always the one on top.
+      - id: tickets
+        text: Serve the lowest ticket number, with tickets numbered as people arrive
+        explanation: >-
+          Tickets numbered in arrival order make the lowest number the earliest arrival. A priority
+          queue would work, but it compares numbers that are already in order.
+    correct: deadline
+    followUps:
+      order-sent:
+        prompt: Documents print in the order they were sent. Which structure gives that order directly?
+        options:
+          - id: fifo
+            text: A FIFO queue, which hands items out in arrival order
+          - id: by-size
+            text: A priority queue keyed on document size
+          - id: stack
+            text: A stack, so the newest document prints first
+        correct: fifo
+        explanation: >-
+          Arrival order is first in, first out. A `deque` with `append` and `popleft` gives it in
+          O(1) per document, with no comparisons.
+      undo:
+        prompt: Undo reverses the latest edit, then the one before it. Which structure fits?
+        options:
+          - id: stack
+            text: A stack, where the last edit in is the first out
+          - id: by-length
+            text: A priority queue keyed on edit length
+          - id: fifo
+            text: A FIFO queue, where the first edit in is the first out
+        correct: stack
+        explanation: >-
+          Undo walks backwards through time, newest first. A list with `append` and `pop()` does
+          that without comparing anything.
+      tickets:
+        prompt: Tickets are numbered 1, 2, 3 and so on as people arrive. In what order does a FIFO queue serve them?
+        options:
+          - id: lowest-first
+            text: Lowest number first, the same as the rule
+          - id: highest-first
+            text: Highest number first
+          - id: no-order
+            text: In no fixed order
+        correct: lowest-first
+        explanation: >-
+          The first person to arrive holds ticket 1, the next holds 2, and so on. Serving in
+          arrival order already serves the lowest number first.
+
+  - format: tap-cell
+    id: heapify-root-review
+    heading: Which value is the root?
+    tags: [heap, python]
+    prompt: >-
+      The cells show `nums` before the call. Which value does `nums[0]` hold after
+      `heapify(nums)`? Tap it.
+    code: |
+      from heapq import heapify
+
+      nums = [9, 4, 7, 1, 8]
+      heapify(nums)
+      print(nums[0])
+    sequence:
+      kind: array
+      name: nums
+      cells: [9, 4, 7, 1, 8]
+    correct: 3
+    explanation: >-
+      `heapify` rearranges the list in place so the smallest value sits at index 0. That is 1, so
+      the code prints 1. The list becomes `[1, 4, 7, 9, 8]`.
+    misses:
+      - index: 0
+        explanation: >-
+          9 is first and also the largest, and `heapify` keeps neither at the front. It works in
+          place and moves the smallest value to index 0.
+      - index: 1
+        explanation: >-
+          4 ends up at index 1, a child of the root. The root holds the smallest value, and 1 is
+          smaller.
+      - index: 2
+        explanation: 7 stays at index 2. The root holds the smallest value, and 7 is not it.
+      - index: 4
+        explanation: >-
+          8 is the last value, not the smallest. Where a value starts in the list does not decide
+          the root.
+
+  - id: which-list-breaks-review
+    heading: Which list is not a heap?
+    tags: [heap, python]
+    prompt: >-
+      The children of `h[i]` are `h[2*i + 1]` and `h[2*i + 2]`. Which of these lists breaks the
+      `heapq` heap rule?
+    options:
+      - id: root-larger
+        text: "`[4, 2, 6, 9]`"
+        explanation: >-
+          The root, 4, is larger than its child 2. The smallest value has to sit at index 0, so
+          this list is not a heap.
+      - id: unsorted
+        text: "`[1, 9, 3, 12]`"
+        explanation: >-
+          This list is not sorted, and that is allowed. 1 is no larger than 9 or 3, and 9 is no
+          larger than 12.
+      - id: sorted
+        text: "`[2, 5, 8, 11]`"
+        explanation: >-
+          Every item in a sorted list is no larger than anything after it, children included, so
+          the rule holds.
+      - id: duplicate
+        text: "`[3, 3, 4, 7]`"
+        explanation: >-
+          The rule is "no larger than", so a 3 above another 3 is fine, and both are no larger than
+          4 or 7.
+    correct: root-larger
+    followUps:
+      unsorted:
+        prompt: "`[1, 9, 3, 12]` is not sorted. What does the heap rule check?"
+        options:
+          - id: own-children
+            text: Each parent against its own children only
+          - id: next-item
+            text: Each item against the next item
+          - id: sorted
+            text: That the whole list is sorted
+        correct: own-children
+        explanation: >-
+          9 and 3 are siblings, so their order does not matter. The rule asks only that a parent be
+          no larger than its children.
+      sorted:
+        prompt: Can a sorted list be a heap?
+        options:
+          - id: always
+            text: Yes, a sorted list always meets the heap rule
+          - id: never
+            text: No, a heap must be out of order somewhere
+          - id: odd-length
+            text: Only if it has an odd number of items
+        correct: always
+        explanation: >-
+          A child always sits after its parent in the list. If the list is sorted, every parent is
+          no larger than its children.
+      duplicate:
+        prompt: Can a heap hold the same value twice?
+        options:
+          - id: equal-ok
+            text: Yes, a parent may equal its child
+          - id: rejects
+            text: No, `heappush` rejects duplicates
+          - id: bottom-only
+            text: Only on the bottom level
+        correct: equal-ok
+        explanation: >-
+          The rule is parent no larger than child, so equal values pass. `heappush` accepts any value
+          that can be compared.
+
+  - id: read-the-largest-review
+    heading: Which expression gives the largest?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      h = [2, 7, 4, 10, 9, 5]  # a valid heap
+      ```
+
+      Which expression gives the largest value in `h` without changing `h`?
+    options:
+      - id: max
+        text: "`max(h)`"
+        explanation: >-
+          A heap only fixes where the smallest value sits. The largest could be in any of the
+          bottom cells, so the whole list has to be checked, and `max(h)` returns 10.
+      - id: last
+        text: "`h[-1]`"
+        explanation: >-
+          The last cell holds 5. Nothing in the heap rule makes the end of the list the largest:
+          here 10 sits at index 3.
+      - id: root
+        text: "`h[0]`"
+        explanation: '`h[0]` is 2. `heapq` keeps the opposite extreme at the root.'
+    correct: max
+    followUps:
+      last:
+        prompt: In a heap with no repeated values, where can the largest value sit?
+        options:
+          - id: no-children
+            text: In any cell that has no children
+          - id: last-cell
+            text: Always in the last cell
+          - id: index-one
+            text: Always at index 1
+        correct: no-children
+        explanation: >-
+          Every child is at least as large as its parent, so nothing larger can sit below the
+          largest value. It is on the bottom of the tree, in no particular cell.
+      root:
+        prompt: Which value does `h[0]` hold in a `heapq` heap?
+        options:
+          - id: smallest
+            text: The smallest value in the heap
+          - id: largest
+            text: The largest value in the heap
+          - id: first-pushed
+            text: The value pushed first
+        correct: smallest
+        explanation: >-
+          `heapq` is a min-heap, so the root is the minimum. Reading the largest takes a scan of
+          the list, or a heap built from negated values.
+
+  - id: two-pops-review
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heappush, heappop
+
+      h = []
+      for x in [15, 8, 12, 3, 10]:
+          heappush(h, x)
+      print(heappop(h), heappop(h))
+      ```
+
+      What does this print?
+    options:
+      - id: three-eight
+        text: "`3 8`"
+        explanation: >-
+          The first pop removes 3. The second pop compares what is left, 15, 8, 12 and 10, and
+          removes 8.
+      - id: fifo
+        text: "`15 8`"
+        explanation: >-
+          15 was pushed first and 8 second. A heap ignores push order and returns the smallest each
+          time.
+      - id: peek
+        text: "`3 3`"
+        explanation: '3 is right for the first pop, but it leaves the heap, so the second pop cannot return it.'
+      - id: max-first
+        text: "`15 12`"
+        explanation: These are the two largest. `heapq` pops from the other end.
+    correct: three-eight
+    followUps:
+      fifo:
+        prompt: What does `heappop` compare to choose a value?
+        options:
+          - id: values
+            text: The values themselves
+          - id: push-order
+            text: The order of the pushes
+          - id: positions
+            text: The positions in the list
+        correct: values
+        explanation: >-
+          A heap ranks by value. The order of the pushes changes only where items sit in the list,
+          not which one comes out.
+      peek:
+        prompt: After the first `heappop(h)` returns 3, how many items are in `h`?
+        options:
+          - id: four
+            text: Four
+          - id: five
+            text: Five
+          - id: three
+            text: Three
+        correct: four
+        explanation: >-
+          `heappop` removes the item it returns, so five pushes and one pop leave 15, 8, 12 and 10.
+      max-first:
+        prompt: Which value does `heapq` pop first?
+        options:
+          - id: smallest
+            text: The smallest value
+          - id: largest
+            text: The largest value
+          - id: last-pushed
+            text: The value pushed last
+        correct: smallest
+        explanation: >-
+          `heapq` is a min-heap. Each pop returns the minimum of what is left, so the pops come out
+          in ascending order.
+
+  - format: tap-cell
+    id: next-root-tap-review
+    heading: Which value becomes the root?
+    tags: [heap, python]
+    prompt: >-
+      `h` is a valid heap. After one `heappop(h)`, which value becomes the new `h[0]`? Tap it where
+      it sits now.
+    code: |
+      from heapq import heappop
+
+      h = [2, 9, 4, 11, 10, 5]
+      heappop(h)
+      print(h[0])
+    sequence:
+      kind: array
+      name: h
+      cells: [2, 9, 4, 11, 10, 5]
+    correct: 2
+    explanation: >-
+      The pop removes 2. The new smallest is 4, one of the old root's two children, and it moves up
+      to the root. The list becomes `[4, 9, 5, 11, 10]`.
+    misses:
+      - index: 0
+        explanation: 2 is the value this pop removes, so it cannot be the new root.
+      - index: 1
+        explanation: >-
+          9 sits next to the root in the list, but the list is not sorted. Of the values left, 4 is
+          smaller.
+      - index: 3
+        explanation: 11 is larger than 4, and it sits two levels down.
+      - index: 4
+        explanation: 10 is larger than 4.
+      - index: 5
+        explanation: >-
+          `heappop` does move the last value, 5, into the root's place, but then swaps it down
+          below the smaller 4.
+
+  - format: step-trace
+    id: push-pop-trace-review
+    heading: Predict each pop
+    tags: [heap, python]
+    prompt: >-
+      The cells show the values in the order they are pushed. `out` marks the value the latest pop
+      returned, and it starts on index 0. Predict each step.
+    code: |
+      from heapq import heappush, heappop
+
+      pushed = [12, 5, 8, 6, 2]
+      h = []
+      for x in pushed[:3]:
+          heappush(h, x)
+      a = heappop(h)
+      heappush(h, pushed[3])
+      heappush(h, pushed[4])
+      b = heappop(h)
+      c = heappop(h)
+    sequence:
+      kind: array
+      name: pushed
+      cells: [12, 5, 8, 6, 2]
+    start:
+      - { name: out, at: 0 }
+    steps:
+      - line: 7
+        ask: Which value does `a` get? Tap it.
+        pointer: out
+        correct: 1
+        explanation: The heap holds 12, 5 and 8, and 5 is the smallest.
+        misses:
+          - index: 0
+            explanation: '12 was pushed first, but the heap returns the smallest of 12, 5 and 8.'
+          - index: 2
+            explanation: 8 is larger than 5, and both are in the heap.
+          - index: 3
+            explanation: 6 is not in the heap yet. It is pushed on line 8, after this pop.
+          - index: 4
+            explanation: 2 is not in the heap yet. It is pushed on line 9, after this pop.
+        elsewhere: The heap holds 12, 5 and 8, so `a` is 5.
+      - line: 10
+        ask: Which value does `b` get? Tap it.
+        pointer: out
+        correct: 4
+        explanation: Lines 8 and 9 pushed 6 and 2, so the heap holds 12, 8, 6 and 2. The smallest is 2.
+        misses:
+          - index: 0
+            explanation: 12 is the largest of 12, 8, 6 and 2.
+          - index: 1
+            explanation: 5 left the heap on line 7.
+          - index: 2
+            explanation: >-
+              8 was the smallest left after line 7, but 6 and 2 were pushed since. A pop compares
+              everything in the heap now.
+          - index: 3
+            explanation: 6 was pushed before 2, but the heap ignores push order, and 2 is smaller.
+        elsewhere: The heap holds 12, 8, 6 and 2, so `b` is 2.
+      - line: 11
+        ask: Which value does `c` get? Tap it.
+        pointer: out
+        correct: 3
+        explanation: '12, 8 and 6 are left, and 6 is the smallest.'
+        misses:
+          - index: 0
+            explanation: 12 is the largest value left.
+          - index: 1
+            explanation: 5 was popped on line 7.
+          - index: 2
+            explanation: 8 is still in the heap, but 6 is smaller.
+          - index: 4
+            explanation: 2 was popped on line 10.
+        elsewhere: '12, 8 and 6 are left, so `c` is 6.'
+
+  - id: which-push-moves-root-review
+    heading: Which push changes the root?
+    tags: [heap, python]
+    prompt: "`h = [4, 9, 6]` is a heap. Which single push changes the value of `h[0]`?"
+    options:
+      - id: three
+        text: "`heappush(h, 3)`"
+        explanation: >-
+          3 is smaller than 4, the current root. It is appended and then swapped up until it takes
+          index 0.
+      - id: ten
+        text: "`heappush(h, 10)`"
+        explanation: >-
+          10 is larger than its parent, 9, so it stays where it was appended, at the bottom. `h[0]`
+          is still 4.
+      - id: five
+        text: "`heappush(h, 5)`"
+        explanation: >-
+          5 is smaller than its parent, 9, so it moves up one level. It stops there, because 4 is
+          smaller, and `h[0]` is still 4.
+      - id: none
+        text: None of them, since only `heappop` changes `h[0]`
+        explanation: >-
+          A push can change the root too. A value smaller than the current root climbs all the way
+          to index 0.
+    correct: three
+    followUps:
+      ten:
+        prompt: Which pushed values reach `h[0]`?
+        options:
+          - id: below-root
+            text: Values smaller than the current root
+          - id: largest
+            text: The largest values
+          - id: every
+            text: Every value, for at least one step
+        correct: below-root
+        explanation: >-
+          A pushed value rises while it is smaller than its parent. To reach the top it must be
+          smaller than every value on its way up, the root included.
+      five:
+        prompt: 5 swaps past 9. Why does it stop before the root?
+        options:
+          - id: parent-smaller
+            text: Its new parent, 4, is not larger than it
+          - id: one-level
+            text: A push moves an item up one level at most
+          - id: only-pop
+            text: Only `heappop` writes to `h[0]`
+        correct: parent-smaller
+        explanation: >-
+          A pushed value rises only while its parent is larger. After one swap, 5 sits under 4, and
+          4 is smaller, so it stays.
+      none:
+        prompt: "`h` is `[4, 9, 6]` and 1 is pushed. What is `h[0]` afterwards?"
+        options:
+          - id: one
+            text: '1'
+          - id: four
+            text: '4'
+          - id: nine
+            text: '9'
+        correct: one
+        explanation: >-
+          The push appends 1 and swaps it up while it is smaller than its parent. It passes 9 and
+          then 4, and takes the root.

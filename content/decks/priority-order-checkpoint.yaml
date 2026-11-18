@@ -1,0 +1,258 @@
+id: priority-order-checkpoint
+title: "Priority order: checkpoint"
+description: Choose a queue for an arriving stream of jobs, on new inputs. Each item combines FIFO versus priority order, the heap root, and predicting pushes and pops.
+heading: Which queue fits?
+
+questions:
+  - id: checkpoint-which-structure
+    heading: Which structure produced this log?
+    tags: [queue, heap, python]
+    prompt: |-
+      A worker's log, oldest entry first:
+
+      ```text
+      jobs with priority 6, 3 and 8 arrive
+      the worker serves one job
+      a job with priority 1 arrives
+      the worker serves three jobs
+      ```
+
+      The jobs were served in the order 3, 1, 6, 8. Which structure held the waiting jobs?
+    options:
+      - id: min-heap
+        text: A `heapq` heap of the priorities
+        explanation: >-
+          The first service picks from 6, 3 and 8 and takes 3. Then 1 arrives and is the smallest
+          waiting, then 6, then 8. Every service took the smallest priority waiting at that moment.
+      - id: deque
+        text: A deque, served from the left
+        explanation: Check which job a deque serves first.
+      - id: stack
+        text: A list, served with `pop()`
+        explanation: Check which job sits at the end of the list at the first service.
+      - id: negated
+        text: A `heapq` heap of the negated priorities
+        explanation: Check which job comes out first when 6, 3 and 8 are waiting.
+    correct: min-heap
+    followUps:
+      deque:
+        prompt: Jobs 6, 3 and 8 arrived in that order. Which one does a deque serve first?
+        options:
+          - id: oldest
+            text: 6, the oldest
+          - id: smallest
+            text: 3, the smallest
+          - id: newest
+            text: 8, the newest
+        correct: oldest
+        explanation: >-
+          A deque serves in arrival order, so its log would read 6, 3, 8, 1. The log starts with
+          3, so the jobs were not served first in, first out.
+      stack:
+        prompt: Jobs 6, 3 and 8 were appended in that order. Which one does `pop()` serve first?
+        options:
+          - id: last-appended
+            text: 8, the last one appended
+          - id: first-appended
+            text: 6, the first one appended
+          - id: smallest
+            text: 3, the smallest
+        correct: last-appended
+        explanation: >-
+          `pop()` takes from the end of the list, so its log would read 8, 1, 3, 6. A stack never
+          compares priorities.
+      negated:
+        prompt: The heap stores -6, -3 and -8. Which job does `heappop` serve first?
+        options:
+          - id: eight
+            text: 8, because -8 is the smallest stored value
+          - id: three
+            text: 3, because -3 is the smallest stored value
+          - id: six
+            text: 6, because it was stored first
+        correct: eight
+        explanation: >-
+          Negating flips the order, so this heap serves the largest priority first. Its log would
+          read 8, 6, 3, 1.
+
+  - id: checkpoint-timed-stream
+    heading: In what order do the jobs run?
+    tags: [queue, heap]
+    prompt: |-
+      A worker runs one job per minute. At the start of each minute it starts the waiting job with
+      the lowest priority number. A job that arrives at a minute is already waiting for that
+      minute's pick.
+
+      ```text
+      job   arrives at minute   priority
+      a     0                   5
+      b     0                   7
+      c     1                   2
+      d     2                   6
+      ```
+
+      In what order do the jobs run?
+    options:
+      - id: by-arrival-and-priority
+        text: "`a`, `c`, `d`, `b`"
+        explanation: >-
+          Minute 0: only `a` and `b` are waiting, and `a` has the lower number. Minute 1: `c` (2)
+          beats `b` (7). Minute 2: `d` (6) beats `b` (7). `b` runs last, at minute 3.
+      - id: ignores-arrival
+        text: "`c`, `a`, `d`, `b`"
+        explanation: Check which jobs are waiting at minute 0.
+      - id: fifo
+        text: "`a`, `b`, `c`, `d`"
+        explanation: Check the pick at minute 1.
+      - id: largest-first
+        text: "`b`, `a`, `d`, `c`"
+        explanation: Check which number the rule prefers.
+    correct: by-arrival-and-priority
+    followUps:
+      ignores-arrival:
+        prompt: At minute 0, which jobs can the worker choose from?
+        options:
+          - id: arrived
+            text: Only `a` and `b`, the jobs that have arrived
+          - id: all
+            text: All four, since every priority is known
+          - id: first-row
+            text: Only `a`, the first job listed
+        correct: arrived
+        explanation: >-
+          A queue can only hand out jobs that are in it. `c` with priority 2 does not exist yet at
+          minute 0, so it cannot run first.
+      fifo:
+        prompt: At minute 1, `b` (priority 7) and `c` (priority 2) are waiting. Which one runs?
+        options:
+          - id: c
+            text: "`c`, the lower priority number"
+          - id: b
+            text: "`b`, because it has waited longer"
+          - id: neither
+            text: Neither, since `c` must wait one minute after arriving
+        correct: c
+        explanation: >-
+          The rule compares priority numbers and ignores how long a job has waited. `c` arrived in
+          time for the pick at minute 1, so it runs then.
+      largest-first:
+        prompt: The rule takes the lowest priority number first. Between `a` (5) and `b` (7), which runs at minute 0?
+        options:
+          - id: a
+            text: "`a`, since 5 is the lower number"
+          - id: b
+            text: "`b`, since 7 is the higher number"
+          - id: both
+            text: Either one, since both arrived at minute 0
+        correct: a
+        explanation: >-
+          Lowest number first is a min-heap order. Taking the highest number first would be a heap
+          of negated priorities.
+
+  - id: checkpoint-fifo-fits
+    heading: Which structure fits?
+    tags: [queue, heap]
+    prompt: >-
+      Support tickets must be answered in the order they arrive. Each ticket also has a severity,
+      shown on a dashboard but not used for ordering. Tickets keep arriving while agents work.
+      Which structure gives the required order with O(1) work per add and per take?
+    options:
+      - id: deque
+        text: "A `deque`: `append` each ticket, `popleft` the next"
+        explanation: >-
+          The required order is arrival order, and a deque adds at one end and takes from the other
+          in O(1). Nothing needs comparing, so a heap would add cost for no gain.
+      - id: heap-severity
+        text: A `heapq` heap keyed on severity
+        explanation: Check which ticket it hands out first.
+      - id: heap-arrival
+        text: A `heapq` heap keyed on arrival time
+        explanation: Check the cost of each pop.
+      - id: stack
+        text: "A list: `append` each ticket, `pop()` the next"
+        explanation: Check which end `pop()` takes from.
+    correct: deque
+    followUps:
+      heap-severity:
+        prompt: >-
+          Ticket A arrives first with severity 3, and ticket B arrives second with severity 1.
+          Which one does a `heapq` heap keyed on severity hand out first?
+        options:
+          - id: b-first
+            text: B, which breaks the arrival order
+          - id: a-first
+            text: A, since it arrived first
+          - id: higher-number
+            text: A, since the higher severity number comes out first
+        correct: b-first
+        explanation: >-
+          A heap orders by its key, here severity, so B jumps ahead of A. The rule asks for arrival
+          order, and severity is only for display.
+      heap-arrival:
+        prompt: A heap keyed on arrival time does return tickets in arrival order. What does each `heappop` cost?
+        options:
+          - id: log-n
+            text: O(log n), since the last item is moved to the root and sifted down one path
+          - id: constant
+            text: O(1), the same as `popleft`
+          - id: linear
+            text: O(n), since the heap re-sorts on every change
+        correct: log-n
+        explanation: >-
+          The order is right, but the requirement asks for O(1). Tickets already come in arrival
+          order, so a deque gets the same order without comparing anything.
+      stack:
+        prompt: Tickets are appended as they arrive. Which ticket does `pop()` take?
+        options:
+          - id: newest
+            text: The newest one, so the oldest waits longest
+          - id: oldest
+            text: The oldest one
+          - id: most-severe
+            text: The one with the highest severity
+        correct: newest
+        explanation: >-
+          `pop()` takes from the end of the list, where the latest ticket was appended. That is
+          last in, first out, the reverse of the required order.
+
+  - format: tap-cell
+    id: checkpoint-next-served
+    heading: Which job is served?
+    tags: [heap, python]
+    prompt: >-
+      Jobs are pushed as they arrive and served by priority. The cells show every priority in the
+      order it was pushed. Which job does the last `heappop` serve? Tap it.
+    code: |
+      from heapq import heappush, heappop
+
+      h = []
+      heappush(h, 9)
+      heappush(h, 4)
+      heappop(h)
+      heappush(h, 7)
+      heappush(h, 1)
+      heappop(h)
+      heappush(h, 3)
+      heappush(h, 6)
+      heappop(h)
+    sequence:
+      kind: array
+      cells: [9, 4, 7, 1, 3, 6]
+    correct: 4
+    explanation: >-
+      The first pop serves 4, the smaller of 9 and 4. The second serves 1, the smallest of 9, 7 and
+      1. Before the last pop the heap holds 9, 7, 3 and 6, so it serves 3.
+    misses:
+      - index: 0
+        explanation: >-
+          9 has waited longest, but waiting time does not count. It is the largest value in the
+          heap.
+      - index: 1
+        explanation: The first `heappop` already served 4.
+      - index: 2
+        explanation: >-
+          7 is the job a FIFO queue would serve third. The heap serves the smallest value left.
+      - index: 3
+        explanation: The second `heappop` already served 1.
+      - index: 5
+        explanation: '6 was pushed last, which is what a stack would serve. 3 is smaller and still waiting.'
