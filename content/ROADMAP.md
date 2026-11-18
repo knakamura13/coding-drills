@@ -132,6 +132,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
 | Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
 | Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |
+| Data structures #12 | Link rewrites: teaching levels | `link-rewrites` | in review |
+| Data structures #12 | Link rewrites: review variants | `link-rewrites-review` | in review |
+| Data structures #12 | Link rewrites: checkpoint | `link-rewrites-checkpoint` | in review |
 | Problem-solving patterns #14 | Recursive calls: teaching levels | `recursive-calls` | in review |
 | Problem-solving patterns #14 | Recursive calls: review variants | `recursive-calls-review` | in review |
 | Problem-solving patterns #14 | Recursive calls: checkpoint | `recursive-calls-checkpoint` | in review |

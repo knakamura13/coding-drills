@@ -1,0 +1,327 @@
+id: link-rewrites-checkpoint
+title: "Link rewrites: checkpoint"
+description: Reverse the links of a list without losing the rest, on new inputs. Each item combines following a link, saving one before redirecting it, and the first node.
+heading: What does this give?
+
+questions:
+  - format: step-trace
+    id: checkpoint-reverse-trace
+    heading: Follow the reversal
+    tags: [linked-list, python]
+    prompt: >-
+      `reverse` runs on `5 -> 1 -> 8 -> 3`. The board cannot redraw links, so the cells keep the
+      original order. The first `None` cell is where `prev` starts, and the last is the `None`
+      after the tail. Predict each step before it is shown.
+    code: |
+      def reverse(head):
+          prev, cur = None, head
+          while cur is not None:
+              nxt = cur.next
+              cur.next = prev
+              prev = cur
+              cur = nxt
+          return prev
+    sequence:
+      kind: array
+      cells: ['None', 5, 1, 8, 3, 'None']
+    start:
+      - { name: prev, at: 0 }
+      - { name: cur, at: 1 }
+    steps:
+      - line: 3
+        ask: The first pass runs. Where is `prev` now?
+        pointer: prev
+        correct: 1
+        explanation: >-
+          The pass turns 5's link to `None`, then `prev = cur` moves `prev` onto 5, and `cur`
+          moves on to the saved 1.
+        misses:
+          - index: 0
+            explanation: >-
+              `prev = cur` runs on every pass. After the first one, `prev` is on 5, the node just
+              turned.
+          - index: 2
+            explanation: >-
+              Line 6 runs before line 7 moves `cur`, so `prev` takes the node `cur` was on, 5.
+        elsewhere: '`prev` takes the node just turned, which is 5.'
+        also:
+          - { name: cur, at: 2 }
+      - line: 3
+        ask: The second pass runs. Where does 1's link lead now?
+        options:
+          - id: to-five
+            text: To 5
+            explanation: >-
+              Line 5 sets 1's link to `prev`, which was 5. The turned part now reads 1 -> 5.
+          - id: to-eight
+            text: To 8
+            explanation: >-
+              8 was where 1's link led before this pass. Line 4 saved it in `nxt`, and line 5
+              then pointed the link at `prev`.
+          - id: to-none
+            text: To `None`
+            explanation: >-
+              Only the first node's link becomes `None`, because `prev` starts as `None`. By this
+              pass `prev` is on 5.
+        correct: to-five
+        also:
+          - { name: prev, at: 2 }
+          - { name: cur, at: 3 }
+      - line: 3
+        ask: The loop ends. Where is `cur`?
+        pointer: cur
+        correct: 5
+        explanation: >-
+          The last pass turns 3's link and moves `cur` to the saved `nxt`, which was 3's old link,
+          `None`. The test then fails, and `prev` is on 3.
+        misses:
+          - index: 4
+            explanation: >-
+              The loop runs while `cur` is a node, so it also turns 3's link. Then `cur` moves to
+              the `None` that followed 3.
+          - index: 3
+            explanation: >-
+              8 is still a node, so the loop runs for it and for 3 before it can stop.
+          - index: 0
+            explanation: >-
+              `cur` is `None`, but the first cell stands for where `prev` started. `cur` gets its
+              `None` by moving one hop past the tail, which is the last cell.
+        elsewhere: 'The loop stops only once `cur` is `None`, after the tail.'
+        also:
+          - { name: prev, at: 4 }
+      - line: 8
+        ask: What does a walk from the returned node read?
+        options:
+          - id: reversed
+            text: 3, 8, 1, 5
+            explanation: >-
+              `prev` is on 3, and every link now points to the node that came before it, ending
+              with 5's link to `None`.
+          - id: only-tail
+            text: '3'
+            explanation: >-
+              3's link was turned on the last pass to `prev`, which was 8. It is the start of the
+              whole reversed list.
+          - id: original
+            text: 5, 1, 8, 3
+            explanation: >-
+              That reads the original links. Every one of them was turned, and the function
+              returns `prev`, which is on 3.
+        correct: reversed
+
+  - id: checkpoint-old-head
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      def reverse(head):
+          prev, cur = None, head
+          while cur is not None:
+              nxt = cur.next
+              cur.next = prev
+              prev = cur
+              cur = nxt
+          return prev
+
+      head = Node(6, Node(2, Node(9, Node(4))))
+      new_head = reverse(head)
+      print(values(new_head), values(head))
+      ```
+    options:
+      - id: right
+        text: "`[4, 9, 2, 6] [6]`"
+        explanation: >-
+          `head` still refers to the 6, which is now the last node. The first pass set its link to
+          `None`, so a walk from it stops at once.
+      - id: untouched
+        text: "`[4, 9, 2, 6] [6, 2, 9, 4]`"
+        explanation: Look at what the first pass does to the link out of the 6.
+      - id: follows
+        text: "`[4, 9, 2, 6] [4, 9, 2, 6]`"
+        explanation: Look at whether anything reassigns the caller's name `head`.
+      - id: emptied
+        text: "`[4, 9, 2, 6] []`"
+        explanation: Look at which object the name `head` refers to after the call.
+    correct: right
+    followUps:
+      untouched:
+        prompt: After the first pass, where does the 6's link lead?
+        options:
+          - id: nowhere
+            text: To `None`, because `prev` started as `None`
+          - id: two
+            text: Still to 2
+          - id: four
+            text: To 4, the new first node
+        correct: nowhere
+        explanation: >-
+          The first node of the original list becomes the last node of the reversed one. Its link
+          is the first one turned, and it is turned to `None`.
+      follows:
+        prompt: After `reverse(head)`, which node does the caller's `head` refer to?
+        options:
+          - id: six
+            text: Still the 6
+          - id: four
+            text: The 4, since it is now the first node
+          - id: none
+            text: "`None`, since the function's `cur` ended there"
+        correct: six
+        explanation: >-
+          The function moves its own names, not the caller's. The new first node reaches the caller
+          only through the return value, which is why it is stored in `new_head`.
+      emptied:
+        prompt: Is the node holding 6 still a node after the reversal?
+        options:
+          - id: yes
+            text: Yes, it is the last node, so a walk from it reads one value
+          - id: no
+            text: No, reversing moves it out of the list
+          - id: only-name
+            text: No, only the name `head` is left
+        correct: yes
+        explanation: >-
+          Reversing rewrites links and keeps every node. A walk from the 6 reads its own value
+          first, then finds a `None` link.
+
+  - id: checkpoint-advance-bug
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      This reversal moves `cur` with `cur.next` instead of the saved `nxt`. `values(n)` lists the
+      values a walk from `n` reaches.
+
+      ```python
+      def reverse(head):
+          prev, cur = None, head
+          while cur is not None:
+              nxt = cur.next
+              cur.next = prev
+              prev = cur
+              cur = cur.next
+          return prev
+
+      print(values(reverse(Node(7, Node(3, Node(5))))))
+      ```
+    options:
+      - id: right
+        text: "`[7]`"
+        explanation: >-
+          On the first pass, line 5 sets 7's link to `None`, so line 7 moves `cur` to `None` and
+          the loop ends. `nxt` held the 3 but was never used, and the call returns the lone 7.
+      - id: works
+        text: "`[5, 3, 7]`"
+        explanation: Look at what `cur.next` holds by the time line 7 runs.
+      - id: hangs
+        text: It never returns
+        explanation: Trace the first pass and look at what `cur` is when the loop test runs again.
+      - id: empty
+        text: "`[]`"
+        explanation: Look at what `prev` is when the loop ends.
+    correct: right
+    followUps:
+      works:
+        prompt: On the first pass, what does `cur.next` hold when line 7 runs?
+        options:
+          - id: prev-value
+            text: "`None`, the value line 5 just wrote into it"
+          - id: three
+            text: The 3, the node after 7
+          - id: saved
+            text: The node saved in `nxt`
+        correct: prev-value
+        explanation: >-
+          After `cur.next = prev`, the link no longer leads forward. The way forward survives only
+          in `nxt`, so `cur` has to move to `nxt`.
+      hangs:
+        prompt: After the first pass, what is `cur`?
+        options:
+          - id: none
+            text: "`None`, so the loop test fails and the loop ends"
+          - id: seven
+            text: Still the 7, so the loop repeats on it
+          - id: three
+            text: The 3, so the loop goes on
+        correct: none
+        explanation: >-
+          `cur` follows 7's link, which line 5 has just turned to `prev`, the starting `None`. The
+          loop ends after one pass instead of spinning.
+      empty:
+        prompt: What is `prev` when the loop ends?
+        options:
+          - id: seven
+            text: The 7, set by `prev = cur` on the only pass
+          - id: none
+            text: "`None`, its starting value"
+          - id: five
+            text: The 5, the original tail
+        correct: seven
+        explanation: >-
+          Line 6 runs before line 7, so `prev` takes the 7 even though `cur` then falls off. The
+          function returns that one node.
+
+  - format: drag-pointers
+    id: checkpoint-reverse-front
+    heading: Where do the names sit?
+    tags: [linked-list, python]
+    prompt: >-
+      `reverse_front` turns the first `k` links around and then joins the old head to the rest. It
+      runs on `7 -> 4 -> 9 -> 2 -> 6` with `k = 3`. The cells keep the original order, and `prev`
+      and `cur` are drawn on the head to begin. The loop has finished and line 8 is about to run.
+      Drag `prev` and `cur` to where they sit.
+    code: |
+      def reverse_front(head, k):
+          prev, cur = None, head
+          for _ in range(k):
+              nxt = cur.next
+              cur.next = prev
+              prev = cur
+              cur = nxt
+          head.next = cur
+          return prev
+
+      reverse_front(head, 3)
+    sequence:
+      kind: array
+      cells: [7, 4, 9, 2, 6]
+    markers:
+      - { name: head, at: 0 }
+    pointers:
+      - name: prev
+        start: 0
+        correct: 2
+        explanation: >-
+          Three passes turn the links of 7, 4 and 9, and `prev` ends on 9, the last one turned. It
+          is the new first node, so the call returns `9 -> 4 -> 7 -> 2 -> 6` once line 8 joins 7 to
+          `cur`.
+        misses:
+          - index: 0
+            explanation: >-
+              7 is the first node turned, so it ends the turned part. `prev` follows the most recent
+              turn.
+          - index: 3
+            explanation: >-
+              `prev` trails `cur` by one node. The third pass turns 9 and moves `prev` onto it,
+              while `cur` moves past.
+        elsewhere: '`prev` ends on the last node turned, which is 9.'
+      - name: cur
+        start: 0
+        correct: 3
+        explanation: >-
+          Each pass moves `cur` to the node saved in `nxt`, so after three passes it is on 2, the
+          first node not turned. Line 8 uses it to join the rest of the list back on.
+        misses:
+          - index: 2
+            explanation: >-
+              9 is the last node turned. The third pass still moves `cur` on to its saved successor,
+              2.
+          - index: 4
+            explanation: >-
+              Three passes move `cur` three nodes from 7, which is 2.
+          - index: 0
+            explanation: >-
+              `cur` moves on every pass. Following 7's link would lead to `None` after the first
+              pass, but `cur` follows the saved `nxt`.
+        elsewhere: 'Three passes move `cur` three nodes along, onto 2.'
