@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Curriculum, CurriculumDrill, Disposition } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
-import { dispositionLabel, examDrillPassed, examGate, pairInOrder, projectCurriculum, rollup, skillState } from './mastery.ts';
+import { dispositionLabel, examGate, pairInOrder, projectCurriculum, rollup, skillState } from './mastery.ts';
 
 function attempt(questionId: string, correct: boolean, day = '2026-01-01', id = questionId): Attempt {
 	return {
@@ -31,8 +31,8 @@ describe('examGate', () => {
 		expect(examGate(requires, new Set(['other']), false).remaining).toEqual(requires);
 	});
 
-	it('reports passed only after the gate is open', () => {
-		expect(examGate(requires, new Set(['alpha']), true)).toEqual({ state: 'locked', remaining: ['beta', 'gamma'] });
+	it('keeps a passed exam passed even when a required skill is no longer mastered', () => {
+		expect(examGate(requires, new Set(['alpha']), true)).toEqual({ state: 'passed', remaining: [] });
 		expect(examGate(requires, new Set(requires), true)).toEqual({ state: 'passed', remaining: [] });
 	});
 
@@ -70,13 +70,6 @@ describe('placeholder skill state', () => {
 		const retake = attempt('a', true, '2026-01-01', 'second');
 		expect(skillState(drills, [wrong, retake])).toBe('practicing');
 		expect(skillState(drills, [wrong, attempt('a', true, '2026-01-02', 'next')])).toBe('mastered');
-	});
-
-	it('counts an exam drill as passed only from a counted correct attempt', () => {
-		const drills = [{ deckId: 'deck', questionId: 'exam' }];
-		expect(examDrillPassed([], [])).toBe(false);
-		expect(examDrillPassed(drills, [attempt('exam', false)])).toBe(false);
-		expect(examDrillPassed(drills, [attempt('exam', true)])).toBe(true);
 	});
 });
 
@@ -246,8 +239,12 @@ describe('projectCurriculum', () => {
 		expect(projectCurriculum(curriculum, skills).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
 		const passed = projectCurriculum(curriculum, [...skills, attempt('beta-exam-q', true, '2026-01-08', 'exam')]);
 		expect(passed.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
+		// A full sitting answered right is evidence enough, so it passes even before the skills are mastered.
+		// The lock only gates the exam link in the tree.
 		const early = projectCurriculum(curriculum, [attempt('beta-exam-q', true)]);
-		expect(early.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
+		expect(early.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
+		const wrongEarly = projectCurriculum(curriculum, [attempt('beta-exam-q', false)]);
+		expect(wrongEarly.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
 	});
 
 	it('ignores retired drills and leaves an unexplored root unlit', () => {
