@@ -1,0 +1,431 @@
+id: boundary-search-checkpoint
+title: "Boundary search: checkpoint"
+description: Repair a boundary update, and search a rotated list, on new values. Each item combines the two skills that lead into its checkpoint.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-repair-first-copy
+    heading: Which fix works?
+    tags: [binary-search]
+    prompt: |-
+      `first_at_least` should return the first index with `a[i] >= x`, or `len(a)` if there is
+      none.
+
+      ```python
+      def first_at_least(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] <= x:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return lo
+      ```
+
+      `first_at_least([5, 9, 9, 9, 16, 20], 9)` returns 4 instead of 1. Which one-line change
+      makes it correct for every sorted list and every `x`?
+    options:
+      - id: strict
+        text: "`if a[mid] < x:`"
+        explanation: >-
+          With `<=`, an equal value moves `lo` past it, so the loop finds the slot after the last
+          copy. With `<`, only values below `x` move `lo`, and an equal value stays a candidate on
+          the `hi` side. The call then returns 1.
+      - id: minus-one
+        text: "`return lo - 1`"
+        explanation: Try an `x` that is not in the list.
+      - id: hi-minus
+        text: "`hi = mid - 1` in the `else` branch"
+        explanation: Trace the call again. Which cells does the first probe drop?
+      - id: closed-hi
+        text: "`lo, hi = 0, len(a) - 1`"
+        explanation: Trace the same call with the new start. Which test sends `lo` past the 9s?
+    correct: strict
+    followUps:
+      minus-one:
+        prompt: With `return lo - 1`, what does `first_at_least([5, 9, 9, 9, 16, 20], 12)` return?
+        options:
+          - id: three
+            text: 3, the index of the last 9, though 12 belongs at index 4
+          - id: four
+            text: 4, the slot where 12 belongs
+          - id: minus
+            text: -1, because 12 is absent
+        correct: three
+        explanation: >-
+          The loop still finds the slot after values `<= x`. Subtracting 1 lands on the last copy
+          when `x` is present, and on the wrong cell when it isn't. The fix is in the test, not
+          the return.
+      hi-minus:
+        prompt: >-
+          With `hi = mid - 1`, the call probes index 3 (a 9, so `lo = 4`), then index 5 (20, so
+          `hi = 4`). What does it return?
+        options:
+          - id: four-still
+            text: 4, the same wrong answer, because the `<=` test still moves `lo` past the 9s
+          - id: one
+            text: 1, the first 9
+          - id: three-last
+            text: 3, the last 9
+        correct: four-still
+        explanation: >-
+          The bug is which side keeps an equal value. Changing the other branch leaves `<=` in
+          place, and it also lets `hi` drop a value that could be the answer.
+      closed-hi:
+        prompt: With `hi = len(a) - 1`, what can the function no longer return?
+        options:
+          - id: no-len
+            text: "`len(a)`, the answer for an `x` larger than every value"
+          - id: no-zero
+            text: 0, the answer for an `x` smaller than every value
+          - id: nothing
+            text: Nothing is lost, it only fixes the duplicates
+        correct: no-len
+        explanation: >-
+          A half-open `hi` lets the loop end past the last cell. Closing it removes that answer,
+          and the `<=` test still pushes `lo` past every copy.
+
+  - id: checkpoint-repair-past-boundary
+    heading: Which fix works?
+    tags: [binary-search]
+    prompt: |-
+      `first_greater` should return the first index with `a[i] > x`, or `len(a)` if there is
+      none.
+
+      ```python
+      def first_greater(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] > x:
+                  hi = mid - 1
+              else:
+                  lo = mid + 1
+          return lo
+      ```
+
+      `first_greater([4, 10, 10, 13, 21, 26], 10)` returns 2 instead of 3. Which one-line change
+      makes it correct for every sorted list and every `x`?
+    options:
+      - id: hi-mid
+        text: "`hi = mid`"
+        explanation: >-
+          The first probe reads 13 at index 3. 13 is greater than 10, so index 3 may be the
+          answer, and `hi = mid - 1` threw it away. `hi = mid` keeps it, and the call returns 3.
+      - id: plus-one
+        text: "`return lo + 1`"
+        explanation: That fixes this call. Try `x = 13` on the same list.
+      - id: le
+        text: "`while lo <= hi:`"
+        explanation: Try an `x` larger than every value.
+      - id: round-up
+        text: "`mid = (lo + hi + 1) // 2`"
+        explanation: Work out the first probe on the list `[5]`.
+    correct: hi-mid
+    followUps:
+      plus-one:
+        prompt: With `return lo + 1`, what does `first_greater([4, 10, 10, 13, 21, 26], 13)` return?
+        options:
+          - id: five
+            text: 5, though the first value above 13 is 21, at index 4
+          - id: four
+            text: 4, the index of 21
+          - id: three
+            text: 3, the index of 13
+        correct: five
+        explanation: >-
+          The buggy loop already returns 4 here, because no probe drops the answer. Adding 1
+          breaks that call. Patching the return hides one symptom instead of keeping every
+          candidate.
+      le:
+        prompt: With `while lo <= hi`, what happens on `first_greater([4, 10, 10, 13, 21, 26], 30)`?
+        options:
+          - id: index-error
+            text: It probes index 6, past the end, and raises `IndexError`
+          - id: six
+            text: It returns 6, the length of the list
+          - id: hangs
+            text: It loops forever
+        correct: index-error
+        explanation: >-
+          A half-open `hi` is never a real cell. With `lo <= hi` the loop runs once more when
+          `lo == hi == 6`, and reads `a[6]`.
+      round-up:
+        prompt: With `mid = (lo + hi + 1) // 2`, which cell does the first probe read on `first_greater([5], 3)`?
+        options:
+          - id: past-end
+            text: Index 1, past the end, so it raises `IndexError`
+          - id: zero
+            text: Index 0, the 5
+          - id: none
+            text: None, the loop doesn't run
+        correct: past-end
+        explanation: >-
+          With `lo = 0` and `hi = 1`, rounding up gives 1, and `hi` is outside the list. A
+          half-open loop has to round down so that `mid` stays below `hi`.
+
+  - id: checkpoint-rotated-trace
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search]
+    prompt: Predict each step of this search on a rotated list before it is shown.
+    code: |
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[lo] <= a[mid]:
+                  if a[lo] <= t < a[mid]:
+                      hi = mid - 1
+                  else:
+                      lo = mid + 1
+              else:
+                  if a[mid] < t <= a[hi]:
+                      lo = mid + 1
+                  else:
+                      hi = mid - 1
+          return -1
+
+      search([57, 61, 68, 74, 80, 12, 25, 41], 25)
+    sequence:
+      kind: array
+      name: a
+      cells: [57, 61, 68, 74, 80, 12, 25, 41]
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 4
+        ask: The first probe is index 3. Which part is in order?
+        options:
+          - id: left-first
+            text: "`a[0..3]`: 57 to 74"
+            explanation: '`a[lo] = 57 <= a[mid] = 74`, so the left part has no drop.'
+          - id: right-first
+            text: "`a[3..7]`: 74 to 41"
+            explanation: That part falls from 80 to 12, so it holds the drop.
+          - id: both-first
+            text: Both parts
+            explanation: The drop from 80 to 12 is in the right part, so only the left part is in order.
+        correct: left-first
+      - line: 7
+        ask: Where does `lo` sit after the first pass?
+        pointer: lo
+        correct: 4
+        explanation: 25 is below 57, so it is not in 57 to 74. `lo = mid + 1 = 4`.
+        misses:
+          - index: 0
+            explanation: >-
+              That keeps the left part, as the plain rule would because 74 is larger than 25. But
+              57 to 74 is sorted, and 25 is below all of it.
+          - index: 3
+            explanation: That is `lo = mid`. Index 3 holds 74, which was just compared with 25.
+          - index: 6
+            explanation: 25 sits at index 6, but one pass drops only the part ruled out.
+        elsewhere: 25 is not between 57 and 74, so `lo` moves past the probe, to 4.
+      - line: 4
+        ask: The second probe is index 5. Which part is in order?
+        options:
+          - id: right-second
+            text: "`a[5..7]`: 12, 25, 41"
+            explanation: '`a[lo] = 80` is larger than `a[mid] = 12`, so the drop is on the left and 12, 25, 41 is in order.'
+          - id: left-second
+            text: "`a[4..5]`: 80, 12"
+            explanation: That part falls from 80 to 12. `a[lo] <= a[mid]` is `80 <= 12`, false.
+          - id: both-second
+            text: Both parts
+            explanation: The drop from 80 to 12 is still inside the range, in the left part.
+        correct: right-second
+      - line: 7
+        ask: Where does `lo` sit after the second pass?
+        pointer: lo
+        correct: 6
+        explanation: 25 is between 12 and 41, so it is in the sorted right part, and `lo = mid + 1 = 6`.
+        misses:
+          - index: 4
+            explanation: >-
+              `lo` stays only when the search goes left. 25 is in the sorted part 12 to 41, so it
+              goes right.
+          - index: 5
+            explanation: That is `lo = mid`. Index 5 holds 12, which was just compared with 25.
+        elsewhere: 25 is in the sorted part 12 to 41, so `lo` moves past the probe, to 6.
+      - line: 4
+        ask: What does the call return?
+        options:
+          - id: six
+            text: '6'
+            explanation: '`lo = 6` and `hi = 7`, so `mid = 6`. `a[6]` is 25, and the call returns 6.'
+          - id: seven
+            text: '7'
+            explanation: '`mid` is `(6 + 7) // 2`, which rounds down to 6, and `a[6]` is already 25.'
+          - id: minus-one
+            text: '-1'
+            explanation: The 25 is still inside the range 6 to 7, so the next probe finds it.
+          - id: five
+            text: '5'
+            explanation: Index 5 holds 12, the smallest value. The 25 is one cell to its right.
+        correct: six
+
+  - id: checkpoint-strict-test
+    heading: Which call shows the bug?
+    tags: [binary-search]
+    prompt: |-
+      This rotated search tests the left part with `<` instead of `<=`.
+
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[lo] < a[mid]:
+                  if a[lo] <= t < a[mid]:
+                      hi = mid - 1
+                  else:
+                      lo = mid + 1
+              else:
+                  if a[mid] < t <= a[hi]:
+                      lo = mid + 1
+                  else:
+                      hi = mid - 1
+          return -1
+      ```
+
+      With `a = [48, 7, 15, 22, 30, 39]`, which call returns a wrong answer?
+    options:
+      - id: seven
+        text: "`search(a, 7)`"
+        explanation: >-
+          The first probe reads 15, and the search keeps `lo = 0`, `hi = 1`. Now `mid = 0`, and
+          `48 < 48` is false, so the code treats 48, 7 as the sorted part. 7 is not between 48
+          and 7, so `hi = -1`, and the call returns -1 though 7 is at index 1.
+      - id: forty-eight
+        text: "`search(a, 48)`"
+        explanation: Trace the two-cell range. Which cell does the second probe read?
+      - id: thirty-nine
+        text: "`search(a, 39)`"
+        explanation: Trace the first probe. Does the search ever reach a range where `lo == mid`?
+      - id: ten
+        text: "`search(a, 10)`"
+        explanation: Work out what a correct search returns for this call first.
+    correct: seven
+    followUps:
+      forty-eight:
+        prompt: On the range `lo = 0`, `hi = 1`, `mid` is 0. What happens when the target is 48?
+        options:
+          - id: found
+            text: "`a[0]` is 48, so the call returns 0 before the faulty test runs"
+          - id: lost
+            text: The faulty test drops the 48, and the call returns -1
+          - id: hangs
+            text: The range never shrinks
+        correct: found
+        explanation: >-
+          The equality check comes first. The strict test does harm only on a pass where `mid ==
+          lo` and the probe misses.
+      thirty-nine:
+        prompt: The first probe reads 15, and 15 to 39 is the sorted part. Where does the search go for 39?
+        options:
+          - id: right-only
+            text: Right, to 22 to 39, a range with no drop, where the strict test does no harm
+          - id: left
+            text: Left, to the 48 and the 7
+          - id: stuck
+            text: Nowhere, the strict test stops it
+        correct: right-only
+        explanation: >-
+          The strict test is wrong only on a one-cell left part. A search that never probes
+          with `mid == lo` on a miss never hits the bug.
+      ten:
+        prompt: 10 is not in `[48, 7, 15, 22, 30, 39]`. What do a correct search and this one return?
+        options:
+          - id: both-minus
+            text: Both return -1, so the answers agree
+          - id: correct-one
+            text: A correct search returns 1, and this one returns -1
+          - id: this-hangs
+            text: A correct search returns -1, and this one hangs
+        correct: both-minus
+        explanation: >-
+          A missing target gives -1 whichever part is searched. The bug shows only when the part
+          it drops holds the target.
+
+  - id: checkpoint-rotated-minimum
+    heading: Which update finds the smallest value?
+    tags: [binary-search]
+    prompt: |-
+      `smallest` should return the index of the smallest value in a sorted list of distinct values
+      that may have been rotated. For `[33, 40, 46, 9, 17, 25]` it returns 3.
+
+      ```python
+      def smallest(a):
+          lo, hi = 0, len(a) - 1
+          while lo < hi:
+              mid = (lo + hi) // 2
+              ...  # which update?
+          return lo
+      ```
+
+      Which update makes it correct for every such list, rotated or not?
+    options:
+      - id: vs-hi
+        text: "`if a[mid] > a[hi]: lo = mid + 1`, else `hi = mid`"
+        explanation: >-
+          If `a[mid] > a[hi]`, the drop is right of `mid`, so `mid` is not the smallest and `lo`
+          steps past it. Otherwise `a[mid..hi]` ascends, so the smallest is `mid` or to its left,
+          and `hi = mid` keeps `mid`.
+      - id: vs-lo
+        text: "`if a[mid] >= a[lo]: lo = mid + 1`, else `hi = mid`"
+        explanation: Try a list that was not rotated at all.
+      - id: hi-minus
+        text: "`if a[mid] > a[hi]: lo = mid + 1`, else `hi = mid - 1`"
+        explanation: Try a list where the first probe lands on the smallest value.
+      - id: lo-mid
+        text: "`if a[mid] > a[hi]: lo = mid`, else `hi = mid`"
+        explanation: Trace a two-cell range whose smaller value is on the right.
+    correct: vs-hi
+    followUps:
+      vs-lo:
+        prompt: On the unrotated `[4, 11, 19]`, what does the `a[lo]` version return?
+        options:
+          - id: two
+            text: 2, the largest value, because every probe is at least `a[lo]`
+          - id: zero
+            text: 0, the smallest value
+          - id: one
+            text: 1, the middle value
+        correct: two
+        explanation: >-
+          `a[mid] >= a[lo]` is true in any ascending part, so it can't tell "the drop is to the
+          right" from "there is no drop". Comparing with `a[hi]` can: an ascending range has
+          `a[mid] <= a[hi]`.
+      hi-minus:
+        prompt: On `[30, 8, 12]`, the probe reads 8 at index 1, and 8 is not above 12. What does `hi = mid - 1` do?
+        options:
+          - id: drops-min
+            text: It drops index 1, the 8, and the call returns 0
+          - id: keeps-min
+            text: It keeps the 8, and the call returns 1
+          - id: hangs-min
+            text: It leaves the range unchanged
+        correct: drops-min
+        explanation: >-
+          `a[mid] <= a[hi]` says the smallest is `mid` or left of it, so `mid` stays a candidate.
+          Stepping past it can throw away the answer.
+      lo-mid:
+        prompt: On `[50, 6]`, `mid` is 0 and 50 is above 6. What does `lo = mid` do?
+        options:
+          - id: stuck
+            text: It leaves `lo` on 0, so the loop repeats forever
+          - id: finds
+            text: It moves `lo` to 1, the 6
+          - id: ends
+            text: It ends the loop and returns 0
+        correct: stuck
+        explanation: >-
+          `a[mid] > a[hi]` rules `mid` out, so the update must step past it. `lo = mid` never
+          shrinks a two-cell range, because `mid` rounds down to `lo`.

@@ -1,0 +1,702 @@
+id: boundary-search-review
+title: "Boundary search: review"
+description: The Boundary search decisions again, on fresh inputs and with no worked example. Use these for spaced review.
+heading: What happens next?
+
+questions:
+  - id: insert-front-review
+    format: tap-cell
+    heading: Tap where `lo` ends
+    tags: [binary-search]
+    prompt: The target is smaller than every value. Tap the index where `lo` sits when the loop ends.
+    code: |
+      a = [12, 18, 23, 29, 41]
+      x = 8
+      lo, hi = 0, len(a)
+      while lo < hi:
+          mid = (lo + hi) // 2
+          if a[mid] < x:
+              lo = mid + 1
+          else:
+              hi = mid
+    sequence:
+      kind: array
+      name: a
+      cells: [12, 18, 23, 29, 41]
+      pastEnd: true
+    correct: 0
+    explanation: >-
+      Every probe reads a value of at least 8, so each pass moves `hi` and `lo` never leaves 0.
+      8 belongs in front of 12, at index 0.
+    misses:
+      - index: 1
+        explanation: Index 1 is the slot between 12 and 18. 8 is smaller than 12, so it goes in front of it.
+      - index: 2
+        explanation: >-
+          That is the first probe, `(0 + 5) // 2`. It reads 23, which is not below 8, so `hi` moves
+          onto it and the search goes on to its left.
+      - index: 3
+        explanation: Every value is at least 8, so the boundary is the very first cell, not one in the middle.
+      - index: 4
+        explanation: 41 is the largest value. 8 belongs at the other end of the list.
+      - index: 5
+        explanation: >-
+          Past the end is where a value larger than every item goes. 8 is smaller than every item,
+          so `lo` never moves.
+
+  - id: past-end-review
+    heading: What does it return?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def first_at_least(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] < x:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return lo
+      ```
+
+      What does `first_at_least([8, 15, 22, 36], 50)` return?
+    options:
+      - id: four
+        text: "`4`"
+        explanation: >-
+          The probes read 22 and then 36, both below 50, so `lo` goes to 3 and then 4. `lo` meets
+          `hi` at `len(a)`, which says 50 goes after every value.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          Index 3 holds 36, which is below 50. The answer is the first index whose value is at
+          least 50, and no cell holds one.
+      - id: minus-one
+        text: "`-1`"
+        explanation: >-
+          This function never returns -1. It returns where `x` would go, and a value larger than
+          every item still has a place: after the last one.
+      - id: index-error
+        text: It raises `IndexError`
+        explanation: >-
+          `hi` starts at 4, but no probe reads `a[4]`. The loop runs only while `lo < hi`, so
+          `mid` is always below `hi`.
+    correct: four
+    followUps:
+      three:
+        prompt: "`a[3] = 36` and `x = 50`. Can index 3 be the first index with `a[i] >= 50`?"
+        options:
+          - id: no
+            text: No, 36 is below 50
+          - id: yes-last
+            text: Yes, it is the last index, so it is the nearest
+          - id: yes-close
+            text: Yes, 36 is the closest value to 50
+        correct: no
+        explanation: >-
+          The boundary is about values, not distance. When every value is below `x`, the boundary
+          is the slot after the last cell.
+      minus-one:
+        prompt: How many places can `x` be inserted into a list of 4 values?
+        options:
+          - id: five
+            text: Five, in front of each value or after the last
+          - id: four
+            text: Four, one for each value
+          - id: three
+            text: Three, between each pair of neighbors
+        correct: five
+        explanation: >-
+          A list of `n` values has `n + 1` slots, so every `x` has an answer from 0 to `n`. That
+          is why `hi` starts at `len(a)`.
+      index-error:
+        prompt: With `lo < hi`, what is the largest index `mid = (lo + hi) // 2` can take?
+        options:
+          - id: hi-minus
+            text: "`hi - 1`, because rounding down keeps `mid` below `hi`"
+          - id: hi
+            text: "`hi`, when `lo` and `hi` are next to each other"
+          - id: len
+            text: "`len(a)`, on the last pass"
+        correct: hi-minus
+        explanation: >-
+          With `lo < hi`, the average rounded down is always less than `hi`. So a half-open `hi`
+          of `len(a)` is never read.
+
+  - id: loop-end-review
+    heading: What does the end state say?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def first_at_least(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] < x:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return lo
+      ```
+
+      `first_at_least([2, 6, 13, 13, 20], 10)` ends with `lo == hi == 2`. What does that say?
+    options:
+      - id: split
+        text: Values before index 2 are below 10, and values from index 2 on are at least 10
+        explanation: >-
+          Every move of `lo` passed values below 10, and every move of `hi` kept values of at
+          least 10 on its right. When they meet, index 2 is the split, so 10 goes in front of the
+          first 13.
+      - id: equals
+        text: "`a[2]` equals 10"
+        explanation: >-
+          `a[2]` is 13. The loop finds where 10 would go, whether or not 10 is in the list. Here it
+          isn't.
+      - id: one-left
+        text: Index 2 is one candidate that still has to be compared
+        explanation: >-
+          That is how inclusive bounds read `lo == hi`. Here `hi` is half-open, so `lo == hi`
+          means no candidates are left, and the loop is done.
+      - id: largest-below
+        text: Index 2 holds the largest value below 10
+        explanation: The largest value below 10 is 6, at index 1. The loop ends one cell after it.
+    correct: split
+    followUps:
+      equals:
+        prompt: Is 10 in `[2, 6, 13, 13, 20]`, and does the function still return an index?
+        options:
+          - id: absent-index
+            text: 10 is absent, and the function still returns 2, the slot where 10 would go
+          - id: absent-none
+            text: 10 is absent, so the function returns -1
+          - id: present
+            text: 10 is present at index 2
+        correct: absent-index
+        explanation: >-
+          A boundary search answers "where would it go", not "is it there". To test membership,
+          check `a[i] == x` after the search, guarding `i < len(a)`.
+      one-left:
+        prompt: With `hi` starting at `len(a)`, which cells are in the range `lo..hi`?
+        options:
+          - id: half-open
+            text: "Indices from `lo` up to `hi - 1`; `hi` itself is outside"
+          - id: closed
+            text: "Indices from `lo` up to `hi`, both included"
+          - id: lo-only
+            text: Only index `lo`
+        correct: half-open
+        explanation: >-
+          A half-open range `[lo, hi)` holds `hi - lo` cells. When `lo == hi` that is zero, so
+          nothing is left to compare.
+      largest-below:
+        prompt: Which index holds the last value below 10, and where is the first value of at least 10?
+        options:
+          - id: one-two
+            text: The last below is at index 1, and the first at least 10 is at index 2
+          - id: two-three
+            text: The last below is at index 2, and the first at least 10 is at index 3
+          - id: both-two
+            text: Both are at index 2
+        correct: one-two
+        explanation: >-
+          The boundary sits between them. This loop returns the right side of that split, the
+          first index whose value is at least `x`.
+
+  - id: after-last-copy-review
+    heading: Which line is right?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def first_greater(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] < x:
+                  lo = mid + 1
+              elif a[mid] > x:
+                  hi = mid
+              else:
+                  ...  # which line?
+          return lo
+      ```
+
+      `first_greater` should return the first index with `a[i] > x`. On
+      `[5, 8, 8, 8, 8, 17, 23]` with `x = 8`, the first probe reads `a[3] = 8`. Which line is
+      right for every sorted list?
+    options:
+      - id: lo-up
+        text: "`lo = mid + 1`"
+        explanation: >-
+          An equal value fails `a[i] > x`, so it can't be the answer, and neither can anything
+          left of it. Here the call returns 5, the index of 17.
+      - id: hi-mid
+        text: "`hi = mid`"
+        explanation: >-
+          That keeps the equal probe as a candidate and searches left of it. It finds the first 8,
+          index 1, which is the boundary for `a[i] >= x`.
+      - id: return-mid-plus
+        text: "`return mid + 1`"
+        explanation: >-
+          That returns 4, but `a[4]` is another 8. The probe landed on a copy that isn't the last
+          one.
+      - id: lo-mid
+        text: "`lo = mid`"
+        explanation: >-
+          That keeps index 3, which holds a value that is not greater than 8. On this list the
+          loop reaches `lo = 4`, `hi = 5` and repeats that pass forever.
+    correct: lo-up
+    followUps:
+      hi-mid:
+        prompt: For "first index with `a[i] > x`", can an index holding exactly `x` be the answer?
+        options:
+          - id: no-equal
+            text: No, `x` is not greater than `x`, so the answer is to its right
+          - id: yes-equal
+            text: Yes, the first copy is the answer
+          - id: sometimes
+            text: Only when it is the last copy
+        correct: no-equal
+        explanation: >-
+          Which side keeps an equal value depends on the question. For `>= x` the equal value
+          stays a candidate. For `> x` it is ruled out, along with everything before it.
+      return-mid-plus:
+        prompt: The probe reads `a[3] = 8`. What does it say about `a[4]`?
+        options:
+          - id: unknown-four
+            text: Nothing yet, it could be another 8
+          - id: bigger-four
+            text: It must be greater than 8
+          - id: smaller-four
+            text: It must be smaller than 8
+        correct: unknown-four
+        explanation: >-
+          Sorted order allows more copies to the right of the probe. Only searching on tells
+          where the copies end.
+      lo-mid:
+        prompt: In the range `lo = 4`, `hi = 5`, `mid` is 4 and `a[4] = 8`. What does `lo = mid` do?
+        options:
+          - id: same-range
+            text: It leaves `lo` on 4, so the next pass probes the same cell
+          - id: moves-on
+            text: It moves `lo` to 5 and the loop ends
+          - id: moves-hi
+            text: It moves `hi` down to 4
+        correct: same-range
+        explanation: >-
+          `mid` rounds down to `lo` in a two-cell range. An update that keeps `mid` on the `lo`
+          side never shrinks that range, so the loop never ends.
+
+  - id: all-equal-drag-review
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    prompt: >-
+      This loop finds the first index with `a[i] > x`. Every value equals `x`. Drag `lo` and `hi`
+      to where they sit when the loop ends. The slot past the last cell is index 4.
+    code: |
+      def first_greater(a, x):
+          lo, hi = 0, len(a)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] <= x:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return lo
+
+      first_greater([9, 9, 9, 9], 9)
+    sequence:
+      kind: array
+      name: a
+      cells: [9, 9, 9, 9]
+      pastEnd: true
+    pointers:
+      - name: lo
+        start: 0
+        correct: 4
+        explanation: >-
+          The probes read 9 at index 2 and 9 at index 3. Neither is greater than 9, so `lo` goes to
+          3 and then 4. No value is greater than 9, so the answer is after the last one.
+        misses:
+          - index: 0
+            explanation: >-
+              Index 0 is the first copy, the answer for `a[i] >= x`. Here an equal value moves
+              `lo`, so `lo` passes every copy.
+          - index: 3
+            explanation: >-
+              Index 3 holds the last 9. It is not greater than 9, so the probe that reads it moves
+              `lo` one cell further.
+        elsewhere: Every probe reads 9, which is not greater than 9, so `lo` moves past each one until it reaches 4.
+      - name: hi
+        start: 4
+        correct: 4
+        explanation: No probe reads a value greater than 9, so `hi` stays on `len(a)`.
+        misses:
+          - index: 2
+            explanation: >-
+              `hi` moves only on a value greater than 9. The first probe reads 9 here, which moves
+              `lo` instead.
+        elsewhere: No probe reads a value greater than 9, so `hi` never moves.
+
+  - id: two-boundaries-review
+    heading: What does it print?
+    tags: [binary-search, python]
+    prompt: |-
+      ```python
+      from bisect import bisect_left, bisect_right
+
+      a = [3, 8, 8, 14, 14, 14, 20]
+      print(bisect_left(a, 14), bisect_right(a, 14))
+      ```
+
+      What does it print?
+    options:
+      - id: three-six
+        text: "`3 6`"
+        explanation: >-
+          `bisect_left` keeps equal values on its right, so it stops in front of the first 14, at
+          3. `bisect_right` keeps them on its left, so it stops after the last 14, at 6. The
+          difference, 3, is the number of copies.
+      - id: three-five
+        text: "`3 5`"
+        explanation: 5 is the index of the last 14. `bisect_right` returns the slot after it, where a new 14 would go last.
+      - id: three-three
+        text: "`3 3`"
+        explanation: >-
+          The two calls differ only in which side keeps an equal value. With three copies of 14,
+          that puts them three cells apart.
+      - id: four-six
+        text: "`4 6`"
+        explanation: '`a[3]` is already 14, so the first index with `a[i] >= 14` is 3.'
+    correct: three-six
+    followUps:
+      three-five:
+        prompt: "`bisect_right(a, x)` gives the first index whose value is what?"
+        options:
+          - id: greater
+            text: Greater than `x`
+          - id: equal-last
+            text: Equal to `x`, the last such index
+          - id: at-least
+            text: At least `x`
+        correct: greater
+        explanation: >-
+          Both functions return a slot, not a copy of `x`. `bisect_right` returns the slot after
+          the copies, so a value inserted there lands last among equals.
+      three-three:
+        prompt: When `x` is in the list, how do `bisect_left(a, x)` and `bisect_right(a, x)` compare?
+        options:
+          - id: apart
+            text: They differ by the number of copies of `x`
+          - id: same
+            text: They are always equal
+          - id: one-apart
+            text: They always differ by exactly 1
+        correct: apart
+        explanation: >-
+          One stops before the run of copies and the other after it. They are equal only when
+          `x` is absent.
+      four-six:
+        prompt: "`a[3]` is 14. Is index 3 the first index with `a[i] >= 14`?"
+        options:
+          - id: yes-three
+            text: Yes, `a[2]` is 8, which is below 14
+          - id: no-three
+            text: No, `bisect_left` returns the index after the first copy
+          - id: no-zero
+            text: No, the first index is 0
+        correct: yes-three
+        explanation: >-
+          `bisect_left` returns the first copy's own index when `x` is present. That is where a
+          new 14 would go to land first among equals.
+
+  - id: sorted-half-review
+    heading: Which part is sorted?
+    tags: [binary-search]
+    prompt: >-
+      `a = [27, 33, 38, 5, 11, 16, 21, 24]` is a rotated sorted list. With `lo = 0`, `hi = 7` and
+      `mid = 3`, the probe reads 5. Which part is sure to be in order?
+    options:
+      - id: right
+        text: "`a[3..7]`: 5, 11, 16, 21, 24"
+        explanation: >-
+          `a[lo] = 27` is larger than `a[mid] = 5`, so the drop lies between them. The other part,
+          from the probe to `hi`, has no drop and is in order.
+      - id: left
+        text: "`a[0..3]`: 27, 33, 38, 5"
+        explanation: That part rises from 27 to 38 and then falls to 5. The drop is inside it.
+      - id: both
+        text: Both parts
+        explanation: There is one drop, between 38 and 5, and it sits in the left part.
+      - id: neither
+        text: Neither, since 5 is smaller than both ends
+        explanation: >-
+          A small probe value only says where the drop is. Once the drop is placed, the other
+          part has to be in order.
+    correct: right
+    followUps:
+      left:
+        prompt: "`a[lo] = 27` and `a[mid] = 5`. What does `a[lo] > a[mid]` tell you about `a[0..3]`?"
+        options:
+          - id: has-drop
+            text: The drop lies inside it, so it is not in order
+          - id: in-order
+            text: It is in order, since it starts with its smallest value
+          - id: nothing
+            text: Nothing, the ends don't say anything about the middle
+        correct: has-drop
+        explanation: >-
+          In an ascending run the first value is at most the last. A part whose first value is
+          larger must hold the drop.
+      both:
+        prompt: Going left to right through `a[0..3]` = 27, 33, 38, 5, where does the order break?
+        options:
+          - id: drop
+            text: From 38 to 5
+          - id: no-break
+            text: Nowhere
+          - id: start
+            text: From 27 to 33
+        correct: drop
+        explanation: >-
+          One drop means one part out of order. The part that holds the drop is not sorted, and
+          the other part is.
+      neither:
+        prompt: A rotated sorted list has one drop. If the drop is in the left part, what is true of the right part?
+        options:
+          - id: sorted
+            text: It is in order
+          - id: also-drop
+            text: It may hold a second drop
+          - id: unknown
+            text: It can't be told
+        correct: sorted
+        explanation: >-
+          With only one drop, the part that doesn't hold it ascends. That is what lets one
+          comparison of the ends decide.
+
+  - id: rotated-halves-trace-review
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search]
+    prompt: >-
+      This search for 3 runs on a rotated list. On every pass it first decides which part is in
+      order. Predict each step before it is shown.
+    code: |
+      a = [11, 16, 22, 27, 35, 41, 48, 3]
+      t = 3
+      lo, hi = 0, len(a) - 1
+      while lo <= hi:
+          mid = (lo + hi) // 2
+          if a[mid] == t:
+              break
+          if a[lo] <= a[mid]:
+              if a[lo] <= t < a[mid]:
+                  hi = mid - 1
+              else:
+                  lo = mid + 1
+          else:
+              if a[mid] < t <= a[hi]:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+    sequence:
+      kind: array
+      name: a
+      cells: [11, 16, 22, 27, 35, 41, 48, 3]
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 5
+        ask: The first probe is index 3. Which part is in order?
+        options:
+          - id: left-first
+            text: "`a[0..3]`: 11 to 27"
+            explanation: '`a[lo] = 11 <= a[mid] = 27`, so the left part has no drop.'
+          - id: right-first
+            text: "`a[3..7]`: 27 to 3"
+            explanation: That part ends with the drop from 48 to 3, so it is not in order.
+          - id: both-first
+            text: Both parts
+            explanation: The drop from 48 to 3 sits in the right part, so only the left part is in order.
+        correct: left-first
+      - line: 8
+        ask: Where does `lo` sit after the first pass?
+        pointer: lo
+        correct: 4
+        explanation: 3 is below 11, so it is not in the sorted part 11 to 27. `lo = mid + 1 = 4`.
+        misses:
+          - index: 0
+            explanation: >-
+              That keeps the left part, as the plain rule would because 27 is larger than 3. But
+              11 to 27 is sorted and 3 is below all of it.
+          - index: 3
+            explanation: That is `lo = mid`. Index 3 holds 27, which was just compared with 3.
+          - index: 7
+            explanation: 3 sits at index 7, but one pass drops only the part ruled out. The loop hasn't seen the 3.
+        elsewhere: 3 is not between 11 and 27, so `lo` moves past the probe, to 4.
+      - line: 5
+        ask: The second probe is index 5. Which part is in order?
+        options:
+          - id: left-second
+            text: "`a[4..5]`: 35, 41"
+            explanation: '`a[lo] = 35 <= a[mid] = 41`, so 35, 41 is in order. The drop is still to the right.'
+          - id: right-second
+            text: "`a[5..7]`: 41, 48, 3"
+            explanation: That part falls from 48 to 3, so it holds the drop.
+          - id: neither-second
+            text: Neither part
+            explanation: There is one drop, between 48 and 3. The part without it, 35 and 41, is in order.
+        correct: left-second
+      - line: 8
+        ask: Where does `lo` sit after the second pass?
+        pointer: lo
+        correct: 6
+        explanation: 3 is below 35, so it is not in 35, 41, and `lo = mid + 1 = 6`. Now the range is the two cells 48 and 3.
+        misses:
+          - index: 5
+            explanation: That is `lo = mid`. Index 5 holds 41, which was just compared with 3.
+          - index: 4
+            explanation: >-
+              `lo` stays only when the target is in the sorted left part. 3 is below 35, so it
+              isn't.
+        elsewhere: 3 is not between 35 and 41, so `lo` moves to 6.
+      - line: 5
+        ask: The third probe is index 6, in the range 48, 3. Which part does `a[lo] <= a[mid]` call sorted?
+        options:
+          - id: left-third
+            text: "`a[6..6]`, the single 48"
+            explanation: >-
+              `lo == mid`, so the test is `48 <= 48`, true. One cell is always in order. 3 is not
+              in it, so `lo` moves to 7 and the next pass finds the 3.
+          - id: right-third
+            text: "`a[6..7]`: 48, 3"
+            explanation: That part falls from 48 to 3. The test reads `48 <= 48`, which picks the left part.
+          - id: none-third
+            text: Neither, because the test is false
+            explanation: '`a[lo]` and `a[mid]` are the same cell, so `a[lo] <= a[mid]` is true.'
+        correct: left-third
+
+  - id: rotated-side-review
+    heading: Which update comes next?
+    tags: [binary-search]
+    prompt: >-
+      `a = [18, 23, 29, 34, 40, 2, 7, 12]` and the target is 7. With `lo = 0`, `hi = 7` and
+      `mid = 3`, the probe reads 34. `a[lo] = 18 <= 34`, so `a[0..3]` = 18, 23, 29, 34 is the part
+      in order. Which update keeps every cell that could hold 7 and drops the rest?
+    options:
+      - id: go-right
+        text: "`lo = mid + 1`"
+        explanation: >-
+          7 is below 18, so it is not in the sorted part. It can only be in the other part, so
+          `lo` becomes 4.
+      - id: go-left
+        text: "`hi = mid - 1`"
+        explanation: >-
+          That is the plain rule, because 34 is larger than 7. But 18, 23 and 29 are larger than
+          7 as well, and 7 sits at index 6.
+      - id: absent
+        text: "`return -1`, since 7 is smaller than `a[lo] = 18`"
+        explanation: In a rotated list the first value is not the smallest. 7 comes after the drop.
+      - id: keep-mid
+        text: "`lo = mid`"
+        explanation: That keeps index 3, which holds 34, already compared with 7.
+    correct: go-right
+    followUps:
+      go-left:
+        prompt: The sorted part is 18, 23, 29, 34. Can 7 be in it?
+        options:
+          - id: no-range
+            text: No, 7 is below 18, the smallest value in that part
+          - id: yes-smaller
+            text: Yes, 7 is smaller than the probe, so it is left of it
+          - id: unknown
+            text: It can't be told without probing that part
+        correct: no-range
+        explanation: >-
+          The ends of the sorted part decide it. A target outside them must be in the other
+          part, whichever way it compares with the probe.
+      absent:
+        prompt: In `[18, 23, 29, 34, 40, 2, 7, 12]`, where is the smallest value?
+        options:
+          - id: after-drop
+            text: Just after the drop, at index 5
+          - id: first
+            text: At the first index
+          - id: last
+            text: At the last index
+        correct: after-drop
+        explanation: >-
+          Rotation moves the smallest value to just after the drop. A target below `a[lo]` can
+          still be present, after the drop.
+      keep-mid:
+        prompt: The probe compared `a[3] = 34` with 7. Can index 3 stay in the range?
+        options:
+          - id: no
+            text: No, it holds 34, so it is settled
+          - id: yes
+            text: Yes, the range always keeps the probe
+          - id: maybe
+            text: Only when the left part is sorted
+        correct: no
+        explanation: >-
+          With inclusive bounds a probe that misses has been checked, so the update steps past
+          it. `lo = mid` can also stall on a two-cell range.
+
+  - id: rotated-drag-review
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    prompt: The first pass probes `mid = 3`. Drag `lo` and `hi` to where that pass leaves them.
+    code: |
+      a = [40, 47, 2, 6, 11, 18, 25, 33]
+      t = 47
+      lo, hi = 0, len(a) - 1
+      mid = (lo + hi) // 2
+      if a[mid] == t:
+          print(mid)
+      elif a[lo] <= a[mid]:
+          if a[lo] <= t < a[mid]:
+              hi = mid - 1
+          else:
+              lo = mid + 1
+      else:
+          if a[mid] < t <= a[hi]:
+              lo = mid + 1
+          else:
+              hi = mid - 1
+    sequence:
+      kind: array
+      name: a
+      cells: [40, 47, 2, 6, 11, 18, 25, 33]
+    markers:
+      - { name: mid, at: 3 }
+    pointers:
+      - name: lo
+        start: 0
+        correct: 0
+        explanation: '`lo` stays on 40. The search drops the right part, so only `hi` moves.'
+        misses:
+          - index: 4
+            explanation: >-
+              That is the plain rule, because 6 is below 47. But 6 to 33 is the sorted part, and
+              47 is above all of it.
+        elsewhere: This pass moves `hi`, not `lo`, so `lo` stays on index 0.
+      - name: hi
+        start: 7
+        correct: 2
+        explanation: >-
+          `a[lo] = 40` is larger than 6, so 6 to 33 is the sorted part. 47 is not in it, so
+          `hi = mid - 1 = 2`. The search goes on in 40, 47, 2.
+        misses:
+          - index: 3
+            explanation: That is `hi = mid`. Index 3 holds 6, which was just compared with 47.
+          - index: 1
+            explanation: 47 does sit here, but one pass drops only the part ruled out. The loop hasn't seen the 47 yet.
+          - index: 7
+            explanation: >-
+              `hi` stays only when the target is in the sorted right part. 47 is above 33, so it
+              isn't.
+        elsewhere: 47 is not in the sorted part 6 to 33, so `hi` moves left of the probe, to 2.
