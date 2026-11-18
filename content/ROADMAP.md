@@ -124,6 +124,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Foundations #10 | Operation costs: teaching levels | `operation-costs` | in review |
 | Foundations #10 | Operation costs: review variants | `operation-costs-review` | in review |
 | Foundations #10 | Operation costs: checkpoint | `operation-costs-checkpoint` | in review |
+| Foundations #10 | Hidden work: teaching levels | `hidden-work` | in review |
+| Foundations #10 | Hidden work: review variants | `hidden-work-review` | in review |
+| Foundations #10 | Hidden work: checkpoint | `hidden-work-checkpoint` | in review |
 | Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | in review |
 | Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | in review |
 | Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | in review |
