@@ -1,0 +1,228 @@
+id: arrays-and-strings-checkpoint
+title: "Arrays and strings: checkpoint"
+description: Trace a two-cursor edit on a new input. Each item combines reading positions, tracing a scan, and telling a shared list from a copy.
+heading: What does this print?
+
+questions:
+  - id: checkpoint-reverse-range
+    tags: [two-pointers, python]
+    prompt: |-
+      ```python
+      def flip(chars, lo, hi):
+          while lo < hi:
+              chars[lo], chars[hi] = chars[hi], chars[lo]
+              lo += 1
+              hi -= 1
+
+      word = list("sprint")
+      flip(word, 1, 4)
+      print("".join(word))
+      ```
+    options:
+      - id: inclusive
+        text: "`snirpt`"
+        explanation: >-
+          `lo` starts at 1 and `hi` at 4, and both ends are included. The first pass swaps the
+          outer pair of that range and the second pass swaps the middle pair. Then `lo` passes `hi`.
+          Positions 0 and 5 are untouched, so the result is `s` + `nirp` + `t`.
+      - id: hi-exclusive
+        text: "`sirpnt`"
+        explanation: >-
+          This reverses positions 1 to 3 only. Check whether `hi` itself gets swapped.
+      - id: one-based
+        text: "`irpsnt`"
+        explanation: >-
+          This reverses the first four letters. Count from 0 to find where position 1 is.
+      - id: one-swap
+        text: "`snript`"
+        explanation: >-
+          That is the word after the first swap. Check the loop condition again before stopping.
+    correct: inclusive
+    followUps:
+      hi-exclusive:
+        prompt: On the first pass, which two positions swap?
+        options:
+          - id: one-four
+            text: 1 and 4
+          - id: one-three
+            text: 1 and 3
+          - id: zero-three
+            text: 0 and 3
+        correct: one-four
+        explanation: >-
+          `chars[hi]` is read and written directly, so position 4 is inside the range. A slice such
+          as `chars[1:4]` would stop before 4, but this loop uses `hi` as a position.
+      one-based:
+        prompt: In `list("sprint")`, which letter is at position 1?
+        options:
+          - id: p
+            text: "`'p'`"
+          - id: s
+            text: "`'s'`"
+          - id: r
+            text: "`'r'`"
+        correct: p
+        explanation: >-
+          Position 0 is `s`, so position 1 is the second letter. The swaps run from that `p` to the
+          `n` at position 4.
+      one-swap:
+        prompt: After the first swap, `lo` is 2 and `hi` is 3. Does the loop run again?
+        options:
+          - id: again
+            text: Yes, since 2 < 3
+          - id: once
+            text: No, the loop body runs once per call
+          - id: neighbours
+            text: No, since `lo` and `hi` are next to each other
+        correct: again
+        explanation: >-
+          The loop continues while `lo < hi`, so the middle pair swaps too. After that `lo` is 3
+          and `hi` is 2, and the loop stops.
+
+  - id: checkpoint-mirror-edit
+    tags: [two-pointers, python]
+    prompt: |-
+      ```python
+      chars = list("candle")
+      i, j = 0, len(chars) - 1
+      while i < j:
+          chars[j] = chars[i]
+          i += 1
+          j -= 1
+      print("".join(chars))
+      ```
+    options:
+      - id: mirror
+        text: "`cannac`"
+        explanation: >-
+          Each pass copies the letter at `i` over the letter at `j`. The passes write into
+          positions 5, 4 and 3, and then `i` passes `j`. The left half is only ever read, so it
+          keeps `can`, and the right half becomes its mirror image.
+      - id: direction
+        text: "`elddle`"
+        explanation: >-
+          This copies the right half over the left. Check which side of the `=` each cursor is on.
+      - id: swap
+        text: "`eldnac`"
+        explanation: >-
+          That is `"candle"` reversed, which would need a swap. Look at how many slots each pass
+          writes.
+      - id: early-stop
+        text: "`candac`"
+        explanation: >-
+          That is the word after two passes. Check `i < j` once more.
+    correct: mirror
+    followUps:
+      direction:
+        prompt: In `chars[j] = chars[i]`, which slot changes?
+        options:
+          - id: left
+            text: "`chars[j]`, on the left of `=`"
+          - id: right
+            text: "`chars[i]`, on the right of `=`"
+          - id: both
+            text: Both, as in a swap
+        correct: left
+        explanation: >-
+          Assignment reads the right side and writes into the left side. Here `j` walks in from the
+          end, so the right half is overwritten.
+      swap:
+        prompt: How many slots does `chars[j] = chars[i]` change?
+        options:
+          - id: one
+            text: One, and `chars[i]` keeps its letter
+          - id: two
+            text: Two, because the letters trade places
+          - id: none
+            text: None until the loop ends
+        correct: one
+        explanation: >-
+          A swap needs both slots on the left, as in `chars[i], chars[j] = chars[j], chars[i]`.
+          This line writes one slot, so the left letter ends up in both places.
+      early-stop:
+        prompt: After two passes, `i` is 2 and `j` is 3. What happens next?
+        options:
+          - id: one-more
+            text: One more pass copies `n` into position 3
+          - id: neighbours
+            text: The loop stops, since the cursors are neighbours
+          - id: half
+            text: The loop stops, since half the word is done
+        correct: one-more
+        explanation: >-
+          2 < 3 is true, so the loop writes once more. It stops when `i` is 3 and `j` is 2.
+
+  - id: checkpoint-reverse-shared
+    tags: [two-pointers, python]
+    prompt: |-
+      ```python
+      letters = list("radio")
+      same = letters
+      saved = letters[:]
+      i, j = 0, len(letters) - 1
+      while i < j:
+          letters[i], letters[j] = letters[j], letters[i]
+          i += 1
+          j -= 1
+      print("".join(same), "".join(saved))
+      ```
+    options:
+      - id: alias-and-copy
+        text: "`oidar radio`"
+        explanation: >-
+          The loop reverses the one list that `letters` and `same` both name, so `same` prints
+          `oidar`. `saved` was copied before the loop, so it still holds `radio`.
+      - id: both-copies
+        text: "`radio radio`"
+        explanation: >-
+          That would be right if `same` were a copy. Compare how `same` and `saved` were made.
+      - id: both-shared
+        text: "`oidar oidar`"
+        explanation: >-
+          That would be right if `saved` shared the list. Check what `letters[:]` builds.
+      - id: swapped-roles
+        text: "`radio oidar`"
+        explanation: >-
+          This has the two names the other way round. Which one is a second name, and which one is
+          a copy?
+    correct: alias-and-copy
+    followUps:
+      both-copies:
+        prompt: Which name sees the swaps made through `letters`?
+        options:
+          - id: same
+            text: "`same`, because it names the same list"
+          - id: saved
+            text: "`saved`, because it was made from `letters`"
+          - id: neither
+            text: Neither, because the loop only uses `letters`
+        correct: same
+        explanation: >-
+          Assignment adds a name without copying, so `same` and `letters` are one list. The slice
+          built `saved` as a separate list before any swap.
+      both-shared:
+        prompt: When does `saved` get its letters?
+        options:
+          - id: once
+            text: Once, when `letters[:]` runs before the loop
+          - id: every-change
+            text: Every time `letters` changes
+          - id: print
+            text: When it is printed
+        correct: once
+        explanation: >-
+          A slice copies the items at the moment it runs. Later swaps change `letters`, not the
+          copy.
+      swapped-roles:
+        prompt: Which line made a copy?
+        options:
+          - id: slice
+            text: "`saved = letters[:]`"
+          - id: assign
+            text: "`same = letters`"
+          - id: both
+            text: Both lines
+        correct: slice
+        explanation: >-
+          The slice copies, and plain assignment only adds a name. So `saved` keeps the old order
+          and `same` shows the reversal.
