@@ -54,7 +54,14 @@ const checkpointSchema = z
 		 * two checkpoints. Omit it when the path has one: that exam uses every
 		 * skill on the path.
 		 */
-		requires: z.array(id).min(1).optional()
+		requires: z.array(id).min(1).optional(),
+		/**
+		 * Kinds of item every exam built from this checkpoint must include. Each
+		 * kind needs an exam drill on the path that lists it in `covers`. Only a
+		 * path with one checkpoint can use it, because exam drills are not yet
+		 * assigned to a checkpoint by name.
+		 */
+		mix: z.array(id).min(1).optional()
 	})
 	.strict();
 
@@ -66,6 +73,8 @@ const drillSchema = z
 		questionId: id,
 		disposition: z.enum(DISPOSITIONS),
 		path: id,
+		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
+		covers: z.array(id).min(1).optional(),
 		note: text(400)
 	})
 	.strict();
@@ -143,6 +152,8 @@ export interface CurriculumCheckpoint {
 	branchId: string;
 	/** Every skill that gates this exam, in teaching order. */
 	requires: readonly string[];
+	/** Item kinds every exam must include. Empty when the checkpoint sets none. */
+	mix: readonly string[];
 }
 
 export interface CurriculumFork {
@@ -178,6 +189,8 @@ export interface CurriculumDrill {
 	deckId: string;
 	disposition: Disposition;
 	pathId: string;
+	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
+	covers: readonly string[];
 	note: string;
 }
 
@@ -409,7 +422,8 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					summary: checkpoint.summary,
 					pathId,
 					branchId: branch.id,
-					requires: dedupe([...ownIds, ...fromPaths, ...needs])
+					requires: dedupe([...ownIds, ...fromPaths, ...needs]),
+					mix: dedupe(checkpoint.mix ?? [])
 				}
 			];
 		} else {
@@ -417,6 +431,11 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			checkpoints = path.checkpoints.map((checkpoint) => {
 				if (!checkpoint.requires) {
 					throw new ContentError(`path "${pathId}": checkpoint "${checkpoint.id}" must list requires`);
+				}
+				if (checkpoint.mix) {
+					throw new ContentError(
+						`path "${pathId}": checkpoint "${checkpoint.id}" sets mix, which needs a path with one checkpoint`
+					);
 				}
 				claim(checkpoint.id, 'a checkpoint');
 				for (const required of checkpoint.requires) {
@@ -437,7 +456,8 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					summary: checkpoint.summary,
 					pathId,
 					branchId: branch.id,
-					requires: dedupe(checkpoint.requires)
+					requires: dedupe(checkpoint.requires),
+					mix: []
 				};
 			});
 			for (const skillId of ownIds) {
@@ -486,14 +506,28 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			}
 			const source = questionsById.get(drill.questionId);
 			if (!source) throw new ContentError(`drill "${drill.questionId}" is not a question id in content/decks`);
+			if (drill.covers && drill.disposition !== 'exam') {
+				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
+			}
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,
 				deckId: source.deckId,
 				disposition: drill.disposition,
 				pathId: drill.path,
+				covers: dedupe(drill.covers ?? []),
 				note: drill.note
 			});
+		}
+	}
+	for (const path of compiledPaths.values()) {
+		const covered = new Set(
+			drills.filter((drill) => drill.pathId === path.id && drill.disposition === 'exam').flatMap((drill) => drill.covers)
+		);
+		for (const kind of path.checkpoints.flatMap((checkpoint) => checkpoint.mix)) {
+			if (!covered.has(kind)) {
+				throw new ContentError(`path "${path.id}": no exam drill covers "${kind}", which its checkpoint's mix requires`);
+			}
 		}
 	}
 	for (const questionId of questionsById.keys()) {
