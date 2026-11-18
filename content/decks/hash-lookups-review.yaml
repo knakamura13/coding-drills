@@ -1,0 +1,610 @@
+id: hash-lookups-review
+title: "Hash lookups: review"
+description: Fresh inputs for the Hash lookups skills, for recall on later days. No worked examples this time.
+heading: What happens next?
+
+questions:
+  - id: dict-read-review
+    heading: What does this print?
+    tags: [hash-map, python]
+    prompt: |-
+      ```python
+      seats = {12: "ana", 30: "bo"}
+      print(seats.get(30), seats.get(31), "ana" in seats)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: '`bo None False`'
+        explanation: >-
+          30 is a key, so `get` returns `"bo"`. 31 is not a key and no default was passed, so
+          `get` returns `None`. `"ana"` is stored as a value, and membership tests the keys, so
+          the last value is `False`.
+      - id: in-values
+        text: '`bo None True`'
+        explanation: >-
+          `"ana"` is in the dictionary, but as the value under 12. Membership on a dictionary
+          looks only at the keys, which are 12 and 30.
+      - id: zero-default
+        text: '`bo 0 False`'
+        explanation: >-
+          `get` has a default only when one is passed. With a single argument, a missing key
+          gives `None`, not 0.
+    correct: right
+    followUps:
+      in-values:
+        prompt: '`seats` maps seat numbers to names. Which expression is `True`?'
+        options:
+          - id: key
+            text: '`30 in seats`'
+          - id: value
+            text: '`"bo" in seats`'
+          - id: keys-view
+            text: '`"bo" in seats.keys()`'
+        correct: key
+        explanation: >-
+          Membership on a dictionary checks keys, and here the keys are seat numbers. To find a
+          name, test `"bo" in seats.values()`.
+      zero-default:
+        prompt: What does `seats.get(31)` return when 31 is not a key and no default is passed?
+        options:
+          - id: none
+            text: '`None`, unless a default is passed'
+          - id: zero
+            text: '`0`, the default for a missing number'
+          - id: raises
+            text: It raises `KeyError`
+        correct: none
+        explanation: >-
+          The default of `get` is `None` when no second argument is given. It never raises, and
+          it knows nothing about the type of the values.
+
+  - id: set-add-review
+    heading: What does this print?
+    tags: [hash-map, python]
+    prompt: |-
+      ```python
+      s = {4, 9}
+      s.add(9)
+      s.add(2)
+      print(len(s))
+      ```
+
+      What does it print?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          `s` already holds 9, so adding it again changes nothing. Adding 2 brings the members to
+          three: 2, 4 and 9.
+      - id: four
+        text: '4'
+        explanation: >-
+          That counts the second 9 as a new member. A set has no copies, so adding a member it
+          already holds leaves it as it was.
+      - id: error
+        text: It raises an error on `s.add(9)`
+        explanation: >-
+          Adding a value that is already present is allowed. The call returns without complaint
+          and the set is unchanged.
+    correct: three
+    followUps:
+      four:
+        prompt: What does `s.add(x)` do when `x` is already in `s`?
+        options:
+          - id: nothing
+            text: Nothing, a set holds each value once
+          - id: copy
+            text: It stores a second copy of `x`
+          - id: move
+            text: It moves `x` to the end of the set
+        correct: nothing
+        explanation: >-
+          A set keeps one copy of each value, so `len` of a set counts distinct values. That is
+          why a set can answer "seen before?" but not "how many times?".
+      error:
+        prompt: Adding a value a set already holds is allowed. Which call does raise `KeyError`?
+        options:
+          - id: remove
+            text: '`s.remove(5)` when 5 is not in `s`'
+          - id: add
+            text: '`s.add(5)` when 5 is already in `s`'
+          - id: discard
+            text: '`s.discard(5)` when 5 is not in `s`'
+        correct: remove
+        explanation: >-
+          `remove` insists that the value is there. `add` and `discard` never raise, whether the
+          value is present or missing.
+
+  - id: frequency-update-review
+    heading: Which line counts?
+    tags: [hash-map, python]
+    prompt: |-
+      ```python
+      counts = {}
+      for x in "abca":
+          ...  # one line goes here
+      ```
+
+      Which line in place of `...` leaves `counts` as `{"a": 2, "b": 1, "c": 1}`?
+    options:
+      - id: get
+        text: '`counts[x] = counts.get(x, 0) + 1`'
+        explanation: >-
+          For a new letter `get` gives 0, so the line stores 1. The second `"a"` reads its 1 and
+          stores 2.
+      - id: plus-equals
+        text: '`counts[x] += 1`'
+        explanation: >-
+          `+=` has to read `counts["a"]` before adding. On the first `"a"` there is nothing to read
+          yet, so the loop fails at once.
+      - id: assign-one
+        text: '`counts[x] = 1`'
+        explanation: >-
+          That records which letters appeared, not how often. The second `"a"` leaves its entry
+          at 1.
+      - id: no-store
+        text: '`counts.get(x, 0) + 1`'
+        explanation: >-
+          The sum is computed on every pass, but nothing assigns it to a key, so the dictionary
+          never changes.
+    correct: get
+    followUps:
+      plus-equals:
+        prompt: What happens the first time `counts[x] += 1` meets a letter not yet in `counts`?
+        options:
+          - id: raises
+            text: It raises `KeyError`, since the old count is read before it exists
+          - id: stores-one
+            text: It stores 1
+          - id: stores-zero
+            text: It stores 0
+        correct: raises
+        explanation: >-
+          `counts[x] += 1` means `counts[x] = counts[x] + 1`, and the right side reads a key that
+          isn't there. `get(x, 0)` supplies the 0 for a key not seen yet.
+      assign-one:
+        prompt: '`counts` holds `{"a": 1}` and `counts["a"] = 1` runs for the second `"a"`. What is `counts["a"]` now?'
+        options:
+          - id: still-one
+            text: Still 1, because assignment replaces the old count
+          - id: two
+            text: 2, because the key is seen again
+          - id: raises
+            text: It raises, because the key already exists
+        correct: still-one
+        explanation: >-
+          Assigning to a key overwrites its value. To count, the line has to read the old count
+          and add one to it.
+      no-store:
+        prompt: '`counts.get(x, 0) + 1` gives 1 for a new letter. Where does that 1 go?'
+        options:
+          - id: nowhere
+            text: Nowhere, because nothing assigns it, so `counts` stays empty
+          - id: stored
+            text: Into `counts[x]`, because `get` stores the default
+          - id: zero-key
+            text: Into `counts[0]`
+        correct: nowhere
+        explanation: >-
+          `get` only reads. Without `counts[x] =` in front of it, the result is thrown away.
+
+  - id: complement-review
+    heading: Which key does it look up?
+    tags: [hash-map]
+    prompt: >-
+      A one-pass pair search keeps the values it has seen in a dictionary. The target is 6 and the
+      loop reaches `x = -2`. Which key should it look up to find a partner for -2?
+    options:
+      - id: eight
+        text: '`8`'
+        explanation: >-
+          The partner has to lift -2 up to 6, so it is 8, and -2 + 8 is 6. Subtracting a negative
+          number adds its size.
+      - id: minus-eight
+        text: '`-8`'
+        explanation: >-
+          That is `x - target`, which is backwards. -2 + (-8) moves further from 6.
+      - id: four
+        text: '`4`'
+        explanation: >-
+          That treats `6 - (-2)` as 6 - 2. Subtracting a negative number is not the same as
+          subtracting its size.
+      - id: target
+        text: '`6`'
+        explanation: >-
+          That looks for the target itself. A stored 6 would pair with -2 to make 4.
+    correct: eight
+    followUps:
+      minus-eight:
+        prompt: What is `-2 + (-8)`?
+        options:
+          - id: minus-ten
+            text: -10, far from the target
+          - id: six
+            text: 6, the target
+          - id: minus-six
+            text: '-6'
+        correct: minus-ten
+        explanation: >-
+          The partner is `target - x`. Swapping the two flips the sign of the answer, and here it
+          gives -8 instead of 8.
+      four:
+        prompt: What is `6 - (-2)`?
+        options:
+          - id: eight
+            text: 8, since subtracting -2 adds 2
+          - id: four
+            text: 4, since the minus signs cancel out to a subtraction
+          - id: minus-eight
+            text: '-8'
+        correct: eight
+        explanation: >-
+          Taking away a negative amount raises the result. So for `x = -2` the key is 6 plus 2.
+      target:
+        prompt: The loop is at -2 and the dictionary holds a 6. What do they add to?
+        options:
+          - id: four
+            text: 4, which misses the target
+          - id: six
+            text: 6, the target
+          - id: eight
+            text: '8'
+        correct: four
+        explanation: >-
+          A stored target pairs with `x` only when `x` is 0. The key to look up is what is
+          missing, `target - x`.
+
+  - id: key-groups-review
+    heading: How many groups?
+    tags: [hash-map, python]
+    prompt: |-
+      ```python
+      groups = {}
+      for w in ["noon", "nono", "non", "onon", "oon"]:
+          key = "".join(sorted(w))
+          groups.setdefault(key, []).append(w)
+      print(len(groups))
+      ```
+
+      What does it print?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          `noon`, `nono` and `onon` all sort to `"nnoo"`. `non` sorts to `"nno"` and `oon` to
+          `"noo"`. Those three keys differ in how many n's and o's they hold.
+      - id: one
+        text: '1'
+        explanation: >-
+          Every word uses only n and o, but they use them in different amounts. A sorted key
+          keeps the amounts.
+      - id: two
+        text: '2'
+        explanation: >-
+          That splits the words by length, four letters and three. `non` and `oon` have the same
+          length but different letters.
+      - id: five
+        text: '5'
+        explanation: >-
+          That gives each word its own group. Sorting the letters makes `noon`, `nono` and `onon`
+          produce one key.
+    correct: three
+    followUps:
+      one:
+        prompt: '`non` and `noon` use the same two letters. Why does the sorted key keep them apart?'
+        options:
+          - id: counts
+            text: Sorting keeps every copy of a letter, so `"nno"` and `"nnoo"` differ
+          - id: removes
+            text: Sorting removes repeated letters
+          - id: first
+            text: Sorting compares only the first letters
+        correct: counts
+        explanation: >-
+          A key built from the set of letters would merge them. A sorted key records how many times
+          each letter appears, which is what anagrams share.
+      two:
+        prompt: Every group of anagrams shares a length. Why isn't length the key?
+        options:
+          - id: not-enough
+            text: Equal length doesn't make anagrams, as `non` and `oon` show
+          - id: slow
+            text: Computing a length takes too long
+          - id: unhashable
+            text: A length can't be a dictionary key
+        correct: not-enough
+        explanation: >-
+          A key must keep non-anagrams apart as well as bring anagrams together. Length does the
+          second but not the first.
+      five:
+        prompt: '`noon` and `onon` are different strings. What makes them share a key?'
+        options:
+          - id: sorted
+            text: Sorting their letters gives the same string for both
+          - id: same-word
+            text: Nothing, a key is equal only for equal words
+          - id: first-letter
+            text: Their first letters
+        correct: sorted
+        explanation: >-
+          The key forgets the order of the letters and keeps the counts. Two anagrams differ only
+          in order, so their keys are equal.
+
+  - id: predecessor-review
+    format: tap-cell
+    heading: Tap the value it finds
+    tags: [hash-map]
+    prompt: The check below runs for `x = 15`. Tap the cell holding the value it finds.
+    code: |
+      nums = [16, 6, 14, 5, 15]
+      s = set(nums)
+      x = 15
+      print(x - 1 in s)
+    sequence:
+      kind: array
+      name: nums
+      cells: [16, 6, 14, 5, 15]
+    correct: 2
+    explanation: >-
+      `x - 1` is 14, at index 2, so the check prints `True`. 15 continues the run 14, 15, 16
+      instead of starting it.
+    misses:
+      - index: 0
+        explanation: 16 is `x + 1`, the next value in the run. The check looks one step down.
+      - index: 1
+        explanation: 6 belongs to the other run, 5 and 6. The check for 15 looks up `15 - 1`.
+      - index: 3
+        explanation: 5 belongs to the other run, 5 and 6. The check for 15 looks up `15 - 1`.
+      - index: 4
+        explanation: That is `x` itself. The check looks up the value just below it.
+
+  - id: seen-scan-trace-review
+    format: step-trace
+    heading: Predict each step
+    tags: [hash-map, python]
+    prompt: Step through the call and predict each step before it is shown.
+    code: |
+      def first_repeat(items):
+          seen = set()
+          for i, x in enumerate(items):
+              if x in seen:
+                  return x
+              seen.add(x)
+          return None
+
+      first_repeat(["fig", "kiwi", "lime", "kiwi", "fig"])
+    sequence:
+      kind: array
+      name: items
+      cells: [fig, kiwi, lime, kiwi, fig]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: Where is `i` when line 5 returns?
+        pointer: i
+        correct: 3
+        explanation: >-
+          `fig`, `kiwi` and `lime` are new and are added. The `kiwi` at index 3 is already in
+          `seen`, so the call returns there.
+        misses:
+          - index: 4
+            explanation: >-
+              The second `fig` is a repeat too, but the second `kiwi` comes first, and the scan
+              returns at the first value it has seen before.
+          - index: 1
+            explanation: That is the first `kiwi`. It is not in `seen` yet, so it is added.
+          - index: 0
+            explanation: The set is empty on the first pass, so `fig` is added, not found.
+        elsewhere: The scan returns at the first item already in `seen`, the second `kiwi`.
+      - line: 4
+        ask: How many items does `seen` hold at that moment?
+        options:
+          - id: three
+            text: '3'
+            explanation: '`fig`, `kiwi` and `lime` were added. The second `kiwi` is found, so it is never added.'
+          - id: four
+            text: '4'
+            explanation: >-
+              The second `kiwi` is tested before line 6 could add it, and the test returns. A set
+              would not store a second copy anyway.
+          - id: two
+            text: '2'
+            explanation: '`lime` was new as well, so it was added on the pass with `i` at 2.'
+        correct: three
+      - line: 5
+        ask: What does the call return?
+        options:
+          - id: kiwi
+            text: '`"kiwi"`'
+            explanation: Line 5 returns `x`, the item at index 3.
+          - id: fig
+            text: '`"fig"`'
+            explanation: >-
+              `fig` is the first item in the list that repeats, but its copy comes after the second
+              `kiwi`. The scan returns at the earlier repeat.
+          - id: index
+            text: '`3`'
+            explanation: This version returns `x`, the item itself, not its index.
+        correct: kiwi
+
+  - id: overwrite-review
+    heading: What does it return?
+    tags: [hash-map, python]
+    prompt: |-
+      ```python
+      def pair(nums, target):
+          seen = {}
+          for i, x in enumerate(nums):
+              need = target - x
+              if need in seen:
+                  return [seen[need], i]
+              seen[x] = i
+          return None
+      ```
+
+      What does `pair([3, 3, 4], 7)` return?
+    options:
+      - id: later
+        text: '`[1, 2]`'
+        explanation: >-
+          The first 3 is stored at index 0. The second 3 needs 4, misses, and `seen[3] = 1`
+          replaces the 0. Then 4 needs 3 and finds index 1.
+      - id: earlier
+        text: '`[0, 2]`'
+        explanation: >-
+          The 3 at index 0 would make a valid pair with the 4, but the dictionary no longer holds
+          index 0 by the time the 4 arrives.
+      - id: copies
+        text: '`[0, 1]`'
+        explanation: >-
+          The two 3s add to 6, not 7. The second 3 looks up 4, which isn't stored, so it doesn't
+          return.
+    correct: later
+    followUps:
+      earlier:
+        prompt: '`seen` is `{3: 0}`, and then `seen[3] = 1` runs. What does `seen` hold?'
+        options:
+          - id: replaced
+            text: '`{3: 1}`, the new index replaces the old one'
+          - id: kept
+            text: '`{3: 0}`, the first index is kept'
+          - id: both
+            text: '`{3: [0, 1]}`, both indices'
+        correct: replaced
+        explanation: >-
+          A dictionary keeps one value per key, and assignment overwrites it. So this code returns
+          the latest index of a repeated value.
+      copies:
+        prompt: With target 7, which key does the second 3 look up?
+        options:
+          - id: four
+            text: 4, which isn't stored yet
+          - id: three
+            text: 3, its own value
+          - id: seven
+            text: 7, the target
+        correct: four
+        explanation: >-
+          The key is `7 - 3`. Two copies of a value pair up only when the value is half the
+          target.
+
+  - id: pair-drag-review
+    format: drag-pointers
+    heading: Place the pair
+    tags: [hash-map, python]
+    prompt: >-
+      The call returns `[seen[need], i]`. Drag `j` to the index `seen[need]` gives and `i` to
+      where the loop is when line 6 returns.
+    code: |
+      def pair(nums, target):
+          seen = {}
+          for i, x in enumerate(nums):
+              need = target - x
+              if need in seen:
+                  return [seen[need], i]
+              seen[x] = i
+          return None
+
+      pair([6, 2, 9, 5, 2], 7)
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 2, 9, 5, 2]
+    pointers:
+      - name: j
+        start: 0
+        correct: 1
+        explanation: >-
+          When the 5 arrives it needs 2, and `seen` holds `2 -> 1`. The 2 at index 4 hasn't been
+          read yet.
+        misses:
+          - index: 4
+            explanation: >-
+              The 2 at index 4 comes after the 5. When the 5 looks up 2, only the 2 at index 1 is
+              stored.
+          - index: 3
+            explanation: That is the 5 itself. `seen[need]` is the index of its partner.
+          - index: 0
+            explanation: 6 needs 1, which never appears, so it pairs with nothing.
+        elsewhere: '`seen[2]` is 1, where the first 2 was stored.'
+      - name: i
+        start: 0
+        correct: 3
+        explanation: >-
+          6, 2 and 9 each miss and are stored. The 5 at index 3 needs 2, finds it, and the call
+          returns `[1, 3]`.
+        misses:
+          - index: 4
+            explanation: >-
+              The pair 2 + 5 is found as soon as the 5 arrives at index 3, before the second 2 is
+              read.
+          - index: 1
+            explanation: >-
+              When the first 2 arrives it needs 5, which hasn't been seen yet. It is stored and the
+              loop goes on.
+        elsewhere: The first value whose partner is already stored is the 5 at index 3.
+
+  - id: add-before-test-review
+    heading: Which input gives False?
+    tags: [hash-map, python]
+    prompt: |-
+      This version adds each value before it tests it:
+
+      ```python
+      def has_repeat(vals):
+          seen = set()
+          for x in vals:
+              seen.add(x)
+              if x in seen:
+                  return True
+          return False
+      ```
+
+      For which input does it return `False`?
+    options:
+      - id: empty
+        text: '`[]`'
+        explanation: >-
+          Every pass adds `x` and then finds it, so any value at all makes the call return `True`
+          on the first pass. Only an empty list skips the loop and reaches `return False`.
+      - id: distinct
+        text: '`[1, 2, 3]`'
+        explanation: >-
+          No value repeats, but the 1 is in `seen` by the time it is tested, so the call returns
+          `True` at once.
+      - id: single
+        text: '`[7]`'
+        explanation: >-
+          One value can't repeat, yet the test still finds it, because the add has already put it
+          there.
+    correct: empty
+    followUps:
+      distinct:
+        prompt: Right after `seen.add(1)`, is `1 in seen` true?
+        options:
+          - id: yes
+            text: Yes, a value just added is found straight away
+          - id: next-pass
+            text: No, the add takes effect on the next pass
+          - id: only-repeat
+            text: Only if 1 appears again later
+        correct: yes
+        explanation: >-
+          A set changes as soon as `add` returns. Testing a value just added always succeeds, so
+          this version answers `True` for any list with an item.
+      single:
+        prompt: Which line order lets a value match only earlier values?
+        options:
+          - id: test-first
+            text: Test `x in seen` first, then add `x`
+          - id: add-first
+            text: Add `x` first, then test it
+          - id: either
+            text: Either order works
+        correct: test-first
+        explanation: >-
+          Testing first means `seen` holds only values from earlier passes, so a value can't match
+          itself. Adding first makes every value its own match.

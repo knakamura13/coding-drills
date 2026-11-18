@@ -1,0 +1,271 @@
+id: hash-lookups-checkpoint
+title: "Hash lookups: checkpoint"
+description: Recognize where runs of consecutive values start, and explain why each value needs only one visit, on new inputs. Each item combines all three Hash lookups skills.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-which-starts
+    heading: Which values start a run?
+    tags: [hash-map]
+    prompt: |-
+      ```python
+      nums = [31, 4, 30, 6, 5, 32, 10]
+      s = set(nums)
+      starts = [x for x in nums if x - 1 not in s]
+      ```
+
+      Which values end up in `starts`?
+    options:
+      - id: right
+        text: 4, 10 and 30
+        explanation: >-
+          3, 9 and 29 are missing from the set, so 4, 10 and 30 each begin a run: 4 to 6, the
+          lone 10, and 30 to 32. Every other value has the value just below it in the set.
+      - id: skip-lone
+        text: 4 and 30
+        explanation: Look again at 10.
+      - id: run-ends
+        text: 6, 10 and 32
+        explanation: Which neighbor does the test look up?
+      - id: smallest
+        text: Only 4, the smallest value
+        explanation: A start needs only its own predecessor to be missing.
+    correct: right
+    followUps:
+      skip-lone:
+        prompt: 9 is not in the set. What does that make 10?
+        options:
+          - id: lone-start
+            text: The start of a run of length 1
+          - id: no-run
+            text: Part of no run, since it has no neighbors
+          - id: needs-next
+            text: A start only if 11 is in the set too
+        correct: lone-start
+        explanation: >-
+          The test asks only whether `x - 1` is absent. A value with no neighbors passes it, and
+          its run is the value alone.
+      run-ends:
+        prompt: For `x = 32`, the test looks up 31. Is 31 in the set, and what follows?
+        options:
+          - id: continues
+            text: Yes, so 32 continues a run and is not a start
+          - id: starts
+            text: No, so 32 starts a run
+          - id: ends
+            text: Yes, so 32 is a start because nothing comes after it
+        correct: continues
+        explanation: >-
+          32 extends the run 30, 31, 32. Testing `x + 1` instead finds the last value of each run,
+          where a walk upward stops rather than starts.
+      smallest:
+        prompt: Does 30 pass the test `x - 1 not in s`?
+        options:
+          - id: yes
+            text: Yes, 29 is not in the set
+          - id: no-smaller
+            text: No, 4 is smaller and already started a run
+          - id: no-one-run
+            text: No, a list has only one run start
+        correct: yes
+        explanation: >-
+          Each run has its own first value. The test looks at one neighbor, so it finds every
+          run's start, not just the smallest value overall.
+
+  - id: checkpoint-longest-start
+    format: tap-cell
+    heading: Tap the start of the longest run
+    tags: [hash-map]
+    prompt: >-
+      The call below returns 4. Tap the value whose walk counts those 4.
+    code: |
+      def longest(nums):
+          s = set(nums)
+          best = 0
+          for x in s:
+              if x - 1 not in s:
+                  y = x
+                  while y + 1 in s:
+                      y += 1
+                  best = max(best, y - x + 1)
+          return best
+
+      longest([52, 18, 50, 17, 51, 19, 49, 30])
+    sequence:
+      kind: array
+      name: nums
+      cells: [52, 18, 50, 17, 51, 19, 49, 30]
+    correct: 6
+    explanation: >-
+      48 is not in the set, so 49 starts a walk. It steps to 50, 51 and 52 and stops at the
+      missing 53, a run of 4. The other walks start at 17 and 30 and count 3 and 1.
+    misses:
+      - index: 0
+        explanation: 52 is where the longest run ends. The walk starts at the value with no predecessor.
+      - index: 1
+        explanation: 17 is in the set, so 18 never starts a walk. It belongs to the run 17 to 19.
+      - index: 2
+        explanation: 49 is in the set, so 50 never starts a walk. Its run begins one value lower.
+      - index: 3
+        explanation: 17 does start a walk, but its run is 17, 18, 19, which counts 3.
+      - index: 4
+        explanation: 51 sits inside the run 49 to 52. 50 is in the set, so it never starts a walk.
+      - index: 5
+        explanation: 19 is the end of the run 17 to 19, which counts 3.
+      - index: 7
+        explanation: 30 starts a walk, but 31 is missing, so that walk counts 1.
+
+  - id: checkpoint-why-linear
+    heading: Why is it linear?
+    tags: [hash-map, complexity]
+    prompt: |-
+      ```python
+      def longest(nums):
+          s = set(nums)
+          best = 0
+          for x in s:
+              if x - 1 not in s:
+                  y = x
+                  while y + 1 in s:
+                      y += 1
+                  best = max(best, y - x + 1)
+          return best
+      ```
+
+      This takes O(n) time on average, even with a `while` loop inside the `for` loop. Why?
+    options:
+      - id: one-walk
+        text: Only a run's first value starts a walk, so no value is walked over twice
+        explanation: >-
+          The walk from a start covers that run alone, and no other value in the run starts one.
+          So the `for` loop does n start tests and all the walks together take about n more
+          steps, each an O(1) average lookup.
+      - id: constant-lookups
+        text: Each `in` test is O(1), so the two loops together cost O(n)
+        explanation: Count the `while` tests if the start test were removed.
+      - id: short-walks
+        text: The walk stops at the first missing value, so each walk is short
+        explanation: How long is the walk from 1 when `nums` is `[1, 2, ..., n]`?
+      - id: sorted-set
+        text: A set keeps its values sorted, so each walk only moves forward
+        explanation: Does the code depend on the order in which it visits `s`?
+    correct: one-walk
+    followUps:
+      constant-lookups:
+        prompt: Remove the start test. On `[1, 2, ..., n]`, about how many `y + 1 in s` tests run?
+        options:
+          - id: quadratic
+            text: About n²/2, since every value walks to the end of the run
+          - id: linear
+            text: About n, since each test is O(1)
+          - id: n-log-n
+            text: About n log n
+        correct: quadratic
+        explanation: >-
+          Cheap lookups don't help when there are too many of them. The start test cuts the walks
+          to one per run, which brings the total down to about n.
+      short-walks:
+        prompt: On `[1, 2, ..., n]`, how many steps does the walk from 1 take?
+        options:
+          - id: whole-run
+            text: n - 1, across the whole run
+          - id: one
+            text: 1, it stops at once
+          - id: log
+            text: About log n
+        correct: whole-run
+        explanation: >-
+          A walk is as long as its run, and a run can hold every value. What keeps the total linear
+          is that each run is walked only once.
+      sorted-set:
+        prompt: Would the function still return the right answer if it visited `s` in a random order?
+        options:
+          - id: yes
+            text: Yes, the start test doesn't depend on the visiting order
+          - id: smallest-first
+            text: No, the starts must be visited smallest first
+          - id: sorted-storage
+            text: No, the walk needs the set stored in sorted order
+        correct: yes
+        explanation: >-
+          A Python set promises no sorted order. The start test and the walk use lookups, not
+          positions, so any visiting order finds the same starts and the same walks.
+
+  - id: checkpoint-list-duplicates
+    heading: How many tests run?
+    tags: [hash-map, complexity]
+    prompt: |-
+      This version loops over the list instead of the set:
+
+      ```python
+      def longest(nums):
+          s = set(nums)
+          best = 0
+          for x in nums:
+              if x - 1 not in s:
+                  y = x
+                  while y + 1 in s:
+                      y += 1
+                  best = max(best, y - x + 1)
+          return best
+      ```
+
+      `longest([4, 5, 6, 4, 4, 4])` returns the right answer, 3. In total, how many times does
+      the `while` test `y + 1 in s` run?
+    options:
+      - id: twelve
+        text: '12'
+        explanation: >-
+          The list holds four copies of 4, and each passes the start test, so the run 4, 5, 6 is
+          walked four times. Each walk tests 5, 6 and the missing 7. Looping over `s` would visit
+          4 once and run the test 3 times.
+      - id: three
+        text: '3'
+        explanation: Which does the `for` loop visit, the list or the set?
+      - id: eight
+        text: '8'
+        explanation: Does the test that comes out false count as a run of the test?
+      - id: fifteen
+        text: '15'
+        explanation: Do 5 and 6 pass the start test?
+    correct: twelve
+    followUps:
+      three:
+        prompt: The loop is `for x in nums`. How many times does `x` take the value 4?
+        options:
+          - id: four
+            text: Four times, once per copy in the list
+          - id: once
+            text: Once, because the copies collapse
+          - id: never
+            text: Never, because 4 is a duplicate
+        correct: four
+        explanation: >-
+          Only the set drops copies. A loop over the list visits every copy, and each copy of a
+          run start starts its own walk.
+      eight:
+        prompt: Starting from `y = 4`, which tests does one walk run?
+        options:
+          - id: three-tests
+            text: '`5 in s`, `6 in s` and `7 in s`, the last one false'
+          - id: two-tests
+            text: '`5 in s` and `6 in s` only'
+          - id: from-four
+            text: '`4 in s`, `5 in s` and `6 in s`'
+        correct: three-tests
+        explanation: >-
+          A `while` test runs once more than its body. The false test is the one that ends the
+          walk.
+      fifteen:
+        prompt: 4 is in the set. Does 5 start a walk?
+        options:
+          - id: no
+            text: No, its predecessor is present, so it fails the start test
+          - id: yes-all
+            text: Yes, every value in the list starts a walk
+          - id: yes-once
+            text: Yes, because 5 appears only once
+        correct: no
+        explanation: >-
+          Only the copies of 4 pass the start test. 5 and 6 never start walks, so all the
+          repeated work here comes from the repeated 4s.
