@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { CurriculumDrill } from '$lib/content/curriculum';
+import { advance, check, createReviewLesson, select } from '$lib/domain/lesson';
+import { replay } from '$lib/domain/srs';
 import type { Deck } from '$lib/content/schema';
 import type { Attempt } from '$lib/storage/types';
 import { REVIEW_SIZE, deckProgress, reviewStatus, scheduleCounts } from './queue';
@@ -147,5 +150,61 @@ describe('scheduleCounts', () => {
 			dueCount: 0,
 			nextInDays: null
 		});
+	});
+});
+
+describe('fresh review variants', () => {
+	const decks = [deck('alpha', ['a1', 'a2', 'a3']), deck('beta', ['original', 'fresh', 'older', 'other-skill'])];
+	const mapping = (deckId: string, questionId: string, skillId: string, variant?: true): CurriculumDrill => ({
+		deckId, questionId, skillId, variant, disposition: 'keep', pathId: 'path', covers: [], note: 'drill'
+	});
+	const drills = [
+		...['a1', 'a2', 'a3'].map((id) => mapping('alpha', id, 'same')),
+		mapping('beta', 'original', 'same'),
+		mapping('beta', 'fresh', 'same', true),
+		mapping('beta', 'older', 'same', true),
+		mapping('beta', 'other-skill', 'different', true)
+	];
+
+	it('uses distinct fresh siblings without displacing due misses or using unmarked drills', () => {
+		const log = [
+			attempt('beta', 'older', '2026-10-07'),
+			attempt('beta', 'older', '2026-10-08'),
+			attempt('alpha', 'a1', '2026-10-08'),
+			attempt('alpha', 'a2', '2026-10-09'),
+			attempt('alpha', 'a3', '2026-10-09', false)
+		];
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, drills);
+		expect(status.dueCount).toBe(3);
+		expect(status.entries.map((entry) => entry.question.id)).toEqual(['fresh', 'older', 'a3']);
+	});
+
+	it('reserves due siblings and advances the original card from the saved variant attempt', () => {
+		const log = [
+			attempt('alpha', 'a1', '2026-10-08'),
+			attempt('beta', 'older', '2026-10-09', false)
+		];
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, new Set(['alpha/a1']), drills);
+		expect(status.entries.map((entry) => entry.question.id)).toEqual(['fresh']);
+		const lesson = createReviewLesson(status.entries);
+		const [completed] = advance(check(select(lesson, 'right'))).completed;
+		expect(completed).toMatchObject({
+			deckId: 'beta', questionId: 'fresh', reviewOf: { deckId: 'alpha', questionId: 'a1' }
+		});
+		const reviewed = [...log, { ...attempt('beta', 'fresh', '2026-10-10'), ...completed }];
+		expect(scheduleCounts(decks, reviewed, '2026-10-10').dueCount).toBe(1);
+		expect(replay(reviewed).get('alpha/a1')?.due).toBe('2026-10-13');
+		expect(replay(reviewed).get('beta/fresh')?.due).toBe('2026-10-11');
+	});
+
+	it('falls back when siblings are due or have already been seen today', () => {
+		const log = [
+			attempt('beta', 'older', '2026-10-07', false),
+			attempt('alpha', 'a1', '2026-10-08'),
+			attempt('beta', 'fresh', '2026-10-10')
+		];
+		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, drills);
+		expect(status.entries.map((entry) => entry.question.id)).toEqual(['older', 'a1']);
+		expect(status.entries.every((entry) => !entry.reviewOf)).toBe(true);
 	});
 });

@@ -19,7 +19,7 @@ export const load: PageLoad = async ({ url }) => {
 	const skill = url.searchParams.get('skill');
 	const drills = skill ? drillsOfSkill(curriculum, skill) : [];
 	const only = drills.length > 0 ? new Set(drills.map((drill) => cardKey(drill.deckId, drill.questionId))) : undefined;
-	const { entries } = reviewStatus(decks, getRepository().attempts(), localDay(new Date()), undefined, only);
+	const { entries } = reviewStatus(decks, getRepository().attempts(), localDay(new Date()), undefined, only, curriculum.drills);
 	if (entries.length === 0) redirect(307, only ? '/tree' : '/');
 	return { entries, limited: Boolean(only) };
 };

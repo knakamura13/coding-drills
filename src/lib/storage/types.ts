@@ -1,16 +1,21 @@
+export interface QuestionRef {
+	deckId: string;
+	questionId: string;
+}
+
 /**
  * One finished question, written when the learner moves past it. Attempts are
  * immutable events: devices exchange them by id and never edit one.
  */
-export interface Attempt {
+export interface Attempt extends QuestionRef {
 	/** Unique across devices. Syncing the same attempt twice stores it once. */
 	id: string;
 	/** ISO timestamp. */
 	at: string;
 	/** The learner's calendar day (`YYYY-MM-DD`) when it happened. Stored so every device groups attempts identically. */
 	day: string;
-	deckId: string;
-	questionId: string;
+	/** The due drill this fresh example reviewed. */
+	reviewOf?: QuestionRef;
 	/**
 	 * The option picked on a multiple-choice question, or the cell index for a
 	 * tap-cell question (`"0"`, `"1"`, …).

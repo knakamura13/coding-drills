@@ -1,4 +1,4 @@
-import type { Attempt } from '$lib/storage/types';
+import type { Attempt, QuestionRef } from '$lib/storage/types';
 import { addDays, daysBetween } from './days';
 
 /**
@@ -21,9 +21,9 @@ export const MAX_INTERVAL_DAYS = 365;
 /** How one finished question went, judged by outcome only. */
 export type Grade = 'again' | 'hard' | 'good';
 
-export interface Card {
-	deckId: string;
-	questionId: string;
+export interface Card extends QuestionRef {
+	/** Whether the latest counted review was right on the first try. */
+	correct: boolean;
 	ease: number;
 	/** Days between the last counted review and `due`. */
 	interval: number;
@@ -52,9 +52,11 @@ export function cardKey(deckId: string, questionId: string): string {
 }
 
 /** The card after a review on `day`. `prev` is undefined for a question never reviewed. */
-export function review(prev: Card | undefined, grade: Grade, day: string, ids: { deckId: string; questionId: string }): Card {
+export function review(prev: Card | undefined, grade: Grade, day: string, ids: QuestionRef): Card {
 	const base: Card = prev ?? {
-		...ids,
+		deckId: ids.deckId,
+		questionId: ids.questionId,
+		correct: grade === 'good',
 		ease: EASE_START,
 		interval: 0,
 		reps: 0,
@@ -66,6 +68,7 @@ export function review(prev: Card | undefined, grade: Grade, day: string, ids: {
 	if (grade === 'again') {
 		return {
 			...base,
+			correct: false,
 			ease: clamp(base.ease - 0.2, EASE_FLOOR, EASE_CEILING),
 			interval: 1,
 			reps: 0,
@@ -84,19 +87,34 @@ export function review(prev: Card | undefined, grade: Grade, day: string, ids: {
 		interval = base.reps === 0 ? 1 : base.reps === 1 ? 3 : Math.round(base.interval * ease);
 	}
 	interval = Math.min(MAX_INTERVAL_DAYS, interval);
-	return { ...base, ease, interval, reps: base.reps + 1, due: addDays(day, interval), last: day };
+	return { ...base, correct: grade === 'good', ease, interval, reps: base.reps + 1, due: addDays(day, interval), last: day };
 }
 
 /**
- * The schedule after every attempt, in order. Only the first attempt on a
- * question each calendar day counts, so retaking a deck the same day does not
- * move the schedule. `attempts` must already be in replay order.
+ * The schedule after every attempt, in order. Each card can advance only once
+ * per calendar day, whether reviewed directly or by a fresh example.
+ * `attempts` must already be in replay order.
  */
 export function replay(attempts: readonly Attempt[]): Map<string, Card> {
 	const cards = new Map<string, Card>();
-	for (const attempt of countedAttempts(attempts)) {
-		const key = cardKey(attempt.deckId, attempt.questionId);
-		cards.set(key, review(cards.get(key), gradeOf(attempt), attempt.day, attempt));
+	const credited = new Set<string>();
+	for (const attempt of attempts) {
+		const grade = gradeOf(attempt);
+		const credit = (key: string, target: QuestionRef) => {
+			const dayKey = `${key}@${attempt.day}`;
+			if (credited.has(dayKey)) return false;
+			credited.add(dayKey);
+			cards.set(key, review(cards.get(key), grade, attempt.day, target));
+			return true;
+		};
+		if (!credit(cardKey(attempt.deckId, attempt.questionId), attempt)) continue;
+
+		const original = attempt.reviewOf;
+		if (!original) continue;
+		const key = cardKey(original.deckId, original.questionId);
+		const card = cards.get(key);
+		// A stale or retried sitting must not move a card already reviewed by another device.
+		if (card?.correct && card.due <= attempt.day) credit(key, original);
 	}
 	return cards;
 }

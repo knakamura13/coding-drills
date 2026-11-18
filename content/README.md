@@ -140,6 +140,7 @@ Every question in `content/decks` is mapped to a skill path in `content/curricul
   disposition: keep # keep or rewrite: a teaching drill. exam: reserved for a checkpoint. retire: counted nowhere.
   path: pointer-scans
   skill: choose-moving-end # keep and rewrite only: the skill it teaches. Without it, drills pair with skills by list position.
+  # variant: true # keep only, with an explicit skill. Use this on fresh review examples.
   note: What the drill asks.
 - questionId: checkpoint-unique-pairs
   disposition: exam
