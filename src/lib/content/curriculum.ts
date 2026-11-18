@@ -83,6 +83,11 @@ const drillSchema = z
 		 * learner to review those skills. Without it, the checkpoint's whole path is reviewed.
 		 */
 		tests: z.array(id).min(1).optional(),
+		/**
+		 * Exam drills only: the checkpoint on `path` this item belongs to. A path with two
+		 * checkpoints needs it, or the drills are paired with them by list position.
+		 */
+		checkpoint: id.optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
 		note: text(400)
@@ -203,6 +208,8 @@ export interface CurriculumDrill {
 	skillId?: string;
 	/** For an exam drill: the skills it checks, when the mapping names them. */
 	tests?: readonly string[];
+	/** For an exam drill: the checkpoint it belongs to, when the mapping names one. */
+	checkpointId?: string;
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
 	note: string;
@@ -523,6 +530,14 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			if (drill.covers && drill.disposition !== 'exam') {
 				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
 			}
+			if (drill.checkpoint) {
+				if (drill.disposition !== 'exam') {
+					throw new ContentError(`drill "${drill.questionId}" sets checkpoint, which only an exam drill can do`);
+				}
+				if (!compiledPaths.get(drill.path)!.checkpoints.some((item) => item.id === drill.checkpoint)) {
+					throw new ContentError(`drill "${drill.questionId}" names checkpoint "${drill.checkpoint}", which is not on path "${drill.path}"`);
+				}
+			}
 			if (drill.tests) {
 				if (drill.disposition !== 'exam') {
 					throw new ContentError(`drill "${drill.questionId}" sets tests, which only an exam drill can do`);
@@ -550,6 +565,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				pathId: drill.path,
 				...(drill.skill ? { skillId: drill.skill } : {}),
 				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
+				...(drill.checkpoint ? { checkpointId: drill.checkpoint } : {}),
 				covers: dedupe(drill.covers ?? []),
 				note: drill.note
 			});

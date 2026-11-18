@@ -298,6 +298,20 @@ describe('compileCurriculum', () => {
 		expect(() => compileCurriculum(make(['alpha-a'], 'keep'), questions('one'))).toThrow(/only an exam drill/);
 	});
 
+	it('checks the checkpoint an exam drill names against its path and its disposition', () => {
+		const two = path('alpha');
+		two.checkpoints = [
+			{ id: 'first', title: 'First', summary: 'One.', requires: ['alpha-a'] },
+			{ id: 'second', title: 'Second', summary: 'Two.', requires: ['alpha-b'] }
+		];
+		const make = (checkpoint: string, disposition: 'exam' | 'keep' = 'exam'): BranchFile[] => [
+			branch('foundations', 1, [two], [{ questionId: 'one', disposition, path: 'alpha', checkpoint, note: 'Exam.' }])
+		];
+		expect(compileCurriculum(make('second'), questions('one')).drills[0]).toMatchObject({ checkpointId: 'second' });
+		expect(() => compileCurriculum(make('nope'), questions('one'))).toThrow(/not on path "alpha"/);
+		expect(() => compileCurriculum(make('second', 'keep'), questions('one'))).toThrow(/only an exam drill/);
+	});
+
 	it('requires an exam drill to cover each kind in a checkpoint mix', () => {
 		const mixed = (covers?: string[], disposition: 'exam' | 'keep' = 'exam'): BranchFile[] => {
 			const alpha = path('alpha');
