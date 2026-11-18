@@ -1,0 +1,519 @@
+id: heap-operations
+title: Heap operations
+description: Trace one sift, compare ways to build a heap, and order tied entries. Each card opens with a worked example, then asks for one decision.
+heading: What does the heap do?
+
+questions:
+  - format: tap-cell
+    id: sift-up-first-swap
+    heading: Which cell does it swap with?
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** in the heap `[2, 5, 4]`, `heappush(h, 1)` appends 1 at index 3. Its
+      parent is at `(3 - 1) // 2 = 1`, the 5, and 1 is smaller, so they swap. From index 1 the
+      parent is index 0, the 2, so they swap again, giving `[1, 2, 4, 5]`. Below, 4 is pushed
+      onto another heap and starts at index 6. Which cell does it swap with first? Tap it.
+    code: |
+      from heapq import heappush
+
+      h = [3, 8, 5, 10, 9, 7]
+      heappush(h, 4)  # 4 is appended at index 6
+      print(h)
+    sequence:
+      kind: array
+      name: h
+      cells: [3, 8, 5, 10, 9, 7, 4]
+    markers:
+      - { name: new, at: 6 }
+    correct: 2
+    explanation: >-
+      The parent of index 6 is `(6 - 1) // 2 = 2`, which holds 5. 4 is smaller, so they swap. From
+      index 2 the parent is the root, 3, which is smaller than 4, so the sift stops. The code
+      prints `[3, 8, 4, 10, 9, 7, 5]`.
+    misses:
+      - index: 0
+        explanation: >-
+          3 is the root, two levels up. A sift moves one level per swap, so 4 meets its parent at
+          index 2 first. It never passes the 3, which is smaller.
+      - index: 1
+        explanation: '8 at index 1 is the parent of indices 3 and 4. The parent of index 6 is `(6 - 1) // 2 = 2`.'
+      - index: 3
+        explanation: >-
+          `6 // 2 = 3` is the parent rule for a heap numbered from 1. A Python list starts at 0,
+          so the parent of index `i` is `(i - 1) // 2`, here 2.
+      - index: 4
+        explanation: '9 at index 4 is a child of index 1, on another branch. A sift up only climbs through parents.'
+      - index: 5
+        explanation: >-
+          7 is the sibling: indices 5 and 6 are both children of index 2. A sift up compares the
+          new item with its parent only, never with the sibling.
+      - index: 6
+        explanation: That cell is the new 4 itself, appended at the end. Tap the cell it swaps with, its parent.
+
+  - format: step-trace
+    id: sift-down-trace
+    heading: Follow the sift down
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** after a pop, the last item moves to index 0 and sifts down. At each
+      level it swaps with its **smaller** child, and it stops when no child is smaller. In
+      `[9, 2, 4]` the 9 swaps with the 2, giving `[2, 9, 4]`. Below, a pop has taken the 1 out of
+      `[1, 4, 2, 9, 6, 8, 5, 10]` and moved the 10 to the root. The cells show `h` before the sift
+      and do not change. `i` follows the 10. Predict each step.
+    code: |
+      def sift_down(h, i):
+          n = len(h)
+          while True:
+              small = i
+              for c in (2 * i + 1, 2 * i + 2):
+                  if c < n and h[c] < h[small]:
+                      small = c
+              if small == i:
+                  return
+              h[i], h[small] = h[small], h[i]
+              i = small
+
+      h = [10, 4, 2, 9, 6, 8, 5]
+      sift_down(h, 0)
+      print(h)  # heappop leaves the same list
+    sequence:
+      kind: array
+      name: h
+      cells: [10, 4, 2, 9, 6, 8, 5]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: Which child does the 10 swap with first? Move `i` to where the 10 lands.
+        pointer: i
+        correct: 2
+        explanation: >-
+          The children of index 0 are indices 1 and 2, holding 4 and 2. The smaller is 2, so the 10
+          moves into index 2 and the 2 moves up to the root.
+        misses:
+          - index: 1
+            explanation: >-
+              4 is a child of the root, but not the smaller one. With 4 on top, the root would sit
+              above the 2 at index 2, and the heap rule would break.
+          - index: 3
+            explanation: Index 3 is a grandchild. One swap moves the 10 down one level, to a child of index 0.
+        elsewhere: The children of index 0 are indices 1 and 2. The 10 swaps with the smaller, the 2 at index 2.
+      - line: 5
+        ask: Where does the 10 land after the next swap?
+        pointer: i
+        correct: 6
+        explanation: >-
+          From index 2 the children are indices 5 and 6, holding 8 and 5. The 10 is larger than
+          both, so it swaps with the smaller, 5, and lands on index 6, a leaf.
+        misses:
+          - index: 5
+            explanation: '8 at index 5 is a child, but the 5 at index 6 is smaller. With 8 moved up, it would sit above the 5.'
+          - index: 2
+            explanation: The 10 is still larger than both of its children, 8 and 5, so the sift goes on.
+        elsewhere: The children of index 2 are indices 5 and 6. The 10 swaps with the 5 at index 6.
+      - line: 15
+        ask: What does `print(h)` show?
+        options:
+          - id: path-only
+            text: '`[2, 4, 5, 9, 6, 8, 10]`'
+            explanation: >-
+              The 2 and the 5 each moved up one level as the 10 passed them, and the 10 ended on a
+              leaf. The cells off that path kept their values.
+          - id: one-swap
+            text: '`[2, 4, 10, 9, 6, 8, 5]`'
+            explanation: >-
+              This stops after the first swap. At index 2 the 10 still had a smaller child, the 5,
+              so it swapped once more.
+          - id: sorted
+            text: '`[2, 4, 5, 6, 8, 9, 10]`'
+            explanation: >-
+              That is sorted order. A sift moves items along one path from the root to a leaf. The
+              9, 6 and 8 never moved.
+        correct: path-only
+
+  - format: step-trace
+    id: heapify-shallow-trace
+    heading: Follow heapify
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** `heapify` sifts each parent down, starting at the last parent, index
+      `len(x) // 2 - 1`, and moving left to the root. In `[5, 3, 1]` the only parent is index 0,
+      and the 5 swaps with its smaller child, the 1, giving `[1, 3, 5]`. Below, `sift_down` swaps
+      an item with its smaller child until no child is smaller. The cells show `x` before the
+      build and do not change. `i` follows the item being sifted. Predict each step.
+    code: |
+      def build(x):
+          for p in range(len(x) // 2 - 1, -1, -1):
+              sift_down(x, p)
+
+      x = [8, 6, 7, 2, 9, 1]
+      build(x)
+      print(x)  # heapq.heapify gives the same list
+    sequence:
+      kind: array
+      name: x
+      cells: [8, 6, 7, 2, 9, 1]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 2
+        ask: Which index does `build` sift first? Move `i` there.
+        pointer: i
+        correct: 2
+        explanation: >-
+          `len(x) // 2 - 1` is `6 // 2 - 1 = 2`. Index 2 is the last item with a child, index 5.
+          Indices 3 to 5 are leaves and need no sift.
+        misses:
+          - index: 0
+            explanation: >-
+              The root is sifted last. Going from the bottom up means the subtrees under a parent
+              are already heaps when that parent sifts.
+          - index: 5
+            explanation: >-
+              Index 5 is the last item, but it is a leaf. With no children there is nothing to
+              compare, so the build starts at the last parent.
+          - index: 3
+            explanation: '`len(x) // 2 = 3` is one past the last parent. Index 3 would have children at 7 and 8, past the end.'
+        elsewhere: The first sift is at the last parent, `6 // 2 - 1 = 2`.
+      - line: 3
+        ask: Where does the 7 come to rest?
+        pointer: i
+        correct: 5
+        explanation: Index 2 has one child, index 5, holding 1. The 7 is larger, so they swap and the 7 ends on index 5.
+        misses:
+          - index: 2
+            explanation: The 1 at index 5 is a child of index 2 and smaller than 7, so the 7 has to move down.
+        elsewhere: Index 2's only child is index 5. The 7 swaps with the 1 there.
+      - line: 3
+        ask: Now `p` is 1. Where does the 6 come to rest?
+        pointer: i
+        correct: 3
+        explanation: Index 1's children are indices 3 and 4, holding 2 and 9. The 6 swaps with the smaller, the 2.
+        misses:
+          - index: 4
+            explanation: 9 is the larger child. With 9 moved up, it would sit above the 2 at index 3.
+          - index: 1
+            explanation: The 2 at index 3 is smaller than 6, so the 6 has to move down.
+        elsewhere: Index 1's children hold 2 and 9. The 6 swaps with the 2 at index 3.
+      - line: 3
+        ask: Now `p` is 0. Where does the 8 come to rest?
+        pointer: i
+        correct: 5
+        explanation: >-
+          Index 0's children now hold 2 (index 1) and 1 (index 2). The 8 swaps with the 1 and
+          reaches index 2. Its child there, index 5, holds the 7 from the first sift, which is
+          still smaller than 8, so the 8 goes on to index 5.
+        misses:
+          - index: 2
+            explanation: >-
+              Index 5 now holds the 7 that the first sift moved there, and 8 is larger than 7, so
+              the 8 goes one level further.
+          - index: 1
+            explanation: >-
+              Index 1 has held 2 since the second sift, and index 2 has held 1 since the first. The
+              8 swaps with the smaller, the 1 at index 2.
+        elsewhere: The 8 swaps with the 1 at index 2, then with the 7 at index 5.
+      - line: 7
+        ask: What does `print(x)` show?
+        options:
+          - id: heap
+            text: '`[1, 2, 7, 6, 9, 8]`'
+            explanation: >-
+              Each sift moved items along one path. The result is a heap but not sorted: 7 comes
+              before 6 in the list, which the rule allows because 6 is a child of index 1.
+          - id: sorted
+            text: '`[1, 2, 6, 7, 8, 9]`'
+            explanation: >-
+              That is sorted order. The build only makes each parent no larger than its children,
+              so the 7 at index 2 may come before the 6 at index 3.
+          - id: root-stops
+            text: '`[1, 2, 8, 6, 9, 7]`'
+            explanation: >-
+              This stops the root's sift after one swap. At index 2 the 8 still had a smaller
+              child, the 7, so it moved once more.
+          - id: pushed
+            text: '`[1, 6, 2, 8, 9, 7]`'
+            explanation: >-
+              That is the heap six `heappush` calls build from the same values, in the same order.
+              Both lists are valid heaps, but sifting parents down reaches a different one.
+        correct: heap
+
+  - id: build-versus-extract
+    heading: Which part dominates?
+    tags: [heap, complexity]
+    prompt: |-
+      **Worked example:** in one run, `heapify` on a million random numbers made about 1.6
+      million comparisons, and the next three `heappop` calls made 60 between them. When only a
+      few items come out, the build is the bigger cost.
+
+      Now the code calls `heapify(x)` on `n` numbers and then pops all `n` of them, to read them
+      out in order. Which part dominates the total in the worst case?
+    options:
+      - id: pops
+        text: The `n` pops, about n log n in total, against O(n) for the build
+        explanation: >-
+          The build is O(n), because most items sit near the bottom and move little. Every pop
+          can walk from the root to a leaf, so `n` pops add up to O(n log n). In the run above,
+          popping all million numbers made about 18.6 million comparisons, against 1.6 million for
+          the build.
+      - id: build
+        text: The build, since it touches every item while each pop touches one path
+        explanation: >-
+          The build is the bigger part when only a few items come out, as in the worked example.
+          Here all `n` come out, and `n` paths of about log n levels add up to more than the
+          O(n) build.
+      - id: linear
+        text: Neither, since both are O(n), so the whole run is O(n)
+        explanation: >-
+          The build is O(n), but the pops are not. Reading `n` numbers out in order this way would
+          be a linear-time comparison sort, which cannot exist.
+      - id: both-n-log-n
+        text: Both equally, since `heapify` costs O(n log n) as well
+        explanation: >-
+          The total is O(n log n), but not because of the build. `heapify` is O(n): it does not
+          sift every item from the top, so its work is far less than `n` full paths.
+    correct: pops
+    followUps:
+      build:
+        prompt: Each `heappop` repairs one path from the root down. Over `n` pops, how many levels can those paths add up to?
+        options:
+          - id: n-log-n
+            text: About n log n, since each pop can walk about log n levels
+          - id: about-n
+            text: About n, since each pop moves the root one level
+          - id: log-n
+            text: About log n in total, since the heap keeps shrinking
+        correct: n-log-n
+        explanation: >-
+          A pop moves the last item to the root and sifts it down, up to the height of the heap.
+          The heap shrinks, but for the first half of the pops it is still about log n levels tall,
+          so the total is O(n log n).
+      linear:
+        prompt: How many levels can a single `heappop` walk in a heap of `n` items?
+        options:
+          - id: height
+            text: Up to about log n, from the root down to a leaf
+          - id: one
+            text: One, since only the root changed
+          - id: none
+            text: None, since `heapify` already put the items in order
+        correct: height
+        explanation: >-
+          After `heapify` the list is a heap, not a sorted list. Each pop sends the last item from
+          the root down to its place, which can take every level of the tree.
+      both-n-log-n:
+        prompt: A heap of 1,023 items has 512 leaves. How far does a leaf move during `heapify`?
+        options:
+          - id: not-at-all
+            text: Not at all, since only parents are sifted, and most parents sit near the bottom
+          - id: to-root
+            text: Up to the root, about 10 levels
+          - id: one-level
+            text: One level, like every other item
+        correct: not-at-all
+        explanation: >-
+          The build starts at the last parent. 512 leaves never sift, 256 items can move at most
+          one level, 128 at most two, and so on. That sum stays below a small multiple of `n`, which
+          makes `heapify` O(n).
+
+  - id: equal-priority-payloads
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      **Worked example:** `(1, "zip") < (2, "apple")` is `True`. The first fields differ, so
+      Python never looks at the names.
+
+      ```python
+      from heapq import heappush, heappop
+
+      h = []
+      for entry in [(3, "backup"), (1, "email"), (3, "audit"), (1, "deploy")]:
+          heappush(h, entry)
+      print([heappop(h)[1] for _ in range(4)])
+      ```
+
+      What does this print?
+    options:
+      - id: names-break-ties
+        text: "`['deploy', 'email', 'audit', 'backup']`"
+        explanation: >-
+          Priority 1 comes before 3. Between the two 1s the first fields tie, so the names decide,
+          and `'deploy' < 'email'`. The two 3s go the same way: `'audit' < 'backup'`.
+      - id: push-order
+        text: "`['email', 'deploy', 'backup', 'audit']`"
+        explanation: >-
+          This keeps push order within each priority. A heap makes no such promise: when the
+          first fields tie, the next field decides.
+      - id: names-only
+        text: "`['audit', 'backup', 'deploy', 'email']`"
+        explanation: >-
+          This sorts by name alone. Tuples compare from the left, so the names matter only where
+          the priorities tie.
+      - id: type-error
+        text: "`TypeError`, since two entries share a priority"
+        explanation: >-
+          A tied priority moves the comparison on to the names, and two strings compare without
+          trouble.
+    correct: names-break-ties
+    followUps:
+      push-order:
+        prompt: 'The heap holds `(1, "email")` and `(1, "deploy")`. What decides which one `heappop` returns first?'
+        options:
+          - id: names
+            text: The names, since the priorities tie
+          - id: pushed-first
+            text: The order they were pushed
+          - id: random
+            text: Nothing, so either one can come out
+        correct: names
+        explanation: >-
+          Tuples compare field by field until two fields differ. The priorities are equal, so
+          `'deploy' < 'email'` decides. Push order is not stored anywhere in these entries.
+      names-only:
+        prompt: 'Which field of `(3, "audit")` and `(1, "email")` does Python compare first?'
+        options:
+          - id: priority
+            text: The priority, so `(1, "email")` is smaller
+          - id: name
+            text: The name, so `(3, "audit")` is smaller
+          - id: last
+            text: The last field, since it holds the payload
+        correct: priority
+        explanation: >-
+          Tuples compare from the left. 1 is smaller than 3, so the comparison ends there and
+          the names never take part.
+      type-error:
+        prompt: When does comparing two tuples raise `TypeError`?
+        options:
+          - id: reaches-unorderable
+            text: When every earlier field ties and the next pair has no `<`, such as two different dicts
+          - id: any-tie
+            text: Whenever the first fields are equal
+          - id: mixed-types
+            text: Whenever the tuples hold more than one type
+        correct: reaches-unorderable
+        explanation: >-
+          A tie only moves the comparison one field to the right. Strings have an order, so tied
+          priorities are settled by the names here. The error needs a tie on every field before a
+          pair that cannot be ordered.
+
+  - format: tap-cell
+    id: tied-tuple-pop
+    heading: Which entry comes out?
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** `(2, 9) < (2, 10)` is `True`. The first fields tie, so the second field
+      decides. The cells show `tasks` as written, before `heapify`. Which entry does `heappop`
+      return? Tap it.
+    code: |
+      from heapq import heapify, heappop
+
+      tasks = [(4, 2), (3, 8), (3, 5), (5, 1), (3, 9)]
+      heapify(tasks)
+      print(heappop(tasks))
+    sequence:
+      kind: array
+      name: tasks
+      cells: ['(4, 2)', '(3, 8)', '(3, 5)', '(5, 1)', '(3, 9)']
+    correct: 2
+    explanation: >-
+      The smallest first field is 3, shared by three entries. Among those the second field
+      decides, and 5 is smaller than 8 and 9. The code prints `(3, 5)`.
+    misses:
+      - index: 0
+        explanation: Its second field, 2, is small, but the first fields are compared first, and 4 is larger than 3.
+      - index: 1
+        explanation: >-
+          It is the first entry with priority 3 in the list, but list order plays no part. Among the
+          three 3s, the second field decides, and 5 is the smallest.
+      - index: 3
+        explanation: >-
+          1 is the smallest second field, but the second field only matters when the first fields
+          tie. 5 is the largest priority here.
+      - index: 4
+        explanation: It ties on priority 3, but its second field, 9, is the largest of 8, 5 and 9.
+
+  - id: unique-tie-breaker
+    heading: Which tie-breaker works?
+    tags: [heap, python]
+    prompt: |-
+      **Worked example:** `(2, 0, a) < (2, 1, b)` is settled by `0 < 1`, so `a` and `b` are never
+      compared. A middle field that never repeats keeps the payload out of every comparison.
+
+      ```python
+      from heapq import heappush
+
+      class Task:  # defines no <
+          def __init__(self, name):
+              self.name = name
+
+      def add(h, priority, task):
+          heappush(h, (priority, TIE, task))
+      ```
+
+      `add` must never raise, and equal priorities must pop in the order they were added. Pops
+      happen between adds. Which expression should replace `TIE`?
+    options:
+      - id: counter
+        text: "`next(seq)`, with `seq = itertools.count()` made once"
+        explanation: >-
+          Each call draws a new, larger number, so no two entries tie on it, and an earlier add
+          always holds the smaller one. Pops in between change nothing, because the counter never
+          goes back.
+      - id: size
+        text: "`len(h)`, the heap's size at the moment of the add"
+        explanation: >-
+          Sizes repeat once pops happen. If two entries with equal priorities get the same size,
+          the comparison reaches the `Task` objects and raises `TypeError`.
+      - id: identity
+        text: "`id(task)`, which differs for every live object"
+        explanation: >-
+          No two live tasks share an id, so this avoids the error. The id follows the memory
+          address, though, so equal priorities can pop out of order.
+      - id: clock
+        text: "`int(time.time())`, the current second"
+        explanation: >-
+          Two adds in the same second get the same number. With equal priorities too, the
+          comparison reaches the `Task` objects and raises `TypeError`.
+    correct: counter
+    followUps:
+      size:
+        prompt: '`h` holds one entry. `add` runs, one pop runs, and `add` runs again. What `len(h)` did the two adds see?'
+        options:
+          - id: same
+            text: 1 and 1, so the two entries tie on the middle field
+          - id: grows
+            text: 1 and 2, since each add grows the heap
+          - id: from-zero
+            text: 0 and 1, since sizes count from 0
+        correct: same
+        explanation: >-
+          The first add sees 1 and grows the heap to 2. The pop brings it back to 1, so the second
+          add sees 1 again. A tie-breaker has to be unique for the whole life of the heap.
+      identity:
+        prompt: Two tasks share priority 2. With `id(task)` in the middle, what decides which pops first?
+        options:
+          - id: address
+            text: Which id is smaller, which says nothing about which was added first
+          - id: added-first
+            text: Which was added first, since ids grow over time
+          - id: raises
+            text: Nothing, since equal priorities raise `TypeError`
+        correct: address
+        explanation: >-
+          In CPython an id is a memory address, and freed memory is reused, so a task made later
+          can get a smaller id. The order among ties is then arbitrary. A counter records the
+          order of the adds.
+      clock:
+        prompt: Two tasks with priority 2 are added 0.2 seconds apart, inside the same second. What happens when `heapq` compares their entries?
+        options:
+          - id: reaches-tasks
+            text: The middle fields tie too, so Python compares the two `Task` objects and raises `TypeError`
+          - id: later-wins
+            text: The later one is larger, since the clock moved on
+          - id: never-repeats
+            text: Nothing goes wrong, since whole seconds never repeat
+        correct: reaches-tasks
+        explanation: >-
+          Rounding to the second throws away the 0.2-second gap, so both entries carry the same
+          number. Any clock can repeat a reading for quick adds. A counter cannot.

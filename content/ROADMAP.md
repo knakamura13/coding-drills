@@ -174,3 +174,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Pointer walks: teaching levels | `pointer-walks` | in review |
 | Data structures #12 | Pointer walks: review variants | `pointer-walks-review` | in review |
 | Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | in review |
+| Data structures #12 | Heap operations: teaching levels | `heap-operations` | in review |
+| Data structures #12 | Heap operations: review variants | `heap-operations-review` | in review |
+| Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | in review |
