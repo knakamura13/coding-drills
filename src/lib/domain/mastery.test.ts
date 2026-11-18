@@ -247,6 +247,27 @@ describe('projectCurriculum', () => {
 		expect(wrongEarly.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
 	});
 
+	it('locks a path\'s entrance skills until every checkpoint of the path before it is passed', () => {
+		const mastered = [attempt('a1q', true), attempt('a2q', true, '2026-01-02', 'a2')];
+		const beta = (attempts: Attempt[]) => projectCurriculum(curriculum, attempts).branches[1]!.paths[0]!;
+		const before = beta(mastered);
+		expect(before.main[0]!.lockedBy).toEqual([{ id: 'alpha', title: 'Alpha' }]);
+		expect(before.after[0]).toMatchObject({ id: 'alpha', mastered: true, cleared: false });
+		// Mastering the last skill is not enough. The checkpoint has to be passed.
+		const passed = beta([...mastered, attempt('alpha-exam-q', true, '2026-01-03', 'ex')]);
+		expect(passed.main[0]!.lockedBy).toEqual([]);
+		expect(passed.after[0]).toMatchObject({ cleared: true });
+	});
+
+	it('never locks a root path, a later skill in a path, or a path that has no exam drill to sit', () => {
+		const alpha = projectCurriculum(curriculum, []).branches[0]!.paths[0]!;
+		expect(alpha.main.map((skill) => skill.lockedBy)).toEqual([[], []]);
+		const noExam: Curriculum = { ...curriculum, drills: curriculum.drills.filter((item) => item.questionId !== 'alpha-exam-q') };
+		const beta = projectCurriculum(noExam, []).branches[1]!.paths[0]!;
+		expect(beta.main[0]!.lockedBy).toEqual([]);
+		expect(beta.after[0]).toMatchObject({ cleared: true });
+	});
+
 	it('ignores retired drills and leaves an unexplored root unlit', () => {
 		const view = projectCurriculum(curriculum, [attempt('retired', true)]);
 		expect(view.branches[0]!.paths[0]!.main[0]!.state).toBe('unexplored');

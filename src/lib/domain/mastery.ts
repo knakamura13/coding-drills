@@ -160,6 +160,8 @@ export interface SkillView {
 	status: string;
 	/** The connector into this skill is lit. */
 	lit: boolean;
+	/** Paths whose checkpoints are not all passed yet, and which this skill's entrance waits on. */
+	lockedBy: readonly { id: string; title: string }[];
 	drills: readonly DrillView[];
 	decks: readonly { deckId: string; deckTitle: string }[];
 }
@@ -172,6 +174,8 @@ export interface PrerequisiteView {
 	cross: boolean;
 	/** The last main skill of that path is mastered. */
 	mastered: boolean;
+	/** Every checkpoint of that path is passed, which is what opens the paths after it. */
+	cleared: boolean;
 }
 
 export interface CheckpointView {
@@ -255,11 +259,11 @@ export function projectCurriculum(
 	attempts: readonly Attempt[],
 	deckTitles: ReadonlyMap<string, string> = new Map()
 ): TreeView {
-	const skillMeta = new Map<string, { title: string; pathTitle: string; branchTitle: string; pathId: string }>();
+	const skillMeta = new Map<string, { title: string; pathTitle: string; branchTitle: string; pathId: string; after: readonly string[] }>();
 	for (const branch of curriculum.branches) {
 		for (const path of branch.paths) {
 			for (const skill of path.skills) {
-				skillMeta.set(skill.id, { title: skill.title, pathTitle: path.title, branchTitle: branch.title, pathId: path.id });
+				skillMeta.set(skill.id, { title: skill.title, pathTitle: path.title, branchTitle: branch.title, pathId: path.id, after: skill.after });
 			}
 		}
 	}
@@ -274,6 +278,34 @@ export function projectCurriculum(
 		}
 	}
 	const mastered = new Set([...stateOf].filter(([, state]) => state === 'mastered').map(([id]) => id));
+
+	// A path is cleared when every checkpoint it has is passed. A checkpoint with no exam drill
+	// cannot be sat, so it counts as passed rather than locking the paths after it forever.
+	const pathTitles = new Map<string, string>();
+	const cleared = new Map<string, boolean>();
+	for (const branch of curriculum.branches) {
+		for (const path of branch.paths) {
+			pathTitles.set(path.id, path.title);
+			const pools = examDrills(path, curriculum.drills);
+			cleared.set(
+				path.id,
+				path.checkpoints.every((checkpoint) => {
+					const pool = pools.get(checkpoint.id) ?? [];
+					return pool.length === 0 || examPassed(pool, checkpoint.mix, attempts);
+				})
+			);
+		}
+	}
+
+	function lockedBy(skillId: string): { id: string; title: string }[] {
+		const own = skillMeta.get(skillId);
+		const waiting = new Set<string>();
+		for (const before of own?.after ?? []) {
+			const owner = skillMeta.get(before)?.pathId;
+			if (owner && owner !== own?.pathId && !cleared.get(owner)) waiting.add(owner);
+		}
+		return [...waiting].map((id) => ({ id, title: pathTitles.get(id) ?? id }));
+	}
 
 	function skillView(skillId: string, drills: readonly CurriculumDrill[], lit: boolean): SkillView {
 		const views = drills.map((drill) => toDrillView(drill, deckTitles));
@@ -290,6 +322,7 @@ export function projectCurriculum(
 			state,
 			status: skillLabel(state),
 			lit,
+			lockedBy: lockedBy(skillId),
 			drills: views,
 			decks
 		};
@@ -341,7 +374,8 @@ export function projectCurriculum(
 						title: prerequisite?.title ?? id,
 						branchTitle,
 						cross: prerequisite?.branchId !== path.branchId,
-						mastered: lastMain ? mastered.has(lastMain.id) : false
+						mastered: lastMain ? mastered.has(lastMain.id) : false,
+						cleared: cleared.get(id) ?? false
 					};
 				}),
 				...(path.afterNote ? { afterNote: path.afterNote } : {}),
