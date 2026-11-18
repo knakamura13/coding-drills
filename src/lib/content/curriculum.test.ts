@@ -197,15 +197,16 @@ describe('shipped curriculum', () => {
 		]);
 	});
 
-	it('puts every Arrays and strings and Pointer scans teaching drill on a skill, each skill with several', () => {
-		for (const pathId of ['arrays-and-strings', 'pointer-scans']) {
+	it('puts every Arrays and strings, Pointer scans and Exact search teaching drill on a skill, each skill with several', () => {
+		for (const pathId of ['arrays-and-strings', 'pointer-scans', 'exact-search']) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const teaching = curriculum.drills.filter(
 				(drill) => drill.pathId === pathId && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
 			);
 			const perSkill = new Map(item.skills.map((skill) => [skill.id, 0]));
 			for (const drill of teaching) {
-				if (drill.questionId === 'slow-fast-keep-distinct') continue;
+				// Audited rewrites that predate skill ids. Mastery pairs them by position.
+				if (drill.questionId === 'slow-fast-keep-distinct' || drill.questionId === 'binary-search-preconditions') continue;
 				expect(perSkill.has(drill.skillId ?? ''), drill.questionId).toBe(true);
 				perSkill.set(drill.skillId!, perSkill.get(drill.skillId!)! + 1);
 			}
