@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { tick, untrack } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
 	import { playAnswerSound, vibrateAnswer } from '$lib/preferences/feedback';
@@ -20,7 +20,14 @@
 	import SeeWhySheet from './SeeWhySheet.svelte';
 	import Summary from './Summary.svelte';
 
-	let { source, title, subtitle }: { source: LessonSource; title: string; subtitle: string } = $props();
+	import type { Summary as LessonSummary } from '$lib/domain/lesson';
+
+	let {
+		source,
+		title,
+		subtitle,
+		summaryExtra
+	}: { source: LessonSource; title: string; subtitle: string; summaryExtra?: Snippet<[LessonSummary]> } = $props();
 
 	// Client-only lesson routes: read the stored mode before the first paint of Check.
 	initPreferences();
@@ -152,7 +159,7 @@
 <svelte:window {onkeydown} />
 
 {#if lesson.summary}
-	<Summary summary={lesson.summary} flags={lesson.flags} onretry={() => lesson.restart()} />
+	<Summary summary={lesson.summary} flags={lesson.flags} onretry={() => lesson.restart()} extra={summaryExtra} />
 {:else if screen}
 	<div class={['stage', { tap: screen.board !== null }]} style:--sheet-h="{verdict ? sheetHeight : 0}px">
 		<ProgressHeader progress={lesson.progress} onclose={requestQuit} />

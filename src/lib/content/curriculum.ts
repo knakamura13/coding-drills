@@ -78,6 +78,11 @@ const drillSchema = z
 		 * Without it, mastery pairs the drill with a skill by list position.
 		 */
 		skill: id.optional(),
+		/**
+		 * Exam drills only: the skills on `path` this item checks. A failed sitting sends the
+		 * learner to review those skills. Without it, the checkpoint's whole path is reviewed.
+		 */
+		tests: z.array(id).min(1).optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
 		note: text(400)
@@ -196,6 +201,8 @@ export interface CurriculumDrill {
 	pathId: string;
 	/** The skill this drill teaches, when the mapping names one. */
 	skillId?: string;
+	/** For an exam drill: the skills it checks, when the mapping names them. */
+	tests?: readonly string[];
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
 	note: string;
@@ -516,6 +523,17 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			if (drill.covers && drill.disposition !== 'exam') {
 				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
 			}
+			if (drill.tests) {
+				if (drill.disposition !== 'exam') {
+					throw new ContentError(`drill "${drill.questionId}" sets tests, which only an exam drill can do`);
+				}
+				const own = new Set(compiledPaths.get(drill.path)!.skills.map((skill) => skill.id));
+				for (const tested of drill.tests) {
+					if (!own.has(tested)) {
+						throw new ContentError(`drill "${drill.questionId}" tests skill "${tested}", which is not on path "${drill.path}"`);
+					}
+				}
+			}
 			if (drill.skill) {
 				if (drill.disposition !== 'keep' && drill.disposition !== 'rewrite') {
 					throw new ContentError(`drill "${drill.questionId}" sets skill, which only a keep or rewrite drill can do`);
@@ -531,6 +549,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				disposition: drill.disposition,
 				pathId: drill.path,
 				...(drill.skill ? { skillId: drill.skill } : {}),
+				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
 				covers: dedupe(drill.covers ?? []),
 				note: drill.note
 			});

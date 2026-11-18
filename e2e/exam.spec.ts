@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { loadCurriculum } from '../src/lib/content/loadCurriculum.ts';
 import { addDays, localDay } from '../src/lib/domain/days.ts';
-import { answerCorrectly, continueButton, currentQuestionAny } from './helpers';
+import { answerCorrectly, answerMain, continueButton, continuePastWrong, currentQuestionAny, firstWrongId } from './helpers';
 import { seed } from './seed';
 
 const curriculum = loadCurriculum('content/curriculum', 'content/decks');
@@ -107,6 +107,49 @@ test.describe('checkpoint exam', () => {
 		await seed(page, [...masteredPath(), miss]);
 		await page.goto('/tree');
 		await expect(page.locator(`#skill-${drill.skillId}`)).toContainText('Practicing');
+	});
+
+	test('a failed sitting says what to review, and the review leads back to the exam', async ({ page }) => {
+		await seed(page, masteredPath());
+		await page.goto(`/exam/${CHECKPOINT.id}`);
+		for (let item = 0; item < exam.length; item++) {
+			const { question } = await currentQuestionAny(page);
+			if (item < 2) {
+				// Two misses are one too many.
+				await answerMain(page, question, firstWrongId(question));
+				await continuePastWrong(page);
+				await page.getByText('Follow-up', { exact: true }).waitFor();
+				await page.getByRole('radio').first().check();
+				await page.getByRole('button', { name: 'Check', exact: true }).click();
+				await continueButton(page).click();
+			} else {
+				await answerCorrectly(page, question);
+				await continueButton(page).click();
+			}
+		}
+		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+		const outcome = page.getByRole('region', { name: 'Not passed yet' });
+		await expect(outcome).toContainText('first.');
+		await expect(outcome).toContainText('another day');
+		const results = await new AxeBuilder({ page }).analyze();
+		expect(results.violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target).join(', ')}`)).toEqual([]);
+
+		await outcome.getByRole('link', { name: 'Review these skills' }).click();
+		await expect(page).toHaveURL(new RegExp(`/exam/${CHECKPOINT.id}/review`));
+		await expect(page.getByRole('heading', { level: 1, name: /Review for the checkpoint/ })).toBeVisible();
+		await currentQuestionAny(page);
+
+		// The tree still offers the exam: a failed sitting does not lock it.
+		const detail = await openCheckpoint(page);
+		await expect(detail.getByRole('link', { name: 'Start the exam' })).toBeVisible();
+	});
+
+	test('a review with no usable skills falls back to the whole path, and an unknown checkpoint is not found', async ({ page }) => {
+		await seed(page, masteredPath());
+		await page.goto(`/exam/${CHECKPOINT.id}/review?skills=nonsense`);
+		await currentQuestionAny(page);
+		await page.goto('/exam/not-a-checkpoint/review');
+		await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
 	});
 
 	test('the exam page has no accessibility violations', async ({ page }) => {

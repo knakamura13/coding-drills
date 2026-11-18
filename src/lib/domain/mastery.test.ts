@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Curriculum, CurriculumDrill, Disposition } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
-import { dispositionLabel, examGate, pairInOrder, projectCurriculum, rollup, skillState } from './mastery.ts';
+import { dispositionLabel, drillsToReview, examGate, pairInOrder, projectCurriculum, rollup, skillState, skillsChecked } from './mastery.ts';
 
 function attempt(questionId: string, correct: boolean, day = '2026-01-01', id = questionId): Attempt {
 	return {
@@ -317,5 +317,28 @@ describe('projectCurriculum', () => {
 		expect(started.branches[0]!.paths[0]!.main[1]!.lit).toBe(false);
 		const done = projectCurriculum(curriculum, [attempt('a1q', true)]);
 		expect(done.branches[0]!.paths[0]!.main[1]!.lit).toBe(true);
+	});
+});
+
+describe('review after a failed exam', () => {
+	const alpha = tree().branches[0]!.paths[0]!;
+	const drills: CurriculumDrill[] = [
+		{ ...drill('a1q', 'alpha', 'keep'), skillId: 'a1' },
+		{ ...drill('a2q', 'alpha', 'keep'), skillId: 'a2' },
+		{ ...drill('a2r', 'alpha', 'keep'), skillId: 'a2' },
+		drill('alpha-exam-q', 'alpha', 'exam')
+	];
+
+	it('sends the learner to the named skills, and to the whole path when none is named', () => {
+		expect(drillsToReview(alpha, drills, ['a2']).map((item) => item.questionId)).toEqual(['a2q', 'a2r']);
+		expect(drillsToReview(alpha, drills, []).map((item) => item.questionId)).toEqual(['a1q', 'a2q', 'a2r']);
+	});
+
+	it('takes the skills the missed items check, and none when any of them does not say', () => {
+		const named = { ...drill('x', 'alpha', 'exam'), tests: ['a1'] };
+		const alsoNamed = { ...drill('y', 'alpha', 'exam'), tests: ['a1', 'a2'] };
+		expect(skillsChecked([named, alsoNamed])).toEqual(['a1', 'a2']);
+		expect(skillsChecked([named, drill('z', 'alpha', 'exam')])).toEqual([]);
+		expect(skillsChecked([])).toEqual([]);
 	});
 });
