@@ -18,7 +18,7 @@ SvelteKit 3 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 - Sign-in is allow-listed by `ALLOWED_EMAILS`. An empty value allows nobody. Never log or echo the Google client secret or session tokens, and never put secrets in `.railway/railway.ts` (use `preserve()`).
 - e2e runs the production build against PGlite (`e2e/pg-server.mjs`) with `ORIGIN` set. adapter-node assumes `https` without `ORIGIN` or `PROTOCOL_HEADER`, which makes the API's origin check reject every write. The Dockerfile sets the proxy headers for Railway.
 - Weak spots, mixed practice, and the Progress screen are all derived from the attempt log (`src/lib/review/`, `src/lib/domain/stats.ts`). They reuse `createReviewLesson` and the lesson loop. Do not add storage for them.
-- `src/service-worker.ts` caches the app for offline use and takes over immediately on a new version. It must never touch `/api/*`. Client-only routes (`/play/*`, `/review`, `/weak`, `/practice`) are cached as shells at install, so a new client-only route must be added to `CLIENT_ROUTES` there. The worker is registered only in production builds.
+- `src/service-worker.ts` caches the app for offline use and takes over immediately on a new version. It must never touch `/api/*`. Client-only routes (`/play/*`, `/exam/*`, `/review`, `/weak`, `/practice`) are cached as shells at install, so a new client-only route must be added to `CLIENT_ROUTES` there. The worker is registered only in production builds.
 - Every deck must appear in `content/ROADMAP.md` (a test enforces it). Add the row, or change its status, in the same commit as the deck.
 - Decks are authored by hand and then reviewed adversarially: run every code snippet in Python before putting an output in an explanation, and check that no wrong option is also defensibly correct.
 - Lesson rules live in `src/lib/domain/lesson.ts` (pure and tested). `src/lib/lesson/controller.svelte.ts` only adds Svelte state and writes attempts and flags to localStorage. Keep rules out of components.
@@ -26,6 +26,16 @@ SvelteKit 3 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 - The palette in `src/app.css` was sampled from the design reference. `--on-color` is deliberately darker than the page background to reach 4.5:1 contrast on the red and indigo buttons.
 - Keep `@sveltejs/kit` on 3.x and `typescript` on 6.x. svelte-check does not support TypeScript 7 yet. Kit 2.x cannot clear the published `query.batch` and remote-form advisories; 3.1.1 is the lowest release that does.
 - The repo is public. Deck wording is original. Never commit screenshots, text copied from other apps, books, or sites, secrets, or personal data. Reference screenshots belong in `.reference/`, which is git-ignored.
+
+## Mastery tree
+
+The app is being rebuilt as a branching skill tree with lessons, checkpoint exams and spaced review. Issue #9 is the tracker, and the issues and PRs hold the detail (decisions, design plans, open questions). Read them before changing the tree.
+
+- Every question in `content/decks` must be mapped to a skill path in `content/curriculum/<branch>.yaml`, or the build fails. The mapping fields are in `content/README.md` ("Mapping a deck onto the tree").
+- A question has one of four formats: multiple choice, tap-cell, drag-pointers or step-trace. Schemas are in `src/lib/content/schema.ts` and authoring notes in `content/README.md`. A new format must make the learner produce the answer and explain each wrong answer in place (#18), and must work by touch and by mouse and keyboard, in portrait and landscape (#15).
+- Skill state, exam passing, locking and review are derived from the attempt log in `src/lib/domain/mastery.ts` and `exam.ts`. Store nothing for them. The design is on #32 (exams) and #19 (review).
+- Open work: undrafted paths #62, topics no path teaches #64, fresh review variants #41, the app icon #28.
+- Lessons, drills and exams are planned and written by Opus 5.5 High sub-agents (the owner's rule), then reviewed adversarially.
 
 ## Railway
 
@@ -38,3 +48,4 @@ SvelteKit 3 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 ## Git
 
 - Conventional Commits (`feat:`, `fix:`, `chore:`). No attribution lines in commit messages.
+- Rebase-merge a PR only once CI is green on its head commit (`gh pr merge --rebase --match-head-commit <sha>`), and delete the branch after. Two open PRs that edit `content/ROADMAP.md` or the curriculum files conflict, so merge them one at a time.
