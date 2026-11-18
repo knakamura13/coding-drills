@@ -1,0 +1,265 @@
+id: heap-operations-checkpoint
+title: "Heap operations: checkpoint"
+description: Compare ways to build a heap or repair tied entries, on new inputs. Each item combines tracing a sift, the cost of a build, and ordering ties.
+heading: What does the heap do?
+
+questions:
+  - id: checkpoint-heapify-then-pop
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heapify, heappop
+
+      x = [15, 9, 6, 12, 3, 11, 5]
+      heapify(x)
+      heappop(x)
+      print(x)
+      ```
+
+      What does this print?
+    options:
+      - id: traced
+        text: "`[5, 9, 6, 12, 15, 11]`"
+        explanation: >-
+          `heapify` sifts index 2 (6 swaps with 5), index 1 (9 swaps with 3), then the root (15
+          swaps with 3, then with 9). The pop removes 3 and moves the last item, 6, to the root,
+          where it swaps with its smaller child, 5.
+      - id: pushed
+        text: "`[5, 6, 9, 15, 12, 11]`"
+        explanation: Check which heap `heapify` builds before the pop. Seven pushes would build a different one.
+      - id: sorted
+        text: "`[5, 6, 9, 11, 12, 15]`"
+        explanation: Check which cells the pop's sift moves.
+      - id: unsifted
+        text: "`[6, 9, 5, 12, 15, 11]`"
+        explanation: Check whether the item moved to the root is no larger than its children.
+    correct: traced
+    followUps:
+      pushed:
+        prompt: Which list does `heapify` build from `[15, 9, 6, 12, 3, 11, 5]`?
+        options:
+          - id: bottom-up
+            text: "`[3, 9, 5, 12, 15, 11, 6]`"
+          - id: by-pushes
+            text: "`[3, 6, 5, 15, 12, 11, 9]`"
+          - id: sorted-list
+            text: "`[3, 5, 6, 9, 11, 12, 15]`"
+        correct: bottom-up
+        explanation: >-
+          `heapify` sifts the parents at indices 2, 1 and 0 down. Pushing the values one at a
+          time sifts each one up instead and builds `[3, 6, 5, 15, 12, 11, 9]`, another valid heap.
+          The pop then starts from a different list.
+      sorted:
+        prompt: Which cells can one `heappop` change?
+        options:
+          - id: one-path
+            text: The root and the cells on one path down from it, plus the last cell, which moves up
+          - id: every-cell
+            text: Every cell, so the list ends sorted
+          - id: root-only
+            text: Only the root
+        correct: one-path
+        explanation: >-
+          The pop moves the last item to the root and sifts it down one path. Here only index 0 and
+          index 2 change, so the 9 stays ahead of the 6 and the list is not sorted.
+      unsifted:
+        prompt: The pop has moved the 6 from the end to the root. Its children are 9 and 5. What happens?
+        options:
+          - id: swaps-five
+            text: The 6 swaps with the 5, the smaller child
+          - id: done
+            text: Nothing, since the pop is finished
+          - id: swaps-nine
+            text: The 6 swaps with the 9, the left child
+        correct: swaps-five
+        explanation: >-
+          A sift down swaps with the smaller child while that child is smaller. The 5 moves up to
+          the root, and the 6 lands on index 2, whose only child, 11, is larger.
+
+  - id: checkpoint-repair-ties
+    heading: Which entry fixes it?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heappush
+
+      def submit(h, job):  # job is a dict with "name", "urgency" and "folder"
+          heappush(h, (-job["urgency"], job["name"], job))
+      ```
+
+      Higher urgency must pop first, and equal urgencies in the order submitted. Names can repeat.
+      Submitting two urgency-4 jobs both named `"sync"`, for different folders, raised
+      `TypeError`. An urgency-4 `"report"` submitted before an urgency-4 `"backup"` also popped
+      after it. With
+      `seq = itertools.count()` made once, which entry fixes both?
+    options:
+      - id: counter
+        text: '`(-job["urgency"], next(seq), job)`'
+        explanation: >-
+          The negated urgency still sends the most urgent job out first. The counter replaces the
+          name: it never repeats, so the dicts are never compared, and it grows with each submit,
+          so ties pop in submission order.
+      - id: name-then-counter
+        text: '`(-job["urgency"], job["name"], next(seq), job)`'
+        explanation: Check what decides between `"report"` and `"backup"`.
+      - id: no-negate
+        text: '`(job["urgency"], next(seq), job)`'
+        explanation: Check which urgency `heapq` pops first.
+      - id: identity
+        text: '`(-job["urgency"], id(job), job)`'
+        explanation: Check whether ids follow the order of submission.
+    correct: counter
+    followUps:
+      name-then-counter:
+        prompt: 'With the name before the counter, what decides between urgency-4 `"report"` and `"backup"`?'
+        options:
+          - id: names
+            text: The names, so `"backup"` pops first despite coming later
+          - id: counter
+            text: The counter, so `"report"` pops first
+          - id: raises
+            text: Nothing, since the comparison raises `TypeError`
+        correct: names
+        explanation: >-
+          The counter only matters when the names tie too. It fixes the crash for two `"sync"`
+          jobs but leaves equal urgencies in alphabetical order, not submission order.
+      no-negate:
+        prompt: '`heapq` pops the smallest entry. With `(job["urgency"], ...)`, which job comes out first?'
+        options:
+          - id: lowest
+            text: The least urgent job
+          - id: highest
+            text: The most urgent job
+          - id: oldest
+            text: The oldest job, since the counter decides
+        correct: lowest
+        explanation: >-
+          A `heapq` heap is a min-heap, so the smallest urgency comes out first. The original code
+          negated it for that reason, and the repair has to keep the minus sign.
+      identity:
+        prompt: Two urgency-4 jobs are submitted, `"report"` first. With `id(job)` in the middle, which pops first?
+        options:
+          - id: smaller-id
+            text: Whichever dict has the smaller id, which need not be `"report"`
+          - id: report
+            text: "`\"report\"`, since ids grow with each new object"
+          - id: raises
+            text: Neither, since equal urgencies raise `TypeError`
+        correct: smaller-id
+        explanation: >-
+          An id is unique while the dict is alive, so it does stop the crash. In CPython it is a
+          memory address, and freed memory is reused, so a later dict can have a smaller id.
+
+  - format: tap-cell
+    id: checkpoint-heapify-index-one
+    heading: Which value lands at x[1]?
+    tags: [heap, python]
+    prompt: >-
+      After `heapify(x)`, which value sits at `x[1]`? The cells show `x` before the call. Tap the
+      cell where that value starts.
+    code: |
+      from heapq import heapify
+
+      x = [16, 15, 10, 13, 5, 6, 7]
+      heapify(x)
+      print(x[1])
+    sequence:
+      kind: array
+      name: x
+      cells: [16, 15, 10, 13, 5, 6, 7]
+    correct: 3
+    explanation: >-
+      Index 2 sifts first: 10 swaps with 6. Then index 1: 15 swaps with 5. Then the root: 16 swaps
+      with 5 and then with 13, its smaller new child. The heap is `[5, 13, 6, 16, 15, 10, 7]`, so
+      `x[1]` is 13.
+    misses:
+      - index: 0
+        explanation: 16 starts at the root and sinks. It ends at index 3.
+      - index: 1
+        explanation: 15 starts at index 1, but its own sift moves it down to index 4.
+      - index: 2
+        explanation: >-
+          Pushing the values one at a time would put 10 at index 1. `heapify` sifts parents down
+          instead, and 10 ends at index 5.
+      - index: 4
+        explanation: 5 is the smallest, so it ends at the root, index 0.
+      - index: 5
+        explanation: >-
+          6 is the second smallest, but a heap does not put the second smallest at index 1. It only
+          has to be a child of the root, and 6 ends at index 2.
+      - index: 6
+        explanation: 7 is never swapped. Index 2 sifts with the smaller child, the 6, so 7 stays at index 6.
+
+  - id: checkpoint-next-tied-pop
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      import itertools
+      from heapq import heappush, heappop
+
+      seq = itertools.count()
+      h = []
+      for urgency, name in [(2, "scan"), (5, "fix"), (2, "email"), (5, "audit"), (5, "pay")]:
+          heappush(h, (-urgency, next(seq), name))
+      print(heappop(h)[2])
+      ```
+
+      What does this print?
+    options:
+      - id: fix
+        text: "`fix`"
+        explanation: >-
+          The negated urgencies make the three urgency-5 jobs the smallest entries. They tie on
+          `-5`, so the counter decides, and `fix` was pushed first of the three, with 1.
+      - id: audit
+        text: "`audit`"
+        explanation: Check which field follows the urgency in each entry.
+      - id: pay
+        text: "`pay`"
+        explanation: Check whether a larger counter value pops before a smaller one.
+      - id: scan
+        text: "`scan`"
+        explanation: Check what the minus sign does to urgency 5 and urgency 2.
+    correct: fix
+    followUps:
+      audit:
+        prompt: 'The entries for `fix` and `audit` are `(-5, 1, "fix")` and `(-5, 3, "audit")`. What decides between them?'
+        options:
+          - id: counter
+            text: The counter values, 1 and 3, since the urgencies tie
+          - id: names
+            text: The names, since `"audit"` comes first alphabetically
+          - id: list-order
+            text: Nothing, so either can come out
+        correct: counter
+        explanation: >-
+          The name is the third field. The comparison stops at the second, the counter, because 1
+          and 3 already differ, so the names never take part.
+      pay:
+        prompt: 'Which is smaller, `(-5, 1, "fix")` or `(-5, 4, "pay")`?'
+        options:
+          - id: fix
+            text: '`(-5, 1, "fix")`, since 1 < 4'
+          - id: pay
+            text: '`(-5, 4, "pay")`, since it was pushed last'
+          - id: equal
+            text: Neither, since they tie on urgency
+        correct: fix
+        explanation: >-
+          A min-heap pops the smallest entry, and the counter grows with each push. Among tied
+          urgencies the oldest entry comes out first.
+      scan:
+        prompt: After negation, which is smaller, urgency 5 or urgency 2?
+        options:
+          - id: five
+            text: Urgency 5, stored as -5, which is less than -2
+          - id: two
+            text: Urgency 2, since 2 is less than 5
+          - id: same
+            text: Neither, since negation keeps the order
+        correct: five
+        explanation: >-
+          Negation reverses the order, so the most urgent jobs hold the smallest numbers and
+          `heapq` pops them first.
