@@ -5,6 +5,7 @@
  * `src/lib/review/practice.ts` if the default capitalization reads badly.
  */
 export const TOPIC_TAGS = [
+	'arrays-strings',
 	'backtracking',
 	'binary-search',
 	'bfs',
