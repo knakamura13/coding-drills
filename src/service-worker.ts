@@ -52,7 +52,7 @@ sw.addEventListener('install', (event) => {
 			const pages = [
 				...CLIENT_ROUTES,
 				...deckIds.map((id) => `/play/${id}`),
-				...checkpointIds.map((id) => `/exam/${id}`)
+				...checkpointIds.flatMap((id) => [`/exam/${id}`, `/exam/${id}/review`])
 			];
 			await Promise.all(pages.map((page) => cache.add(page).catch(() => undefined)));
 

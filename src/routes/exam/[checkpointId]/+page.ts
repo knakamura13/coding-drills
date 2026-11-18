@@ -35,5 +35,13 @@ export const load: PageLoad = async ({ params }) => {
 	);
 	// The sitting is fixed when the page loads, so retrying replays the same items.
 	const entries = drawExam(pool, checkpoint.mix, EXAM_SIZE, Math.random).map((drill) => questions.get(cardKey(drill.deckId, drill.questionId))!);
-	return { title: checkpoint.title, entries };
+	return {
+		title: checkpoint.title,
+		checkpointId: checkpoint.id,
+		entries,
+		pool,
+		mix: checkpoint.mix,
+		/** Skill titles by id, to name what a failed sitting should review. */
+		skillTitles: Object.fromEntries(path.skills.map((skill) => [skill.id, skill.title]))
+	};
 };

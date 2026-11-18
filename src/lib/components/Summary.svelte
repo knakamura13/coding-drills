@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { focusOnMount } from '$lib/actions';
 	import { localDay } from '$lib/domain/days';
 	import type { Summary } from '$lib/domain/lesson';
@@ -18,9 +18,11 @@
 		/** Flags created or updated during this run. */
 		flags: Flag[];
 		onretry: () => void;
+		/** Extra content under the score, such as what a checkpoint result means. */
+		extra?: Snippet<[Summary]>;
 	}
 
-	let { summary, flags, onretry }: Props = $props();
+	let { summary, flags, onretry, extra }: Props = $props();
 
 	const perfect = $derived(summary.total > 0 && summary.correctFirstTry === summary.total);
 
@@ -46,6 +48,8 @@
 			{summary.followUpsAttempted === 1 ? 'follow-up' : 'follow-ups'} right
 		</p>
 	{/if}
+
+	{@render extra?.(summary)}
 
 	{#if summary.missed.length > 0}
 		<section aria-labelledby="missed-heading">

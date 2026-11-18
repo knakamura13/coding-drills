@@ -217,6 +217,19 @@ describe('shipped curriculum', () => {
 		}
 	});
 
+	it('names the skills each drafted exam item checks, on its own path', () => {
+		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans']) {
+			const item = paths.find((candidate) => candidate.id === pathId)!;
+			const skillIds = new Set(item.skills.map((skill) => skill.id));
+			const exams = curriculum.drills.filter((drill) => drill.pathId === pathId && drill.disposition === 'exam');
+			expect(exams.length, pathId).toBeGreaterThan(0);
+			for (const drill of exams) {
+				expect(drill.tests?.length ?? 0, drill.questionId).toBeGreaterThan(0);
+				for (const tested of drill.tests!) expect(skillIds.has(tested), `${drill.questionId} tests ${tested}`).toBe(true);
+			}
+		}
+	});
+
 	it('keeps the retired drills mapped and does not drop them', () => {
 		const retired = curriculum.drills.find((drill) => drill.questionId === 'subarray-sum-k');
 		expect(retired).toMatchObject({ disposition: 'retire', pathId: 'prefix-counts' });
@@ -274,6 +287,15 @@ describe('compileCurriculum', () => {
 		];
 		const asked: SourceQuestion[] = [{ deckId: 'deck', questionId: 'only', followUpIds: ['real'] }];
 		expect(() => compileCurriculum(files, asked)).toThrow(/not a follow-up/);
+	});
+
+	it('checks the skills an exam drill tests against its path and its disposition', () => {
+		const make = (tests: string[], disposition: 'exam' | 'keep' = 'exam'): BranchFile[] => [
+			branch('foundations', 1, [path('alpha')], [{ questionId: 'one', disposition, path: 'alpha', tests, note: 'Exam.' }])
+		];
+		expect(compileCurriculum(make(['alpha-a', 'alpha-b']), questions('one')).drills[0]).toMatchObject({ tests: ['alpha-a', 'alpha-b'] });
+		expect(() => compileCurriculum(make(['elsewhere']), questions('one'))).toThrow(/not on path "alpha"/);
+		expect(() => compileCurriculum(make(['alpha-a'], 'keep'), questions('one'))).toThrow(/only an exam drill/);
 	});
 
 	it('requires an exam drill to cover each kind in a checkpoint mix', () => {

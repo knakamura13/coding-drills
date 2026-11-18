@@ -87,3 +87,24 @@ export function examPassed(drills: readonly CurriculumDrill[], mix: readonly str
 	}
 	return false;
 }
+
+/**
+ * Puts the drills a learner most needs first: ones whose latest counted attempt
+ * was a miss, then ones never answered, then the rest with the longest-ago
+ * answer first. A stable order, so a review sitting is the same for the same log.
+ */
+export function orderForReview<T extends { deckId: string; questionId: string }>(drills: readonly T[], attempts: readonly Attempt[]): T[] {
+	const latest = new Map<string, Attempt>();
+	for (const attempt of countedAttempts([...attempts].sort(compareAttempts))) {
+		latest.set(cardKey(attempt.deckId, attempt.questionId), attempt);
+	}
+	const rank = (drill: T): [number, string] => {
+		const last = latest.get(cardKey(drill.deckId, drill.questionId));
+		if (!last) return [1, ''];
+		return last.correct ? [2, last.day] : [0, last.day];
+	};
+	return drills
+		.map((drill, index) => ({ drill, index, key: rank(drill) }))
+		.sort((a, b) => a.key[0] - b.key[0] || (a.key[1] < b.key[1] ? -1 : a.key[1] > b.key[1] ? 1 : 0) || a.index - b.index)
+		.map((item) => item.drill);
+}

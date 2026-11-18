@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CurriculumDrill } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
-import { EXAM_SIZE, drawExam, examPassed } from './exam';
+import { EXAM_SIZE, drawExam, examPassed, orderForReview } from './exam';
 import { seededRng } from './shuffle';
 
 function drill(questionId: string, covers: string[] = []): CurriculumDrill {
@@ -88,5 +88,28 @@ describe('examPassed', () => {
 		expect(examPassed(single, [], [attempt('only', false)])).toBe(false);
 		expect(examPassed(single, [], [attempt('other', true)])).toBe(false);
 		expect(examPassed([], [], [attempt('only', true)])).toBe(false);
+	});
+});
+
+describe('orderForReview', () => {
+	const drills = [drill('missed'), drill('unseen'), drill('old-right'), drill('new-right'), drill('also-missed')];
+
+	it('puts misses first, then drills never answered, then the longest-ago right answers', () => {
+		const log = [
+			attempt('old-right', true, '2026-02-01'),
+			attempt('new-right', true, '2026-02-09'),
+			attempt('missed', false, '2026-02-08'),
+			attempt('also-missed', false, '2026-02-03')
+		];
+		expect(orderForReview(drills, log).map((item) => item.questionId)).toEqual(['also-missed', 'missed', 'unseen', 'old-right', 'new-right']);
+	});
+
+	it('uses the latest counted attempt, so a later right answer retires an old miss', () => {
+		const log = [attempt('missed', false, '2026-02-01'), attempt('missed', true, '2026-02-05')];
+		expect(orderForReview([drill('missed'), drill('unseen')], log).map((item) => item.questionId)).toEqual(['unseen', 'missed']);
+	});
+
+	it('is stable for equal ranks', () => {
+		expect(orderForReview([drill('a'), drill('b'), drill('c')], []).map((item) => item.questionId)).toEqual(['a', 'b', 'c']);
 	});
 });

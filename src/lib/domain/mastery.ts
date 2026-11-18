@@ -142,6 +142,25 @@ export function examDrills(path: CurriculumPath, drills: readonly CurriculumDril
 	);
 }
 
+/**
+ * The teaching drills a failed sitting sends the learner back to: those of the
+ * named skills, or of every skill on the path when none is named.
+ */
+export function drillsToReview(path: CurriculumPath, drills: readonly CurriculumDrill[], skillIds: readonly string[]): CurriculumDrill[] {
+	const bySkill = teachingBySkill(path, drills);
+	const wanted = skillIds.length > 0 ? skillIds : path.skills.map((skill) => skill.id);
+	return wanted.flatMap((id) => bySkill.get(id) ?? []);
+}
+
+/**
+ * The skills a set of missed exam drills checks. Empty when any of them does not
+ * say, so the review falls back to the whole path instead of guessing.
+ */
+export function skillsChecked(missed: readonly CurriculumDrill[]): string[] {
+	if (missed.length === 0 || missed.some((drill) => !drill.tests || drill.tests.length === 0)) return [];
+	return [...new Set(missed.flatMap((drill) => drill.tests ?? []))];
+}
+
 export interface DrillView {
 	questionId: string;
 	deckId: string;
