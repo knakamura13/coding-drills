@@ -47,17 +47,25 @@ export async function currentQuestionAny(page: Page): Promise<{ question: Questi
 	const board = page.getByRole('group', { name: /Tap a cell|Drag a pointer|Context for the question/ });
 	await board.or(page.getByRole('radio').first()).first().waitFor();
 	if (await board.count()) {
-		const pageText = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+		const norm = (value: string) => value.replace(/\s+/g, ' ').trim();
+		const pageText = norm(await page.locator('main').innerText());
 		const candidates = allDecks.flatMap((candidateDeck) =>
 			candidateDeck.questions
 				.filter((candidate) => isTapCellQuestion(candidate) || isDragPointersQuestion(candidate) || isStepTraceQuestion(candidate))
-				.filter((candidate) => pageText.includes(text(candidate.prompt).replace(/\s+/g, ' ').slice(0, 40)))
+				// The whole prompt and every line of the snippet must be on screen. A prefix is not enough:
+				// questions in different decks share their opening words.
+				.filter((candidate) => pageText.includes(norm(text(candidate.prompt))))
+				.filter((candidate) =>
+					candidate.code
+						.split('\n')
+						.map((line) => line.trim())
+						.filter(Boolean)
+						.every((line) => pageText.includes(norm(line)))
+				)
 				.map((question) => ({ question, deckId: candidateDeck.id }))
 		);
-		if (candidates.length === 0) throw new Error('a sequence is showing but no tap or drag question matched');
-		if (candidates.length === 1) return candidates[0];
-		const match = candidates.find(({ question }) => pageText.includes(question.code.slice(0, 24)));
-		return match ?? candidates[0];
+		if (candidates.length === 0) throw new Error('a sequence is showing but no tap, drag or trace question matched');
+		return candidates[0];
 	}
 	const shown = (await page.locator('fieldset label').allInnerTexts()).map((label) => label.trim()).sort();
 	const candidates = allDecks.flatMap((candidateDeck) =>
