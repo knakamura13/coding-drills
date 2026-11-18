@@ -121,13 +121,42 @@
 		return best;
 	}
 
+	// A drag listens on the window, not on the handle, so it follows the finger even where the
+	// browser refuses pointer capture (WebKit does for some pointer kinds) or the handle moves.
+	let stopListening = () => {};
+
 	function grab(event: PointerEvent, pointer: PointerView) {
 		if (locked || event.button > 0) return;
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		stopListening();
 		originX = event.clientX;
 		originY = event.clientY;
 		drag = { name: pointer.name, over: pointer.at, dx: 0, dy: 0, moved: false };
+		const id = event.pointerId;
+		const onmove = (next: PointerEvent) => {
+			if (next.pointerId === id) drift(next);
+		};
+		const onup = (next: PointerEvent) => {
+			if (next.pointerId !== id) return;
+			stopListening();
+			drop(pointer);
+		};
+		const oncancel = (next: PointerEvent) => {
+			if (next.pointerId !== id) return;
+			stopListening();
+			drag = null;
+		};
+		window.addEventListener('pointermove', onmove);
+		window.addEventListener('pointerup', onup);
+		window.addEventListener('pointercancel', oncancel);
+		stopListening = () => {
+			window.removeEventListener('pointermove', onmove);
+			window.removeEventListener('pointerup', onup);
+			window.removeEventListener('pointercancel', oncancel);
+			stopListening = () => {};
+		};
 	}
+
+	$effect(() => () => stopListening());
 
 	function drift(event: PointerEvent) {
 		if (!drag) return;
@@ -211,9 +240,6 @@
 								data-tone={pointer.tone}
 								style:transform={drag?.name === pointer.name && drag.moved ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined}
 								onpointerdown={(event) => grab(event, pointer)}
-								onpointermove={drift}
-								onpointerup={() => drop(pointer)}
-								onpointercancel={() => (drag = null)}
 								onkeydown={(event) => movePointer(event, pointer)}
 							>
 								{pointer.name}
