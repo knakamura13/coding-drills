@@ -43,7 +43,9 @@ export function reviewStatus(
 	decks: readonly Deck[],
 	attempts: readonly Attempt[],
 	today: string,
-	limit = REVIEW_SIZE
+	limit = REVIEW_SIZE,
+	/** Card keys to limit the sitting to, such as the drills of one skill. */
+	only?: ReadonlySet<string>
 ): ReviewStatus {
 	const questions = new Map<string, Question>();
 	const headings = new Map(decks.map((deck) => [deck.id, deck.heading]));
@@ -51,7 +53,8 @@ export function reviewStatus(
 		for (const question of deck.questions) questions.set(cardKey(deck.id, question.id), question);
 	}
 
-	const { cards, due } = scheduled(decks, attempts, today);
+	const { cards, due: allDue } = scheduled(decks, attempts, today);
+	const due = only ? allDue.filter((card) => only.has(cardKey(card.deckId, card.questionId))) : allDue;
 	return {
 		dueCount: due.length,
 		entries: due.slice(0, limit).map((card) => ({

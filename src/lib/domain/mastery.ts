@@ -2,7 +2,7 @@ import type { Curriculum, CurriculumDrill, CurriculumPath, Disposition } from '$
 import { compareAttempts } from '$lib/storage/guards';
 import type { Attempt } from '$lib/storage/types';
 import { PASS_RULE, examPassed } from './exam';
-import { cardKey, countedAttempts } from './srs';
+import { cardKey, countedAttempts, dueCards, replay } from './srs';
 
 /**
  * PLACEHOLDER mastery, until curriculum design settles a threshold.
@@ -161,6 +161,16 @@ export function skillsChecked(missed: readonly CurriculumDrill[]): string[] {
 	return [...new Set(missed.flatMap((drill) => drill.tests ?? []))];
 }
 
+/** The keep and rewrite drills of one skill, wherever it sits in the curriculum. Empty for an unknown skill. */
+export function drillsOfSkill(curriculum: Curriculum, skillId: string): CurriculumDrill[] {
+	for (const branch of curriculum.branches) {
+		for (const path of branch.paths) {
+			if (path.skills.some((skill) => skill.id === skillId)) return teachingBySkill(path, curriculum.drills).get(skillId) ?? [];
+		}
+	}
+	return [];
+}
+
 export interface DrillView {
 	questionId: string;
 	deckId: string;
@@ -178,6 +188,8 @@ export interface SkillView {
 	lit: boolean;
 	/** Paths whose checkpoints are not all passed yet, and which this skill's entrance waits on. */
 	lockedBy: readonly { id: string; title: string }[];
+	/** Drills of this skill that are due for review today. Zero when `today` is not given. */
+	due: number;
 	drills: readonly DrillView[];
 	decks: readonly { deckId: string; deckTitle: string }[];
 }
@@ -273,8 +285,12 @@ function toDrillView(drill: CurriculumDrill, deckTitles: ReadonlyMap<string, str
 export function projectCurriculum(
 	curriculum: Curriculum,
 	attempts: readonly Attempt[],
-	deckTitles: ReadonlyMap<string, string> = new Map()
+	deckTitles: ReadonlyMap<string, string> = new Map(),
+	today?: string
 ): TreeView {
+	const dueKeys = new Set(
+		today ? dueCards(replay([...attempts].sort(compareAttempts)).values(), today).map((card) => cardKey(card.deckId, card.questionId)) : []
+	);
 	const skillMeta = new Map<string, { title: string; pathTitle: string; branchTitle: string; pathId: string; after: readonly string[] }>();
 	for (const branch of curriculum.branches) {
 		for (const path of branch.paths) {
@@ -339,6 +355,7 @@ export function projectCurriculum(
 			status: skillLabel(state),
 			lit,
 			lockedBy: lockedBy(skillId),
+			due: drills.filter((drill) => dueKeys.has(cardKey(drill.deckId, drill.questionId))).length,
 			drills: views,
 			decks
 		};

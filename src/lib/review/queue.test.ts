@@ -93,6 +93,23 @@ describe('reviewStatus', () => {
 	});
 });
 
+describe('reviewStatus limited to some questions', () => {
+	const decks = [deck('d', ['a', 'b', 'c'])];
+	const log = [attempt('d', 'a', '2026-01-01'), attempt('d', 'b', '2026-01-01'), attempt('d', 'c', '2026-01-01')];
+
+	it('keeps only the named cards, and counts only those as due', () => {
+		const everything = reviewStatus(decks, log, '2026-02-01');
+		expect(everything.dueCount).toBe(3);
+		const some = reviewStatus(decks, log, '2026-02-01', undefined, new Set(['d/a', 'd/c']));
+		expect(some.dueCount).toBe(2);
+		expect(some.entries.map((entry) => entry.question.id).sort()).toEqual(['a', 'c']);
+	});
+
+	it('is empty when none of the named cards is due', () => {
+		expect(reviewStatus(decks, log, '2026-02-01', undefined, new Set(['d/zzz'])).entries).toEqual([]);
+	});
+});
+
 describe('deckProgress', () => {
 	const decks = [deck('alpha', ['a1', 'a2', 'a3']), deck('beta', ['b1'])];
 

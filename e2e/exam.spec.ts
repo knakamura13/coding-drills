@@ -152,6 +152,25 @@ test.describe('checkpoint exam', () => {
 		await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
 	});
 
+	test('a skill with drills due shows how many, and its review sitting holds only that skill', async ({ page }) => {
+		const drill = teaching.find((item) => item.skillId)!;
+		await seed(page, attempts(teaching, true, 10));
+		await page.goto('/tree');
+		await page.locator(`#skill-${drill.skillId}`).getByRole('button').click();
+		const detail = page.locator(`#detail-${drill.skillId}`);
+		await expect(detail).toContainText('due for review today');
+		await detail.getByRole('link', { name: 'Review this skill' }).click();
+		await expect(page).toHaveURL(new RegExp(`/review\\?skill=${drill.skillId}`));
+		await expect(page.getByText('due today on this skill')).toBeVisible();
+		await currentQuestionAny(page);
+	});
+
+	test('a review limited to an unknown skill shows the usual queue', async ({ page }) => {
+		await seed(page, attempts(teaching, true, 10));
+		await page.goto('/review?skill=nonsense');
+		await expect(page.getByText('Questions due today, most overdue first')).toBeVisible();
+	});
+
 	test('the exam page has no accessibility violations', async ({ page }) => {
 		await seed(page, masteredPath());
 		await page.goto(`/exam/${CHECKPOINT.id}`);

@@ -3,6 +3,7 @@
 	import { decks } from 'virtual:deck-index';
 	import MasteryTree from '$lib/components/MasteryTree.svelte';
 	import { APP_NAME } from '$lib/config';
+	import { localDay } from '$lib/domain/days';
 	import { projectCurriculum } from '$lib/domain/mastery';
 	import { getRepository, type Attempt } from '$lib/storage';
 	import { account } from '$lib/sync/store.svelte';
@@ -18,7 +19,7 @@
 	});
 
 	const deckTitles = new Map(decks.map((deck) => [deck.id, deck.title]));
-	const tree = $derived(projectCurriculum(curriculum, ready ? attempts : [], deckTitles));
+	const tree = $derived(projectCurriculum(curriculum, ready ? attempts : [], deckTitles, localDay(new Date())));
 </script>
 
 <svelte:head>

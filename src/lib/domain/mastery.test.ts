@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Curriculum, CurriculumDrill, Disposition } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
-import { dispositionLabel, drillsToReview, examGate, pairInOrder, projectCurriculum, rollup, skillState, skillsChecked } from './mastery.ts';
+import {
+	dispositionLabel,
+	drillsOfSkill,
+	drillsToReview,
+	examGate,
+	pairInOrder,
+	projectCurriculum,
+	rollup,
+	skillState,
+	skillsChecked
+} from './mastery.ts';
 
 function attempt(questionId: string, correct: boolean, day = '2026-01-01', id = questionId): Attempt {
 	return {
@@ -340,5 +350,24 @@ describe('review after a failed exam', () => {
 		expect(skillsChecked([named, alsoNamed])).toEqual(['a1', 'a2']);
 		expect(skillsChecked([named, drill('z', 'alpha', 'exam')])).toEqual([]);
 		expect(skillsChecked([])).toEqual([]);
+	});
+});
+
+describe('due drills in the tree', () => {
+	const curriculum = tree();
+	const answered = [attempt('a1q', true, '2026-01-01', 'a1'), attempt('a2q', true, '2026-01-01', 'a2')];
+
+	it('counts the drills of a skill that are due today, and none without a date', () => {
+		const withDate = projectCurriculum(curriculum, answered, new Map(), '2026-02-01').branches[0]!.paths[0]!;
+		expect(withDate.main.map((skill) => skill.due)).toEqual([1, 1]);
+		const notYet = projectCurriculum(curriculum, answered, new Map(), '2026-01-01').branches[0]!.paths[0]!;
+		expect(notYet.main.map((skill) => skill.due)).toEqual([0, 0]);
+		const noDate = projectCurriculum(curriculum, answered).branches[0]!.paths[0]!;
+		expect(noDate.main.map((skill) => skill.due)).toEqual([0, 0]);
+	});
+
+	it('finds the drills of one skill wherever it sits, and none for an unknown skill', () => {
+		expect(drillsOfSkill(curriculum, 'a1').map((item) => item.questionId)).toEqual(['a1q']);
+		expect(drillsOfSkill(curriculum, 'nope')).toEqual([]);
 	});
 });
