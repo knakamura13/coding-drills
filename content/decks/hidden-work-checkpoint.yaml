@@ -1,0 +1,311 @@
+id: hidden-work-checkpoint
+title: "Hidden work: checkpoint"
+description: Find the line that dominates, or remove repeated work without changing the output. Each item combines the Hidden work skills on code used nowhere else.
+heading: Remove the repeated work
+
+questions:
+  - id: checkpoint-rank-positions
+    heading: Which change keeps the output?
+    tags: [complexity, python, sorting]
+    prompt: |-
+      Every query appears in `nums`, and `nums` may hold repeats.
+
+      ```python
+      def positions(nums, queries):
+          out = []
+          for q in queries:
+              out.append(sorted(nums).index(q))
+          return out
+      ```
+
+      `positions([4, 1, 4, 7], [7, 4])` returns `[3, 1]`. Which change sorts only once, returns
+      the same list for every such input, and leaves `nums` unchanged?
+    options:
+      - id: hoist
+        text: Set `ordered = sorted(nums)` above the loop and append `ordered.index(q)`
+        explanation: >-
+          The loop never changes `nums`, so every pass sorted the same list. Sorting once gives
+          the same sorted list, so each `index` call finds the same first position. One sort per
+          query drops to one sort in all.
+      - id: dict
+        text: 'Build `rank = {v: i for i, v in enumerate(sorted(nums))}` and append `rank[q]`'
+        explanation: >-
+          Try it on the example. What does `rank[4]` hold after both 4s have been stored?
+      - id: sort-in-place
+        text: Call `nums.sort()` above the loop and append `nums.index(q)`
+        explanation: >-
+          The positions come out right. Look at the last condition the change has to meet.
+      - id: set
+        text: Set `ordered = sorted(set(nums))` above the loop and append `ordered.index(q)`
+        explanation: Where does 7 sit in `sorted(set([4, 1, 4, 7]))`?
+    correct: hoist
+    followUps:
+      dict:
+        prompt: '`sorted([4, 1, 4, 7])` is `[1, 4, 4, 7]`. What does `rank[4]` hold?'
+        options:
+          - id: two
+            text: 2, since the second 4 overwrites the first
+          - id: one
+            text: 1, the first position of 4
+          - id: both
+            text: Both positions, 1 and 2
+        correct: two
+        explanation: >-
+          A dict keeps one value per key, and the comprehension stores the last one it sees.
+          `.index` returns the first position, so on repeats the two disagree.
+      sort-in-place:
+        prompt: What does `nums.sort()` do to the caller's list?
+        options:
+          - id: reorders
+            text: It reorders that same list, so the caller sees it sorted
+          - id: copy
+            text: It sorts a copy and leaves the caller's list alone
+          - id: nothing
+            text: Nothing, since the function has its own name for the list
+        correct: reorders
+        explanation: >-
+          A parameter names the caller's list, and `sort` changes a list in place. `sorted(...)`
+          builds a new list and leaves the original as it was.
+      set:
+        prompt: What is `sorted(set([4, 1, 4, 7]))`, and where is 7 in it?
+        options:
+          - id: three-items
+            text: '`[1, 4, 7]`, with 7 at index 2'
+          - id: four-items
+            text: '`[1, 4, 4, 7]`, with 7 at index 3'
+          - id: no-seven
+            text: '`[1, 4]`, with no 7'
+        correct: three-items
+        explanation: >-
+          The set drops the second 4, so every value after it moves one place left. Positions
+          change whenever a repeat sits before the query.
+
+  - id: checkpoint-sorted-unique
+    heading: Which line dominates?
+    tags: [complexity, python, sorting]
+    prompt: |-
+      ```python
+      def unique_sorted(names):
+          names = sorted(names)
+          out = []
+          for name in names:
+              if name not in out:
+                  out.append(name)
+          return out
+      ```
+
+      `names` holds `n` different names. Which line dominates the running time, and what removes
+      its cost while returning the same list for every input?
+    options:
+      - id: scan-out
+        text: '`name not in out`; test `not out or out[-1] != name` instead'
+        explanation: >-
+          With `n` different names, `out` grows by one each pass and the `in` test reads all of
+          it: 0 + 1 + ... + (n - 1) comparisons, 499,500 for 1,000 names. After the sort, equal
+          names sit side by side, so comparing with the last kept name is enough.
+      - id: drop-sort
+        text: '`sorted(names)`; drop it and keep the `in` test'
+        explanation: >-
+          Compare n log n with the work the `in` test does over the whole loop. And what order
+          does the result come out in?
+      - id: append
+        text: '`out.append(name)`; build the list with `out = out + [name]` instead'
+        explanation: What does `append` cost, and what does `out + [name]` cost?
+      - id: set-loop
+        text: '`for name in names:`; loop over `set(names)` instead'
+        explanation: The header runs its expression once. In what order does a set hand out its items?
+    correct: scan-out
+    followUps:
+      drop-sort:
+        prompt: Without the sort, what does `["mo", "al", "mo", "bea"]` give?
+        options:
+          - id: first-seen
+            text: '`["mo", "al", "bea"]`, in order of first appearance'
+          - id: sorted
+            text: '`["al", "bea", "mo"]`, the same as before'
+          - id: all
+            text: '`["mo", "al", "mo", "bea"]`'
+        correct: first-seen
+        explanation: >-
+          The sort is what puts the result in order, so dropping it changes the output. It is
+          also not the slow line: n log n is less than the n² / 2 comparisons of the `in` tests.
+      append:
+        prompt: When `out` holds 500 names, what does each version copy?
+        options:
+          - id: plus-copies
+            text: '`append` writes one slot, and `out + [name]` copies all 500 names'
+          - id: same
+            text: Both copy all 500 names
+          - id: neither
+            text: Neither copies anything
+        correct: plus-copies
+        explanation: >-
+          `+` builds a new list, so that change adds a second hidden copy instead of removing the
+          scan. The line to fix is the `in` test that reads all of `out`.
+      set-loop:
+        prompt: Does looping over `set(names)` keep the names in sorted order?
+        options:
+          - id: no-order
+            text: No, a set hands out its items in no promised order
+          - id: sorted
+            text: Yes, a set keeps its items sorted
+          - id: insertion
+            text: Yes, a set keeps the order the items were added in
+        correct: no-order
+        explanation: >-
+          A set has no order you can rely on, so the output could change. The header was not the
+          slow part anyway: the `in` test inside the loop was.
+
+  - id: checkpoint-trace-prefix-copies
+    format: step-trace
+    tags: [complexity, python]
+    prompt: >-
+      The row shows `nums`, and `last` marks the last cell a slice copies. Trace
+      `running([3, 1, 4, 2])`, then remove its repeated work.
+    code: |
+      def running(nums):
+          out = []
+          for i in range(len(nums)):
+              out.append(sum(nums[:i + 1]))
+          return out
+
+      running([3, 1, 4, 2])
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 1, 4, 2]
+    start:
+      - { name: last, at: 0 }
+    steps:
+      - line: 4
+        ask: On the pass with `i` at 2, tap the last cell `nums[:i + 1]` copies.
+        pointer: last
+        correct: 2
+        explanation: '`nums[:3]` stops before index 3, so it copies cells 0, 1 and 2.'
+        misses:
+          - index: 1
+            explanation: The stop is `i + 1`, not `i`.
+          - index: 3
+            explanation: Is the stop index part of the slice?
+        elsewhere: '`nums[:3]` holds cells 0, 1 and 2.'
+      - line: 5
+        ask: How many cells do the slices copy across the whole call?
+        options:
+          - id: ten
+            text: '10'
+            explanation: 'The four passes copy 1, 2, 3 and 4 cells: 10 in all.'
+          - id: sixteen
+            text: '16'
+            explanation: Is every slice 4 cells long?
+          - id: four
+            text: '4'
+            explanation: That counts slices. How many cells is each?
+        correct: ten
+        also:
+          - { name: last, at: 3 }
+      - ask: '`running` gets 8 numbers. How many cells do the slices copy?'
+        options:
+          - id: thirty-six
+            text: '36'
+            explanation: >-
+              1 + 2 + ... + 8 is 36, more than three times 10. The copies (and the sums over them)
+              grow like n² / 2.
+          - id: twenty
+            text: '20'
+            explanation: That doubles 10. Do the slices stay the same length when the list doubles?
+          - id: sixty-four
+            text: '64'
+            explanation: Is the first slice 8 cells long?
+        correct: thirty-six
+      - ask: Which rewrite returns the same list and copies no cells?
+        options:
+          - id: running-total
+            text: Keep `total = 0`, then add `nums[i]` to it and append `total` on each pass
+            explanation: >-
+              Each pass's sum is the previous sum plus one new number. Carrying it forward does one
+              addition per pass, so the whole call is O(n) and copies nothing.
+          - id: suffix
+            text: Append `sum(nums[i:])` instead
+            explanation: That sums from `i` to the end. What does it give on the first pass?
+          - id: hoist-sum
+            text: Set `total = sum(nums)` above the loop and append `total`
+            explanation: Hoisting works when the value is the same on every pass. Is it here?
+        correct: running-total
+
+  - id: checkpoint-hoist-which-line
+    heading: Which line can move?
+    tags: [complexity, python, sorting]
+    prompt: |-
+      `nums` is never empty.
+
+      ```python
+      def keep_new(nums):
+          out = []
+          for x in nums:
+              top = max(nums)
+              prior = sorted(out)
+              if x < top and x not in prior:
+                  out.append(x)
+          return out
+      ```
+
+      Which lines can move above the loop, to run once, so that `keep_new` still returns the same
+      list for every such input?
+    options:
+      - id: top-only
+        text: Only `top = max(nums)`
+        explanation: >-
+          The loop never changes `nums`, so `max(nums)` is the same on every pass. `out` grows
+          inside the loop, so `sorted(out)` depends on the pass: moved up, it would always be
+          `[]`, and repeats would slip through. On `[5, 2, 8, 2, 5]` the original returns
+          `[5, 2]`.
+      - id: prior-only
+        text: Only `prior = sorted(out)`
+        explanation: What does `out` hold before the loop starts?
+      - id: both
+        text: Both lines
+        explanation: Does every line read a list that stays the same during the loop?
+      - id: neither
+        text: Neither, since a line inside a loop may depend on the pass
+        explanation: Which list does `max(nums)` read, and does the loop ever change it?
+    correct: top-only
+    followUps:
+      prior-only:
+        prompt: Above the loop, `out` is `[]`. What would `prior` hold on every pass?
+        options:
+          - id: empty
+            text: '`[]`, so `x not in prior` is always true'
+          - id: grows
+            text: The values kept so far, as before
+          - id: nums
+            text: A sorted copy of `nums`
+        correct: empty
+        explanation: >-
+          A value computed once is frozen at that moment. `out` changes inside the loop, so a
+          test on it has to see each new version.
+      both:
+        prompt: Which of the two lists does the loop change?
+        options:
+          - id: out
+            text: '`out`, by appending to it'
+          - id: nums
+            text: '`nums`, by reading it'
+          - id: neither-list
+            text: Neither of them
+        correct: out
+        explanation: >-
+          Work can move out of a loop only when its inputs stay the same on every pass. `nums` does
+          and `out` does not.
+      neither:
+        prompt: Does any line in the loop change `nums`?
+        options:
+          - id: none
+            text: No, so `max(nums)` gives the same value on every pass
+          - id: append
+            text: Yes, `out.append(x)` adds to `nums`
+          - id: for
+            text: Yes, the `for` loop removes each item it visits
+        correct: none
+        explanation: >-
+          `out` and `nums` are separate lists, and iterating does not remove items. A value whose
+          inputs never change in the loop can be computed once above it.

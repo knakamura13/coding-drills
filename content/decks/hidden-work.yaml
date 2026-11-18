@@ -1,0 +1,579 @@
+id: hidden-work
+title: Hidden work
+description: Spot the scan or copy that one short line hides, count how often it runs, and add up what it costs. Each card opens with a worked example, then asks for one decision.
+heading: Where is the hidden work?
+
+questions:
+  - id: spot-list-plus-copy
+    heading: Which line copies?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** `rest = nums[1:]` looks like one step, but it builds a new list and
+      copies every item after the first into it. `first = nums[0]` reads one slot and copies
+      nothing.
+
+      Now a loop grows a list `out` by one number `x` on each pass. Which line copies every item
+      already in `out`, on every pass?
+    options:
+      - id: plus
+        text: '`out = out + [x]`'
+        explanation: >-
+          `+` on two lists builds a third list and copies both sides into it. After 1,000 passes
+          that line has copied 0 + 1 + ... + 999 items, about half a million, just to add one
+          number each time.
+      - id: plus-equals
+        text: '`out += [x]`'
+        explanation: >-
+          For a list, `+=` extends the list that `out` already names. It adds the new item at the
+          end and leaves the items already there where they are.
+      - id: append
+        text: '`out.append(x)`'
+        explanation: >-
+          `append` writes one item into the next free slot of the same list. Now and then the list
+          grows its storage, but on average that costs a constant amount per append.
+      - id: insert-end
+        text: '`out.insert(len(out), x)`'
+        explanation: >-
+          Inserting at index `len(out)` puts the item after the last one, so no item has to move.
+          It behaves like `append`. Only an insert near the front shifts items.
+    correct: plus
+    followUps:
+      plus-equals:
+        prompt: After `out += [x]` on a list, which object does `out` name?
+        options:
+          - id: same
+            text: The same list as before, now one item longer
+          - id: new
+            text: A new list that holds the old items and `x`
+          - id: tuple
+            text: A tuple, since `+=` makes an immutable copy
+        correct: same
+        explanation: >-
+          A list's `+=` changes the list in place, like `extend`. Only `out = out + [x]` makes a
+          second list and moves the name to it.
+      append:
+        prompt: What does `out.append(x)` move or copy on a typical pass?
+        options:
+          - id: one
+            text: Only `x`, written into the slot after the last item
+          - id: all
+            text: Every item in `out`, into a list one slot larger
+          - id: half
+            text: Half the items, to make room in the middle
+        correct: one
+        explanation: >-
+          A list keeps spare room at its end, so most appends write one slot. When the room runs
+          out the list grows by a fraction of its size, which keeps the average cost constant.
+      insert-end:
+        prompt: '`out` holds 5 items. How many of them does `out.insert(5, x)` shift?'
+        options:
+          - id: none
+            text: None, since nothing sits at or after index 5
+          - id: five
+            text: All 5, to open a slot
+          - id: one
+            text: One, the last item
+        correct: none
+        explanation: >-
+          An insert shifts the items from its index to the end. At index `len(out)` there are
+          none, so it costs what an append costs.
+
+  - id: last-cell-count-reads
+    format: tap-cell
+    heading: Tap the cell
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** `5 in [5, 2, 8]` stops at the first cell, because it found a match. A
+      call can stop early only when the answer cannot change. Now tap the **last** cell that
+      `nums.count(2)` reads.
+    code: |
+      nums = [5, 2, 8, 2, 7, 1]
+      k = nums.count(2)
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 2, 8, 2, 7, 1]
+    correct: 5
+    explanation: >-
+      `count` cannot stop at a 2, because a later cell might hold another one. It reads all six
+      cells and returns 2. One short call hides a full scan of the list.
+    misses:
+      - index: 0
+        explanation: That is where the scan starts. `count` keeps going, since 2s may come later.
+      - index: 1
+        explanation: >-
+          That is the first 2. `in` could stop here, but `count` has to know how many 2s there
+          are, so it reads on.
+      - index: 2
+        explanation: The scan passes this 8 and keeps going to look for more 2s.
+      - index: 3
+        explanation: >-
+          That is the last 2, but `count` does not know that yet. Only reading the remaining
+          cells shows that no other 2 follows.
+      - index: 4
+        explanation: One cell is still unread. `count` reads to the end of the list.
+
+  - id: header-runs-once
+    heading: How many times does it run?
+    tags: [complexity, python, sorting]
+    prompt: |-
+      **Worked example:** in `for x in nums: total += max(nums)`, the call sits in the loop
+      body, so it runs once per item: 8 times for 8 numbers.
+
+      Now the call sits in the loop header:
+
+      ```python
+      def spread(nums):
+          out = []
+          for x in sorted(nums):
+              out.append(x - nums[0])
+          return out
+      ```
+
+      `nums` holds 8 numbers. How many times does `sorted(nums)` run?
+    options:
+      - id: once
+        text: Once
+        explanation: >-
+          Python evaluates the expression after `in` a single time, before the first pass, and
+          then walks through the list it returned. One sort of 8 numbers, however many passes
+          follow.
+      - id: per-pass
+        text: 8 times, once per pass
+        explanation: >-
+          That would be true in the body. The header expression is not repeated. Each pass takes
+          the next item from the sorted list that already exists.
+      - id: per-check
+        text: 9 times, once per pass and once more at the end
+        explanation: >-
+          A `while` test runs once more than its body. A `for` header is different: it runs its
+          expression one time and then just asks for the next item.
+    correct: once
+    followUps:
+      per-pass:
+        prompt: When does Python evaluate the expression after `in` in a `for` header?
+        options:
+          - id: before
+            text: One time, before the first pass
+          - id: every
+            text: At the start of every pass
+          - id: changed
+            text: Again whenever `nums` changes
+        correct: before
+        explanation: >-
+          The header builds its iterable once. A call written in the body is what repeats, so
+          `for x in nums: s = sorted(nums)` would sort 8 times.
+      per-check:
+        prompt: Does a `for` header get checked again after the last pass, like a `while` test?
+        options:
+          - id: not-so
+            text: No, the loop ends when its iterable has no next item
+          - id: so
+            text: Yes, the whole header runs once more and finds nothing
+          - id: twice
+            text: Yes, on the first pass and on the last
+        correct: not-so
+        explanation: >-
+          A `for` loop asks the iterable for one item per pass and stops when none is left. The
+          expression that built the iterable does not run again.
+
+  - id: call-in-while-test
+    heading: How many times does it run?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** `i = 0` and then `while i < 3: i += 1` checks its test 4 times: for
+      `i` = 0, 1 and 2, which pass, and for 3, which fails and ends the loop.
+
+      Now a call sits in the test:
+
+      ```python
+      nums = [3, 1, 4, 1, 5]
+      i = 0
+      while i < len(nums) and nums[i] != max(nums):
+          i += 1
+      ```
+
+      How many times does `max(nums)` run?
+    options:
+      - id: five
+        text: '5'
+        explanation: >-
+          The body runs for `i` = 0, 1, 2 and 3. The test also runs at `i = 4`, where `nums[4]`
+          is 5, equal to the max, and the loop ends. Each of those 5 tests calls `max`.
+      - id: four
+        text: '4'
+        explanation: >-
+          The body runs 4 times, but the test runs before each pass and once more at the end. The
+          last, failing test also calls `max`.
+      - id: one
+        text: '1'
+        explanation: >-
+          `max(nums)` is part of the test, and the test is checked again before every pass.
+          Python does not save the result between checks.
+      - id: twenty-five
+        text: '25'
+        explanation: >-
+          25 counts cells: each call of `max` reads all 5. The question asks how many calls
+          there are.
+    correct: five
+    followUps:
+      four:
+        prompt: '`while i < 2: i += 1` starts at `i = 0`. How many times is `i < 2` checked?'
+        options:
+          - id: three
+            text: Three, the last one fails
+          - id: two
+            text: Two, one per pass
+          - id: one
+            text: One, before the loop
+        correct: three
+        explanation: >-
+          A `while` test runs before every pass and once more to end the loop, so it runs one more
+          time than the body. A call inside the test runs that often too.
+      one:
+        prompt: 'In `while cond(): ...`, how often does `cond()` run?'
+        options:
+          - id: every
+            text: Before every pass, and once more when the loop ends
+          - id: first
+            text: Once, the first time the loop is reached
+          - id: change
+            text: Only when a variable it uses has changed
+        correct: every
+        explanation: >-
+          Python evaluates the whole test again each time it decides whether to run another pass.
+          To call `max` once, store it in a name above the loop.
+      twenty-five:
+        prompt: What is the difference between the calls of `max(nums)` and the cells they read?
+        options:
+          - id: calls-times-cells
+            text: Each call reads all 5 cells, so cells read = calls × 5
+          - id: same
+            text: There is none, since one call reads one cell
+          - id: shrink
+            text: Each call reads one cell fewer than the call before
+        correct: calls-times-cells
+        explanation: >-
+          Count how often the hidden work runs first, then multiply by what each run costs. Here
+          that is 5 calls, each reading all 5 numbers.
+
+  - id: trace-max-in-loop
+    format: step-trace
+    heading: Count the hidden reads
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** `max` of 3 numbers reads all 3, because a larger one could be last.
+      The loop below calls `max(nums)` on every pass, and `reads` adds the cells each call reads.
+      Predict each step before it is shown.
+    code: |
+      nums = [4, 9, 2, 9, 5]
+      reads = 0
+      out = []
+      for i in range(len(nums)):
+          reads += len(nums)
+          if nums[i] == max(nums):
+              out.append(i)
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 9, 2, 9, 5]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: Where is `i` on the first pass that appends to `out`?
+        pointer: i
+        correct: 1
+        explanation: '`max(nums)` is 9, and the first 9 sits at index 1.'
+        misses:
+          - index: 0
+            explanation: '`nums[0]` is 4, and the largest value is 9, so nothing is appended.'
+          - index: 3
+            explanation: That 9 is appended too, but a 9 comes earlier, at index 1.
+        elsewhere: The first pass that appends is the first one where `nums[i]` equals 9, at index 1.
+      - line: 5
+        ask: What is `reads` after that pass?
+        options:
+          - id: ten
+            text: '10'
+            explanation: Two passes ran, `i` at 0 and at 1, and each call of `max` read all 5 cells.
+          - id: two
+            text: '2'
+            explanation: That counts calls. Each call reads every cell, so each pass adds 5.
+          - id: seven
+            text: '7'
+            explanation: '`max` does not stop at the 9. It cannot know that no larger value comes later.'
+        correct: ten
+      - line: 4
+        ask: What is `reads` when the loop ends?
+        options:
+          - id: twenty-five
+            text: '25'
+            explanation: 5 passes, each with a 5-cell call of `max`, is 5 × 5.
+          - id: five
+            text: '5'
+            explanation: That is one call's reads. The call is in the body, so it runs on every pass.
+          - id: fifteen
+            text: '15'
+            explanation: '`nums` does not shrink, so every call reads all 5 cells, not 5, 4, 3, 2, 1.'
+        correct: twenty-five
+        also:
+          - { name: i, at: 4 }
+      - ask: The same loop runs on 10 numbers. What is `reads`?
+        options:
+          - id: hundred
+            text: '100'
+            explanation: >-
+              10 calls of 10 reads each. Doubling the input made the hidden work four times
+              larger: a scan run once per item grows like n². `top = max(nums)` above the loop
+              would make it 10.
+          - id: fifty
+            text: '50'
+            explanation: That doubles 25. Both the number of calls and each call's reads doubled.
+          - id: ten
+            text: '10'
+            explanation: That is one call's reads. There are 10 calls.
+        correct: hundred
+
+  - id: hoist-the-average
+    heading: Which change keeps the output?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** `for x in nums: if x == max(nums): ...` runs `max` on every pass.
+      Writing `top = max(nums)` once above the loop gives the same answer, because the loop never
+      changes `nums`.
+
+      Now `nums` always holds at least one number:
+
+      ```python
+      def above_mean(nums):
+          out = []
+          for x in nums:
+              if x > sum(nums) / len(nums):
+                  out.append(x)
+          return out
+      ```
+
+      Which change stops the list from being summed on every pass and still returns the same
+      list for every input?
+    options:
+      - id: hoist
+        text: Set `mean = sum(nums) / len(nums)` above the loop and test `x > mean`
+        explanation: >-
+          `nums` does not change inside the loop, so the mean is the same on every pass. Computing
+          it once turns n sums of n items into one, and the list it returns is unchanged.
+      - id: running
+        text: Keep `total += x` in the loop and test `x > total / len(nums)`
+        explanation: >-
+          That divides a partial sum, not the whole one. On `[1, 5]` the first pass compares 1
+          with at most 1 / 2 and keeps it, but 1 is below the mean of 3.
+      - id: len-once
+        text: Set `size = len(nums)` above the loop and test `x > sum(nums) / size`
+        explanation: >-
+          The output stays the same, but the slow part stays too. `len` reads a stored count,
+          and `sum(nums)` still reads every item on every pass.
+      - id: sorted
+        text: Loop over `sorted(nums)` instead, so the larger values come last
+        explanation: >-
+          The values it keeps would then come out smallest first, not in the order `nums` holds
+          them. It also still sums the list on every pass.
+    correct: hoist
+    followUps:
+      running:
+        prompt: In the running version, what does `total` hold after the first pass?
+        options:
+          - id: first
+            text: Only the first item, not the sum of the whole list
+          - id: whole
+            text: The sum of the whole list
+          - id: zero
+            text: Zero, until the loop ends
+        correct: first
+        explanation: >-
+          A running total covers only the items seen so far. The test needs the mean of every
+          item, which is known only after one full pass, so compute it before the loop.
+      len-once:
+        prompt: Which of `len(nums)` and `sum(nums)` reads every item?
+        options:
+          - id: sum
+            text: '`sum(nums)` adds every item, and `len(nums)` reads a stored count'
+          - id: len
+            text: '`len(nums)` counts the items one by one'
+          - id: both
+            text: Both read every item
+        correct: sum
+        explanation: >-
+          A list stores its length, so `len` costs the same at any size. Moving it out of the loop
+          saves almost nothing while the `sum` call stays inside.
+      sorted:
+        prompt: '`above_mean([9, 1, 6])` returns `[9, 6]`. What does the version that loops over `sorted(nums)` return?'
+        options:
+          - id: sorted-order
+            text: '`[6, 9]`, the kept values in sorted order'
+          - id: same
+            text: '`[9, 6]`, the same list'
+          - id: all
+            text: '`[1, 6, 9]`'
+        correct: sorted-order
+        explanation: >-
+          A loop appends in the order it visits items. Visiting them sorted keeps the same values
+          but returns them in a different order, so the output changes.
+
+  - id: trace-copied-cells
+    format: step-trace
+    heading: Count the copied cells
+    tags: [complexity, python, recursion]
+    prompt: >-
+      **Worked example:** `[8, 6, 7][1:]` copies 2 cells into a new list. Each call below passes a
+      slice to the next call. The row shows the first call's list, and `first` marks where the
+      running call's list starts in it. Predict each step before it is shown.
+    code: |
+      def count_neg(nums):
+          if not nums:
+              return 0
+          rest = count_neg(nums[1:])
+          return rest + (1 if nums[0] < 0 else 0)
+
+      count_neg([3, -1, 4, -5, 2])
+    sequence:
+      kind: array
+      cells: [3, -1, 4, -5, 2]
+    start:
+      - { name: first, at: 0 }
+    steps:
+      - line: 4
+        ask: The third call starts. Where does its list start in the row?
+        pointer: first
+        correct: 2
+        explanation: Each slice drops one item from the front. The second call starts at index 1, the third at index 2.
+        misses:
+          - index: 1
+            explanation: That is the second call's list. The third call gets a slice of that one.
+          - index: 3
+            explanation: The first call is the one on the whole row, so the third call has dropped two items, not three.
+        elsewhere: Each call drops one item, so the third call's list starts two cells in.
+      - line: 4
+        ask: How many cells does the first call's slice `nums[1:]` copy?
+        options:
+          - id: four
+            text: '4'
+            explanation: It copies every item after index 0, which is 4 of the 5 cells.
+          - id: five
+            text: '5'
+            explanation: '`nums[1:]` leaves out the first item, so one cell is not copied.'
+          - id: none
+            text: '0'
+            explanation: >-
+              A list slice is a new list, not a window onto the old one. It copies the cells it
+              covers.
+        correct: four
+      - line: 4
+        ask: How many cells do all the slices copy, across every call?
+        options:
+          - id: ten
+            text: '10'
+            explanation: 'The calls on 5, 4, 3, 2 and 1 items copy 4 + 3 + 2 + 1 + 0 cells.'
+          - id: fifteen
+            text: '15'
+            explanation: That counts 5 + 4 + 3 + 2 + 1. Each slice is one cell shorter than the list it comes from.
+          - id: five
+            text: '5'
+            explanation: That counts one cell per slice. Most slices copy several cells.
+        correct: ten
+      - ask: '`count_neg` runs on 10 numbers. How many cells do the slices copy?'
+        options:
+          - id: forty-five
+            text: '45'
+            explanation: >-
+              9 + 8 + ... + 1 + 0 is 45, about n² / 2. Passing an index instead of a slice would
+              copy nothing.
+          - id: twenty
+            text: '20'
+            explanation: That doubles 10. Doubling the list doubles both the number of slices and their lengths.
+          - id: hundred
+            text: '100'
+            explanation: That makes every slice 10 long. They shrink by one cell per call.
+        correct: forty-five
+
+  - id: dominant-hidden-line
+    heading: Which line dominates?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** in `first = nums[0]` followed by `big = max(nums)`, the second line
+      hides a scan of all `n` items, so it outweighs the first however short it looks.
+
+      Now:
+
+      ```python
+      def report(nums):
+          nums = sorted(nums)
+          total = 0
+          for x in nums:
+              total += x
+          repeats = [x for x in nums if nums.count(x) > 1]
+          return total, repeats
+      ```
+
+      For a list of `n` numbers, which line takes the most time as `n` grows?
+    options:
+      - id: repeats
+        text: '`repeats = [x for x in nums if nums.count(x) > 1]`'
+        explanation: >-
+          The comprehension makes `n` passes, and `count` reads all `n` items on each one. That
+          is n × n reads, which outgrows the sort's n log n.
+      - id: sort
+        text: '`nums = sorted(nums)`'
+        explanation: >-
+          Sorting costs about n log n comparisons, more than one pass. A line that runs a full
+          scan for each of the `n` items costs more once `n` is large.
+      - id: loop
+        text: '`for x in nums:` with `total += x`'
+        explanation: >-
+          That is the only loop you can see, but it adds each item once: `n` steps. A loop can
+          also hide inside one line.
+      - id: return
+        text: '`return total, repeats`'
+        explanation: >-
+          Building a pair of two references is one small step. It does not copy the `repeats`
+          list.
+    correct: repeats
+    followUps:
+      sort:
+        prompt: At `n = 1,000`, about how many steps do the sort and the comprehension take?
+        options:
+          - id: compare
+            text: About 10,000 for the sort and 1,000,000 for the comprehension
+          - id: reverse
+            text: About 1,000,000 for the sort and 10,000 for the comprehension
+          - id: equal
+            text: About 1,000 each, one per item
+        correct: compare
+        explanation: >-
+          n log n is about 1,000 × 10, and n × n is 1,000 × 1,000. The comprehension's hidden
+          scan grows faster, so it wins by more as `n` grows.
+      loop:
+        prompt: How many items does `nums.count(x)` read on one pass of the comprehension?
+        options:
+          - id: all
+            text: All `n`, since a later item could match
+          - id: one
+            text: One, the item `x`
+          - id: rest
+            text: Only the items after `x`
+        correct: all
+        explanation: >-
+          `count` has no way to know where the copies of `x` are, so it reads the whole list.
+          Inside a comprehension over `nums`, that full read runs `n` times.
+      return:
+        prompt: What does `return total, repeats` put in the tuple it returns?
+        options:
+          - id: refs
+            text: References to the two existing objects
+          - id: copies
+            text: A copy of every item in `repeats`
+          - id: sorted-copy
+            text: A sorted copy of `nums`
+        correct: refs
+        explanation: >-
+          A tuple holds references, so packing two values is constant work whatever their size.
+          The list is not copied.

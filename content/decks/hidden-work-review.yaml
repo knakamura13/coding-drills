@@ -1,0 +1,601 @@
+id: hidden-work-review
+title: "Hidden work: review"
+description: Fresh inputs for the Hidden work skills. Spot the hidden scan or copy, count how often it runs, and add up its cost, with no worked example.
+heading: Where is the hidden work?
+
+questions:
+  - id: max-reads-every-cell-review
+    format: tap-cell
+    heading: Tap the cell
+    tags: [complexity, python]
+    prompt: Tap the **last** cell that `max(temps)` reads.
+    code: |
+      temps = [12, 19, 15, 8, 11]
+      hot = max(temps)
+    sequence:
+      kind: array
+      name: temps
+      cells: [12, 19, 15, 8, 11]
+    correct: 4
+    explanation: >-
+      `max` cannot stop at 19, because a larger value could still come. It reads all five cells
+      and returns 19.
+    misses:
+      - index: 0
+        explanation: That is where `max` starts. It has to compare every value, so it reads on.
+      - index: 1
+        explanation: >-
+          19 is the largest value, but `max` only knows that after it has seen the rest. A 20
+          could sit in the last cell.
+      - index: 2
+        explanation: Two cells are still unread. `max` reads the whole list.
+      - index: 3
+        explanation: One cell is still unread. `max` reads to the end of the list.
+
+  - id: in-stops-at-match-review
+    format: tap-cell
+    heading: Tap the cell
+    tags: [complexity, python]
+    prompt: Tap the **last** cell that `6 in nums` reads.
+    code: |
+      nums = [4, 9, 6, 3, 6, 1, 7]
+      if 6 in nums:
+          print("found")
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 9, 6, 3, 6, 1, 7]
+    correct: 2
+    explanation: >-
+      `in` only has to answer yes or no, so it stops at the first 6. Reading more cells could not
+      change the answer. A missing value is the costly case: then `in` reads every cell.
+    misses:
+      - index: 0
+        explanation: 4 is not 6, so the scan moves on to the next cell.
+      - index: 1
+        explanation: 9 is not 6. The scan reads one more cell before it finds a match.
+      - index: 3
+        explanation: The scan never gets here. It found a 6 one cell earlier.
+      - index: 4
+        explanation: >-
+          That is the second 6. `count` would read past the first 6, but `in` stops as soon as
+          the answer is yes.
+      - index: 5
+        explanation: The scan stopped at the first 6, at index 2.
+      - index: 6
+        explanation: >-
+          `in` reads to the end only when the value is missing. Here a 6 turns up at index 2.
+
+  - id: which-does-not-copy-review
+    heading: Which line stays cheap?
+    tags: [complexity, python]
+    prompt: >-
+      `nums` is a list of `n` numbers. Which line does the same small amount of work however
+      large `n` is?
+    options:
+      - id: alias
+        text: '`alias = nums`'
+        explanation: >-
+          Assignment binds a second name to the same list. Nothing is copied, so it costs the
+          same for 3 items or 3 million. A change through `alias` shows up in `nums` too.
+      - id: full-slice
+        text: '`copy = nums[:]`'
+        explanation: >-
+          A slice is a new list, and a slice with no bounds covers every item. It copies all `n`
+          references.
+      - id: list-call
+        text: '`copy = list(nums)`'
+        explanation: >-
+          `list(...)` builds a new list from whatever it is given, even a list. It walks all `n`
+          items to fill it.
+      - id: reversed-slice
+        text: '`back = nums[::-1]`'
+        explanation: >-
+          A step of -1 still makes a slice, and every slice of a list is a new list. This one holds
+          all `n` items in reverse order.
+    correct: alias
+    followUps:
+      full-slice:
+        prompt: What does `nums[:]` give back?
+        options:
+          - id: new-list
+            text: A new list holding every item of `nums`
+          - id: same
+            text: The same list object, under a new name
+          - id: empty
+            text: An empty list, since no bounds are given
+        correct: new-list
+        explanation: >-
+          Leaving out both bounds means "from the start to the end". It is the usual way to copy a
+          list, and the copy costs one step per item.
+      list-call:
+        prompt: '`nums` is already a list. Is `list(nums) is nums` true?'
+        options:
+          - id: new-object
+            text: False, `list(...)` always builds a new list
+          - id: same-object
+            text: True, Python returns the list it was given
+          - id: error
+            text: It raises an error, since `nums` is already a list
+        correct: new-object
+        explanation: >-
+          `list(x)` makes a fresh list and fills it from `x`. Giving it a list does not skip the
+          copy, so it costs one step per item.
+      reversed-slice:
+        prompt: After `back = nums[::-1]`, does writing `back[0] = 99` change `nums`?
+        options:
+          - id: not-so
+            text: No, `back` is a separate list with its own slots
+          - id: so
+            text: Yes, `back` shows `nums` in reverse order
+          - id: last
+            text: Yes, it changes the last item of `nums`
+        correct: not-so
+        explanation: >-
+          A reversed slice is a copy, so it has its own slots, and building it costs one step per
+          item. `reversed(nums)` is the cheap one: it walks the list backwards without copying.
+
+  - id: prefix-copy-span-review
+    format: drag-pointers
+    heading: Mark the copied cells
+    tags: [complexity, python]
+    prompt: >-
+      On the pass with `i` at 4, `nums[:i]` builds a new list. Drag `first` and `last` onto the
+      first and last cells it copies.
+    code: |
+      nums = [6, 3, 9, 4, 8, 1, 7]
+      for i in range(1, len(nums)):
+          if nums[i] in nums[:i]:
+              print(i)
+    sequence: { kind: array, name: nums, cells: [6, 3, 9, 4, 8, 1, 7] }
+    markers:
+      - { name: i, at: 4 }
+    pointers:
+      - name: first
+        start: 2
+        correct: 0
+        explanation: A slice with no start begins at index 0.
+        misses:
+          - index: 1
+            explanation: '`nums[:i]` has no start, so it begins at index 0, not 1.'
+        elsewhere: A slice with no start begins at index 0.
+      - name: last
+        start: 6
+        correct: 3
+        explanation: >-
+          `nums[:4]` stops before index 4, so it copies 4 cells. Each pass copies `i` cells, so
+          the loop copies 1 + 2 + ... + 6 = 21 in all, before `in` even scans them.
+        misses:
+          - index: 4
+            explanation: The stop index is left out. Cell 4 is `nums[i]` itself, which the slice does not hold.
+          - index: 6
+            explanation: '`nums[:i]` stops at `i`, not at the end of the list.'
+        elsewhere: '`nums[:4]` holds the cells before index 4: 0, 1, 2 and 3.'
+
+  - id: set-header-once-review
+    heading: How many times does it run?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      word = "cocoa"
+      for ch in set(word):
+          total = word.count(ch)
+      ```
+
+      How many times does `word.count(ch)` run?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          `set(word)` runs once, in the header, and holds the 3 different letters c, o and a. The
+          body runs once per letter in that set, so `count` runs 3 times, each reading all 5
+          letters.
+      - id: five
+        text: '5'
+        explanation: >-
+          5 is the length of `"cocoa"`. The loop walks over `set(word)`, not over `word`, and the
+          set keeps each letter once.
+      - id: one
+        text: '1'
+        explanation: >-
+          `set(word)` runs once, but `count` sits in the body. It runs on every pass, and there is
+          one pass per item of the set.
+    correct: three
+    followUps:
+      five:
+        prompt: How many items does `set("cocoa")` hold?
+        options:
+          - id: distinct
+            text: Three, one per different letter
+          - id: five
+            text: Five, one per letter
+          - id: two
+            text: Two, the letters that repeat
+        correct: distinct
+        explanation: >-
+          A set drops repeats, so c, o and a remain. The loop makes one pass per item of the set,
+          not per letter of the word.
+      one:
+        prompt: Which part of this loop runs on every pass?
+        options:
+          - id: body
+            text: The body, `total = word.count(ch)`
+          - id: header
+            text: The header expression, `set(word)`
+          - id: neither
+            text: Neither, both run once
+        correct: body
+        explanation: >-
+          The header's expression builds the set once. The body repeats for each item, so a call
+          written there runs once per pass.
+
+  - id: trace-index-lookups-review
+    format: step-trace
+    heading: Count the hidden reads
+    tags: [complexity, python]
+    prompt: >-
+      `names.index(x)` reads from the front until it finds `x`, so it reads `i + 1` cells, and
+      `reads` adds them up. The row shows `names`. Predict each step before it is shown.
+    code: |
+      names = ["kai", "lu", "mo", "ny", "oz"]
+      order = ["mo", "kai", "oz"]
+      reads = 0
+      for x in order:
+          i = names.index(x)
+          reads += i + 1
+    sequence:
+      kind: array
+      name: names
+      cells: [kai, lu, mo, ny, oz]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: On the pass for `"mo"`, where does `index` stop?
+        pointer: i
+        correct: 2
+        explanation: '"mo" sits at index 2, and `index` stops at the first match.'
+        misses:
+          - index: 4
+            explanation: '`index` does not read to the end. It stops once it finds "mo".'
+          - index: 0
+            explanation: That is where the scan starts. "kai" is not "mo", so it reads on.
+        elsewhere: '`index` stops at the first cell that holds "mo", which is index 2.'
+      - line: 6
+        ask: What is `reads` after that pass?
+        options:
+          - id: three
+            text: '3'
+            explanation: It read cells 0, 1 and 2 before it stopped, which is `i + 1`.
+          - id: two
+            text: '2'
+            explanation: That is `i`. Index 2 is the third cell, so three cells were read.
+          - id: five
+            text: '5'
+            explanation: That reads the whole list. The scan stopped at index 2.
+        correct: three
+      - line: 4
+        ask: What is `reads` when the loop ends?
+        options:
+          - id: nine
+            text: '9'
+            explanation: '"kai" adds 1 and "oz" adds 5, so 3 + 1 + 5 is 9.'
+          - id: fifteen
+            text: '15'
+            explanation: That reads all 5 names on every pass. "kai" is found in the first cell.
+          - id: six
+            text: '6'
+            explanation: That adds the indices 2, 0 and 4. Each lookup reads one more cell than its index.
+        correct: nine
+        also:
+          - { name: i, at: 4 }
+      - ask: '`names` holds 100 names, and `order` lists each of them once. What is `reads`?'
+        options:
+          - id: five-thousand-fifty
+            text: '5,050'
+            explanation: >-
+              The lookups read 1, 2, ..., 100 cells, which adds to 5,050, about n² / 2. A dict from
+              name to index, built once, would make each lookup about one step.
+          - id: hundred
+            text: '100'
+            explanation: That is one read per lookup. Each `index` call reads up to its name.
+          - id: ten-thousand
+            text: '10,000'
+            explanation: That reads all 100 names on every lookup. Early names are found sooner.
+        correct: five-thousand-fifty
+
+  - id: min-in-comprehension-review
+    heading: How many times does it run?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      nums = [7, 3, 9, 3, 8, 5]
+      rest = [x for x in nums if x > min(nums)]
+      ```
+
+      `rest` ends up as `[7, 9, 8, 5]`. How many times does `min(nums)` run?
+    options:
+      - id: six
+        text: '6'
+        explanation: >-
+          The condition of a comprehension runs for every item it walks, kept or not. That is 6
+          calls, each reading all 6 numbers.
+      - id: one
+        text: '1'
+        explanation: >-
+          `min(nums)` gives the same answer every time, but Python does not notice that. It runs
+          the condition, call and all, for each item.
+      - id: four
+        text: '4'
+        explanation: >-
+          4 is how many items were kept. The 3s are dropped, but the condition still ran for them.
+      - id: thirty-six
+        text: '36'
+        explanation: 36 counts the cells all the calls read. The question asks for the number of calls.
+    correct: six
+    followUps:
+      one:
+        prompt: How could this line call `min` only once?
+        options:
+          - id: name-it
+            text: Store `low = min(nums)` first and test `x > low`
+          - id: already
+            text: It already does, since the comprehension caches the call
+          - id: sort
+            text: Sort `nums` first
+        correct: name-it
+        explanation: >-
+          A comprehension's condition is re-evaluated for each item. A value computed once and
+          given a name is read, not recomputed.
+      four:
+        prompt: For which items does the condition `x > min(nums)` run?
+        options:
+          - id: all
+            text: For all 6 items, including the ones it drops
+          - id: kept
+            text: Only for the items that end up in `rest`
+          - id: first
+            text: Only until the first item fails
+        correct: all
+        explanation: >-
+          A comprehension has to test an item to learn whether to keep it, so every test runs.
+          Items that fail are left out of the result after the call has run.
+      thirty-six:
+        prompt: '6 calls of `min(nums)` each read 6 numbers. How many calls and how many reads?'
+        options:
+          - id: split
+            text: 6 calls and 36 reads
+          - id: same
+            text: 36 calls and 36 reads
+          - id: six-each
+            text: 6 calls and 6 reads
+        correct: split
+        explanation: >-
+          Keep the two counts apart: how often the hidden work runs, and what one run costs. The
+          total is their product.
+
+  - id: hoist-max-review
+    heading: Which change keeps the output?
+    tags: [complexity, python]
+    prompt: |-
+      `names` and `scores` have the same length, and `scores` is never empty.
+
+      ```python
+      def best_names(names, scores):
+          out = []
+          for i in range(len(names)):
+              if scores[i] == max(scores):
+                  out.append(names[i])
+          return out
+      ```
+
+      Which change removes the repeated work and still returns the same list for every input?
+    options:
+      - id: hoist
+        text: Set `top = max(scores)` above the loop and test `scores[i] == top`
+        explanation: >-
+          `scores` does not change in the loop, so its max is the same on every pass. One call
+          replaces `n`, and every tied name is still returned in order.
+      - id: running
+        text: Keep a running `top = max(top, scores[i])` and test `scores[i] == top`
+        explanation: >-
+          A running max is the largest so far, not the largest overall. On scores `[3, 5]` the
+          first name matches 3 and is kept, but 3 is not the top score.
+      - id: break
+        text: Stop the loop with `break` after the first match
+        explanation: >-
+          That returns only the first top scorer. On scores `[5, 2, 5]` the original returns two
+          names.
+      - id: sort
+        text: Call `scores.sort()` once and test `scores[i] == scores[-1]`
+        explanation: >-
+          Sorting moves the scores but not the names, so `scores[i]` no longer belongs to
+          `names[i]`. It also reorders the caller's list.
+    correct: hoist
+    followUps:
+      running:
+        prompt: On scores `[3, 5]`, what is the running max on the first pass?
+        options:
+          - id: three
+            text: 3, since only one score has been seen
+          - id: five
+            text: 5, the largest score in the list
+          - id: zero
+            text: 0, until the loop ends
+        correct: three
+        explanation: >-
+          A running max knows only the scores seen so far. The test needs the top score of the
+          whole list, so compute it before the loop.
+      break:
+        prompt: On scores `[5, 2, 5]`, how many names does the original function return?
+        options:
+          - id: two
+            text: Two, both names with a 5
+          - id: one
+            text: One, the first name with a 5
+          - id: three
+            text: Three, one per score
+        correct: two
+        explanation: >-
+          The original keeps every name whose score equals the max. A change that cuts the work
+          must keep those ties too.
+      sort:
+        prompt: After `scores.sort()`, does `scores[i]` still belong to `names[i]`?
+        options:
+          - id: not-so
+            text: No, the scores moved and the names did not
+          - id: so
+            text: Yes, sorting one list reorders the other
+          - id: only-ties
+            text: Only for the tied scores
+        correct: not-so
+        explanation: >-
+          Two lists that line up by index fall out of step when only one is sorted. Hoisting the
+          max needs no reordering at all.
+
+  - id: dominant-insert-review
+    heading: Which line dominates?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def newest_first(words):
+          words = sorted(words)
+          out = []
+          for w in words:
+              out.insert(0, w)
+          return out
+      ```
+
+      For a list of `n` short words, which line takes the most time as `n` grows?
+    options:
+      - id: insert
+        text: '`out.insert(0, w)`'
+        explanation: >-
+          Inserting at index 0 shifts every item already in `out` one slot right. Over the loop
+          that is 0 + 1 + ... + (n - 1) shifts, about n² / 2, which outgrows the sort.
+      - id: sort
+        text: '`words = sorted(words)`'
+        explanation: >-
+          The sort costs about n log n, more than one pass but less than a shift of the whole list
+          on every pass.
+      - id: loop
+        text: '`for w in words:`'
+        explanation: >-
+          The loop header hands out one word per pass, `n` steps in all. The cost sits in the line
+          it repeats.
+      - id: return
+        text: '`return out`'
+        explanation: Returning a list hands back a reference. Nothing is copied.
+    correct: insert
+    followUps:
+      sort:
+        prompt: At `n = 1,000`, about how many steps do the sort and all the inserts take?
+        options:
+          - id: compare
+            text: About 10,000 for the sort and 500,000 for the inserts
+          - id: reverse
+            text: About 500,000 for the sort and 10,000 for the inserts
+          - id: equal
+            text: About 1,000 each
+        correct: compare
+        explanation: >-
+          n log n is about 1,000 × 10. The inserts shift 0, 1, ..., 999 items, which adds to
+          about 1,000 × 1,000 / 2.
+      loop:
+        prompt: How many items does `out.insert(0, w)` move when `out` holds 50 words?
+        options:
+          - id: fifty
+            text: All 50, each one slot to the right
+          - id: one
+            text: One, the new word
+          - id: none
+            text: None, the list grows at the front
+        correct: fifty
+        explanation: >-
+          A list keeps its items side by side from index 0, so making room at the front moves
+          everything. `collections.deque` has an `appendleft` that does not.
+      return:
+        prompt: What does `return out` hand back to the caller?
+        options:
+          - id: ref
+            text: A reference to the list `out`
+          - id: copy
+            text: A copy of every item in `out`
+          - id: tuple
+            text: A tuple made from `out`
+        correct: ref
+        explanation: >-
+          Returning a value passes a reference, whatever its size. The caller gets the very list
+          the function built.
+
+  - id: copied-cells-total-review
+    heading: How many cells are copied?
+    tags: [complexity, python, recursion]
+    prompt: |-
+      ```python
+      def sum_back(nums):
+          if not nums:
+              return 0
+          return nums[-1] + sum_back(nums[:-1])
+      ```
+
+      `sum_back` runs on a list of 6 numbers. How many cells do all the slices `nums[:-1]` copy,
+      across every call?
+    options:
+      - id: fifteen
+        text: '15'
+        explanation: >-
+          The calls on 6, 5, 4, 3, 2 and 1 items copy 5 + 4 + 3 + 2 + 1 + 0 cells. That is about
+          n² / 2 for `n` items, even though each call does one addition.
+      - id: twenty-one
+        text: '21'
+        explanation: >-
+          21 is 6 + 5 + 4 + 3 + 2 + 1. That counts the first call's whole list as a copy, and
+          every slice as one cell too long.
+      - id: six
+        text: '6'
+        explanation: That counts one cell per call. Each slice copies every item but the last.
+      - id: thirty-six
+        text: '36'
+        explanation: That makes every slice 6 cells long. Each call's list is one cell shorter.
+    correct: fifteen
+    followUps:
+      twenty-one:
+        prompt: How many cells does `nums[:-1]` copy from a list of 6 items?
+        options:
+          - id: five
+            text: 5, every item but the last
+          - id: six
+            text: 6, the whole list
+          - id: one
+            text: 1, the last item
+        correct: five
+        explanation: >-
+          `[:-1]` stops before the last item. The first call's own list is the input, which no
+          slice copied.
+      six:
+        prompt: What does `nums[:-1]` cost for a list of `m` items?
+        options:
+          - id: m-minus-one
+            text: It copies `m - 1` references into a new list
+          - id: constant
+            text: It is one step, like reading `nums[-1]`
+          - id: in-place
+            text: It removes the last item from `nums` in place
+        correct: m-minus-one
+        explanation: >-
+          Reading one item is a single step, but a slice builds a new list. Its cost grows with
+          how many items it covers.
+      thirty-six:
+        prompt: How long is the list in the second call of `sum_back`?
+        options:
+          - id: five
+            text: 5 items, one fewer than the first
+          - id: six
+            text: 6 items, the same as the first
+          - id: three
+            text: 3 items, half of the first
+        correct: five
+        explanation: >-
+          Each call passes on a slice without its last item, so the lists shrink by one per call
+          and so do the copies.
