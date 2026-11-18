@@ -1,0 +1,492 @@
+id: recursive-calls
+title: Recursive calls
+description: Name the call that stops, trace the smaller call each one makes, and follow each value back up. Each card opens with a worked example, then asks for one decision.
+heading: What happens next?
+
+questions:
+  - id: sum-empty-stop
+    heading: Which stopping case works?
+    tags: [recursion]
+    prompt: |-
+      **Worked example:** `countdown(2)` prints 2, then 1, then `go`. The call `countdown(0)`
+      meets `n == 0` before it can call again, so it is the call that stops.
+
+      ```python
+      def countdown(n):
+          if n == 0:
+              print("go")
+              return
+          print(n)
+          countdown(n - 1)
+      ```
+
+      Now `total` adds up a list, and each call passes a slice one item shorter:
+
+      ```python
+      def total(nums):
+          ???
+          return nums[0] + total(nums[1:])
+      ```
+
+      Which line works in place of `???` for every list, including `[]`?
+    options:
+      - id: empty
+        text: "`if not nums: return 0`"
+        explanation: >-
+          Every slice is one item shorter, so every chain of calls ends on `[]`. That call returns
+          before it reads `nums[0]`, and 0 leaves the sum as it is. `total([])` gives 0 and
+          `total([3, 4])` gives 7.
+      - id: one-left
+        text: "`if len(nums) == 1: return nums[0]`"
+        explanation: >-
+          This works for `[3, 4]`, but `total([])` skips the check and reads `nums[0]` of a list
+          with nothing in it, which raises IndexError.
+      - id: zero-value
+        text: "`if nums[0] == 0: return 0`"
+        explanation: >-
+          This tests what the first item holds. `total([3, 4])` never meets a 0, so the slices
+          shrink to `[]` and `nums[0]` raises IndexError.
+      - id: return-one
+        text: "`if not nums: return 1`"
+        explanation: >-
+          The check is in the right place, but the value is off. Every call adds its item to what
+          the call on `[]` returns, so `total([3, 4])` gives 8.
+    correct: empty
+    followUps:
+      one-left:
+        prompt: With the `len(nums) == 1` check, what happens on `total([])`?
+        options:
+          - id: index-error
+            text: The check is false, so `nums[0]` runs on an empty list and raises IndexError
+          - id: zero
+            text: It returns 0, since there is nothing to add
+          - id: none
+            text: It returns `None`, since no line returns a value
+        correct: index-error
+        explanation: >-
+          An empty list never has length 1, so that call goes straight to the last line. A
+          stopping case has to catch the smallest input the function can get, and here that is
+          `[]`.
+      zero-value:
+        prompt: What does a stopping case for `total` need to check?
+        options:
+          - id: size
+            text: How many items are left, since the slices shrink toward `[]`
+          - id: item
+            text: Whether the current item is 0, since 0 adds nothing
+          - id: target
+            text: Whether the sum so far has reached some target
+        correct: size
+        explanation: >-
+          Each call removes one item, so the length is what changes from call to call. A check on
+          a value can be missed by every call, as it is on `[3, 4]`.
+      return-one:
+        prompt: "`total([])` should be the sum of no numbers. What is that sum?"
+        options:
+          - id: zero
+            text: 0, because adding it to any sum leaves that sum unchanged
+          - id: one
+            text: 1, because the call still counts as one step
+          - id: none
+            text: "`None`, because there are no numbers to add"
+        correct: zero
+        explanation: >-
+          The empty call's value is added into every other result. Only 0 keeps the total of
+          `[3, 4]` at 7.
+
+  - id: deleted-stop
+    heading: What does this call do?
+    tags: [recursion]
+    prompt: |-
+      **Worked example:** with its stopping case, `countdown(1)` prints 1 and calls
+      `countdown(0)`. That call meets `n == 0`, prints `go` and returns.
+
+      ```python
+      def countdown(n):
+          if n == 0:
+              print("go")
+              return
+          print(n)
+          countdown(n - 1)
+      ```
+
+      A slip deleted the stopping case:
+
+      ```python
+      def countdown(n):
+          print(n)
+          countdown(n - 1)
+      ```
+
+      `countdown(2)` prints 2 and 1, then calls `countdown(0)`. What does that call do?
+    options:
+      - id: goes-negative
+        text: Prints 0 and calls `countdown(-1)`
+        explanation: >-
+          Nothing in the body tests `n` any more. So 0 is printed like any other number, and the
+          calls go on to -1, -2 and beyond. No call stops on its own. Only Python's limit on
+          nested calls ends the run, with RecursionError.
+      - id: zero-stops
+        text: Returns, because `n` has counted down to 0
+        explanation: >-
+          0 is special only when a line tests for it. With the check deleted, this call does the
+          same two things every call does.
+      - id: zero-error
+        text: Raises an error at once, because `n` can't go below 0
+        explanation: >-
+          `n` is a plain integer, and Python lets `n - 1` go below zero. This call prints 0 and
+          calls again like the others.
+      - id: prints-go
+        text: Prints `go` and returns, as the worked example did
+        explanation: >-
+          The `go` line lived inside the deleted stopping case. The body that is left only prints
+          `n` and calls again.
+    correct: goes-negative
+    followUps:
+      zero-stops:
+        prompt: What makes a call stop instead of calling again?
+        options:
+          - id: test-returns
+            text: A test on the argument that returns before the recursive call
+          - id: reaches-zero
+            text: Nothing is needed, a call stops once its argument reaches 0
+          - id: print-ends
+            text: The `print`, which ends the call once the value is shown
+        correct: test-returns
+        explanation: >-
+          Python gives 0 no special meaning. A call stops only where the code returns before
+          making the next call, and this version has no such line.
+      zero-error:
+        prompt: What is `n - 1` when `n` is 0?
+        options:
+          - id: minus-one
+            text: -1, an ordinary integer
+          - id: error
+            text: An error, since a count can't be negative
+          - id: stays-zero
+            text: 0, since integers stop at zero
+        correct: minus-one
+        explanation: >-
+          Python integers go below zero with no complaint. A countdown that should stop at 0
+          needs code that says so.
+      prints-go:
+        prompt: In the worked example, which part of `countdown` printed `go`?
+        options:
+          - id: stop-branch
+            text: The stopping case, which this version no longer has
+          - id: last-line
+            text: The last line, which runs once the countdown ends
+          - id: python
+            text: Python itself, when a recursion finishes
+        correct: stop-branch
+        explanation: >-
+          `go` came from the branch that ran when `n == 0`. Deleting that branch removes both the
+          message and the stop.
+
+  - id: palindrome-third-call
+    format: drag-pointers
+    heading: Where does the call start?
+    tags: [recursion, arrays-strings]
+    prompt: >-
+      **Worked example:** `is_pal("level", 0, 4)` compares `l` with `l`, then calls
+      `is_pal("level", 1, 3)`. Each call checks one pair of letters and passes the pair just inside
+      it.
+
+
+      The pointers show the first call on `"rotator"`. Drag `lo` and `hi` to where the third call
+      starts.
+    code: |
+      def is_pal(s, lo, hi):
+          if lo >= hi:
+              return True
+          if s[lo] != s[hi]:
+              return False
+          return is_pal(s, lo + 1, hi - 1)
+
+      is_pal("rotator", 0, 6)
+    sequence:
+      kind: string
+      name: s
+      cells: [r, o, t, a, t, o, r]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 2
+        explanation: >-
+          The first call has `lo = 0`, the second `lo = 1`, and the third `lo = 2`. Each call
+          passes `lo + 1`.
+        misses:
+          - index: 1
+            explanation: >-
+              That is the second call. The first call, `is_pal(s, 0, 6)`, counts as one, so the third
+              call is two steps in.
+          - index: 3
+            explanation: >-
+              That is the fourth call, where `lo` meets `hi` and the stopping case returns True. The
+              first call already counts as one.
+          - index: 0
+            explanation: '`lo` belongs to the first call here. Every later call passes `lo + 1`.'
+        elsewhere: Each call moves `lo` one cell right, so the third call starts with `lo` at index 2.
+      - name: hi
+        start: 6
+        correct: 4
+        explanation: >-
+          `hi` steps left once per call: 6, then 5, then 4. The third call compares `t` with `t`.
+        misses:
+          - index: 5
+            explanation: >-
+              That is the second call. Count the first call, `is_pal(s, 0, 6)`, as one.
+          - index: 3
+            explanation: >-
+              That is the fourth call, where `lo` and `hi` meet. The first call already counts as
+              one.
+          - index: 6
+            explanation: '`hi` moves too. Every call passes `hi - 1`.'
+        elsewhere: Each call moves `hi` one cell left, so the third call starts with `hi` at index 4.
+
+  - id: empty-suffix-call
+    format: tap-cell
+    heading: Where does the input start?
+    tags: [recursion, arrays-strings]
+    prompt: >-
+      **Worked example:** `count_a("ab")` makes three calls: on `"ab"`, on `"b"`, and on `""`. Each
+      call passes `s[1:]`, the string without its first letter.
+
+
+      Every call's `s` is a suffix of `"banana"`. The slot after the last letter stands for the empty
+      suffix. Tap where the `s` of the call that meets `s == ""` starts.
+    code: |
+      def count_a(s):
+          if s == "":
+              return 0
+          rest = count_a(s[1:])
+          return rest + (1 if s[0] == "a" else 0)
+
+      count_a("banana")
+    sequence:
+      kind: string
+      name: s
+      cells: [b, a, n, a, n, a]
+      pastEnd: true
+    correct: 6
+    explanation: >-
+      Each call drops one letter: `"banana"`, `"anana"`, and so on down to `"a"`. The call on `"a"`
+      still has a letter, so it calls once more with `"a"[1:]`, which is `""`. That seventh call
+      starts past the last letter, and it is the one that stops.
+    misses:
+      - index: 0
+        explanation: That is the first call, on the whole string. It has letters, so it calls again.
+      - index: 1
+        explanation: That is the second call, on `"anana"`. It still has letters to drop.
+      - index: 2
+        explanation: That is the third call, on `"nana"`. It still has letters to drop.
+      - index: 3
+        explanation: That is the fourth call, on `"ana"`. It still has letters to drop.
+      - index: 4
+        explanation: That is the fifth call, on `"na"`. It still has letters to drop.
+      - index: 5
+        explanation: >-
+          That is the sixth call, on `"a"`. It is not empty, so it calls once more with `"a"[1:]`.
+
+  - id: reverse-return
+    heading: What does it return?
+    tags: [recursion]
+    prompt: |-
+      **Worked example:** `rev("hi")` calls `rev("i")`, which calls `rev("")`. That last call
+      returns `""`. Then `rev("i")` returns `"" + "i"`, and `rev("hi")` returns `"i" + "h"`,
+      which is `"ih"`.
+
+      ```python
+      def rev(s):
+          if s == "":
+              return ""
+          return rev(s[1:]) + s[0]
+      ```
+
+      What does `rev("cat")` return?
+    options:
+      - id: tac
+        text: '`"tac"`'
+        explanation: >-
+          `rev("")` returns `""`. `rev("t")` puts `t` on the end of that, `rev("at")` puts `a`
+          after it, and `rev("cat")` puts `c` last. Each call adds its first letter behind what
+          the smaller call returned.
+      - id: cat
+        text: '`"cat"`'
+        explanation: >-
+          That keeps the letters in the order the calls were made. Look at which side of the `+`
+          the current letter sits on.
+      - id: empty
+        text: '`""`'
+        explanation: >-
+          `""` is what the deepest call returns, but the waiting calls are not done. Each one
+          still adds a letter once the result comes back.
+      - id: last-letter
+        text: '`"t"`'
+        explanation: >-
+          `"t"` is what `rev("t")` returns. More calls are waiting above it, and each one adds a
+          letter.
+    correct: tac
+    followUps:
+      cat:
+        prompt: In `rev(s[1:]) + s[0]`, where does the current call's letter go?
+        options:
+          - id: after
+            text: After everything the smaller call returned
+          - id: before
+            text: Before everything the smaller call returned
+          - id: in-place
+            text: Back where it was in `s`
+        correct: after
+        explanation: >-
+          The smaller call's result is on the left of the `+`, so it comes first. The first letter
+          of `s` ends up last.
+      empty:
+        prompt: '`rev("t")` gets `""` back from `rev("")`. What does `rev("t")` return?'
+        options:
+          - id: adds-t
+            text: '`"t"`, the empty string with its own letter added'
+          - id: unchanged
+            text: '`""`, passing the result up unchanged'
+          - id: nothing
+            text: Nothing, since the stopping case already returned
+        correct: adds-t
+        explanation: >-
+          A call that waits on a smaller call still finishes its own line once the result comes
+          back. Here that line adds one letter.
+      last-letter:
+        prompt: When `rev("t")` returns, how many calls are still waiting for a result?
+        options:
+          - id: two
+            text: Two, `rev("at")` and `rev("cat")`
+          - id: zero
+            text: None, the first call to return ends the whole thing
+          - id: one
+            text: One, the call that started everything
+        correct: two
+        explanation: >-
+          Each call waits until the call it made returns. The final result appears only after
+          every waiting call has finished its line.
+
+  - id: missing-return
+    heading: What does it return?
+    tags: [recursion, python]
+    prompt: |-
+      **Worked example:** `last([2, 7])` calls `last([7])`, which returns 7. The line
+      `return last(nums[1:])` hands that 7 back as the result of `last([2, 7])`.
+
+      A slip dropped that `return`:
+
+      ```python
+      def last(nums):
+          if len(nums) == 1:
+              return nums[0]
+          last(nums[1:])
+      ```
+
+      What does `last([4, 8, 6])` return?
+    options:
+      - id: none
+        text: "`None`"
+        explanation: >-
+          `last([6])` hands 6 to `last([8, 6])`, but that call throws the value away and reaches
+          the end of its body. The top call does the same with what it gets back. A Python function
+          that ends without `return` gives `None`.
+      - id: six
+        text: "`6`"
+        explanation: >-
+          6 goes back to `last([8, 6])`. Check what that call does with the value it receives.
+      - id: four
+        text: "`4`"
+        explanation: >-
+          4 is the first item, but the only line that returns an item is the stopping case, and
+          that runs only on a one-item list.
+      - id: error
+        text: It raises an error, because a call returned nothing
+        explanation: >-
+          Ending a function without `return` is allowed in Python. No error happens unless later
+          code tries to use the missing value.
+    correct: none
+    followUps:
+      six:
+        prompt: "`last([8, 6])` runs `last(nums[1:])` and gets 6 back. What does `last([8, 6])` return?"
+        options:
+          - id: dropped
+            text: "`None`, because the 6 is discarded and the body ends"
+          - id: passes-up
+            text: 6, because a returned value passes up on its own
+          - id: own-item
+            text: 8, its own first item
+        correct: dropped
+        explanation: >-
+          A value goes back one level only, to the expression that made the call. Without `return`
+          in front of that call, the value is dropped.
+      four:
+        prompt: Which call runs `return nums[0]`?
+        options:
+          - id: one-item
+            text: Only the call on `[6]`, the one-item list
+          - id: every
+            text: Every call, before it recurses
+          - id: first
+            text: The first call, on `[4, 8, 6]`
+        correct: one-item
+        explanation: >-
+          That line runs only when `len(nums) == 1`. Longer lists skip it and go straight to the
+          recursive call.
+      error:
+        prompt: What does a Python function give back when its body ends with no `return`?
+        options:
+          - id: none
+            text: "`None`, with no error raised"
+          - id: type-error
+            text: A `TypeError`, since a value was expected
+          - id: zero
+            text: 0, the default number
+        correct: none
+        explanation: >-
+          Falling off the end of a function is the same as `return None`. An error comes only if
+          later code treats that `None` as a number.
+
+  - id: first-negative-index
+    format: tap-cell
+    heading: Which cell does it return?
+    tags: [recursion]
+    prompt: >-
+      **Worked example:** `first_neg([3, -6, 1], 0)` sees 3 and calls with `i = 1`. That call sees
+      -6 and returns 1. The call at `i = 0` returns that 1 unchanged.
+
+
+      Tap the cell whose index `first_neg(nums, 0)` returns.
+    code: |
+      def first_neg(nums, i):
+          if i == len(nums):
+              return -1
+          if nums[i] < 0:
+              return i
+          return first_neg(nums, i + 1)
+
+      nums = [4, 7, -2, 5, -1]
+      first_neg(nums, 0)
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 7, -2, 5, -1]
+    correct: 2
+    explanation: >-
+      The calls at `i = 0` and `i = 1` see 4 and 7 and pass the question on. The call at `i = 2`
+      sees -2 and returns 2 without calling again. Each waiting call returns that same 2.
+    misses:
+      - index: 0
+        explanation: >-
+          The first call has `i = 0`, but 4 is not negative. It returns whatever the call at
+          `i = 1` gives back, never its own `i`.
+      - index: 1
+        explanation: >-
+          7 is not negative, so the call at `i = 1` does not return 1. It returns what the next call
+          gives it.
+      - index: 3
+        explanation: The calls stopped at `i = 2`. No call ever looks at the 5.
+      - index: 4
+        explanation: >-
+          -1 is negative too, but the call at `i = 2` returned before any call reached index 4.

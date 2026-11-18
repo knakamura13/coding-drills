@@ -1,0 +1,622 @@
+id: recursive-calls-review
+title: "Recursive calls: review"
+description: Fresh inputs for the Recursive calls skills, for recall on later days. No worked examples this time.
+heading: What does this give?
+
+questions:
+  - id: skipped-stop-review
+    heading: Which call never stops?
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def hop(n):
+          if n == 0:
+              return
+          hop(n - 2)
+      ```
+
+      Which call never reaches the stopping case?
+    options:
+      - id: seven
+        text: "`hop(7)`"
+        explanation: >-
+          7 is odd, and taking 2 away keeps it odd: 7, 5, 3, 1, -1 and on down. No call ever gets
+          exactly 0, so the calls never stop on their own.
+      - id: zero
+        text: "`hop(0)`"
+        explanation: >-
+          The test sits above the recursive call, so a call that starts on 0 returns before it
+          can call again.
+      - id: four
+        text: "`hop(4)`"
+        explanation: >-
+          Trace the arguments one call at a time and see whether any of them is exactly 0.
+      - id: ten
+        text: "`hop(10)`"
+        explanation: >-
+          A large start means more calls, not a missed stop. Check whether the count lands on 0.
+    correct: seven
+    followUps:
+      zero:
+        prompt: When `hop(0)` runs, which line decides what happens first?
+        options:
+          - id: test
+            text: The test `n == 0`, which returns at once
+          - id: call
+            text: The call `hop(n - 2)`, since recursion always goes first
+          - id: skipped
+            text: Neither, since a call with 0 never runs
+        correct: test
+        explanation: >-
+          Lines run top to bottom. The check comes before the recursive call, so 0 is caught
+          right away.
+      four:
+        prompt: Which arguments does `hop(4)` pass along?
+        options:
+          - id: two-zero
+            text: 2, then 0, which stops
+          - id: three-two
+            text: 3, 2, 1, then 0
+          - id: overshoot
+            text: 2, then -2, stepping over 0
+        correct: two-zero
+        explanation: >-
+          Taking 2 at a time from an even number lands on every even number below it, 0
+          included.
+      ten:
+        prompt: Does a large even start make `hop` step over 0?
+        options:
+          - id: lands
+            text: No, it stays even and meets 0 on its sixth call
+          - id: too-big
+            text: Yes, large inputs skip the stopping case
+          - id: overflow
+            text: Yes, 10 is too large to count down from
+        correct: lands
+        explanation: >-
+          10, 8, 6, 4, 2 and 0 are all even. The size of the input changes how many calls run,
+          not whether one of them meets the stop.
+
+  - id: empty-string-stop-review
+    heading: Which stopping case works?
+    tags: [recursion]
+    prompt: |-
+      `count_t` counts the letter `t` in a string. Each call passes a slice one letter shorter.
+
+      ```python
+      def count_t(s):
+          ???
+          return (1 if s[0] == "t" else 0) + count_t(s[1:])
+      ```
+
+      Which line works in place of `???` for every string, including `""`?
+    options:
+      - id: empty
+        text: '`if s == "": return 0`'
+        explanation: >-
+          Every call drops one letter, so every chain of calls ends on `""`. That call returns
+          before it reads `s[0]`, and adding 0 leaves the count as it is. `count_t("tot")` gives
+          2, and `count_t("")` gives 0.
+      - id: one-left
+        text: '`if len(s) == 1: return 1 if s == "t" else 0`'
+        explanation: >-
+          Longer strings shrink to one letter and stop there, but `count_t("")` starts below
+          that check and reads `s[0]` of an empty string, which raises IndexError.
+      - id: first-t
+        text: '`if s[0] == "t": return 1`'
+        explanation: >-
+          This returns at the first `t` and ignores the rest. On a string with no `t`, such as
+          `"bob"`, the slices reach `""` and `s[0]` raises IndexError.
+      - id: return-one
+        text: '`if s == "": return 1`'
+        explanation: >-
+          The check is right but the value is not. The empty call's value is added into every
+          result, so `count_t("tot")` gives 3.
+    correct: empty
+    followUps:
+      one-left:
+        prompt: With the `len(s) == 1` check, which call still reads `s[0]` of an empty string?
+        options:
+          - id: direct
+            text: Only `count_t("")` itself, called directly
+          - id: every
+            text: Every call, once the slices run out
+          - id: single
+            text: The call on a single `t`
+        correct: direct
+        explanation: >-
+          A non-empty string stops on its last letter and never reaches `""`. An empty input
+          skips the length test and fails at once.
+      first-t:
+        prompt: What does `count_t("tot")` give with the `s[0] == "t"` check?
+        options:
+          - id: one
+            text: 1, though the string holds two t's
+          - id: two
+            text: 2, since the check runs once per t
+          - id: zero
+            text: 0, since the string is not finished
+        correct: one
+        explanation: >-
+          Returning on a match ends the count right there. A stopping case for a count has to
+          wait until no letters are left.
+      return-one:
+        prompt: How many t's are in `""`?
+        options:
+          - id: none
+            text: None, so the empty call should give 0
+          - id: one
+            text: One, for the call itself
+          - id: unknown
+            text: It can't be counted, so the call should give `None`
+        correct: none
+        explanation: >-
+          An empty string holds no letters at all. Returning anything but 0 there adds the same
+          error to every count.
+
+  - id: endless-slice-review
+    heading: What is the next call?
+    tags: [recursion, python]
+    prompt: |-
+      This function has no stopping case:
+
+      ```python
+      def size(nums):
+          return 1 + size(nums[1:])
+      ```
+
+      `size([])` runs. What happens next?
+    options:
+      - id: same-again
+        text: It calls `size([])` again, since `[][1:]` is an empty list
+        explanation: >-
+          Slicing from index 1 of `[]` gives `[]`, so the next call gets an empty list, and so does
+          the one after it. The input never shrinks, and the calls pile up until Python raises
+          RecursionError.
+      - id: index-error
+        text: "`nums[1:]` raises IndexError, since the list has no item at 1"
+        explanation: >-
+          Slicing behaves differently from reading one item. Check what `[][1:]` gives.
+      - id: returns-zero
+        text: It returns 0, since the list is empty
+        explanation: >-
+          Nothing in `size` looks at whether the list is empty. Every call runs the same single
+          line.
+      - id: none-arg
+        text: It calls `size(None)`, since there is nothing left to slice
+        explanation: >-
+          A slice always gives a list, never `None`. Check what slicing an empty list gives.
+    correct: same-again
+    followUps:
+      index-error:
+        prompt: What does `[][1:]` give?
+        options:
+          - id: empty
+            text: "`[]`, because a slice past the end is just empty"
+          - id: error
+            text: IndexError, the same as `[][1]`
+          - id: none
+            text: "`None`, because there is nothing to slice"
+        correct: empty
+        explanation: >-
+          Indexing needs one slot to exist. A slice keeps whatever falls in its range, which can
+          be nothing, so it never raises for being out of range.
+      returns-zero:
+        prompt: Which line in `size` returns 0 for an empty list?
+        options:
+          - id: no-line
+            text: No line does, the function has no stopping case
+          - id: automatic
+            text: Python returns 0 for any call on an empty list
+          - id: plus-one
+            text: The `1 +`, which adds nothing to an empty list
+        correct: no-line
+        explanation: >-
+          Python never stops a recursion because an argument looks small. A call returns a value
+          only where the code says so.
+      none-arg:
+        prompt: Which expression raises an error on an empty list?
+        options:
+          - id: index
+            text: "`nums[1]`, an index"
+          - id: slice
+            text: "`nums[1:]`, a slice"
+          - id: both
+            text: Both of them
+        correct: index
+        explanation: >-
+          An index names one slot, which must exist. A slice names a range and gives `[]` when
+          the range holds nothing.
+
+  - id: peel-next-call-review
+    format: drag-pointers
+    heading: Where does the call start?
+    tags: [recursion]
+    prompt: >-
+      A few calls in, the current call is `peel(nums, 2, 4)`. The pointers show its `lo` and `hi`.
+      Drag them to the arguments of the call it makes.
+    code: |
+      def peel(nums, lo, hi):
+          if lo > hi:
+              return []
+          if nums[lo] <= nums[hi]:
+              return [nums[lo]] + peel(nums, lo + 1, hi)
+          return [nums[hi]] + peel(nums, lo, hi - 1)
+
+      peel([5, 2, 8, 1, 6, 3], 0, 5)
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 2, 8, 1, 6, 3]
+    pointers:
+      - name: lo
+        start: 2
+        correct: 2
+        explanation: '`nums[2]` is 8 and `nums[4]` is 6. 8 is larger, so this call takes the 6 and passes `lo` unchanged.'
+        misses:
+          - index: 3
+            explanation: >-
+              `lo` moves only when `nums[lo] <= nums[hi]`. 8 is larger than 6, so this call takes
+              from the right end instead.
+        elsewhere: 8 is larger than 6, so the call takes from the right end and passes `lo` as 2.
+      - name: hi
+        start: 4
+        correct: 3
+        explanation: >-
+          The last line runs, taking `nums[4]` and passing `hi - 1`, which is 3.
+        misses:
+          - index: 4
+            explanation: >-
+              The call takes the 6 at index 4, so it passes `hi - 1`. Only one end moves, and here
+              it is `hi`.
+          - index: 2
+            explanation: '`hi` steps one cell, from 4 to 3. It does not jump to `lo`.'
+        elsewhere: The call takes the 6 at index 4 and passes `hi - 1`, which is 3.
+
+  - id: halves-second-call-review
+    format: drag-pointers
+    heading: Which range does it cover?
+    tags: [recursion]
+    prompt: >-
+      `biggest(nums, 0, 6)` splits its range in two and makes two calls. Drag `lo` and `hi` to the
+      range of its second recursive call.
+    code: |
+      def biggest(nums, lo, hi):
+          if lo == hi:
+              return nums[lo]
+          mid = (lo + hi) // 2
+          left = biggest(nums, lo, mid)
+          right = biggest(nums, mid + 1, hi)
+          return max(left, right)
+
+      biggest([3, 8, 1, 9, 4, 7, 2], 0, 6)
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 8, 1, 9, 4, 7, 2]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 4
+        explanation: >-
+          `mid` is `(0 + 6) // 2`, which is 3. The first call covers 0 to 3, so the second starts
+          at `mid + 1`, index 4.
+        misses:
+          - index: 3
+            explanation: >-
+              Index 3 is `mid`, and the first call already covers it. The second call starts at
+              `mid + 1`.
+          - index: 0
+            explanation: That is where the first recursive call starts. The second starts after `mid`.
+        elsewhere: '`mid` is 3, so the second call starts at `mid + 1`, index 4.'
+      - name: hi
+        start: 6
+        correct: 6
+        explanation: The second call passes `hi` unchanged, so it ends at index 6.
+        misses:
+          - index: 3
+            explanation: '`hi = mid` is the end of the first call''s range. The second call keeps `hi`.'
+        elsewhere: The second call passes `hi` unchanged, so it ends at index 6.
+
+  - id: every-other-call-review
+    format: tap-cell
+    heading: Where does the input start?
+    tags: [recursion, arrays-strings]
+    prompt: >-
+      Every call's `s` is a suffix of `"garden"`. The slot after the last letter stands for the
+      empty suffix. Tap where the `s` of the third call starts.
+    code: |
+      def every_other(s):
+          if s == "":
+              return ""
+          return s[0] + every_other(s[2:])
+
+      every_other("garden")
+    sequence:
+      kind: string
+      name: s
+      cells: [g, a, r, d, e, n]
+      pastEnd: true
+    correct: 4
+    explanation: >-
+      Each call drops two letters: the first call gets `"garden"`, the second `"rden"`, and the
+      third `"en"`, which starts at index 4.
+    misses:
+      - index: 0
+        explanation: That is the first call, on the whole string. Count it as one.
+      - index: 1
+        explanation: That is where the second call would start if each call dropped one letter. `s[2:]` drops two.
+      - index: 2
+        explanation: That is the second call, on `"rden"`. One more call comes before the third.
+      - index: 3
+        explanation: >-
+          Calls start only at even indexes, 0, 2, 4 and then the empty end, because each drops two
+          letters.
+      - index: 5
+        explanation: >-
+          No call starts here. Each call drops two letters, so the starts are 0, 2, 4 and the empty
+          end.
+      - index: 6
+        explanation: That is the fourth call, on `""`, the one that stops.
+
+  - id: halving-calls-review
+    heading: Which calls run?
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def power(b, e):
+          if e == 0:
+              return 1
+          half = power(b, e // 2)
+          if e % 2 == 0:
+              return half * half
+          return half * half * b
+      ```
+
+      `power(3, 5)` runs. Which values of `e` do the calls get, in order?
+    options:
+      - id: halves
+        text: 5, 2, 1, 0
+        explanation: >-
+          Each call passes `e // 2`: 5 gives 2, 2 gives 1, and 1 gives 0. The call with 0 is the
+          one that stops, so four calls run.
+      - id: minus-one
+        text: 5, 4, 3, 2, 1, 0
+        explanation: >-
+          That steps down by one each time. Look at the argument of the recursive call.
+      - id: no-zero
+        text: 5, 2, 1
+        explanation: >-
+          That stops one call too early. Check what the call with 1 does.
+      - id: round-up
+        text: 5, 3, 2, 1, 0
+        explanation: >-
+          That rounds the half of 5 up. Check which way `//` rounds.
+    correct: halves
+    followUps:
+      minus-one:
+        prompt: Which argument does `power(b, e)` pass to its smaller call?
+        options:
+          - id: half
+            text: "`e // 2`, half of `e`, for every `e`"
+          - id: one-less
+            text: "`e - 1`, one less than `e`"
+          - id: mixed
+            text: "`e // 2` when `e` is even, `e - 1` when it is odd"
+        correct: half
+        explanation: >-
+          There is only one recursive call, and it always halves. An odd `e` is handled after the
+          call returns, by the extra `* b`.
+      no-zero:
+        prompt: "`power(3, 1)` runs. Does it make a call?"
+        options:
+          - id: calls
+            text: Yes, with `1 // 2`, which is 0
+          - id: stops
+            text: No, an exponent of 1 is a stopping case
+          - id: odd
+            text: No, an odd exponent ends the calls
+        correct: calls
+        explanation: >-
+          The only stopping test is `e == 0`. A call with 1 recurses once more, and that call with
+          0 is the one that returns 1.
+      round-up:
+        prompt: What is `5 // 2` in Python?
+        options:
+          - id: two
+            text: 2, since `//` rounds down
+          - id: three
+            text: 3, since 2.5 rounds up
+          - id: odd-extra
+            text: 3, since an odd number keeps the extra 1
+        correct: two
+        explanation: >-
+          `//` divides and drops the fraction for positive numbers. So 5 halves to 2, and 2
+          halves to 1.
+
+  - id: dropped-return-review
+    heading: What does it print?
+    tags: [recursion, python]
+    prompt: |-
+      ```python
+      def has(s, ch):
+          if s == "":
+              return False
+          if s[0] == ch:
+              return True
+          has(s[1:], ch)
+
+      print(has("map", "p"))
+      ```
+    options:
+      - id: none
+        text: "`None`"
+        explanation: >-
+          The call on `"p"` returns True to the call on `"ap"`, which drops it and reaches the end
+          of its body. The call on `"map"` does the same. A function that ends without `return`
+          gives `None`.
+      - id: gives-true
+        text: "`True`"
+        explanation: >-
+          True is returned one level up. Check what the waiting calls do with it.
+      - id: gives-false
+        text: "`False`"
+        explanation: >-
+          The False line runs only on an empty string. Check whether any call here gets one.
+      - id: error
+        text: It raises an error
+        explanation: >-
+          Nothing here is an error in Python. Check what a function gives when its body ends.
+    correct: none
+    followUps:
+      gives-true:
+        prompt: '`has("p", "p")` returns True to `has("ap", "p")`. What does `has("ap", "p")` return?'
+        options:
+          - id: dropped
+            text: "`None`, because it drops the True and its body ends"
+          - id: passes
+            text: "`True`, passed up automatically"
+          - id: stop-value
+            text: "`False`, the stopping case's value"
+        correct: dropped
+        explanation: >-
+          A returned value goes only to the expression that made the call. Here that expression
+          is a bare statement, so the True is thrown away.
+      gives-false:
+        prompt: Does any call in `has("map", "p")` get an empty string?
+        options:
+          - id: stops-early
+            text: No, the call on `"p"` returns before the letters run out
+          - id: every
+            text: Yes, every chain of calls ends on the empty string
+          - id: first
+            text: Yes, the first call checks it last
+        correct: stops-early
+        explanation: >-
+          The match on `"p"` returns True, so no call on `""` is made. The False line never runs
+          here.
+      error:
+        prompt: What does `has("ap", "p")` give when its body ends after the call?
+        options:
+          - id: none
+            text: "`None`, the default when a function has no `return`"
+          - id: type-error
+            text: A `TypeError` for a missing value
+          - id: last-value
+            text: The value of the last expression it ran
+        correct: none
+        explanation: >-
+          Python adds an invisible `return None` to the end of every function. An error appears
+          only if later code uses that `None` as something else.
+
+  - id: digits-return-review
+    heading: What does it return?
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def digits(n):
+          if n < 10:
+              return [n]
+          return digits(n // 10) + [n % 10]
+      ```
+
+      What does `digits(408)` return?
+    options:
+      - id: in-order
+        text: "`[4, 0, 8]`"
+        explanation: >-
+          `digits(408)` calls `digits(40)`, which calls `digits(4)`. That returns `[4]`. Then
+          `digits(40)` adds 0 after it, and `digits(408)` adds 8 last.
+      - id: reversed
+        text: "`[8, 0, 4]`"
+        explanation: >-
+          Those are the digits in the order the calls peel them off. Look at which side of the `+`
+          each call's digit goes on.
+      - id: deepest
+        text: "`[4]`"
+        explanation: >-
+          That is what the deepest call returns. Two calls are still waiting to add their digits.
+      - id: no-base
+        text: "`[0, 8]`"
+        explanation: >-
+          This loses the leading 4. Check what the call on 4 returns.
+    correct: in-order
+    followUps:
+      reversed:
+        prompt: In `digits(n // 10) + [n % 10]`, which part comes first in the result?
+        options:
+          - id: smaller-call
+            text: The smaller call's list, which holds the higher digits
+          - id: own-digit
+            text: This call's last digit, `n % 10`
+          - id: larger
+            text: Whichever digit is larger
+        correct: smaller-call
+        explanation: >-
+          `+` on lists keeps the left list first. The smaller call's digits sit on the left, so
+          the highest digit ends up at the front.
+      deepest:
+        prompt: "`digits(4)` returns `[4]` to `digits(40)`. What does `digits(40)` return?"
+        options:
+          - id: adds-zero
+            text: "`[4, 0]`, with its own last digit added"
+          - id: unchanged
+            text: "`[4]`, passed up unchanged"
+          - id: whole
+            text: "`[40]`"
+        correct: adds-zero
+        explanation: >-
+          A waiting call finishes its own line once the result comes back. Here that appends
+          `40 % 10`, which is 0.
+      no-base:
+        prompt: What does `digits(4)` return?
+        options:
+          - id: list
+            text: "`[4]`, a list holding the 4"
+          - id: empty
+            text: "`[]`, an empty list"
+          - id: bare
+            text: "`4`, a bare number"
+        correct: list
+        explanation: >-
+          4 is below 10, so the stopping case returns `[n]`. The highest digit starts the list,
+          and the other calls add their digits after it.
+
+  - id: argmax-return-review
+    format: tap-cell
+    heading: Which cell does it return?
+    tags: [recursion]
+    prompt: Tap the cell whose index `argmax(nums, 0)` returns.
+    code: |
+      def argmax(nums, i):
+          if i == len(nums) - 1:
+              return i
+          j = argmax(nums, i + 1)
+          return i if nums[i] > nums[j] else j
+
+      nums = [3, 9, 4, 9, 1]
+      argmax(nums, 0)
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 9, 4, 9, 1]
+    correct: 3
+    explanation: >-
+      The deepest call, at `i = 4`, returns 4. The call at `i = 3` compares 9 with 1 and returns 3.
+      The calls at `i = 2`, 1 and 0 each compare their value with the 9 at index 3. None is strictly
+      larger, so each returns 3.
+    misses:
+      - index: 0
+        explanation: >-
+          3 is not larger than the 9 that came back, so the call at `i = 0` returns the index it was
+          given, not its own.
+      - index: 1
+        explanation: >-
+          `nums[1]` is 9, but so is `nums[3]`, which came back from the smaller call. `9 > 9` is
+          false, so the call at `i = 1` returns 3.
+      - index: 2
+        explanation: 4 is smaller than the 9 at index 3, which the call at `i = 3` returned.
+      - index: 4
+        explanation: >-
+          4 is what the deepest call returns. Each waiting call compares and may replace it, and the
+          call at `i = 3` does.
