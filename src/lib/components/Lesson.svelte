@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { tick, untrack } from 'svelte';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
@@ -109,7 +110,7 @@
 	}
 
 	function requestQuit() {
-		if (lesson.pristine) void goto('/');
+		if (lesson.pristine) void goto(resolve('/'));
 		else quitOpen = true;
 	}
 
@@ -226,7 +227,7 @@
 		onsave={saveFlag}
 		onclose={() => (flagOpen = false)}
 	/>
-	<QuitDialog open={quitOpen} onkeep={() => (quitOpen = false)} onquit={() => goto('/')} />
+	<QuitDialog open={quitOpen} onkeep={() => (quitOpen = false)} onquit={() => goto(resolve('/'))} />
 
 	<div class="sr-only" role="status" aria-live="polite">{announcement}</div>
 {/if}
@@ -242,7 +243,8 @@
 
 	main {
 		flex: 1;
-		padding: 8.25px var(--gutter) calc(24px + var(--sheet-h, 0px));
+		padding: 8.25px max(var(--gutter), env(safe-area-inset-right)) calc(24px + var(--sheet-h, 0px))
+			max(var(--gutter), env(safe-area-inset-left));
 	}
 
 	/* The page's name and goal stay on screen for the whole sitting. */
@@ -314,7 +316,8 @@
 	}
 
 	.footer {
-		padding: 12px var(--gutter) max(24px, calc(env(safe-area-inset-bottom) + 14px));
+		padding: 12px max(var(--gutter), env(safe-area-inset-right)) max(24px, calc(env(safe-area-inset-bottom) + 14px))
+			max(var(--gutter), env(safe-area-inset-left));
 	}
 
 	/* The whole answer line is bold, not just the answer. */

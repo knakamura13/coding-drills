@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
+import { curriculumFiles, loadCurriculum } from './loadCurriculum.ts';
 import { deckFiles, loadDecks } from './loadDecks.ts';
 import type { Deck, DeckSummary } from './schema.ts';
 
@@ -10,6 +11,7 @@ import type { Deck, DeckSummary } from './schema.ts';
  *   virtual:deck-loaders  one lazy import per deck id (a lesson loads its own deck and nothing else)
  *   virtual:deck/<id>     one deck in full, behind that lazy import
  *   virtual:decks         every deck in full (the routes that mix decks, and the server)
+ *   virtual:curriculum    the mastery map (branches, skills, checkpoints, drill decisions)
  *
  * Validation happens here, so `pnpm dev`, `pnpm build`, and the test run all
  * fail with a file-and-path error when a deck breaks the content rules. The
@@ -19,9 +21,11 @@ import type { Deck, DeckSummary } from './schema.ts';
 const INDEX = 'virtual:deck-index';
 const LOADERS = 'virtual:deck-loaders';
 const ALL = 'virtual:decks';
+const CURRICULUM = 'virtual:curriculum';
 const DECK_PREFIX = 'virtual:deck/';
 
-const isVirtual = (id: string) => id === INDEX || id === LOADERS || id === ALL || id.startsWith(DECK_PREFIX);
+const isVirtual = (id: string) =>
+	id === INDEX || id === LOADERS || id === ALL || id === CURRICULUM || id.startsWith(DECK_PREFIX);
 
 function summarize(deck: Deck): DeckSummary {
 	return {
@@ -35,8 +39,9 @@ function summarize(deck: Deck): DeckSummary {
 	};
 }
 
-export function decksPlugin(contentDir = 'content/decks'): Plugin {
+export function decksPlugin(contentDir = 'content/decks', curriculumContentDir = 'content/curriculum'): Plugin {
 	let dir = contentDir;
+	let curriculumDir = curriculumContentDir;
 	// Parsed once, then again only after a deck file changes.
 	let parsed: Deck[] | null = null;
 	const decks = () => (parsed ??= loadDecks(dir));
@@ -45,9 +50,12 @@ export function decksPlugin(contentDir = 'content/decks'): Plugin {
 		name: 'coding-drills:decks',
 		configResolved(config) {
 			dir = join(config.root, contentDir);
+			curriculumDir = join(config.root, curriculumContentDir);
 		},
 		buildStart() {
 			parsed = null;
+			// Fail the build here, not only when a page imports the map.
+			loadCurriculum(curriculumDir, dir);
 		},
 		resolveId(id) {
 			return isVirtual(id) ? `\0${id}` : undefined;
@@ -55,6 +63,11 @@ export function decksPlugin(contentDir = 'content/decks'): Plugin {
 		load(id) {
 			if (!id.startsWith('\0virtual:')) return undefined;
 			const name = id.slice(1);
+			if (name === CURRICULUM) {
+				for (const file of curriculumFiles(curriculumDir)) this.addWatchFile(file);
+				const curriculum = loadCurriculum(curriculumDir, dir);
+				return `export const curriculum = ${JSON.stringify(curriculum)};\n`;
+			}
 			for (const file of deckFiles(dir)) this.addWatchFile(file);
 
 			if (name === INDEX) {
@@ -78,9 +91,18 @@ export function decksPlugin(contentDir = 'content/decks'): Plugin {
 		},
 		configureServer(server) {
 			server.watcher.add(dir);
+			server.watcher.add(curriculumDir);
 			const reload = (file: string) => {
-				if (!file.startsWith(dir)) return;
-				const ids = [INDEX, LOADERS, ALL, ...(parsed ?? []).map((deck) => DECK_PREFIX + deck.id)];
+				const deckChange = file.startsWith(dir);
+				const curriculumChange = file.startsWith(curriculumDir);
+				if (!deckChange && !curriculumChange) return;
+				const ids = [
+					INDEX,
+					LOADERS,
+					ALL,
+					CURRICULUM,
+					...(parsed ?? []).map((deck) => DECK_PREFIX + deck.id)
+				];
 				parsed = null;
 				for (const environment of Object.values(server.environments)) {
 					for (const id of ids) {

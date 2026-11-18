@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { APP_NAME } from '$lib/config';
 	import { status } from '$lib/nav/status.svelte';
 	import { account } from '$lib/sync/store.svelte';
@@ -6,15 +7,16 @@
 
 	// The button is passed back so focus can return to it. Safari does not focus a button on click,
 	// so focus cannot be read from the page at the moment the menu opens.
-	let { menuOpen, onmenu }: { menuOpen: boolean; onmenu: (opener: HTMLElement) => void } = $props();
+	let { menuOpen, wide = false, onmenu }: { menuOpen: boolean; wide?: boolean; onmenu: (opener: HTMLElement) => void } =
+		$props();
 
 	// A dot on the menu button shows that questions are due, before the menu is opened.
 	const due = $derived(status.snapshot.review?.dueCount ?? 0);
 </script>
 
-<header class="bar">
+<header class="bar" class:wide>
 	<div class="inner">
-		<a class="brand" href="/">{APP_NAME}</a>
+		<a class="brand" href={resolve('/')}>{APP_NAME}</a>
 		{#if account.offline}
 			<span class="offline" role="status">Offline</span>
 		{/if}
@@ -49,7 +51,13 @@
 		gap: 10px;
 		max-width: var(--wide);
 		margin: 0 auto;
-		padding: max(8px, env(safe-area-inset-top)) var(--gutter) 8px;
+		padding: max(8px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 8px
+			max(var(--gutter), env(safe-area-inset-left));
+	}
+
+	/* The mastery tree is wider than the other pages. Keep this in step with .page.tree. */
+	.wide .inner {
+		max-width: 1120px;
 	}
 
 	/* Wraps rather than truncates, so the name survives larger text spacing (WCAG 1.4.12). */

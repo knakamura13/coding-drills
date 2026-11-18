@@ -53,7 +53,8 @@
 		position: fixed;
 		inset: auto 0 0;
 		z-index: 20;
-		padding: 10.4px var(--gutter) max(24px, calc(env(safe-area-inset-bottom) + 13.8px));
+		padding: 10.4px max(var(--gutter), env(safe-area-inset-right)) max(24px, calc(env(safe-area-inset-bottom) + 13.8px))
+			max(var(--gutter), env(safe-area-inset-left));
 		animation: rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 

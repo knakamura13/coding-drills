@@ -21,6 +21,7 @@
 	// A lesson has no top bar or menu. Leaving one uses the lesson's own control, which asks first.
 	const LESSON_ROUTES = new Set(['/play/[deckId]', '/review', '/weak', '/practice']);
 	const inLesson = $derived(LESSON_ROUTES.has(page.route.id ?? ''));
+	const wideBar = $derived(page.route.id === '/tree');
 
 	let menuOpen = $state(false);
 	// The control that opened the menu. Closing the menu from its own controls returns focus there.
@@ -77,7 +78,7 @@
 <a class="skip-link" href="#content">Skip to content</a>
 
 {#if !inLesson}
-	<TopBar {menuOpen} onmenu={openMenu} />
+	<TopBar {menuOpen} wide={wideBar} onmenu={openMenu} />
 	<SiteMenu open={menuOpen} onclose={closeMenu} />
 {/if}
 

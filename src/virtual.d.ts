@@ -22,3 +22,9 @@ declare module 'virtual:deck/*' {
 	import type { Deck } from '$lib/content/schema';
 	export const deck: Deck;
 }
+
+/** Compiled from `content/curriculum/*.yaml`. The client bundle gets the data only, not the parser. */
+declare module 'virtual:curriculum' {
+	import type { Curriculum } from '$lib/content/curriculum';
+	export const curriculum: Curriculum;
+}

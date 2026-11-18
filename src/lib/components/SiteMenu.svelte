@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { decks } from 'virtual:deck-index';
 	import { status } from '$lib/nav/status.svelte';
@@ -27,24 +28,25 @@
 	<nav aria-label="Main">
 		<h3>Study</h3>
 		<ul>
-			<li><a href="/" aria-current={current('/')}>Home</a></li>
+			<li><a href={resolve('/')} aria-current={current('/')}>Home</a></li>
 			{#if due > 0}
-				<li><a href="/review">Review <span class="count due">{due} due</span></a></li>
+				<li><a href={resolve('/review')}>Review <span class="count due">{due} due</span></a></li>
 			{/if}
 			{#if snap.weak > 0}
-				<li><a href="/weak">Weak spots <span class="count">{snap.weak}</span></a></li>
+				<li><a href={resolve('/weak')}>Weak spots <span class="count">{snap.weak}</span></a></li>
 			{/if}
-			<li><a href="/practice" aria-current={current('/practice')}>Mixed practice</a></li>
+			<li><a href={resolve('/practice')} aria-current={current('/practice')}>Mixed practice</a></li>
 			<li>
-				<a href="/decks" aria-current={current('/decks')}>All decks <span class="count">{decks.length}</span></a>
+				<a href={resolve('/decks')} aria-current={current('/decks')}>All decks <span class="count">{decks.length}</span></a>
 			</li>
+			<li><a href={resolve('/tree')} aria-current={current('/tree')}>Mastery tree</a></li>
 		</ul>
 
 		<h3>Track</h3>
 		<ul>
-			<li><a href="/progress" aria-current={current('/progress')}>Progress</a></li>
+			<li><a href={resolve('/progress')} aria-current={current('/progress')}>Progress</a></li>
 			<li>
-				<a href="/flags" aria-current={current('/flags')}>
+				<a href={resolve('/flags')} aria-current={current('/flags')}>
 					Flagged questions
 					{#if snap.flags > 0}
 						<span class="count">{snap.flags}</span>
@@ -55,7 +57,7 @@
 
 		<h3>App</h3>
 		<ul>
-			<li><a href="/settings" aria-current={current('/settings')}>Settings</a></li>
+			<li><a href={resolve('/settings')} aria-current={current('/settings')}>Settings</a></li>
 		</ul>
 	</nav>
 
