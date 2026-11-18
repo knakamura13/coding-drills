@@ -394,6 +394,132 @@ const dragPointersQuestionSchema = z
 		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
 	});
 
+const traceCellStepSchema = z
+	.object({
+		/** 1-based line of `code` that runs in this step. It is highlighted while the step is open. */
+		line: z.number().int().positive().optional(),
+		/** What the learner predicts, for example "Where does `l` sit after this pass?". */
+		ask: text(160),
+		/** The pointer the learner places by tapping a cell. */
+		pointer: markerName,
+		correct: z.number().int().nonnegative(),
+		explanation: text(600),
+		misses: z.array(missSchema).max(11).optional(),
+		elsewhere: text(600),
+		/** Other pointers that move in the same step. They are shown once the step is revealed. */
+		also: z.array(markerSchema).max(3).optional()
+	})
+	.strict();
+
+const traceChoiceStepSchema = z
+	.object({
+		line: z.number().int().positive().optional(),
+		/** A value the learner predicts by choosing from a few options, for example the next `total`. */
+		ask: text(160),
+		options: z.array(optionSchema).min(2).max(4),
+		correct: id,
+		also: z.array(markerSchema).max(3).optional()
+	})
+	.strict();
+
+/** A step with a `pointer` is a cell step. Picking the schema by that key keeps an error on the field that is wrong. */
+function traceStepSchemaFor(value: unknown) {
+	return typeof value === 'object' && value !== null && 'pointer' in value ? traceCellStepSchema : traceChoiceStepSchema;
+}
+
+const traceStepSchema = z
+	.any()
+	.superRefine((value, ctx) => {
+		const result = traceStepSchemaFor(value).safeParse(value);
+		if (!result.success) {
+			for (const issue of result.error.issues) {
+				ctx.addIssue({ code: 'custom', message: issue.message, path: [...issue.path] });
+			}
+		}
+	})
+	.transform((value) => traceStepSchemaFor(value).parse(value));
+
+/**
+ * Step-through trace. The learner steps through code and predicts what each
+ * step does before it is revealed: a pointer's cell (tap it) or a value (pick
+ * it). Every wrong prediction explains itself in place and the true state is
+ * then shown, so the trace carries on from the truth. The question is right
+ * only when every prediction was.
+ */
+const stepTraceQuestionSchema = z
+	.object({
+		format: z.literal('step-trace'),
+		id,
+		heading: text(80).optional(),
+		prompt: text(800),
+		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
+		/** Plain text of the snippet. Lines are numbered from 1. */
+		code: text(800),
+		sequence: sequenceSchema,
+		/** Where every pointer sits before the first step. */
+		start: z.array(markerSchema).min(1).max(4),
+		steps: z.array(traceStepSchema).min(2).max(5)
+	})
+	.strict()
+	.superRefine((question, ctx) => {
+		const issues: Issue[] = [];
+		const count = sequenceLength(question.sequence);
+		const lines = question.code.split('\n').length;
+		issues.push(...stringCellIssues(question.sequence));
+		if (question.sequence.cells.length > 8) {
+			issues.push({ message: 'a trace draws at most 8 cells', path: ['sequence', 'cells'] });
+		}
+		issues.push(...markerIssues(question.start, count, 'start'));
+		const names = new Set(question.start.map((marker) => marker.name));
+		question.steps.forEach((step, position) => {
+			const at = (...rest: (string | number)[]) => ['steps', position, ...rest];
+			if (step.line !== undefined && step.line > lines) {
+				issues.push({ message: `line ${step.line} is past the end of the code (${lines} lines)`, path: at('line') });
+			}
+			for (const [index, other] of (step.also ?? []).entries()) {
+				if (!names.has(other.name)) {
+					issues.push({ message: `"${other.name}" is not a pointer in start`, path: at('also', index, 'name') });
+				}
+				if (other.at >= count) {
+					issues.push({ message: `"${other.name}" moves outside the sequence`, path: at('also', index, 'at') });
+				}
+			}
+			if ('pointer' in step) {
+				if (!names.has(step.pointer)) {
+					issues.push({ message: `"${step.pointer}" is not a pointer in start`, path: at('pointer') });
+				}
+				if (step.correct >= count) {
+					issues.push({ message: `correct index ${step.correct} is outside the sequence`, path: at('correct') });
+				}
+				const seen = new Set<number>();
+				(step.misses ?? []).forEach((miss, index) => {
+					if (seen.has(miss.index)) {
+						issues.push({ message: `duplicate miss for index ${miss.index}`, path: at('misses', index) });
+					}
+					seen.add(miss.index);
+					if (miss.index === step.correct) {
+						issues.push({ message: `the correct index ${miss.index} must not have a miss`, path: at('misses', index) });
+					} else if (miss.index >= count) {
+						issues.push({ message: `miss index ${miss.index} is outside the sequence`, path: at('misses', index) });
+					}
+				});
+			} else {
+				const ids = step.options.map((option) => option.id);
+				for (const index of duplicates(ids)) {
+					issues.push({ message: `duplicate option id "${ids[index]}"`, path: at('options', index, 'id') });
+				}
+				const texts = step.options.map((option) => option.text.toLowerCase());
+				for (const index of duplicates(texts)) {
+					issues.push({ message: 'duplicate option text', path: at('options', index, 'text') });
+				}
+				if (!ids.includes(step.correct)) {
+					issues.push({ message: `"${step.correct}" is not one of the option ids`, path: at('correct') });
+				}
+			}
+		});
+		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
+	});
+
 function questionFormat(value: unknown): unknown {
 	if (typeof value === 'object' && value !== null && 'format' in value) {
 		return (value as { format: unknown }).format;
@@ -405,6 +531,7 @@ function schemaFor(value: unknown) {
 	const format = questionFormat(value);
 	if (format === 'tap-cell') return tapCellQuestionSchema;
 	if (format === 'drag-pointers') return dragPointersQuestionSchema;
+	if (format === 'step-trace') return stepTraceQuestionSchema;
 	return choiceQuestionSchema;
 }
 
@@ -449,7 +576,11 @@ export const deckSchema = z
 export type ChoiceQuestion = z.infer<typeof choiceQuestionSchema>;
 export type TapCellQuestion = z.infer<typeof tapCellQuestionSchema>;
 export type DragPointersQuestion = z.infer<typeof dragPointersQuestionSchema>;
-export type Question = ChoiceQuestion | TapCellQuestion | DragPointersQuestion;
+export type StepTraceQuestion = z.infer<typeof stepTraceQuestionSchema>;
+export type TraceStep = StepTraceQuestion['steps'][number];
+export type TraceCellStep = z.infer<typeof traceCellStepSchema>;
+export type TraceChoiceStep = z.infer<typeof traceChoiceStepSchema>;
+export type Question = ChoiceQuestion | TapCellQuestion | DragPointersQuestion | StepTraceQuestion;
 export type Deck = z.infer<typeof deckSchema>;
 export type QuestionOption = ChoiceQuestion['options'][number];
 export type FollowUp = ChoiceQuestion['followUps'][string];
@@ -461,6 +592,15 @@ export function isTapCellQuestion(question: Question): question is TapCellQuesti
 
 export function isDragPointersQuestion(question: Question): question is DragPointersQuestion {
 	return question.format === 'drag-pointers';
+}
+
+export function isStepTraceQuestion(question: Question): question is StepTraceQuestion {
+	return question.format === 'step-trace';
+}
+
+/** A trace step the learner answers by tapping a cell, as opposed to choosing a value. */
+export function isCellStep(step: TraceStep): step is TraceCellStep {
+	return 'pointer' in step;
 }
 
 export function isChoiceQuestion(question: Question): question is ChoiceQuestion {

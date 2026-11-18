@@ -1,11 +1,14 @@
 import {
 	isChoiceQuestion,
+	isCellStep,
 	isDragPointersQuestion,
+	isStepTraceQuestion,
 	isTapCellQuestion,
 	type Deck,
 	type DragPointersQuestion,
 	type FollowUp,
 	type Question,
+	type StepTraceQuestion,
 	type TapCellQuestion
 } from '$lib/content/schema';
 import { sequenceModel, type SequenceCell } from './board';
@@ -19,6 +22,7 @@ import {
 } from './drag';
 import { shuffled, type Rng } from './shuffle';
 import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
+import { checkStep, parsePicks, positionsBefore, stepCorrectPick, stepPickIds, stepPickLabel } from './trace';
 
 /**
  * The lesson loop as a pure state machine.
@@ -32,7 +36,9 @@ import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
  * A wrong multiple-choice answer can only leave the question stage through its
  * follow-up. A tap-cell or drag-pointers question has no second stage: the
  * explanation written for the cell or the pointer is the feedback, and advance
- * records the attempt either way.
+ * records the attempt either way. A step-trace question is a run of such
+ * answers: each step is checked as soon as it is picked, advance moves to the
+ * next step, and the attempt is recorded after the last one.
  * Every transition returns a new state, and invalid transitions return the
  * state unchanged.
  */
@@ -49,6 +55,8 @@ export interface PlannedQuestion {
 	optionOrder: string[];
 	/** Follow-up option ids in display order, keyed by the wrong option that triggers each. */
 	followUpOrders: Record<string, string[]>;
+	/** For a step-trace question: the pick ids each step offers, in display order. Empty otherwise. */
+	stepOrders: string[][];
 }
 
 export interface Completed {
@@ -70,6 +78,8 @@ export interface LessonState {
 	readonly checked: boolean;
 	/** The wrong option picked on the main question, once the learner is in its follow-up. */
 	readonly mainPick: string | null;
+	/** For a step-trace question: the picks already made on its earlier steps. */
+	readonly picks: readonly string[];
 	readonly completed: readonly Completed[];
 }
 
@@ -88,12 +98,17 @@ function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonStat
 		question,
 		optionOrder: isTapCellQuestion(question)
 			? Array.from({ length: cellCount(question) }, (_, index) => cellPickId(index))
-			: isDragPointersQuestion(question)
+			: isDragPointersQuestion(question) || isStepTraceQuestion(question)
 				? []
 				: shuffled(
 						question.options.map((option) => option.id),
 						rng
 					),
+		stepOrders: isStepTraceQuestion(question)
+			? question.steps.map((step, index) =>
+					isCellStep(step) ? stepPickIds(question, index) : shuffled(stepPickIds(question, index), rng)
+				)
+			: [],
 		followUpOrders: isChoiceQuestion(question)
 			? Object.fromEntries(
 					Object.entries(question.followUps).map(([optionId, followUp]) => [
@@ -114,6 +129,7 @@ function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonStat
 		selected: null,
 		checked: false,
 		mainPick: null,
+		picks: [],
 		completed: []
 	};
 }
@@ -137,7 +153,7 @@ export function isFinished(state: LessonState): boolean {
 
 /** True before the learner has answered anything. Used to skip the quit confirmation. */
 export function isPristine(state: LessonState): boolean {
-	return state.cursor === 0 && state.stage === 'question' && state.selected === null;
+	return state.cursor === 0 && state.stage === 'question' && state.selected === null && state.picks.length === 0;
 }
 
 function currentPlanned(state: LessonState): PlannedQuestion | null {
@@ -160,8 +176,10 @@ function activeOptionIds(state: LessonState): string[] {
 
 /** A drag answer is a whole placement, so it is valid by shape, not by membership in a list. */
 function isPickable(state: LessonState, pick: string): boolean {
-	const question = currentPlanned(state)?.question;
+	const planned = currentPlanned(state);
+	const question = planned?.question;
 	if (question && isDragPointersQuestion(question)) return parsePlacement(question, pick) !== null;
+	if (planned && question && isStepTraceQuestion(question)) return (planned.stepOrders[state.picks.length] ?? []).includes(pick);
 	return activeOptionIds(state).includes(pick);
 }
 
@@ -186,7 +204,8 @@ function finishQuestion(state: LessonState, done: Completed): LessonState {
 		stage: 'question',
 		selected: null,
 		checked: false,
-		mainPick: null
+		mainPick: null,
+		picks: []
 	};
 }
 
@@ -196,6 +215,18 @@ export function advance(state: LessonState): LessonState {
 	const { question } = planned;
 
 	if (state.stage === 'question') {
+		if (isStepTraceQuestion(question)) {
+			const picks = [...state.picks, state.selected];
+			if (picks.length < question.steps.length) return { ...state, picks, selected: null, checked: false };
+			const run = parsePicks(question, picks.join(','));
+			if (!run) return state;
+			return finishQuestion(state, {
+				deckId: planned.deckId,
+				questionId: question.id,
+				pickedId: picks.join(','),
+				correct: run.right.every(Boolean)
+			});
+		}
 		if (isTapCellQuestion(question) || isDragPointersQuestion(question)) {
 			const result = isTapCellQuestion(question)
 				? checkTap(question, state.selected)
@@ -233,8 +264,14 @@ export function advance(state: LessonState): LessonState {
 /** Fraction of the lesson completed. Reaching a follow-up counts as half a question. */
 export function progress(state: LessonState): number {
 	if (state.plan.length === 0) return 1;
-	const half = state.stage === 'followUp' && !isFinished(state) ? 0.5 : 0;
-	return Math.min(1, (state.cursor + half) / state.plan.length);
+	const question = currentPlanned(state)?.question;
+	const within =
+		question && isStepTraceQuestion(question)
+			? state.picks.length / question.steps.length
+			: state.stage === 'followUp' && !isFinished(state)
+				? 0.5
+				: 0;
+	return Math.min(1, (state.cursor + within) / state.plan.length);
 }
 
 export type OptionState = 'idle' | 'selected' | 'correct' | 'wrong';
@@ -289,9 +326,20 @@ export interface SeeWhy {
 	correctExplanation: string;
 }
 
+/** Where the learner is in a step-through trace. */
+export interface TraceView {
+	/** 1-based step. */
+	step: number;
+	total: number;
+	/** 1-based line of the code that runs in this step, to highlight. */
+	line: number | null;
+	/** `cell` steps are answered by tapping the board, `choice` steps by picking a value. */
+	kind: 'cell' | 'choice';
+}
+
 export interface LessonView {
 	stage: Stage;
-	format: 'choice' | 'tap-cell' | 'drag-pointers';
+	format: 'choice' | 'tap-cell' | 'drag-pointers' | 'step-trace';
 	/** 1-based position of the current question. */
 	position: number;
 	total: number;
@@ -306,6 +354,8 @@ export interface LessonView {
 	followUpPrompt: string | null;
 	options: OptionView[];
 	canCheck: boolean;
+	/** Set only for a step-trace question. */
+	trace: TraceView | null;
 	verdict: Verdict | null;
 	/** Available only after a wrong multiple-choice answer. */
 	seeWhy: SeeWhy | null;
@@ -338,7 +388,8 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 		total: state.plan.length,
 		heading: question.heading ?? planned.heading ?? deckHeading,
 		prompt: question.prompt,
-		canCheck: !state.checked && state.selected !== null
+		canCheck: !state.checked && state.selected !== null,
+		trace: null as TraceView | null
 	};
 
 	if (isTapCellQuestion(question)) {
@@ -360,6 +411,8 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 			seeWhy: null
 		};
 	}
+
+	if (isStepTraceQuestion(question)) return traceView(state, planned.stepOrders, question, base);
 
 	if (isDragPointersQuestion(question)) {
 		const result = state.checked && state.selected !== null ? checkPlacement(question, state.selected) : null;
@@ -458,6 +511,76 @@ function boardView(question: TapCellQuestion, selected: string | null, checked: 
 	};
 }
 
+/** One step of a trace: the board as the step opens, then the learner's prediction once it is picked. */
+function traceView(
+	state: LessonState,
+	stepOrders: readonly (readonly string[])[],
+	question: StepTraceQuestion,
+	base: Omit<LessonView, 'format' | 'code' | 'board' | 'followUpPrompt' | 'options' | 'verdict' | 'seeWhy'>
+): LessonView {
+	const index = Math.min(state.picks.length, question.steps.length - 1);
+	const step = question.steps[index]!;
+	const onCells = isCellStep(step);
+	const picked = state.selected;
+	const result = state.checked && picked !== null ? checkStep(question, index, picked) : null;
+	const positions = positionsBefore(question, index);
+	const model = sequenceModel({
+		presentation: question.sequence.kind,
+		name: question.sequence.name,
+		values: question.sequence.cells,
+		pastEnd: question.sequence.pastEnd,
+		markers: Object.entries(positions).map(([name, at]) => ({ name, at }))
+	});
+	const correctPick = stepCorrectPick(step);
+	const board: BoardView = {
+		kind: 'sequence',
+		presentation: model.presentation,
+		name: model.name,
+		note: onCells && result ? result.explanation : null,
+		pointers: [],
+		cells: model.cells.map((cell) => {
+			let tone: OptionState = 'idle';
+			let reveal = false;
+			if (!onCells || !result) tone = 'idle';
+			else if (result.correct) tone = cell.id === picked ? 'correct' : 'idle';
+			else if (cell.id === picked) tone = 'wrong';
+			else if (cell.id === correctPick) {
+				tone = 'correct';
+				reveal = true;
+			}
+			return { ...cell, tone, reveal };
+		})
+	};
+	let options: OptionView[] = [];
+	if (!onCells) {
+		const states = optionStates([...stepOrders[index]!], picked, state.checked, step.correct);
+		options = stepOrders[index]!.map((id) => ({
+			id,
+			text: step.options.find((option) => option.id === id)!.text,
+			state: states[id]
+		}));
+	}
+	return {
+		...base,
+		heading: step.ask,
+		format: 'step-trace',
+		code: question.code,
+		board,
+		followUpPrompt: null,
+		options,
+		canCheck: false,
+		trace: { step: index + 1, total: question.steps.length, line: step.line ?? null, kind: onCells ? 'cell' : 'choice' },
+		verdict: result
+			? {
+					correct: result.correct,
+					correctText: stepPickLabel(question, index, correctPick),
+					explanation: result.explanation
+				}
+			: null,
+		seeWhy: null
+	};
+}
+
 /** The board for a drag question: fixed markers on the cells, movable pointers beside them. */
 function dragBoardView(question: DragPointersQuestion, selected: string | null, result: PlacementResult | null): BoardView {
 	const model = sequenceModel({
@@ -521,6 +644,18 @@ export function summarize(state: LessonState): Summary {
 			continue;
 		}
 		const question = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
+		if (isStepTraceQuestion(question)) {
+			const run = parsePicks(question, done.pickedId);
+			const step = Math.max(0, run ? run.right.indexOf(false) : 0);
+			missed.push({
+				questionId: question.id,
+				prompt: question.prompt,
+				pickedText: `Step ${step + 1}: ${stepPickLabel(question, step, run?.picks[step] ?? '')}`,
+				correctText: `Step ${step + 1}: ${stepPickLabel(question, step, stepCorrectPick(question.steps[step]!))}`,
+				followUpCorrect: null
+			});
+			continue;
+		}
 		if (isDragPointersQuestion(question)) {
 			const placement = parsePlacement(question, done.pickedId) ?? startPlacement(question);
 			missed.push({

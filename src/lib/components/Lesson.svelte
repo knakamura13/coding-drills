@@ -40,7 +40,8 @@
 	const verdict = $derived(screen?.verdict ?? null);
 	// A tap answers in one gesture. A drag answer has several pointers, so it always waits for Check.
 	const showCheck = $derived(
-		screen !== null && screen.format !== 'tap-cell' && (screen.format === 'drag-pointers' || !preferences.immediateFeedback)
+		screen !== null &&
+			(screen.format === 'drag-pointers' || (screen.format === 'choice' && !preferences.immediateFeedback))
 	);
 	const whyGate = $derived(Boolean(screen?.seeWhy) && verdict !== null && !verdict.correct);
 
@@ -168,6 +169,12 @@
 				<h2 class="question" tabindex="-1" bind:this={heading}>
 					<Markdown source={screen.followUpPrompt ?? ''} inline />
 				</h2>
+			{:else if screen.trace}
+				<p class="step-label">Step {screen.trace.step} of {screen.trace.total}</p>
+				<h2 class="question" tabindex="-1" bind:this={heading}>
+					<Markdown source={screen.heading ?? ''} inline />
+				</h2>
+				<div class="pinned"><ProblemCard prompt={screen.prompt} /></div>
 			{:else}
 				<h2 class="question" tabindex="-1" bind:this={heading}>
 					{screen.heading ?? 'Choose the best answer'}
@@ -179,7 +186,15 @@
 				<div class="workspace">
 					{#if screen.code}
 						<div class="code-pane">
-							<pre class="code"><code>{screen.code}</code></pre>
+							{#if screen.trace}
+								<pre class="code"><code>{#each screen.code.split('\n') as line, index (index)}<span
+												class={['line', { active: screen.trace.line === index + 1 }]}
+												aria-current={screen.trace.line === index + 1 ? 'step' : undefined}
+												><span class="no" aria-hidden="true">{index + 1}</span>{line === '' ? ' ' : line}</span
+											>{/each}</code></pre>
+							{:else}
+								<pre class="code"><code>{screen.code}</code></pre>
+							{/if}
 						</div>
 					{/if}
 					<div class="board-pane">
@@ -190,7 +205,8 @@
 								cells={screen.board.cells}
 								pointers={screen.board.pointers}
 								note={screen.board.note}
-								locked={verdict !== null}
+								tappable={screen.trace?.kind !== 'choice'}
+								locked={verdict !== null || screen.trace?.kind === 'choice'}
 								onplace={(pointer, at) => lesson.place(pointer, at)}
 								onselect={(id) => {
 									lesson.select(id);
@@ -215,6 +231,19 @@
 						{/key}
 					</div>
 				</div>
+				{#if screen.trace?.kind === 'choice'}
+					<OptionList
+						options={screen.options}
+						selectedId={lesson.selectedId}
+						locked={verdict !== null}
+						legend="Predicted value"
+						name={lesson.stepKey}
+						onselect={(id) => {
+							lesson.select(id);
+							cue();
+						}}
+					/>
+				{/if}
 			{:else}
 				<OptionList
 					options={screen.options}
@@ -253,7 +282,7 @@
 			primary={whyGate && !whySeen ? 'Why?' : 'Continue'}
 			onprimary={onPrimary}
 		>
-			{#if screen.board && !verdict.correct}
+			{#if screen.board && !verdict.correct && screen.trace?.kind !== 'choice'}
 				<p class="answer">
 					The correct answer: <strong><Markdown source={verdict.correctText} inline /></strong>
 				</p>
@@ -377,6 +406,36 @@
 	.code-pane,
 	.board-pane {
 		min-width: 0;
+	}
+
+	.step-label {
+		margin-bottom: 4px;
+		color: var(--text-muted);
+		font-size: 13px;
+		font-weight: 800;
+		letter-spacing: 0.4px;
+		text-transform: uppercase;
+	}
+
+	/* A traced line is a block, so the highlight spans the pane and a long line scrolls with it. */
+	.code .line {
+		display: block;
+		margin: 0 -14px;
+		padding: 0 14px;
+		border-left: 4px solid transparent;
+	}
+
+	.code .line.active {
+		border-left-color: var(--accent);
+		background: var(--accent-soft);
+	}
+
+	.code .no {
+		display: inline-block;
+		width: 2ch;
+		margin-right: 1.5ch;
+		color: var(--text-muted);
+		text-align: right;
 	}
 
 	.code {

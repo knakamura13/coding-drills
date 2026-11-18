@@ -1,6 +1,6 @@
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { deckSchema, formatIssues, isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, repeatsFollowUpAnswer, type ChoiceQuestion, type Deck } from './schema.ts';
+import { deckSchema, formatIssues, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, repeatsFollowUpAnswer, type ChoiceQuestion, type Deck } from './schema.ts';
 
 function validDeck(): Deck {
 	return {
@@ -363,6 +363,87 @@ describe('drag-pointers questions', () => {
 		const deck = dragDeck();
 		deck.questions[0].sequence.cells = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 		expect(issuesFor(deck)).toContain('a drag question draws at most 8 cells');
+	});
+});
+
+function traceDeck() {
+	return {
+		id: 'trace-sample',
+		title: 'Trace sample',
+		description: 'One step-trace question.',
+		questions: [
+			{
+				format: 'step-trace' as const,
+				id: 'trace-sum',
+				prompt: 'Trace the scan.',
+				code: 'a = 1\nb = 2\nc = 3',
+				sequence: { kind: 'array' as const, name: 'nums', cells: [1, 4, 6, 8] },
+				start: [{ name: 'l', at: 0 }] as { name: string; at: number }[],
+				steps: [
+					{
+						line: 1,
+						ask: 'Where does `l` sit?',
+						pointer: 'l',
+						correct: 1,
+						explanation: 'It moves.',
+						misses: [{ index: 3, explanation: 'Not the end.' }] as { index: number; explanation: string }[],
+						elsewhere: 'One cell.'
+					},
+					{
+						line: 2,
+						ask: 'What is the sum?',
+						options: [
+							{ id: 'ten', text: '10', explanation: 'No.' },
+							{ id: 'twelve', text: '12', explanation: 'Yes.' }
+						],
+						correct: 'twelve'
+					}
+				] as Array<Record<string, unknown>>
+			}
+		]
+	};
+}
+
+describe('step-trace questions', () => {
+	it('accepts cell steps and choice steps in one trace', () => {
+		const result = deckSchema.safeParse(traceDeck());
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(isStepTraceQuestion(result.data.questions[0])).toBe(true);
+		expect(isChoiceQuestion(result.data.questions[0])).toBe(false);
+	});
+
+	it('rejects a line past the code, an unknown pointer, and a miss on the right cell', () => {
+		const deck = traceDeck();
+		deck.questions[0].steps[0]!.line = 9;
+		deck.questions[0].steps[0]!.pointer = 'r';
+		(deck.questions[0].steps[0]!.misses as { index: number; explanation: string }[]).push({ index: 1, explanation: 'The right cell.' });
+		const issues = issuesFor(deck);
+		expect(issues).toContain('line 9 is past the end of the code (3 lines)');
+		expect(issues).toContain('"r" is not a pointer in start');
+		expect(issues).toContain('the correct index 1 must not have a miss');
+	});
+
+	it('rejects a choice step whose correct id is not an option, and repeated options', () => {
+		const deck = traceDeck();
+		deck.questions[0].steps[1]!.correct = 'nine';
+		expect(issuesFor(deck)).toContain('"nine" is not one of the option ids');
+		const twins = traceDeck();
+		(twins.questions[0].steps[1]!.options as { id: string; text: string; explanation: string }[])[1] = {
+			id: 'twelve',
+			text: '10',
+			explanation: 'Same text.'
+		};
+		expect(issuesFor(twins)).toContain('duplicate option');
+	});
+
+	it('needs two to five steps and at most 8 cells', () => {
+		const one = traceDeck();
+		one.questions[0].steps = one.questions[0].steps.slice(0, 1);
+		expect(issuesFor(one)).toContain('steps');
+		const wide = traceDeck();
+		wide.questions[0].sequence.cells = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+		expect(issuesFor(wide)).toContain('a trace draws at most 8 cells');
 	});
 });
 
