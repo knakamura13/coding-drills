@@ -1,0 +1,251 @@
+id: monotonic-stack-checkpoint
+title: "Monotonic stack: checkpoint"
+description: Solve next-greater on new inputs and justify the cost of a whole run. Each item combines waiting positions, popping smaller tops, and reading what is left.
+heading: Solve the next-greater task
+
+questions:
+  - id: checkpoint-next-greater-output
+    heading: What is the answer?
+    tags: [stack]
+    prompt: >-
+      For each position in `nums`, find the first value to its right that is strictly larger, or
+      -1 if there is none. For `nums = [3, 7, 7, 2, 5, 1, 8]`, what is the answer?
+    options:
+      - id: strict
+        text: "`[7, 8, 8, 5, 8, 8, -1]`"
+        explanation: >-
+          The 7 answers the 3. The second 7 does not answer the first, so both 7s wait, along with
+          the 5 and the 1. The 8 then answers all four, and nothing answers the 8.
+      - id: or-equal
+        text: "`[7, 7, 8, 5, 8, 8, -1]`"
+        explanation: Check whether an equal value counts as larger.
+      - id: one-pop
+        text: "`[7, -1, -1, 5, -1, 8, -1]`"
+        explanation: Check how many waiting positions the 8 answers.
+      - id: largest-right
+        text: "`[8, 8, 8, 8, 8, 8, -1]`"
+        explanation: Check whether the 3 needs the first larger value or the largest one.
+    correct: strict
+    followUps:
+      or-equal:
+        prompt: What is the answer for the first 7, at index 1?
+        options:
+          - id: eight
+            text: 8, since the 7 right after it is equal, not larger
+          - id: seven
+            text: 7, the next value
+          - id: none
+            text: -1, since 7 appears twice
+        correct: eight
+        explanation: >-
+          "Strictly larger" rules out an equal value. In a stack pass, `7 < 7` is false, so index 1
+          keeps waiting until the 8 pops it.
+      one-pop:
+        prompt: >-
+          When the 8 arrives, the positions still waiting hold 7, 7, 5 and 1. How many of them does
+          it answer?
+        options:
+          - id: all-four
+            text: All four, since each is smaller than 8
+          - id: top-only
+            text: One, the 1 on top
+          - id: distinct
+            text: Three, one per distinct value
+        correct: all-four
+        explanation: >-
+          The `while` loop keeps popping as long as the top is smaller than the arrival. 1, 5, 7 and
+          7 are all smaller than 8, so the 8 answers each of them in one arrival.
+      largest-right:
+        prompt: What is the answer for the 3 at index 0?
+        options:
+          - id: seven
+            text: 7, the first larger value after it
+          - id: eight
+            text: 8, the largest value after it
+          - id: none
+            text: -1, since 3 is not the largest
+        correct: seven
+        explanation: >-
+          The 7 at index 1 is larger and comes first, so it answers the 3 at once. The largest
+          value to the right is a different question.
+
+  - id: checkpoint-run-cost
+    heading: How much work is the whole run?
+    tags: [stack, complexity]
+    prompt: |-
+      ```python
+      nums = [9, 4, 6, 2, 2, 5, 1, 7]
+      pops = 0
+      stack = []
+      for i, x in enumerate(nums):
+          while stack and nums[stack[-1]] < x:
+              stack.pop()
+              pops += 1
+          stack.append(i)
+      ```
+
+      What is `pops` at the end, and what bounds the total work of this loop on any list of length
+      `n`?
+    options:
+      - id: linear
+        text: 6; each index is pushed once and popped at most once, so O(n) on any input
+        explanation: >-
+          The 6 pops index 1, the 5 pops indices 4 and 3, and the 7 pops indices 6, 5 and 2. Indices
+          0 and 7 stay. Across any run there are `n` pushes and fewer than `n` pops, so the `while`
+          body runs fewer than `n` times in total.
+      - id: quadratic
+        text: 6, but some inputs need about n²/2 pops, so O(n²) in the worst case
+        explanation: Check how many times one index can be popped over the whole run.
+      - id: all-popped
+        text: 8, one pop per index, so exactly 2n stack operations on every input
+        explanation: Check which indices are still on the stack at the end.
+      - id: burst
+        text: 3, the most one arrival pops, and O(n) since no arrival pops more than 3
+        explanation: Check what `pops` counts, and whether one arrival's pops have a fixed limit.
+    correct: linear
+    followUps:
+      quadratic:
+        prompt: One arrival can pop many entries. Why can a whole run never make about n²/2 pops?
+        options:
+          - id: once-each
+            text: Each index is popped at most once, so all pops together stay below `n`
+          - id: constant
+            text: Each arrival pops at most a constant number of entries
+          - id: log-size
+            text: The stack never holds more than log n entries
+        correct: once-each
+        explanation: >-
+          A pop removes an index for good, and only `n` indices ever enter. A long burst of pops
+          clears what earlier arrivals built up, so the same index is never paid for twice.
+      all-popped:
+        prompt: Which indices are still on the stack after this run?
+        options:
+          - id: zero-seven
+            text: 0 and 7, since the 9 and the final 7 have nothing larger after them
+          - id: empty
+            text: None, since the loop empties the stack
+          - id: last
+            text: Only 7, the last index
+        correct: zero-seven
+        explanation: >-
+          A pop needs a larger later value. The 9 is the largest and the 7 is last, so they wait to
+          the end, and the pops are 8 - 2.
+      burst:
+        prompt: On `[5, 4, 3, 2, 1, 6]`, how many entries does the final arrival pop?
+        options:
+          - id: five
+            text: 5, every entry waiting
+          - id: one
+            text: 1, only the top
+          - id: three
+            text: 3, the same limit as before
+        correct: five
+        explanation: >-
+          One arrival can pop as many entries as are waiting, so no fixed per-arrival limit exists.
+          The linear bound counts pops per index instead: each one leaves at most once.
+
+  - format: tap-cell
+    id: checkpoint-tap-next-greater
+    heading: Which value answers index 0?
+    tags: [stack, python]
+    prompt: Which cell holds the value that `next_greater` writes into `out[0]`? Tap it.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      next_greater([5, 2, 5, 3, 4, 8, 6, 9])
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 2, 5, 3, 4, 8, 6, 9]
+    correct: 5
+    explanation: >-
+      Index 0 waits through the 2, the equal 5, the 3 and the 4, since none is larger. The 8 at
+      index 5 is the first larger value, so it pops index 0 and writes 8.
+    misses:
+      - index: 0
+        explanation: Index 0 is the position being answered, not its answer.
+      - index: 1
+        explanation: 2 is smaller than 5, so index 0 keeps waiting.
+      - index: 2
+        explanation: >-
+          This 5 equals the waiting 5, and `5 < 5` is false, so it does not pop index 0.
+      - index: 3
+        explanation: 3 is smaller than 5, so index 0 keeps waiting.
+      - index: 4
+        explanation: 4 is smaller than 5, so index 0 keeps waiting.
+      - index: 6
+        explanation: >-
+          6 is larger than 5, but the 8 at index 5 comes first and has already popped index 0.
+      - index: 7
+        explanation: 9 is the largest value to the right, not the first larger one.
+
+  - id: checkpoint-distance-output
+    heading: What is the answer?
+    tags: [stack]
+    prompt: >-
+      A sensor logs one reading per step. For each reading, find how many steps later a strictly
+      higher reading appears, or 0 if none does. For `[2, 5, 5, 1, 3, 6, 4]`, what is the answer?
+    options:
+      - id: steps
+        text: "`[1, 4, 3, 1, 1, 0, 0]`"
+        explanation: >-
+          The 5 at index 1 waits through the equal 5 until the 6 at index 5, so it gets `5 - 1 = 4`.
+          The 6 and the final 4 have no higher reading after them, so they get 0.
+      - id: values
+        text: "`[5, 6, 6, 3, 6, 0, 0]`"
+        explanation: Check whether the task asks for the higher reading or the number of steps.
+      - id: or-equal
+        text: "`[1, 1, 3, 1, 1, 0, 0]`"
+        explanation: Check whether an equal reading counts as higher.
+      - id: to-end
+        text: "`[1, 4, 3, 1, 1, 2, 1]`"
+        explanation: Check what the last two readings should get.
+    correct: steps
+    followUps:
+      values:
+        prompt: The 5 at index 1 is answered by the 6 at index 5. What goes in its slot?
+        options:
+          - id: gap
+            text: 4, the steps from index 1 to index 5
+          - id: reading
+            text: 6, the higher reading
+          - id: own
+            text: 5, its own reading
+        correct: gap
+        explanation: >-
+          The task asks how many steps later, so the answer is a difference of positions,
+          `i - j`. The reading that answers it only decides when the pop happens.
+      or-equal:
+        prompt: Is the 5 at index 2 a strictly higher reading for the 5 at index 1?
+        options:
+          - id: not-higher
+            text: No, an equal reading is not higher, so index 1 waits for the 6
+          - id: at-least
+            text: Yes, a reading at least as high counts
+          - id: adjacent
+            text: Yes, since it comes right after
+        correct: not-higher
+        explanation: >-
+          With a strict test, `5 < 5` is false and index 1 stays waiting. The answer for index 1 is
+          4, not 1.
+      to-end:
+        prompt: The 6 at index 5 has no higher reading after it. What goes in its slot?
+        options:
+          - id: zero
+            text: 0, the value the task gives for no higher reading
+          - id: steps-to-end
+            text: 2, the steps to the end of the list
+          - id: one-step
+            text: 1, the step to the next reading
+        correct: zero
+        explanation: >-
+          A positive number claims a higher reading exists that many steps away. Positions left on
+          the stack at the end never met one, so they keep the 0 they started with.

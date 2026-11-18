@@ -153,3 +153,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
+| Data structures #12 | Monotonic stack: teaching levels | `monotonic-stack-drills` | in review |
+| Data structures #12 | Monotonic stack: review variants | `monotonic-stack-review` | in review |
+| Data structures #12 | Monotonic stack: checkpoint | `monotonic-stack-checkpoint` | in review |
