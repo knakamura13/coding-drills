@@ -82,6 +82,25 @@ test.describe('checkpoint exam', () => {
 		await expect(detail).toContainText('Passed');
 	});
 
+	test('the path after a checkpoint stays locked until that checkpoint is passed', async ({ page }) => {
+		// Mastering every skill of Arrays and strings is not enough to open Pointer scans.
+		await seed(page, masteredPath());
+		await page.goto('/tree');
+		await page.locator('#skill-choose-moving-end').getByRole('button').click();
+		const detail = page.locator('#detail-choose-moving-end');
+		await expect(detail).toContainText('Locked until the checkpoint is passed on Arrays and strings');
+		await expect(detail.getByRole('link', { name: /^Practice in/ })).toHaveCount(0);
+	});
+
+	test('passing the checkpoint opens the next path', async ({ page }) => {
+		await seed(page, [...masteredPath(), ...attempts(exam, true, 2)]);
+		await page.goto('/tree');
+		await page.locator('#skill-choose-moving-end').getByRole('button').click();
+		const detail = page.locator('#detail-choose-moving-end');
+		await expect(detail).not.toContainText('Locked until');
+		await expect(detail.getByRole('link', { name: /^Practice in/ }).first()).toBeVisible();
+	});
+
 	test('the exam page has no accessibility violations', async ({ page }) => {
 		await seed(page, masteredPath());
 		await page.goto(`/exam/${CHECKPOINT.id}`);

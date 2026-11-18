@@ -95,7 +95,7 @@
 								<ul class="prereqs" aria-labelledby="after-{path.id}">
 									{#each path.after as prerequisite (prerequisite.id)}
 										<li>
-											<a class="prereq" class:cross={prerequisite.cross} class:done={ready && prerequisite.mastered} href="#path-{prerequisite.id}">
+											<a class="prereq" class:cross={prerequisite.cross} class:done={ready && prerequisite.cleared} href="#path-{prerequisite.id}">
 												{prerequisite.title}
 												{#if prerequisite.cross}
 													<span class="from">{prerequisite.branchTitle}</span>
@@ -146,6 +146,8 @@
 					<span class="mark {skill.state}" aria-hidden="true">
 						{#if skill.state === 'mastered'}
 							{@render check()}
+						{:else if ready && skill.lockedBy.length > 0 && skill.state === 'unexplored'}
+							{@render lock()}
 						{/if}
 					</span>
 					<span class="copy">
@@ -160,15 +162,23 @@
 						{:else if skill.drills.length === 0}
 							<p>No keep or rewrite drill is paired with this skill yet.</p>
 						{:else}
+							{#if skill.lockedBy.length > 0}
+								<p>
+									Locked until the checkpoint is passed on
+									{#each skill.lockedBy as path, index (path.id)}{index > 0 ? ' and ' : ' '}<a href="#path-{path.id}">{path.title}</a>{/each}.
+								</p>
+							{/if}
 							<p>Paired by the curriculum map, or by list order where it names no skill. This is not a lesson assignment.</p>
 							<ul class="facts">
 								{#each skill.drills as drill (drill.questionId)}
 									<li><code>{drill.questionId}</code> · {drill.dispositionLabel}</li>
 								{/each}
 							</ul>
-							{#each skill.decks as deck (deck.deckId)}
-								<a class="practice" href={resolve('/play/[deckId]', { deckId: deck.deckId })}>Practice in {deck.deckTitle}</a>
-							{/each}
+							{#if skill.lockedBy.length === 0}
+								{#each skill.decks as deck (deck.deckId)}
+									<a class="practice" href={resolve('/play/[deckId]', { deckId: deck.deckId })}>Practice in {deck.deckTitle}</a>
+								{/each}
+							{/if}
 						{/if}
 					</div>
 				{/if}
