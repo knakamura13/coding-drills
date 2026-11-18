@@ -1,0 +1,666 @@
+id: operation-costs-review
+title: "Operation costs: review"
+description: Fresh inputs for the Operation costs skills, for recall on later days. No worked examples this time.
+heading: What does this cost?
+
+questions:
+  - id: dict-values-scan-review
+    heading: Which cost grows?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      ages = {'ana': 31, 'bo': 27, 'cy': 45}
+      ```
+
+      `ages` grows to `n` entries, and nobody is 99. Which line's cost grows with `n` (on
+      average)?
+    options:
+      - id: key-in
+        text: "`'bo' in ages`"
+        explanation: >-
+          `in` on a dictionary tests the keys, and keys are found through their hash. That stays
+          about one step at any size.
+      - id: values-in
+        text: '`99 in ages.values()`'
+        explanation: >-
+          Values are not hashed for lookup. `ages.values()` is read one value at a time, and 99 is
+          never found, so the check costs `n` comparisons.
+      - id: read-key
+        text: "`ages['cy']`"
+        explanation: >-
+          Reading by key hashes `'cy'` and goes straight to its entry, so it does not grow with the
+          dictionary.
+      - id: length
+        text: '`len(ages)`'
+        explanation: >-
+          A dictionary keeps its size as it changes, so `len` reads one stored number.
+    correct: values-in
+    followUps:
+      key-in:
+        prompt: What does `'bo' in ages` search, and how?
+        options:
+          - id: keys-hash
+            text: The keys, by hashing `'bo'` and looking in one place
+          - id: values-scan
+            text: The values, one at a time
+          - id: pairs-scan
+            text: Every key and value pair, from the first entry on
+        correct: keys-hash
+        explanation: >-
+          Membership on a dictionary is about keys, which are hashed. Only the values view has to
+          be scanned, because nothing indexes the values.
+      read-key:
+        prompt: How does `ages['cy']` find 45?
+        options:
+          - id: hash
+            text: It hashes `'cy'` and goes to that key's entry
+          - id: scan
+            text: It compares `'cy'` with each key in turn
+          - id: position
+            text: It reads the third entry, since `'cy'` was added third
+        correct: hash
+        explanation: >-
+          A key read and a key test use the same hash lookup, so both are about one step on
+          average. Insertion order is kept, but it is not how a key is found.
+      length:
+        prompt: How does `len(ages)` get its answer?
+        options:
+          - id: stored
+            text: It returns a size the dictionary keeps up to date
+          - id: counts
+            text: It counts the entries one by one
+          - id: keys-list
+            text: It builds a list of the keys and measures that
+        correct: stored
+        explanation: >-
+          Lists, sets, dictionaries and strings all store their length, so `len` is O(1) on each.
+
+  - id: insert-middle-shift-review
+    format: tap-cell
+    heading: Tap where the 5 lands
+    tags: [complexity, python]
+    prompt: >-
+      The cells show `nums` before the insert, plus the new slot past the end. Tap the cell where
+      the 5 sits after the insert.
+    code: |
+      nums = [6, 2, 9, 5, 7]
+      nums.insert(2, 4)
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 2, 9, 5, 7]
+      pastEnd: true
+    correct: 4
+    explanation: >-
+      `nums` becomes `[6, 2, 4, 9, 5, 7]`. The items from index 2 on, 9, 5 and 7, each move one slot
+      right to make room, so the 5 goes from index 3 to 4. An insert moves everything after its
+      position, which is up to `n` items.
+    misses:
+      - index: 3
+        explanation: >-
+          The 5 sits after the insert position, so it has to move. Python opens the gap at index 2
+          by sliding 9, 5 and 7 right.
+      - index: 2
+        explanation: Index 2 is where the new 4 goes. The 5 started at index 3 and moves right, not left.
+      - index: 0
+        explanation: >-
+          The 6 at index 0 sits before the insert position, so it stays. The 5 sat at index 3 and
+          moves one slot right.
+      - index: 1
+        explanation: >-
+          The 2 at index 1 sits before the insert position, so it stays. The 5 sat at index 3 and
+          moves one slot right.
+      - index: 5
+        explanation: >-
+          Only one item is inserted, so each item behind it moves one slot. The 7 lands in index 5,
+          and the 5 lands in index 4.
+
+  - id: print-queue-review
+    heading: Which pair fits?
+    tags: [complexity, python, queue]
+    prompt: >-
+      A print server takes new jobs at the back and always prints the oldest job next. Which pair
+      of calls makes both steps O(1) and prints the oldest job first?
+    options:
+      - id: list-pop-front
+        text: 'A list: `jobs.append(j)` to add, `jobs.pop(0)` to take'
+        explanation: >-
+          The order is right, but `pop(0)` slides every remaining job one slot left, which is O(n)
+          per job printed.
+      - id: deque
+        text: 'A deque: `jobs.append(j)` to add, `jobs.popleft()` to take'
+        explanation: >-
+          A deque adds and removes at either end without moving the other items. `append` puts the
+          newest job at the back and `popleft` takes the oldest from the front, both O(1).
+      - id: list-insert-front
+        text: 'A list: `jobs.insert(0, j)` to add, `jobs.pop()` to take'
+        explanation: >-
+          This keeps the oldest job at the back, so the order is right. But `insert(0, j)` slides
+          every job already waiting one slot right, so adding is O(n).
+      - id: deque-same-end
+        text: 'A deque: `jobs.appendleft(j)` to add, `jobs.popleft()` to take'
+        explanation: >-
+          Both calls are O(1), but they work at the same end, so the newest job is printed first.
+          That is a stack.
+    correct: deque
+    followUps:
+      list-pop-front:
+        prompt: A list holds 500 waiting jobs. How many jobs does `jobs.pop(0)` move?
+        options:
+          - id: rest
+            text: 499, every job behind the one removed
+          - id: none
+            text: None, the list just starts from the next job
+          - id: one
+            text: One, the job that fills the first slot
+        correct: rest
+        explanation: >-
+          A list's items always start at index 0, so removing the first one means sliding the rest
+          down. The cost grows with the number of jobs waiting.
+      list-insert-front:
+        prompt: Which of the two calls is the slow one, and why?
+        options:
+          - id: insert
+            text: '`insert(0, j)`, since every job already waiting moves one slot'
+          - id: pop
+            text: '`pop()`, since it searches for the oldest job'
+          - id: neither
+            text: Neither, since both work at an end of the list
+        correct: insert
+        explanation: >-
+          The back of a list is cheap to change and the front is not. This pair moved the slow
+          step from taking to adding, so it is still O(n) per job.
+      deque-same-end:
+        prompt: Jobs A, B and C arrive in that order through `appendleft`. What does the first `popleft` return?
+        options:
+          - id: c
+            text: C, the newest, because both calls use the left end
+          - id: a
+            text: A, the oldest
+          - id: b
+            text: B, the middle one
+        correct: c
+        explanation: >-
+          Adding and taking at the same end is last in, first out. A queue needs opposite ends:
+          `append` with `popleft`, or `appendleft` with `pop`.
+
+  - id: remove-shift-range-review
+    format: drag-pointers
+    heading: Which items move?
+    tags: [complexity, python]
+    prompt: >-
+      `remove` searches from the front for the first 6, then closes the gap it leaves. The cells show
+      `nums` before the call. Drag `lo` and `hi` to the first and last cells whose items have to
+      move.
+    code: |
+      nums = [2, 6, 4, 9, 1]
+      nums.remove(6)
+    sequence:
+      kind: array
+      name: nums
+      cells: [2, 6, 4, 9, 1]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 2
+        explanation: >-
+          The 4 right behind the removed 6 is the first item to slide left, from index 2 to 1.
+        misses:
+          - index: 1
+            explanation: The 6 is the item removed. It leaves the list, and the items behind it move into its place.
+          - index: 0
+            explanation: The 2 sits before the 6, so the gap does not reach it.
+        elsewhere: The first item to move is the one right behind the removed 6, at index 2.
+      - name: hi
+        start: 1
+        correct: 4
+        explanation: >-
+          Every item behind the gap slides one slot left, so the last item, the 1, moves too. That is
+          3 moves here. With the search, `remove` touches all 5 cells, so it is O(n) wherever the
+          value sits.
+        misses:
+          - index: 2
+            explanation: >-
+              Moving only the 4 would leave a gap at index 2. Every item behind the removed one
+              slides, all the way to the end.
+          - index: 3
+            explanation: The 1 at index 4 also slides left. A list closes a gap by moving everything behind it.
+        elsewhere: The last item to move is the last item of the list, at index 4.
+
+  - id: dominant-phase-review
+    heading: How does it grow?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def report(scores):
+          total = sum(scores)                     # phase 1
+          ties = 0
+          for i in range(len(scores)):            # phase 2
+              for j in range(i + 1, len(scores)):
+                  if scores[i] == scores[j]:
+                      ties += 1
+          return total, ties
+      ```
+
+      With 100 scores, phase 1 does 100 additions and phase 2 does 4,950 comparisons. How does the
+      total work grow with `n`?
+    options:
+      - id: quadratic
+        text: Like n², since the pair loop dominates and the extra n barely matters
+        explanation: >-
+          The phases run one after the other, so they add: n + n(n - 1) / 2. The pair term grows
+          much faster, so the total is O(n²).
+      - id: cubic
+        text: Like n³, since the n additions multiply the n² comparisons
+        explanation: >-
+          `sum` finishes before the pair loop starts. Nothing repeats it inside the pair loop, so its
+          cost adds once.
+      - id: linear
+        text: Like n, since `sum` runs first and sets the cost
+        explanation: >-
+          Order does not decide the cost. The larger phase does, and 4,950 is far more than 100.
+      - id: two-passes
+        text: Like 2n, since there are two phases and each reads the list
+        explanation: >-
+          Phase 2 is not a single pass. Its inner loop restarts on every outer pass, so it makes
+          about n² / 2 comparisons.
+    correct: quadratic
+    followUps:
+      cubic:
+        prompt: When does the cost of `sum(scores)` get multiplied by the pair loop's cost?
+        options:
+          - id: inside
+            text: Only if `sum` ran inside the pair loop, once per pass
+          - id: always
+            text: Always, because both read `scores`
+          - id: after
+            text: Whenever the pair loop comes after it
+        correct: inside
+        explanation: >-
+          Steps in sequence add. A step inside a loop is repeated, so it multiplies. Here `sum`
+          runs once.
+      linear:
+        prompt: Two phases run in sequence, one with 100 steps and one with 4,950. Which one sets the growth?
+        options:
+          - id: larger
+            text: The phase with more steps, whatever its position
+          - id: first
+            text: The phase that runs first
+          - id: last
+            text: The phase that runs last
+        correct: larger
+        explanation: >-
+          Adding phases and keeping the fastest-growing term gives the growth. 100 + 4,950 is
+          mostly the pair loop, and that share only grows with `n`.
+      two-passes:
+        prompt: How many comparisons does phase 2 make for 4 scores?
+        options:
+          - id: six
+            text: 6, one for each pair of positions
+          - id: four
+            text: 4, one per score
+          - id: eight
+            text: 8, two per score
+        correct: six
+        explanation: >-
+          The outer loop's 4 passes run the inner loop 3, 2, 1 and 0 times. A loop inside a loop
+          counts pairs, which grows like n² / 2.
+
+  - id: set-then-loop-review
+    heading: How many steps?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      def any_shared(a, b):
+          lookup = set(a)
+          for x in b:
+              if x in lookup:
+                  return True
+          return False
+      ```
+
+      `a` holds 30 different numbers, `b` holds 20, and they share none. Counting one step per item
+      added to the set and one per `in` test, how many steps does the call take?
+    options:
+      - id: sum
+        text: '50'
+        explanation: >-
+          `set(a)` adds 30 items, then the loop makes 20 tests. The set is built once, before the
+          loop, so the counts add: 30 + 20.
+      - id: product
+        text: '600'
+        explanation: >-
+          30 × 20 would mean the set is rebuilt on every pass. `set(a)` sits above the loop, so
+          it is built a single time.
+      - id: larger
+        text: '30'
+        explanation: That counts only the set building. The 20 tests still run after it.
+      - id: loop-only
+        text: '20'
+        explanation: >-
+          That counts only the tests. Building the set is not free: each of the 30 items is hashed
+          and added.
+    correct: sum
+    followUps:
+      product:
+        prompt: How many times does `set(a)` run in this call?
+        options:
+          - id: once
+            text: Once, on the line before the loop
+          - id: per-pass
+            text: Once for every item of `b`
+          - id: per-test
+            text: Once for every `in` test
+        correct: once
+        explanation: >-
+          A line outside the loop runs once. Its cost adds to the loop's cost instead of
+          multiplying it.
+      larger:
+        prompt: Building the set takes 30 steps and the tests take 20. What is the total?
+        options:
+          - id: fifty
+            text: 50, since both phases run
+          - id: thirty
+            text: 30, since the larger phase hides the smaller
+          - id: six-hundred
+            text: 600, since the phases combine
+        correct: fifty
+        explanation: >-
+          Dropping the smaller term is something you do when naming a growth class. Here it is
+          O(len(a) + len(b)). A step count keeps every step.
+      loop-only:
+        prompt: What does `set(a)` cost when `a` has 30 items?
+        options:
+          - id: per-item
+            text: About 30 steps, one to hash and add each item
+          - id: free
+            text: Nothing, since a set is just a different view of the list
+          - id: one
+            text: One step, like a single set lookup
+        correct: per-item
+        explanation: >-
+          Building a set reads every item once, so it is O(n). Only lookups into a set that already
+          exists cost about one step each.
+
+  - id: copy-then-reverse-review
+    heading: How many writes?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def reversed_copy(nums):
+          out = nums[:]
+          out.reverse()
+          return out
+      ```
+
+      `nums` holds 1,000 items. Counting each slot written as one step, how many steps does the
+      call take?
+    options:
+      - id: two-thousand
+        text: About 2,000, from 1,000 for the copy and then 1,000 for the reverse
+        explanation: >-
+          The slice writes 1,000 slots into a new list. `reverse` then swaps 500 pairs, writing
+          1,000 slots. The two run in sequence, so they add, and the total is O(n).
+      - id: million
+        text: About 1,000,000, since the reverse runs over each copied item
+        explanation: >-
+          `reverse` runs once, after the copy is finished. Nothing repeats it per item, so its
+          cost adds to the copy's.
+      - id: thousand
+        text: About 1,000, since an in-place reverse writes nothing new
+        explanation: >-
+          In place means no new list, not no work. `reverse` still has to move every item to its
+          mirror position.
+    correct: two-thousand
+    followUps:
+      million:
+        prompt: '`out.reverse()` runs on a 1,000-item list. How many times does the call run?'
+        options:
+          - id: once
+            text: Once, after the copy is done
+          - id: per-item
+            text: Once for each of the 1,000 copied items
+          - id: twice
+            text: Twice, once per line of the function body
+        correct: once
+        explanation: >-
+          Only a loop repeats a line. Two lines in a row each run once, so their costs add.
+      thousand:
+        prompt: What does in place tell you about `out.reverse()`?
+        options:
+          - id: memory
+            text: It needs no new list, but it still moves all n items
+          - id: free
+            text: It costs no time, since nothing is allocated
+          - id: half
+            text: It touches only the first half of the list
+        correct: memory
+        explanation: >-
+          Extra memory and time are separate costs. `reverse` uses O(1) extra memory and O(n)
+          time, because every slot ends up holding a different item.
+
+  - id: set-lookups-in-loop-review
+    heading: How many steps?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      count = 0
+      for x in readings:
+          if x in allowed:
+              count += 1
+      ```
+
+      `allowed` is a set of 5,000 numbers that already exists, and `readings` holds 5,000 numbers.
+      Counting one step per `in` test (one step on average for a set), about how many steps does
+      the loop take?
+    options:
+      - id: n
+        text: About 5,000, one test per reading
+        explanation: >-
+          The loop repeats a cost of about one step 5,000 times, so it is 5,000 × 1. Multiplying by
+          a constant cost keeps the loop O(n).
+      - id: n-squared
+        text: About 25,000,000, since each test reads the 5,000 allowed values
+        explanation: >-
+          That would be the cost if `allowed` were a list. A set finds a value through its hash, so
+          a test does not read the other values.
+      - id: n-plus-set
+        text: About 10,000, since each test also walks the set once
+        explanation: >-
+          A set test does not walk the set. It hashes `x` and looks in one place, so it costs about
+          one step.
+      - id: constant
+        text: About 1, since set lookups are O(1)
+        explanation: >-
+          One lookup is about one step, but the loop makes one for every reading. A constant cost
+          paid 5,000 times adds up to 5,000.
+    correct: n
+    followUps:
+      n-squared:
+        prompt: '`allowed` is a set of 5,000 numbers. How much of it does `x in allowed` read?'
+        options:
+          - id: one-slot
+            text: About one slot, found from the hash of `x`
+          - id: all
+            text: All 5,000 values
+          - id: half
+            text: About 2,500 values on average
+        correct: one-slot
+        explanation: >-
+          Scanning every value is what a list does. Changing the container from a list to a set
+          changes the price of each test, and that price is then multiplied by the loop.
+      n-plus-set:
+        prompt: Which of these makes the loop cost about 10,000 steps?
+        options:
+          - id: build-first
+            text: Building the set from 5,000 values first, then the 5,000 tests
+          - id: tests-only
+            text: The 5,000 tests on a set that already exists
+          - id: list-tests
+            text: 5,000 tests on a list of 5,000 values
+        correct: build-first
+        explanation: >-
+          Building and then testing are two phases, so they add: 5,000 + 5,000. A test alone costs
+          about one step, and a list test costs a scan.
+      constant:
+        prompt: A loop makes 5,000 tests, each about one step. What is the total?
+        options:
+          - id: times-n
+            text: About 5,000, the cost of one test times the number of tests
+          - id: one
+            text: About 1, since each test is constant
+          - id: log
+            text: About 13, since a set halves its search
+        correct: times-n
+        explanation: >-
+          O(1) prices one operation. The total is that price times how often it runs, so a loop of
+          `n` constant tests is O(n).
+
+  - id: trace-count-in-loop-review
+    format: step-trace
+    heading: Predict the counter
+    tags: [complexity, python]
+    prompt: >-
+      `words.count(w)` reads every item of `words` to count the copies of `w`. Line 5 adds the
+      number of items that call read. Predict each step before it is shown.
+    code: |
+      words = ['ox', 'elk', 'ox', 'yak']
+      reads = 0
+      for i in range(len(words)):
+          copies = words.count(words[i])
+          reads += len(words)
+    sequence:
+      kind: array
+      name: words
+      cells: [ox, elk, ox, yak]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: How many items does `words.count(words[0])` read?
+        options:
+          - id: four
+            text: '4'
+            explanation: '`count` cannot stop at a match, since a later item could be another `''ox''`. It reads all 4.'
+          - id: two
+            text: '2'
+            explanation: 2 is how many copies of `'ox'` it finds. Finding them takes reading every item.
+          - id: one
+            text: '1'
+            explanation: '`count` does not stop at the first `''ox''`. The second one is at index 2.'
+        correct: four
+      - line: 3
+        ask: Where is `i` when `reads` first reaches 12?
+        pointer: i
+        correct: 2
+        explanation: Each pass adds 4. The passes with `i` at 0, 1 and 2 make 12.
+        misses:
+          - index: 3
+            explanation: Three passes make 12, and the passes start at `i = 0`. The fourth pass would make 16.
+          - index: 1
+            explanation: Two passes add 8. One more pass, with `i` at 2, reaches 12.
+        elsewhere: Each pass adds 4, so 12 is reached on the third pass, with `i` at 2.
+      - line: 3
+        ask: What is `reads` when the loop ends?
+        options:
+          - id: sixteen
+            text: '16'
+            explanation: 4 passes, each reading all 4 items, is 4 × 4.
+          - id: eight
+            text: '8'
+            explanation: That adds the loop and one scan. The scan runs again on every pass, so it multiplies.
+          - id: four
+            text: '4'
+            explanation: '`count` does not remember its last answer. Each pass reads the whole list again.'
+        correct: sixteen
+        also:
+          - { name: i, at: 3 }
+      - ask: '`words` doubles to 8 items. What is `reads`?'
+        options:
+          - id: sixty-four
+            text: '64'
+            explanation: >-
+              8 passes of 8 reads each. Doubling `n` doubles both factors, so the count goes up four
+              times. A `count` inside a loop is O(n²).
+          - id: thirty-two
+            text: '32'
+            explanation: That doubles the passes but keeps each `count` at 4 reads. Each call now reads 8.
+          - id: twenty-four
+            text: '24'
+            explanation: Doubling `n` changes both the number of passes and the size of each scan.
+        correct: sixty-four
+
+  - id: drain-with-pop-front-review
+    heading: How many moves?
+    tags: [complexity, python, queue]
+    prompt: |-
+      ```python
+      tasks = ['t1', 't2', 't3', 't4', 't5', 't6']
+      while tasks:
+          job = tasks.pop(0)
+      ```
+
+      Each `pop(0)` slides every item behind the one it removes one slot left. How many slides
+      does the loop make in all?
+    options:
+      - id: fifteen
+        text: '15'
+        explanation: >-
+          The pops slide 5, 4, 3, 2, 1 and 0 items, since the list shrinks each time. That adds to
+          15, about n² / 2 for `n` tasks. `deque.popleft()` slides nothing, so draining a deque is O(n).
+      - id: six
+        text: '6'
+        explanation: >-
+          That counts the pops. Each pop also slides the items behind the one it took, so most pops
+          cost more than one step.
+      - id: thirty
+        text: '30'
+        explanation: >-
+          That charges every pop 5 slides. The list shrinks, so later pops have fewer items behind
+          the front.
+      - id: twenty-one
+        text: '21'
+        explanation: >-
+          That counts the removed item as sliding too. The item taken out leaves the list. Only the
+          ones behind it slide.
+    correct: fifteen
+    followUps:
+      six:
+        prompt: How many items does the first `tasks.pop(0)` slide?
+        options:
+          - id: five
+            text: Five, every task behind `'t1'`
+          - id: zero
+            text: None, it only removes `'t1'`
+          - id: one
+            text: One, `'t2'` into the first slot
+        correct: five
+        explanation: >-
+          Removing from the front of a list leaves a gap at index 0, and the whole rest of the list
+          slides to fill it. Price the single operation before you count how often it runs.
+      thirty:
+        prompt: How many items does the last `tasks.pop(0)` slide?
+        options:
+          - id: none
+            text: None, since `'t6'` is the only task left
+          - id: five
+            text: Five, like the first pop
+          - id: six
+            text: Six, the length of the original list
+        correct: none
+        explanation: >-
+          A repeated cost can shrink as the loop runs. Then you add the actual costs, 5 + 4 + 3 + 2
+          + 1 + 0, instead of multiplying the first one.
+      twenty-one:
+        prompt: '`tasks` is `[''t1'', ''t2'', ''t3'']`. What does `tasks.pop(0)` slide?'
+        options:
+          - id: two
+            text: "`'t2'` and `'t3'`, one slot each"
+          - id: three
+            text: "All three, `'t1'` included"
+          - id: one
+            text: "Only `'t2'`"
+        correct: two
+        explanation: >-
+          The popped item is returned, not slid. Each pop slides one fewer item than the list
+          holds.
