@@ -1,0 +1,127 @@
+id: reachability-checkpoint
+title: 'Reachability: checkpoint'
+description: Combine neighbor rules, discovery marks, and completed flood fills to count islands.
+questions:
+  - id: reachability-checkpoint-corner-patches
+    tags:
+      - bfs
+      - dfs
+    prompt: |-
+      Count the islands. Land joins by an edge only. A flood fill starts whenever the row-by-row scan meets unmarked land.
+
+      ```text
+      101
+      010
+      101
+      ```
+    options:
+      - id: valid
+        text: 5 starts, each marking one cell
+        explanation: None of the five land cells shares an edge with another. Each starts its own flood fill.
+      - id: mistake
+        text: 1 start, joining the center to all corners
+        explanation: None of the five land cells shares an edge with another. Each starts its own flood fill.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Does (1, 1) share an edge with (0, 0)?
+        options:
+          - id: right
+            text: No, they meet at a corner
+          - id: wrong
+            text: Yes, the cells meet along an edge
+        correct: right
+        explanation: None of the five land cells shares an edge with another. Each starts its own flood fill.
+  - id: reachability-checkpoint-wraparound
+    tags:
+      - bfs
+      - dfs
+    prompt: |-
+      A Python flood fill marks visited land by changing it to water. Its guard checks `0 <= r < 2` and `c < 4` but misses the lower column bound. Which result exposes the bug?
+
+      ```text
+      1001
+      1001
+      ```
+    options:
+      - id: valid
+        text: It reports 1 instead of 2
+        explanation: From the left edge, column −1 passes the guard and reads the right column. The walk marks
+          land in both true regions from one start.
+      - id: mistake
+        text: It reports 2 because water separates the columns
+        explanation: From the left edge, column −1 passes the guard and reads the right column. The walk marks
+          land in both true regions from one start.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: What does `grid[0][-1]` read in this grid?
+        options:
+          - id: right
+            text: The rightmost land in the first row
+          - id: wrong
+            text: An out-of-bounds location
+        correct: right
+        explanation: From the left edge, column −1 passes the guard and reads the right column. The walk marks
+          land in both true regions from one start.
+  - id: reachability-checkpoint-duplicate-work
+    tags:
+      - bfs
+      - dfs
+    prompt: In a 2×2 block of land, a queue starts at (0, 0) and takes right before down. The first pop queues
+      both neighbors. Every pop marks its cell seen. All four-direction neighbors absent from seen are queued.
+      What happens to (1, 1)?
+    options:
+      - id: valid
+        text: It is queued twice before its first pop
+        explanation: The two neighbors are both popped ahead of (1, 1). Each offers it while it is still missing
+          from seen.
+      - id: mistake
+        text: It is queued once because a pop marks it seen
+        explanation: The two neighbors are both popped ahead of (1, 1). Each offers it while it is still missing
+          from seen.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: When the second neighbor is popped, has (1, 1) had its turn yet?
+        options:
+          - id: right
+            text: No, it is behind that neighbor
+          - id: wrong
+            text: Yes, it is ahead of that neighbor
+        correct: right
+        explanation: The two neighbors are both popped ahead of (1, 1). Each offers it while it is still missing
+          from seen.
+  - id: reachability-checkpoint-next-start
+    tags:
+      - bfs
+      - dfs
+    prompt: |-
+      The row-by-row island scan has just finished its first flood fill from (0, 0), marking every cell it reached. Which cell should start the next fill?
+
+      ```text
+      1100
+      0101
+      0001
+      ```
+    options:
+      - id: valid
+        text: (1, 3), the first remaining unmarked land
+        explanation: The first fill goes right then down to (1, 1). The land in column 3 is separated by water,
+          so the scan starts the second fill at (1, 3).
+      - id: mistake
+        text: (1, 1), because it is in a different row
+        explanation: The first fill goes right then down to (1, 1). The land in column 3 is separated by water,
+          so the scan starts the second fill at (1, 3).
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Can the first fill reach (1, 1) via (0, 1)?
+        options:
+          - id: right
+            text: Yes, through two edge-adjacent steps
+          - id: wrong
+            text: No, the first fill remains in row 0
+        correct: right
+        explanation: The first fill goes right then down to (1, 1). The land in column 3 is separated by water,
+          so the scan starts the second fill at (1, 3).
