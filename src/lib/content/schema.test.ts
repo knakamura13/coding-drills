@@ -1,6 +1,6 @@
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { deckSchema, formatIssues, isTapCellQuestion, repeatsFollowUpAnswer, type ChoiceQuestion, type Deck } from './schema.ts';
+import { deckSchema, formatIssues, isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, repeatsFollowUpAnswer, type ChoiceQuestion, type Deck } from './schema.ts';
 
 function validDeck(): Deck {
 	return {
@@ -49,7 +49,7 @@ function issuesFor(deck: unknown): string {
 
 function choice(deck: Deck): ChoiceQuestion {
 	const question = deck.questions[0];
-	if (!question || question.format === 'tap-cell') throw new Error('expected a choice question');
+	if (!question || !isChoiceQuestion(question)) throw new Error('expected a choice question');
 	return question;
 }
 
@@ -282,6 +282,87 @@ questions:
 		const deck = tapDeck();
 		deck.questions[0].correct = 9;
 		expect(issuesFor(deck)).toContain('correct index 9 is outside the sequence');
+	});
+});
+
+function dragDeck() {
+	return {
+		id: 'drag-sample',
+		title: 'Drag sample',
+		description: 'One drag-pointers question.',
+		questions: [
+			{
+				format: 'drag-pointers' as const,
+				id: 'move-ends',
+				prompt: 'Where do `l` and `r` sit after one step?',
+				code: 'l += 1',
+				sequence: { kind: 'array' as const, name: 'nums', cells: [1, 4, 6, 8] },
+				markers: [{ name: 'i', at: 0 }] as { name: string; at: number }[],
+				pointers: [
+					{
+						name: 'l',
+						start: 0,
+						correct: 1,
+						explanation: 'Too small, so l moves.',
+						misses: [{ index: 2, explanation: 'One step is one cell.' }] as { index: number; explanation: string }[],
+						elsewhere: 'l moves one cell.'
+					},
+					{ name: 'r', start: 3, correct: 3, explanation: 'r stays.', elsewhere: 'r stays when the sum is too small.' }
+				]
+			}
+		]
+	};
+}
+
+describe('drag-pointers questions', () => {
+	it('accepts a question where one pointer moves and another stays', () => {
+		const result = deckSchema.safeParse(dragDeck());
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const question = result.data.questions[0];
+		expect(isDragPointersQuestion(question)).toBe(true);
+		expect(isChoiceQuestion(question)).toBe(false);
+		expect(isTapCellQuestion(question)).toBe(false);
+	});
+
+	it('rejects a question where no pointer has to move', () => {
+		const deck = dragDeck();
+		deck.questions[0].pointers[0]!.start = 1;
+		expect(issuesFor(deck)).toContain('at least one pointer must have to move');
+	});
+
+	it('rejects a pointer or marker outside the sequence, and a miss on the right cell', () => {
+		const deck = dragDeck();
+		deck.questions[0].pointers[0]!.correct = 9;
+		deck.questions[0].pointers[1]!.start = 7;
+		deck.questions[0].markers = [{ name: 'i', at: 8 }];
+		deck.questions[0].pointers[0]!.misses = [{ index: 10, explanation: 'No.' }];
+		let issues = issuesFor(deck);
+		expect(issues).toContain('"l" belongs outside the sequence');
+		expect(issues).toContain('"r" starts outside the sequence');
+		expect(issues).toContain('marker "i" is outside the sequence');
+		expect(issues).toContain('miss index 10 is outside the sequence');
+
+		const onRight = dragDeck();
+		onRight.questions[0].pointers[0]!.misses!.push({ index: 1, explanation: 'The right cell has no miss.' });
+		issues = issuesFor(onRight);
+		expect(issues).toContain('the correct index 1 must not have a miss');
+	});
+
+	it('rejects a repeated name and requires an elsewhere explanation', () => {
+		const deck = dragDeck();
+		deck.questions[0].markers = [{ name: 'l', at: 0 }];
+		expect(issuesFor(deck)).toContain('duplicate pointer or marker name "l"');
+
+		const bare = dragDeck();
+		delete (bare.questions[0].pointers[0] as { elsewhere?: string }).elsewhere;
+		expect(issuesFor(bare)).toContain('elsewhere');
+	});
+
+	it('draws at most 8 cells', () => {
+		const deck = dragDeck();
+		deck.questions[0].sequence.cells = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+		expect(issuesFor(deck)).toContain('a drag question draws at most 8 cells');
 	});
 });
 

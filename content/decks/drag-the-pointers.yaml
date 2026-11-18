@@ -1,0 +1,187 @@
+id: drag-the-pointers
+title: Drag the pointers
+description: Move each pointer to the cell it reaches after one step of a scan.
+heading: Place the pointers
+
+questions:
+  - format: drag-pointers
+    id: sum-step-too-small
+    tags: [python, two-pointers]
+    prompt: >-
+      Two passes have run. The pointers show `l` and `r` at the top of the third pass. Drag each one
+      to where it sits when that pass ends.
+    code: |
+      nums = [1, 4, 6, 8, 11, 15, 20]
+      target = 23
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total == target:
+              break
+          if total < target:
+              l += 1
+          else:
+              r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [1, 4, 6, 8, 11, 15, 20]
+    pointers:
+      - name: l
+        start: 1
+        correct: 2
+        explanation: >-
+          `nums[1] + nums[5]` is 4 + 15 = 19, below 23. Moving `l` right trades 4 for a larger value,
+          the only move that raises the sum, so `l` steps to index 2.
+        misses:
+          - index: 0
+            explanation: >-
+              `l` only moves right. Index 0 is already ruled out: the first pass found 1 + 20 = 21,
+              too small.
+          - index: 1
+            explanation: The sum 19 is below 23, so a pointer has to move, and only moving `l` right raises the sum.
+          - index: 3
+            explanation: >-
+              8 + 15 is 23, but the loop cannot look ahead. One pass moves `l` a single cell, so 6 + 15
+              is tested next.
+        elsewhere: One pass moves one pointer by one cell. With 19 below 23, `l` steps from index 1 to index 2.
+      - name: r
+        start: 5
+        correct: 5
+        explanation: '`r` stays on 15. Moving it left would trade 15 for 11 and push the sum further below 23.'
+        misses:
+          - index: 4
+            explanation: >-
+              Moving `r` left swaps 15 for 11, so the sum gets smaller. A sum below the target needs
+              `l` to move, not `r`.
+          - index: 6
+            explanation: >-
+              `r` never moves right. 20 was ruled out on the second pass, when 4 + 20 = 24 ran too
+              large.
+        elsewhere: The sum 19 is too small, so this pass leaves `r` on 15 at index 5.
+
+  - format: drag-pointers
+    id: pair-skips-repeats
+    tags: [python, two-pointers]
+    prompt: >-
+      The scan collects each distinct pair once. Its first test finds 2 + 7 = 9 and records the pair.
+      Drag `l` and `r` to where they sit at the next sum test.
+    code: |
+      nums = [2, 2, 2, 3, 4, 6, 7, 7]
+      target = 9
+      pairs = []
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total < target:
+              l += 1
+          elif total > target:
+              r -= 1
+          else:
+              pairs.append((nums[l], nums[r]))
+              while l < r and nums[l] == nums[l + 1]:
+                  l += 1
+              while l < r and nums[r] == nums[r - 1]:
+                  r -= 1
+              l += 1
+              r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [2, 2, 2, 3, 4, 6, 7, 7]
+    pointers:
+      - name: l
+        start: 0
+        correct: 3
+        explanation: >-
+          The inner loop walks `l` across the 2s and stops on the last one, index 2. The `l += 1`
+          after it lands on index 3, the first new value.
+        misses:
+          - index: 0
+            explanation: >-
+              After a match both pointers move. A 2 makes 9 only with a 7, and (2, 7) is recorded, so
+              `l` has to clear the whole run of 2s.
+          - index: 1
+            explanation: >-
+              Index 1 is another 2. The inner loop keeps stepping while the next cell repeats, so `l`
+              passes all three 2s.
+          - index: 2
+            explanation: The inner loop stops on the last 2, but the `l += 1` after it still runs and steps onto 3.
+          - index: 4
+            explanation: >-
+              The run of 2s ends at index 2, and one more step lands on 3 at index 3. Skipping 3 would
+              lose the pair (3, 6).
+        elsewhere: '`l` crosses the run of 2s, stops on the last one, and then steps once more, to index 3.'
+      - name: r
+        start: 7
+        correct: 5
+        explanation: >-
+          The inner loop moves `r` onto the other 7 at index 6 and stops there. The `r -= 1` after it
+          lands on 6 at index 5, so the next test is 3 + 6.
+        misses:
+          - index: 7
+            explanation: >-
+              After a match `r` moves too. A 7 makes 9 only with a 2, and (2, 7) is recorded, so `r`
+              has to clear the run of 7s.
+          - index: 6
+            explanation: >-
+              Index 6 is still a 7. The inner loop stops here, on the last repeat, and the `r -= 1`
+              after it moves `r` onto 6.
+          - index: 4
+            explanation: >-
+              The run of 7s ends at index 6, so one step lands on 6 at index 5. 6 is not a repeat, so
+              nothing skips it.
+        elsewhere: '`r` crosses the run of 7s and then steps once, to index 5.'
+
+  - format: drag-pointers
+    id: compact-keeps-value
+    tags: [python, two-pointers]
+    prompt: >-
+      The call is partway through. The cells show `nums` after four passes, so the 3 is already
+      copied to index 1, and the pointers sit at the top of the fifth pass. Drag `read` and `write`
+      to where they sit when that pass ends.
+    code: |
+      def drop_zeros(nums):
+          write = 0
+          read = 0
+          while read < len(nums):
+              if nums[read] != 0:
+                  nums[write] = nums[read]
+                  write += 1
+              read += 1
+          return write
+
+      drop_zeros([6, 0, 0, 3, 8, 0, 5])
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 3, 0, 3, 8, 0, 5]
+    pointers:
+      - name: read
+        start: 4
+        correct: 5
+        explanation: Every pass ends with `read += 1`, kept value or not, so `read` moves from 4 to 5.
+        misses:
+          - index: 4
+            explanation: '`read += 1` runs on every pass, whether or not the value was kept.'
+          - index: 6
+            explanation: >-
+              One pass moves `read` one cell. The 0 at index 5 is tested on the next pass and skipped
+              then.
+        elsewhere: '`read` moves forward exactly one cell per pass, from index 4 to index 5.'
+      - name: write
+        start: 2
+        correct: 3
+        explanation: >-
+          `nums[4]` is 8, not 0, so 8 is copied to index 2 and `write` moves to 3. The 0 that sat
+          under `write` was a leftover, and the copy replaces it.
+        misses:
+          - index: 2
+            explanation: >-
+              The test checks `nums[read]`, which is 8, so the value is kept and `write` advances. The
+              0 under `write` is a leftover, not the value being tested.
+          - index: 4
+            explanation: '`write` advances one cell per kept value. It does not jump to where `read` was.'
+          - index: 5
+            explanation: '`write` does not follow `read`. It counts the kept values, so after this keep it is 3.'
+        elsewhere: One value is kept this pass, so `write` moves one cell, from 2 to 3.

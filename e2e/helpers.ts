@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
-import { isChoiceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
+import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
@@ -44,17 +44,17 @@ export async function currentQuestion(page: Page): Promise<ChoiceQuestion> {
  * options read the same are told apart by their problem text.
  */
 export async function currentQuestionAny(page: Page): Promise<{ question: Question; deckId: string }> {
-	const board = page.getByRole('group', { name: /Tap a cell/ });
+	const board = page.getByRole('group', { name: /Tap a cell|Drag a pointer/ });
 	await board.or(page.getByRole('radio').first()).first().waitFor();
 	if (await board.count()) {
 		const pageText = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 		const candidates = allDecks.flatMap((candidateDeck) =>
 			candidateDeck.questions
-				.filter(isTapCellQuestion)
+				.filter((candidate) => isTapCellQuestion(candidate) || isDragPointersQuestion(candidate))
 				.filter((candidate) => pageText.includes(text(candidate.prompt).replace(/\s+/g, ' ').slice(0, 40)))
 				.map((question) => ({ question, deckId: candidateDeck.id }))
 		);
-		if (candidates.length === 0) throw new Error('a sequence is showing but no tap question matched');
+		if (candidates.length === 0) throw new Error('a sequence is showing but no tap or drag question matched');
 		if (candidates.length === 1) return candidates[0];
 		const match = candidates.find(({ question }) => pageText.includes(question.code.slice(0, 24)));
 		return match ?? candidates[0];
@@ -85,6 +85,20 @@ export async function answerMain(page: Page, question: Question, optionId: strin
 		return;
 	}
 	await pickAndCheck(page, text(optionOf(question, String(optionId)).text));
+}
+
+/** Answers any question right. A drag question moves each pointer that has to move, then checks. */
+export async function answerCorrectly(page: Page, question: Question) {
+	if (isDragPointersQuestion(question)) {
+		for (const pointer of question.pointers) {
+			if (pointer.start === pointer.correct) continue;
+			await page.locator(`[data-pointer="${pointer.name}"]`).click();
+			await page.locator(`[data-index="${pointer.correct}"]`).click();
+		}
+		await page.getByRole('button', { name: 'Check', exact: true }).click();
+		return;
+	}
+	await answerMain(page, question, question.correct);
 }
 
 export async function answerFollowUp(page: Page, question: Question, mainPick: string, right: boolean) {
