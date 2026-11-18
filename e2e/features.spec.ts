@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { allDecks, answerMain, continueButton, currentQuestionAny, deck, openMenu, playDeck } from './helpers';
+import { allDecks, answerCorrectly, continueButton, currentQuestionAny, deck, openMenu, playDeck } from './helpers';
 import { failedHistory, history, seed } from './seed';
 
 async function expectNoViolations(page: Page) {
@@ -90,7 +90,7 @@ test.describe('mixed practice', () => {
 		for (let index = 0; index < 10; index++) {
 			const { question, deckId } = await currentQuestionAny(page);
 			seen.add(`${deckId}/${question.id}`);
-			await answerMain(page, question, question.correct);
+			await answerCorrectly(page, question);
 			await continueButton(page).click();
 		}
 		expect(seen.size).toBe(10);
@@ -120,7 +120,7 @@ test.describe('mixed practice', () => {
 		for (let index = 0; index < size; index++) {
 			const { question } = await currentQuestionAny(page);
 			expect(question.tags ?? []).toContain(topic.value);
-			await answerMain(page, question, question.correct);
+			await answerCorrectly(page, question);
 			await continueButton(page).click();
 		}
 		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();

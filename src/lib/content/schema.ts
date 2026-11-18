@@ -204,9 +204,11 @@ const sequenceSchema = z
 	})
 	.strict();
 
+const markerName = z.string().regex(/^[A-Za-z][A-Za-z0-9]*$/, 'use a short name such as left, right, or i');
+
 const markerSchema = z
 	.object({
-		name: z.string().regex(/^[A-Za-z][A-Za-z0-9]*$/, 'use a short name such as left, right, or i'),
+		name: markerName,
 		at: z.number().int().nonnegative()
 	})
 	.strict();
@@ -220,6 +222,30 @@ const missSchema = z
 
 function sequenceLength(sequence: { cells: readonly string[]; pastEnd?: boolean }): number {
 	return sequence.cells.length + (sequence.pastEnd ? 1 : 0);
+}
+
+/** A string sequence is drawn one character per cell. */
+function stringCellIssues(sequence: { kind: 'array' | 'string'; cells: readonly string[] }): Issue[] {
+	if (sequence.kind !== 'string') return [];
+	return sequence.cells.flatMap((cell, index) =>
+		[...cell].length === 1 ? [] : [{ message: 'a string cell must be a single character', path: ['sequence', 'cells', index] }]
+	);
+}
+
+/** Marker names must be unique, and every marker must sit inside the sequence. */
+function markerIssues(markers: readonly { name: string; at: number }[], count: number, path: string): Issue[] {
+	const issues: Issue[] = [];
+	const names = new Set<string>();
+	markers.forEach((marker, index) => {
+		if (names.has(marker.name)) {
+			issues.push({ message: `duplicate marker name "${marker.name}"`, path: [path, index, 'name'] });
+		}
+		names.add(marker.name);
+		if (marker.at >= count) {
+			issues.push({ message: `marker "${marker.name}" is outside the sequence`, path: [path, index, 'at'] });
+		}
+	});
+	return issues;
 }
 
 /**
@@ -256,16 +282,7 @@ const tapCellQuestionSchema = z
 				path: ['correct']
 			});
 		}
-		if (question.sequence.kind === 'string') {
-			question.sequence.cells.forEach((cell, index) => {
-				if ([...cell].length !== 1) {
-					issues.push({
-						message: 'a string cell must be a single character',
-						path: ['sequence', 'cells', index]
-					});
-				}
-			});
-		}
+		issues.push(...stringCellIssues(question.sequence));
 		const seen = new Set<number>();
 		question.misses.forEach((miss, index) => {
 			if (seen.has(miss.index)) {
@@ -292,21 +309,87 @@ const tapCellQuestionSchema = z
 				});
 			}
 		}
-		const names = new Set<string>();
-		for (const [index, marker] of (question.markers ?? []).entries()) {
-			if (names.has(marker.name)) {
-				issues.push({
-					message: `duplicate marker name "${marker.name}"`,
-					path: ['markers', index, 'name']
-				});
+		issues.push(...markerIssues(question.markers ?? [], count, 'markers'));
+		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
+	});
+
+const pointerSchema = z
+	.object({
+		name: markerName,
+		/** Where the pointer sits before the learner moves it. */
+		start: z.number().int().nonnegative(),
+		/** The cell it belongs on. */
+		correct: z.number().int().nonnegative(),
+		/** Shown once the pointer is on the right cell. */
+		explanation: text(600),
+		/** Targeted explanations for the plausible wrong cells. */
+		misses: z.array(missSchema).max(11).optional(),
+		/** Shown for any wrong cell that has no entry in `misses`. */
+		elsewhere: text(600)
+	})
+	.strict();
+
+/**
+ * Drag the pointers. The learner moves each named pointer to the cell it
+ * reaches after the step the prompt describes, by dragging it or by tapping it
+ * and then a cell. Each wrong pointer explains itself in place: `misses` for
+ * the likely mistakes, `elsewhere` for the rest.
+ */
+const dragPointersQuestionSchema = z
+	.object({
+		format: z.literal('drag-pointers'),
+		id,
+		heading: text(80).optional(),
+		prompt: text(800),
+		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
+		/** Plain text of the snippet. Not Markdown, so indentation is preserved. */
+		code: text(800),
+		/** At most 8 cells, so a pointer can travel the whole row on a phone. */
+		sequence: sequenceSchema,
+		/** Pointers that stay where they are, as context for the question. */
+		markers: z.array(markerSchema).max(4).optional(),
+		pointers: z.array(pointerSchema).min(1).max(3)
+	})
+	.strict()
+	.superRefine((question, ctx) => {
+		const issues: Issue[] = [];
+		const count = sequenceLength(question.sequence);
+		if (question.sequence.cells.length > 8) {
+			issues.push({ message: 'a drag question draws at most 8 cells', path: ['sequence', 'cells'] });
+		}
+		issues.push(...stringCellIssues(question.sequence));
+		const named = [
+			...(question.markers ?? []).map((marker) => ({ name: marker.name, at: marker.at })),
+			...question.pointers.map((pointer) => ({ name: pointer.name, at: pointer.start }))
+		];
+		const duplicated = named.filter((item, index) => named.findIndex((other) => other.name === item.name) !== index);
+		for (const item of duplicated) {
+			issues.push({ message: `duplicate pointer or marker name "${item.name}"`, path: ['pointers'] });
+		}
+		issues.push(...markerIssues(question.markers ?? [], count, 'markers'));
+		question.pointers.forEach((pointer, position) => {
+			const at = (...rest: (string | number)[]) => ['pointers', position, ...rest];
+			if (pointer.start >= count) {
+				issues.push({ message: `"${pointer.name}" starts outside the sequence`, path: at('start') });
 			}
-			names.add(marker.name);
-			if (marker.at >= count) {
-				issues.push({
-					message: `marker "${marker.name}" is outside the sequence`,
-					path: ['markers', index, 'at']
-				});
+			if (pointer.correct >= count) {
+				issues.push({ message: `"${pointer.name}" belongs outside the sequence`, path: at('correct') });
 			}
+			const seen = new Set<number>();
+			(pointer.misses ?? []).forEach((miss, index) => {
+				if (seen.has(miss.index)) {
+					issues.push({ message: `duplicate miss for index ${miss.index}`, path: at('misses', index) });
+				}
+				seen.add(miss.index);
+				if (miss.index === pointer.correct) {
+					issues.push({ message: `the correct index ${miss.index} must not have a miss`, path: at('misses', index) });
+				} else if (miss.index >= count) {
+					issues.push({ message: `miss index ${miss.index} is outside the sequence`, path: at('misses', index) });
+				}
+			});
+		});
+		if (!question.pointers.some((pointer) => pointer.start !== pointer.correct)) {
+			issues.push({ message: 'at least one pointer must have to move', path: ['pointers'] });
 		}
 		for (const issue of issues) ctx.addIssue({ code: 'custom', ...issue });
 	});
@@ -319,7 +402,10 @@ function questionFormat(value: unknown): unknown {
 }
 
 function schemaFor(value: unknown) {
-	return questionFormat(value) === 'tap-cell' ? tapCellQuestionSchema : choiceQuestionSchema;
+	const format = questionFormat(value);
+	if (format === 'tap-cell') return tapCellQuestionSchema;
+	if (format === 'drag-pointers') return dragPointersQuestionSchema;
+	return choiceQuestionSchema;
 }
 
 /**
@@ -362,7 +448,8 @@ export const deckSchema = z
 
 export type ChoiceQuestion = z.infer<typeof choiceQuestionSchema>;
 export type TapCellQuestion = z.infer<typeof tapCellQuestionSchema>;
-export type Question = ChoiceQuestion | TapCellQuestion;
+export type DragPointersQuestion = z.infer<typeof dragPointersQuestionSchema>;
+export type Question = ChoiceQuestion | TapCellQuestion | DragPointersQuestion;
 export type Deck = z.infer<typeof deckSchema>;
 export type QuestionOption = ChoiceQuestion['options'][number];
 export type FollowUp = ChoiceQuestion['followUps'][string];
@@ -372,8 +459,12 @@ export function isTapCellQuestion(question: Question): question is TapCellQuesti
 	return question.format === 'tap-cell';
 }
 
+export function isDragPointersQuestion(question: Question): question is DragPointersQuestion {
+	return question.format === 'drag-pointers';
+}
+
 export function isChoiceQuestion(question: Question): question is ChoiceQuestion {
-	return question.format !== 'tap-cell';
+	return question.format === undefined || question.format === 'choice';
 }
 
 /**

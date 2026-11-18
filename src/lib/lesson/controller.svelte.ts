@@ -1,4 +1,4 @@
-import { isChoiceQuestion, isTapCellQuestion } from '$lib/content/schema';
+import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion } from '$lib/content/schema';
 import {
 	advance,
 	check,
@@ -10,6 +10,7 @@ import {
 	view,
 	type LessonState
 } from '$lib/domain/lesson';
+import { movePointer } from '$lib/domain/drag';
 import type { Rng } from '$lib/domain/shuffle';
 import { preferences } from '$lib/preferences/store.svelte';
 import { getRepository, type Flag } from '$lib/storage';
@@ -91,9 +92,19 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		},
 		select(optionId: string) {
 			const question = state.plan[state.cursor]?.question;
-			// A tap answers in one gesture. The Check button is for multiple choice.
-			const immediate = preferences.immediateFeedback || (question ? isTapCellQuestion(question) : false);
+			// A tap answers in one gesture. Multiple choice follows the preference. A drag
+			// answer has several pointers to place, so it always waits for Check.
+			const immediate = question
+				? isTapCellQuestion(question) || (preferences.immediateFeedback && isChoiceQuestion(question))
+				: false;
 			state = select(state, optionId, immediate);
+		},
+		/** Moves one pointer of a drag question. The answer is every pointer's cell, checked on Check. */
+		place(name: string, at: number) {
+			const question = state.plan[state.cursor]?.question;
+			if (!question || !isDragPointersQuestion(question)) return;
+			const pick = movePointer(question, state.selected, name, at);
+			if (pick !== null) state = select(state, pick);
 		},
 		check() {
 			state = check(state);

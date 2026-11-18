@@ -1,5 +1,22 @@
-import { isChoiceQuestion, isTapCellQuestion, type Deck, type FollowUp, type Question, type TapCellQuestion } from '$lib/content/schema';
+import {
+	isChoiceQuestion,
+	isDragPointersQuestion,
+	isTapCellQuestion,
+	type Deck,
+	type DragPointersQuestion,
+	type FollowUp,
+	type Question,
+	type TapCellQuestion
+} from '$lib/content/schema';
 import { sequenceModel, type SequenceCell } from './board';
+import {
+	checkPlacement,
+	correctPlacement,
+	parsePlacement,
+	placementLabel,
+	startPlacement,
+	type PlacementResult
+} from './drag';
 import { shuffled, type Rng } from './shuffle';
 import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
 
@@ -13,8 +30,9 @@ import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
  *       follow-up --select/check--> feedback --advance--> next question
  *
  * A wrong multiple-choice answer can only leave the question stage through its
- * follow-up. A tap-cell question has no second stage: the tapped cell's
- * explanation is the feedback, and advance records the attempt either way.
+ * follow-up. A tap-cell or drag-pointers question has no second stage: the
+ * explanation written for the cell or the pointer is the feedback, and advance
+ * records the attempt either way.
  * Every transition returns a new state, and invalid transitions return the
  * state unchanged.
  */
@@ -70,10 +88,12 @@ function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonStat
 		question,
 		optionOrder: isTapCellQuestion(question)
 			? Array.from({ length: cellCount(question) }, (_, index) => cellPickId(index))
-			: shuffled(
-					question.options.map((option) => option.id),
-					rng
-				),
+			: isDragPointersQuestion(question)
+				? []
+				: shuffled(
+						question.options.map((option) => option.id),
+						rng
+					),
 		followUpOrders: isChoiceQuestion(question)
 			? Object.fromEntries(
 					Object.entries(question.followUps).map(([optionId, followUp]) => [
@@ -138,10 +158,17 @@ function activeOptionIds(state: LessonState): string[] {
 	return state.mainPick === null ? [] : (planned.followUpOrders[state.mainPick] ?? []);
 }
 
+/** A drag answer is a whole placement, so it is valid by shape, not by membership in a list. */
+function isPickable(state: LessonState, pick: string): boolean {
+	const question = currentPlanned(state)?.question;
+	if (question && isDragPointersQuestion(question)) return parsePlacement(question, pick) !== null;
+	return activeOptionIds(state).includes(pick);
+}
+
 /** Records the pick. When `immediate` is set, the pick is checked in the same step. */
 export function select(state: LessonState, optionId: string, immediate = false): LessonState {
 	if (isFinished(state) || state.checked) return state;
-	if (!activeOptionIds(state).includes(optionId)) return state;
+	if (!isPickable(state, optionId)) return state;
 	const next = { ...state, selected: optionId };
 	return immediate ? check(next) : next;
 }
@@ -169,8 +196,10 @@ export function advance(state: LessonState): LessonState {
 	const { question } = planned;
 
 	if (state.stage === 'question') {
-		if (isTapCellQuestion(question)) {
-			const result = checkTap(question, state.selected);
+		if (isTapCellQuestion(question) || isDragPointersQuestion(question)) {
+			const result = isTapCellQuestion(question)
+				? checkTap(question, state.selected)
+				: checkPlacement(question, state.selected);
 			if (!result) return state;
 			return finishQuestion(state, {
 				deckId: planned.deckId,
@@ -224,6 +253,20 @@ export interface BoardView {
 	cells: BoardCellView[];
 	/** Explanation of the tapped cell, once the answer is checked. */
 	note: string | null;
+	/** Pointers the learner can move. Empty when the cells themselves are the answer. */
+	pointers: PointerView[];
+}
+
+/** A pointer the learner moves. Its tone and note appear once the answer is checked. */
+export interface PointerView {
+	name: string;
+	/** Where it sits now: its start until the learner moves it. */
+	at: number;
+	tone: OptionState;
+	/** The cell it belongs on, set only for a pointer that was left on a wrong cell. */
+	correctAt: number | null;
+	/** Why this pointer is right or wrong, once the answer is checked. */
+	note: string | null;
 }
 
 export interface OptionView {
@@ -248,16 +291,16 @@ export interface SeeWhy {
 
 export interface LessonView {
 	stage: Stage;
-	format: 'choice' | 'tap-cell';
+	format: 'choice' | 'tap-cell' | 'drag-pointers';
 	/** 1-based position of the current question. */
 	position: number;
 	total: number;
 	heading: string | undefined;
 	/** The original problem. Pinned above the follow-up too. */
 	prompt: string;
-	/** The snippet beside a tap-cell sequence. Null for multiple choice. */
+	/** The snippet beside a tap-cell or drag-pointers sequence. Null for multiple choice. */
 	code: string | null;
-	/** The sequence to tap. Null for multiple choice. */
+	/** The sequence to tap or to move pointers along. Null for multiple choice. */
 	board: BoardView | null;
 	/** The follow-up question, when in the follow-up stage. */
 	followUpPrompt: string | null;
@@ -311,6 +354,26 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 				? {
 						correct: result.correct,
 						correctText: cellLabel(question, question.correct),
+						explanation: result.explanation
+					}
+				: null,
+			seeWhy: null
+		};
+	}
+
+	if (isDragPointersQuestion(question)) {
+		const result = state.checked && state.selected !== null ? checkPlacement(question, state.selected) : null;
+		return {
+			...base,
+			format: 'drag-pointers',
+			code: question.code,
+			board: dragBoardView(question, state.selected, result),
+			followUpPrompt: null,
+			options: [],
+			verdict: result
+				? {
+						correct: result.correct,
+						correctText: placementLabel(question, correctPlacement(question)),
 						explanation: result.explanation
 					}
 				: null,
@@ -379,6 +442,7 @@ function boardView(question: TapCellQuestion, selected: string | null, checked: 
 		presentation: model.presentation,
 		name: model.name,
 		note: result?.explanation ?? null,
+		pointers: [],
 		cells: model.cells.map((cell) => {
 			let tone: OptionState = 'idle';
 			let reveal = false;
@@ -390,6 +454,35 @@ function boardView(question: TapCellQuestion, selected: string | null, checked: 
 				reveal = true;
 			}
 			return { ...cell, tone, reveal };
+		})
+	};
+}
+
+/** The board for a drag question: fixed markers on the cells, movable pointers beside them. */
+function dragBoardView(question: DragPointersQuestion, selected: string | null, result: PlacementResult | null): BoardView {
+	const model = sequenceModel({
+		presentation: question.sequence.kind,
+		name: question.sequence.name,
+		values: question.sequence.cells,
+		pastEnd: question.sequence.pastEnd,
+		markers: question.markers
+	});
+	const placement = (selected === null ? null : parsePlacement(question, selected)) ?? startPlacement(question);
+	return {
+		kind: 'sequence',
+		presentation: model.presentation,
+		name: model.name,
+		note: null,
+		cells: model.cells.map((cell) => ({ ...cell, tone: 'idle', reveal: false })),
+		pointers: question.pointers.map((pointer) => {
+			const judged = result?.pointers.find((item) => item.name === pointer.name);
+			return {
+				name: pointer.name,
+				at: placement[pointer.name]!,
+				tone: !judged ? 'idle' : judged.correct ? 'correct' : 'wrong',
+				correctAt: judged && !judged.correct ? pointer.correct : null,
+				note: judged?.explanation ?? null
+			};
 		})
 	};
 }
@@ -428,6 +521,17 @@ export function summarize(state: LessonState): Summary {
 			continue;
 		}
 		const question = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
+		if (isDragPointersQuestion(question)) {
+			const placement = parsePlacement(question, done.pickedId) ?? startPlacement(question);
+			missed.push({
+				questionId: question.id,
+				prompt: question.prompt,
+				pickedText: placementLabel(question, placement),
+				correctText: placementLabel(question, correctPlacement(question)),
+				followUpCorrect: null
+			});
+			continue;
+		}
 		if (isTapCellQuestion(question)) {
 			missed.push({
 				questionId: question.id,

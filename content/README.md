@@ -64,6 +64,35 @@ A question with `format: tap-cell` asks the learner to tap one cell of an array 
 
 In portrait the snippet sits above the sequence. In landscape they sit side by side. A wrong tap highlights that cell, shows its `explanation`, and then marks the right cell. There is no follow-up question: the miss is the targeted feedback. `code` is plain text, not Markdown.
 
+## Drag the pointers
+
+A question with `format: drag-pointers` asks the learner to move named pointers (`left`, `read`, `i`) to the cells they reach after the step the prompt describes. They drag a pointer, or tap it and then a cell, or focus it and use the arrow keys. They press Check, and the answer is right only when every pointer is on its cell.
+
+```yaml
+- id: sum-step-too-small
+  format: drag-pointers
+  tags: [python, two-pointers]
+  prompt: Where do `l` and `r` sit when this pass ends?
+  code: |
+    total = nums[l] + nums[r]
+    if total < target:
+        l += 1
+  sequence: { kind: array, name: nums, cells: [1, 4, 6, 8, 11, 15, 20] } # at most 8 cells
+  markers: # optional pointers that stay put
+    - { name: i, at: 0 }
+  pointers: # one to three movable pointers; at least one must start away from its cell
+    - name: l
+      start: 1
+      correct: 2
+      explanation: Why l belongs here.
+      misses: # targeted feedback for the likely wrong cells
+        - { index: 3, explanation: What this placement gets wrong. }
+      elsewhere: Fallback for any wrong cell not listed in misses.
+    - { name: r, start: 5, correct: 5, explanation: Why r stays., elsewhere: Why r does not move. }
+```
+
+Each wrong pointer explains itself where it was left, and its right cell is then shown. There is no follow-up question. Write `misses` for the mistakes a learner would really make, and keep `elsewhere` for the rest. A pointer that stays put needs no miss for the other cells, only `elsewhere`.
+
 ## Tags
 
 Give every question one to three `tags`. They come from the fixed list in `src/lib/content/tags.ts` (`hash-map`, `sliding-window`, `dp`, and so on), and the build rejects any other value. Tags are the topics shown on the Progress screen and offered as filters in Mixed practice, so a fixed list stops near-duplicates such as `queue` and `queues`. To add a topic, add it to that list. A question with no tags is skipped by both screens.
@@ -72,6 +101,7 @@ Give every question one to three `tags`. They come from the fixed list in `src/l
 
 - Every wrong option has a follow-up, and the correct option has none.
 - A tap-cell question explains every wrong cell, and the correct index has no miss. Marker names are unique and land on a cell.
+- A drag-pointers question has pointers and markers with unique names on real cells, at least one pointer that has to move, no miss on a pointer's right cell, and an `elsewhere` explanation for every pointer.
 - `correct` ids exist in their option lists. Option ids and option texts are unique within a question or follow-up.
 - Ids are lowercase kebab-case. Unknown keys are rejected, so typos do not pass silently.
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
-import { isChoiceQuestion, isTapCellQuestion, type Deck, type TapCellQuestion } from '../content/schema.ts';
+import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, type Deck, type DragPointersQuestion, type TapCellQuestion } from '../content/schema.ts';
 import {
 	advance,
 	check,
@@ -403,10 +403,14 @@ describe('random play over the shipped decks', () => {
 				let lastProgress = 0;
 				while (!isFinished(state)) {
 					const current = view(state)!;
+					const planned = state.plan[state.cursor].question;
 					const ids = current.board
 						? current.board.cells.map((cell) => cell.id)
 						: current.options.map((option) => option.id);
-					const pick = ids[Math.floor(rng() * ids.length)];
+					// A drag answer places every pointer on some cell.
+					const pick = isDragPointersQuestion(planned)
+						? planned.pointers.map((pointer) => `${pointer.name}=${Math.floor(rng() * ids.length)}`).join(',')
+						: ids[Math.floor(rng() * ids.length)];
 					if (!pick) throw new Error('nothing to pick');
 					state = advance(check(select(state, pick)));
 					const now = progress(state);
@@ -419,7 +423,7 @@ describe('random play over the shipped decks', () => {
 				let choiceMisses = 0;
 				for (const done of state.completed) {
 					const question = deck.questions.find((item) => item.id === done.questionId)!;
-					if (isTapCellQuestion(question)) expect(done.followUp).toBeUndefined();
+					if (isTapCellQuestion(question) || isDragPointersQuestion(question)) expect(done.followUp).toBeUndefined();
 					else if (done.correct) expect(done.followUp).toBeUndefined();
 					else {
 						choiceMisses += 1;
@@ -573,5 +577,92 @@ describe('tap-cell lessons', () => {
 		const state = start(tapLesson());
 		expect(select(state, 'nope', true)).toBe(state);
 		expect(advance(answer(state, '9'))).toBe(answer(state, '9'));
+	});
+});
+
+function dragQuestion(): DragPointersQuestion {
+	return {
+		format: 'drag-pointers',
+		id: 'move-ends',
+		prompt: 'Where do `l` and `r` sit after one step?',
+		code: 'l += 1',
+		sequence: { kind: 'array', name: 'nums', cells: ['1', '4', '6', '8'] },
+		markers: [{ name: 'i', at: 0 }],
+		pointers: [
+			{
+				name: 'l',
+				start: 0,
+				correct: 1,
+				explanation: 'Too small, so l moves.',
+				misses: [{ index: 2, explanation: 'One step is one cell.' }],
+				elsewhere: 'l moves one cell.'
+			},
+			{ name: 'r', start: 3, correct: 3, explanation: 'r stays.', elsewhere: 'r stays when the sum is too small.' }
+		]
+	};
+}
+
+function dragLesson(): Deck {
+	return { id: 'drag-sample', title: 'Drag', description: 'Drag pointers.', heading: 'Place the pointers', questions: [dragQuestion()] };
+}
+
+describe('drag-pointers lessons', () => {
+	it('starts the pointers on their start cells and offers no options or follow-ups', () => {
+		const first = createLesson(dragLesson(), seededRng(1));
+		const seen = view(first)!;
+		expect(seen.format).toBe('drag-pointers');
+		expect(seen.options).toEqual([]);
+		expect(seen.canCheck).toBe(false);
+		expect(seen.board?.pointers.map((pointer) => [pointer.name, pointer.at, pointer.tone])).toEqual([
+			['l', 0, 'idle'],
+			['r', 3, 'idle']
+		]);
+		expect(seen.board?.cells[0].markers).toEqual(['i']);
+		expect(first.plan[0].followUpOrders).toEqual({});
+	});
+
+	it('only accepts a whole placement, and waits for Check', () => {
+		const state = start(dragLesson());
+		expect(select(state, 'l=9,r=3', true)).toBe(state);
+		expect(select(state, 'l=1', true)).toBe(state);
+		const moved = select(state, 'l=1,r=3');
+		expect(moved.checked).toBe(false);
+		expect(view(moved)!.canCheck).toBe(true);
+		expect(view(moved)!.board?.pointers[0]).toMatchObject({ name: 'l', at: 1, tone: 'idle' });
+	});
+
+	it('marks every pointer right and records one correct attempt', () => {
+		const checked = check(select(start(dragLesson()), 'l=1,r=3'));
+		const seen = view(checked)!;
+		expect(seen.board?.pointers.map((pointer) => [pointer.tone, pointer.correctAt])).toEqual([
+			['correct', null],
+			['correct', null]
+		]);
+		expect(seen.verdict).toMatchObject({ correct: true, correctText: '`l` at 1, `r` at 3' });
+		const done = advance(checked);
+		expect(done.completed).toEqual([{ deckId: 'drag-sample', questionId: 'move-ends', pickedId: 'l=1,r=3', correct: true }]);
+		expect(isFinished(done)).toBe(true);
+	});
+
+	it('marks only the wrong pointer, explains it in place, and reveals where it belongs', () => {
+		const checked = check(select(start(dragLesson()), 'l=2,r=3'));
+		const seen = view(checked)!;
+		expect(seen.board?.pointers.map((pointer) => [pointer.tone, pointer.correctAt, pointer.note])).toEqual([
+			['wrong', 1, 'One step is one cell.'],
+			['correct', null, 'r stays.']
+		]);
+		expect(seen.verdict).toMatchObject({ correct: false, explanation: '`l`: One step is one cell.' });
+		const done = advance(checked);
+		expect(done.stage).toBe('question');
+		expect(done.completed[0]).toMatchObject({ pickedId: 'l=2,r=3', correct: false });
+		expect(summarize(done).missed).toEqual([
+			{
+				questionId: 'move-ends',
+				prompt: 'Where do `l` and `r` sit after one step?',
+				pickedText: '`l` at 2, `r` at 3',
+				correctText: '`l` at 1, `r` at 3',
+				followUpCorrect: null
+			}
+		]);
 	});
 });

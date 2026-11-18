@@ -38,6 +38,10 @@
 
 	const screen = $derived(lesson.screen);
 	const verdict = $derived(screen?.verdict ?? null);
+	// A tap answers in one gesture. A drag answer has several pointers, so it always waits for Check.
+	const showCheck = $derived(
+		screen !== null && screen.format !== 'tap-cell' && (screen.format === 'drag-pointers' || !preferences.immediateFeedback)
+	);
 	const whyGate = $derived(Boolean(screen?.seeWhy) && verdict !== null && !verdict.correct);
 
 	let heard = '';
@@ -184,8 +188,10 @@
 								presentation={screen.board.presentation}
 								name={screen.board.name}
 								cells={screen.board.cells}
+								pointers={screen.board.pointers}
 								note={screen.board.note}
 								locked={verdict !== null}
+								onplace={(pointer, at) => lesson.place(pointer, at)}
 								onselect={(id) => {
 									lesson.select(id);
 									cue();
@@ -224,7 +230,7 @@
 			{/if}
 		</main>
 
-		{#if !verdict && !preferences.immediateFeedback && !screen.board}
+		{#if !verdict && showCheck}
 			<div class="footer">
 				<Button
 					disabled={!screen.canCheck}

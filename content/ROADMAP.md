@@ -115,3 +115,4 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | in review |
 | Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | in review |
 | Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | in review |
+| Sequences and search #11 | Pointer scans: dragging the pointers through one step | `drag-the-pointers` | in review |
