@@ -1,5 +1,5 @@
-import { building, dev } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import { building, dev } from '$app/env';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { getDb } from '$lib/server/db';
 import { apiOriginAllowed } from '$lib/server/http';
 import { createRepo } from '$lib/server/repo';

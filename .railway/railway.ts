@@ -54,7 +54,6 @@ export default defineRailway(() => {
 				'/content/**',
 				'/package.json',
 				'/pnpm-lock.yaml',
-				'/svelte.config.js',
 				'/vite.config.ts',
 				'/tsconfig.json',
 				'/Dockerfile',

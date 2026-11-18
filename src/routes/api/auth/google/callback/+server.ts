@@ -4,8 +4,8 @@
  * detail leaked.
  */
 
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
+import { dev } from '$app/env';
+import { ALLOWED_EMAILS, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { exchangeGoogleCode, isAllowedEmail } from '$lib/server/googleOauth';
@@ -28,8 +28,8 @@ export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 		!codeVerifier ||
 		!returnedState ||
 		returnedState !== state ||
-		!env.GOOGLE_CLIENT_ID ||
-		!env.GOOGLE_CLIENT_SECRET
+		!GOOGLE_CLIENT_ID ||
+		!GOOGLE_CLIENT_SECRET
 	) {
 		redirect(302, '/?auth=failed');
 	}
@@ -37,12 +37,12 @@ export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 	const identity = await exchangeGoogleCode({
 		code,
 		codeVerifier,
-		clientId: env.GOOGLE_CLIENT_ID,
-		clientSecret: env.GOOGLE_CLIENT_SECRET,
+		clientId: GOOGLE_CLIENT_ID,
+		clientSecret: GOOGLE_CLIENT_SECRET,
 		redirectUri: `${url.origin}/api/auth/google/callback`
 	});
 	if (!identity) redirect(302, '/?auth=failed');
-	if (!identity.emailVerified || !isAllowedEmail(identity.email, env.ALLOWED_EMAILS)) {
+	if (!identity.emailVerified || !isAllowedEmail(identity.email, ALLOWED_EMAILS)) {
 		redirect(302, '/?auth=denied');
 	}
 

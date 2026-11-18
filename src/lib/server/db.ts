@@ -13,8 +13,8 @@
  * schema_version table first.
  */
 
-import { building } from '$app/environment';
-import { env } from '$env/dynamic/private';
+import { building } from '$app/env';
+import { DATABASE_URL } from '$app/env/private';
 import postgres from 'postgres';
 
 const SCHEMA = `
@@ -68,7 +68,7 @@ export async function migrate(sql: Sql): Promise<void> {
  */
 export function getDb(): Promise<Sql> | null {
 	if (building) return null;
-	const url = env.DATABASE_URL;
+	const url = DATABASE_URL;
 	if (!url) return null;
 	if (!ready) {
 		const sql = postgres(url, { max: 5, onnotice: () => {} });

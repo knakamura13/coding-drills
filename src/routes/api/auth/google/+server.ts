@@ -3,8 +3,8 @@
  * ride in short-lived httpOnly cookies; the callback consumes both.
  */
 
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
+import { dev } from '$app/env';
+import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { googleAuthorizeUrl, isGoogleClientId, randomToken } from '$lib/server/googleOauth';
@@ -14,10 +14,10 @@ export const prerender = false;
 const TEN_MINUTES = 600;
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
-	if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+	if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
 		redirect(302, '/?auth=failed');
 	}
-	if (!isGoogleClientId(env.GOOGLE_CLIENT_ID)) {
+	if (!isGoogleClientId(GOOGLE_CLIENT_ID)) {
 		// Say what is wrong without echoing the value, which may be a secret pasted in the wrong slot.
 		console.error('[auth] GOOGLE_CLIENT_ID does not end in .apps.googleusercontent.com');
 		redirect(302, '/?auth=misconfigured');
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	redirect(
 		302,
 		googleAuthorizeUrl({
-			clientId: env.GOOGLE_CLIENT_ID,
+			clientId: GOOGLE_CLIENT_ID,
 			redirectUri: `${url.origin}/api/auth/google/callback`,
 			state,
 			codeVerifier

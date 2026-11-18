@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths';
 	import { APP_NAME } from '$lib/config';
 	import { status } from '$lib/nav/status.svelte';
-	import { account } from '$lib/sync/store.svelte';
 	import Icon from './Icon.svelte';
 
 	// The button is passed back so focus can return to it. Safari does not focus a button on click,
@@ -17,9 +16,7 @@
 <header class="bar" class:wide>
 	<div class="inner">
 		<a class="brand" href={resolve('/')}>{APP_NAME}</a>
-		{#if account.offline}
-			<span class="offline" role="status">Offline</span>
-		{/if}
+		<span class="offline" role="status">Offline</span>
 		<button
 			type="button"
 			class="menu"

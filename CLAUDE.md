@@ -1,6 +1,6 @@
 # coding-drills
 
-SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local-first, with optional Google sign-in that syncs attempts and flags to Postgres. Decks live in `content/decks/*.yaml`. README.md has the product overview and `content/README.md` has the authoring guide.
+SvelteKit 3 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local-first, with optional Google sign-in that syncs attempts and flags to Postgres. Decks live in `content/decks/*.yaml`. README.md has the product overview and `content/README.md` has the authoring guide.
 
 ## Commands
 
@@ -24,7 +24,7 @@ SvelteKit 2 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local
 - Lesson rules live in `src/lib/domain/lesson.ts` (pure and tested). `src/lib/lesson/controller.svelte.ts` only adds Svelte state and writes attempts and flags to localStorage. Keep rules out of components.
 - `/play/[deckId]` is client-only (`ssr = false`) because option order is shuffled per run. Every other page is prerendered.
 - The palette in `src/app.css` was sampled from the design reference. `--on-color` is deliberately darker than the page background to reach 4.5:1 contrast on the red and indigo buttons.
-- Keep `@sveltejs/kit` on 2.x and `typescript` on 6.x. svelte-check does not support TypeScript 7 yet. Both are pinned to the lines `learning-korean` uses.
+- Keep `@sveltejs/kit` on 3.x and `typescript` on 6.x. svelte-check does not support TypeScript 7 yet. Kit 2.x cannot clear the published `query.batch` and remote-form advisories; 3.1.1 is the lowest release that does.
 - The repo is public. Deck wording is original. Never commit screenshots, text copied from other apps, books, or sites, secrets, or personal data. Reference screenshots belong in `.reference/`, which is git-ignored.
 
 ## Railway
