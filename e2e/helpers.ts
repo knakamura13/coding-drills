@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
-import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
+import { isCellStep, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
@@ -44,13 +44,13 @@ export async function currentQuestion(page: Page): Promise<ChoiceQuestion> {
  * options read the same are told apart by their problem text.
  */
 export async function currentQuestionAny(page: Page): Promise<{ question: Question; deckId: string }> {
-	const board = page.getByRole('group', { name: /Tap a cell|Drag a pointer/ });
+	const board = page.getByRole('group', { name: /Tap a cell|Drag a pointer|Context for the question/ });
 	await board.or(page.getByRole('radio').first()).first().waitFor();
 	if (await board.count()) {
 		const pageText = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 		const candidates = allDecks.flatMap((candidateDeck) =>
 			candidateDeck.questions
-				.filter((candidate) => isTapCellQuestion(candidate) || isDragPointersQuestion(candidate))
+				.filter((candidate) => isTapCellQuestion(candidate) || isDragPointersQuestion(candidate) || isStepTraceQuestion(candidate))
 				.filter((candidate) => pageText.includes(text(candidate.prompt).replace(/\s+/g, ' ').slice(0, 40)))
 				.map((question) => ({ question, deckId: candidateDeck.id }))
 		);
@@ -96,6 +96,19 @@ export async function answerCorrectly(page: Page, question: Question) {
 			await page.locator(`[data-index="${pointer.correct}"]`).click();
 		}
 		await page.getByRole('button', { name: 'Check', exact: true }).click();
+		return;
+	}
+	if (isStepTraceQuestion(question)) {
+		// Every step is answered and continued past. The caller continues past the last one.
+		for (const [index, step] of question.steps.entries()) {
+			if (isCellStep(step)) {
+				await page.getByRole('button', { name: new RegExp(`^Index ${step.correct},`) }).click();
+			} else {
+				const option = step.options.find((candidate) => candidate.id === step.correct)!;
+				await page.getByRole('radio', { name: text(option.text), exact: true }).check();
+			}
+			if (index < question.steps.length - 1) await continueButton(page).click();
+		}
 		return;
 	}
 	await answerMain(page, question, question.correct);

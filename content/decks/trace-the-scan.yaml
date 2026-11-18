@@ -1,0 +1,339 @@
+id: trace-the-scan
+title: Trace the scan
+description: Step through a pointer scan and predict each move before it is shown.
+heading: Predict each step
+
+questions:
+  - format: step-trace
+    id: trace-sum-to-target
+    tags: [python, two-pointers]
+    prompt: >-
+      Step through the scan one pass at a time. Before each step is shown, predict where a pointer
+      sits or what happens on that pass. Every step starts from the true state.
+    code: |
+      nums = [3, 5, 8, 10, 14, 19, 26]
+      target = 24
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total == target:
+              break
+          if total < target:
+              l += 1
+          else:
+              r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 5, 8, 10, 14, 19, 26]
+    start:
+      - name: l
+        at: 0
+      - name: r
+        at: 6
+    steps:
+      - line: 5
+        ask: Where does `l` sit when the first pass ends?
+        pointer: l
+        correct: 0
+        explanation: >-
+          The first sum is 3 + 26 = 29, above 24. Only moving `r` left can lower it, so `r` steps to
+          index 5 and `l` stays on index 0.
+        misses:
+          - index: 1
+            explanation: >-
+              The sum 3 + 26 = 29 is above 24. Moving `l` right swaps 3 for 5 and raises the sum
+              further, so this pass moves `r`, not `l`.
+        elsewhere: >-
+          `l` moves at most one cell per pass, and only when the sum is too small. 29 is too large,
+          so `l` stays on index 0.
+        also:
+          - name: r
+            at: 5
+      - line: 5
+        ask: What is `total` on the second pass?
+        options:
+          - id: twenty-two
+            text: '22'
+            explanation: '`l` is still on 3 and `r` moved onto 19, so the second sum is 3 + 19 = 22.'
+          - id: twenty-nine
+            text: '29'
+            explanation: >-
+              29 was the first pass's sum. That pass moved `r` from 26 to 19, so the second pass adds
+              3 + 19.
+          - id: twenty-four
+            text: '24'
+            explanation: >-
+              5 + 19 is 24, but `l` has not moved yet. The first pass moved only `r`, so `l` still reads
+              3 and the sum is 3 + 19.
+          - id: seventeen
+            text: '17'
+            explanation: >-
+              3 + 14 would need `r` to move twice. Each pass moves one pointer by one cell, so `r` is on
+              19 and the sum is 3 + 19.
+        correct: twenty-two
+      - line: 5
+        ask: Where does `r` sit when the second pass ends?
+        pointer: r
+        correct: 5
+        explanation: >-
+          22 is below 24, so this pass moves `l` right onto 5. `r` stays on 19 at index 5, because
+          moving it would only shrink the sum.
+        misses:
+          - index: 4
+            explanation: >-
+              22 is too small. Moving `r` left swaps 19 for 14 and makes the sum smaller still, so this
+              pass moves `l` instead.
+          - index: 6
+            explanation: >-
+              `r` never moves right. 26 was ruled out on the first pass, when even the smallest value
+              made 3 + 26 = 29.
+        elsewhere: 'A sum below the target moves `l`, not `r`, so `r` stays on index 5.'
+        also:
+          - name: l
+            at: 1
+      - line: 5
+        ask: What happens on the third pass?
+        options:
+          - id: match-breaks
+            text: '`total` is 24, and `break` ends the loop'
+            explanation: >-
+              `l` reads 5 and `r` reads 19, so the sum is 24. The equality test comes first, so `break`
+              runs and neither pointer moves again.
+          - id: stale-sum
+            text: '`total` is 22 again, so `l` steps right'
+            explanation: >-
+              22 was the second pass's sum, read before `l` moved. `l` now sits on 5, so the third pass
+              adds 5 + 19.
+          - id: jumped-sum
+            text: '`total` is 27, so `r` steps left'
+            explanation: >-
+              8 + 19 would need `l` on index 2. The second pass moved `l` one cell, from index 0 to
+              index 1, so the sum is 5 + 19.
+        correct: match-breaks
+
+  - format: step-trace
+    id: trace-drop-value
+    tags: [python, two-pointers]
+    prompt: >-
+      Step through the call and predict each step before it is shown. The cells show `nums` as the
+      call received it. The board does not redraw a cell when line 5 copies a value into it, so keep
+      track of overwritten cells yourself.
+    code: |
+      def drop_value(nums, val):
+          write = 0
+          for read in range(len(nums)):
+              if nums[read] != val:
+                  nums[write] = nums[read]
+                  write += 1
+          return write
+
+      drop_value([9, 4, 4, 6, 4, 1], 4)
+    sequence:
+      kind: array
+      name: nums
+      cells: [9, 4, 4, 6, 4, 1]
+    start:
+      - name: read
+        at: 0
+      - name: write
+        at: 0
+    steps:
+      - line: 3
+        ask: The passes for indices 0, 1, and 2 run. Where is `write` when `read` reaches index 3?
+        pointer: write
+        correct: 1
+        explanation: >-
+          9 is not 4, so it is copied onto index 0 and `write` moves to 1. The 4s at indices 1 and 2
+          match `val`, so both are skipped and `write` stays on 1.
+        misses:
+          - index: 0
+            explanation: >-
+              9 is not 4, so line 5 runs even though it copies 9 onto itself, and line 6 moves `write`
+              to 1.
+          - index: 2
+            explanation: >-
+              Both 4s match `val`, so neither one is written. Only the 9 has been kept, which leaves
+              `write` on 1.
+          - index: 3
+            explanation: >-
+              `write` does not follow `read`. It counts the kept values, and only the 9 has been kept so
+              far.
+        elsewhere: One value, the 9, has been kept, so `write` sits on index 1.
+        also:
+          - name: read
+            at: 3
+      - line: 4
+        ask: The pass with `read` at index 3 ends. What does `nums[1]` hold now?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              `nums[3]` is 6, which is not 4, so line 5 copies 6 into `nums[write]`, which is index 1.
+              The 4 that sat there is gone. `write` then moves to 2.
+          - id: four
+            text: '4'
+            explanation: >-
+              The board still draws 4 there, but it is a leftover. 6 is not `val`, so line 5 writes it
+              into index 1, the slot `write` points at, over the 4.
+          - id: nine
+            text: '9'
+            explanation: >-
+              9 sits at index 0, kept on the first pass. This pass writes at `write`, which is index 1,
+              so index 1 now holds the 6 read from index 3.
+        correct: six
+        also:
+          - name: write
+            at: 2
+      - line: 7
+        ask: The loop finishes. Where is `write` when line 7 returns it?
+        pointer: write
+        correct: 3
+        explanation: >-
+          The 4 at index 4 is skipped. The 1 at index 5 is kept: it is copied into index 2 and `write`
+          moves to 3. Three values were kept, 9, 6, and 1, so the call returns 3.
+        misses:
+          - index: 2
+            explanation: >-
+              The last value, 1, is not 4, so it is kept too. It is copied into index 2 and `write`
+              moves on to 3.
+          - index: 4
+            explanation: >-
+              The 4 at index 4 matches `val`, so it is skipped and does not move `write`. Only the 1
+              after it is kept.
+          - index: 5
+            explanation: >-
+              `write` does not end where `read` ends. It counts the kept values: 9, 6, and 1, so it stops
+              on 3.
+        elsewhere: 'Three values are kept, 9, 6, and 1, so `write` ends on index 3.'
+        also:
+          - name: read
+            at: 5
+      - line: 7
+        ask: What does `nums[write]` hold when the call returns?
+        options:
+          - id: leftover-six
+            text: '6'
+            explanation: >-
+              Writes landed only in indices 0 to 2. Index 3 was never written, so it still holds the
+              original 6. The return value, 3, tells the caller to ignore everything from index 3 on.
+          - id: removed-four
+            text: '4'
+            explanation: >-
+              The loop never moves the removed values anywhere. It only copies kept values forward, so
+              index 3 keeps the 6 it started with.
+          - id: last-kept
+            text: '1'
+            explanation: >-
+              1 went to index 2, the slot `write` held during that pass. Line 6 then moved `write` to 3,
+              which was never written and still holds 6.
+          - id: shortened
+            text: Nothing, because the call shortens `nums` to 3 items
+            explanation: >-
+              The function only assigns into existing slots, so `nums` keeps all 6 items. Index 3 still
+              holds the original 6.
+        correct: leftover-six
+
+  - format: step-trace
+    id: trace-unique-pairs
+    tags: [python, two-pointers]
+    prompt: >-
+      The scan collects each distinct pair once. Step through it and predict each step before it is
+      shown. Every step starts from the true state.
+    code: |
+      nums = [1, 3, 3, 4, 5, 6, 6, 8]
+      target = 9
+      out = []
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total < target:
+              l += 1
+          elif total > target:
+              r -= 1
+          else:
+              out.append((nums[l], nums[r]))
+              while l < r and nums[l] == nums[l + 1]:
+                  l += 1
+              while l < r and nums[r] == nums[r - 1]:
+                  r -= 1
+              l += 1
+              r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [1, 3, 3, 4, 5, 6, 6, 8]
+    start:
+      - name: l
+        at: 0
+      - name: r
+        at: 7
+    steps:
+      - line: 6
+        ask: Where does `r` sit at the second sum test?
+        pointer: r
+        correct: 6
+        explanation: >-
+          1 + 8 = 9 is a match, so the pair is recorded and both pointers move. 8 has no repeat beside
+          it, so the inner loop leaves `r` alone and `r -= 1` lands on index 6.
+        misses:
+          - index: 7
+            explanation: >-
+              After a match both pointers move, not only `l`. 8 pairs only with 1, and (1, 8) is
+              recorded, so `r` has to leave index 7.
+          - index: 5
+            explanation: >-
+              The inner loop skips copies of the value `r` is on, which is 8, not the 6s ahead. 8 has no
+              copy, so `r` steps one cell, onto the 6 at index 6.
+        elsewhere: '`r` steps one cell after the match, from index 7 to index 6.'
+        also:
+          - name: l
+            at: 1
+      - line: 6
+        ask: Where does `l` sit at the third sum test?
+        pointer: l
+        correct: 3
+        explanation: >-
+          3 + 6 = 9 is recorded. The inner loop walks `l` onto the second 3 at index 2, and `l += 1`
+          lands on 4 at index 3. `r` likewise clears its 6s and lands on index 4.
+        misses:
+          - index: 1
+            explanation: >-
+              3 + 6 is a match, so `l` must move. It has to clear every 3, because a 3 left in range
+              would meet the other 6 and record (3, 6) a second time.
+          - index: 2
+            explanation: >-
+              The inner loop stops on the last 3, index 2, but `l += 1` still runs after it and steps onto
+              4.
+          - index: 4
+            explanation: >-
+              Only copies of 3 are skipped. The run ends at index 2, so one more step lands on 4, which
+              still pairs with 5.
+        elsewhere: '`l` clears the run of 3s and then steps once more, to index 3.'
+        also:
+          - name: r
+            at: 4
+      - line: 5
+        ask: How many pairs does `out` hold when the loop ends?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              The third test reads 4 + 5, which is 9, so it records a third pair before `l` and `r`
+              cross.
+          - id: three
+            text: '3'
+            explanation: >-
+              The scan records (1, 8), (3, 6), and (4, 5). After the third match `l` moves to 4 and `r`
+              to 3, so `l < r` fails and the loop ends.
+          - id: four
+            text: '4'
+            explanation: >-
+              The skips stop (3, 6) from being recorded twice. Without them the second 3 would meet the
+              second 6, but here the next test is 4 + 5.
+        correct: three
+        also:
+          - name: l
+            at: 4
+          - name: r
+            at: 3

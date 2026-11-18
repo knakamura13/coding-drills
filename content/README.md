@@ -93,6 +93,44 @@ A question with `format: drag-pointers` asks the learner to move named pointers 
 
 Each wrong pointer explains itself where it was left, and its right cell is then shown. There is no follow-up question. Write `misses` for the mistakes a learner would really make, and keep `elsewhere` for the rest. A pointer that stays put needs no miss for the other cells, only `elsewhere`.
 
+## Step-through trace
+
+A question with `format: step-trace` shows a numbered snippet with the running line highlighted, and an array with named pointers. The learner steps through and predicts each step before it is revealed: a pointer's cell (tap it) or a value (pick it). A wrong prediction explains itself in place, the true state is shown, and the trace carries on from the truth. The question is right only when every step was.
+
+```yaml
+- id: trace-sum-to-target
+  format: step-trace
+  tags: [python, two-pointers]
+  prompt: Predict each step before it is shown.
+  code: | # lines are numbered from 1
+    total = nums[l] + nums[r]
+    if total < target:
+        l += 1
+  sequence: { kind: array, name: nums, cells: [3, 5, 8, 10] } # at most 8 cells
+  start: # every pointer, before step 1
+    - { name: l, at: 0 }
+    - { name: r, at: 3 }
+  steps: # two to five
+    - line: 1 # the line that runs in this step
+      ask: Where does `l` sit after this pass?
+      pointer: l # a cell step: the learner taps the cell
+      correct: 1
+      explanation: Why that cell.
+      misses: # targeted feedback for the likely wrong cells
+        - { index: 3, explanation: What this cell gets wrong. }
+      elsewhere: Fallback for any other wrong cell.
+      also: # other pointers that move in the same step, shown once it is revealed
+        - { name: r, at: 3 }
+    - line: 2
+      ask: What is `total` on the next pass?
+      options: # a choice step: two to four values, an explanation on every one
+        - { id: eight, text: "8", explanation: Why 8 is the sum. }
+        - { id: nine, text: "9", explanation: What 9 gets wrong. }
+      correct: eight
+```
+
+Highlight the line that starts a step, not the line that moves a pointer, or the highlight gives the answer away. A pointer that is asked about moves to its `correct` cell after the step, whatever the learner picked.
+
 ## Tags
 
 Give every question one to three `tags`. They come from the fixed list in `src/lib/content/tags.ts` (`hash-map`, `sliding-window`, `dp`, and so on), and the build rejects any other value. Tags are the topics shown on the Progress screen and offered as filters in Mixed practice, so a fixed list stops near-duplicates such as `queue` and `queues`. To add a topic, add it to that list. A question with no tags is skipped by both screens.
@@ -101,6 +139,7 @@ Give every question one to three `tags`. They come from the fixed list in `src/l
 
 - Every wrong option has a follow-up, and the correct option has none.
 - A tap-cell question explains every wrong cell, and the correct index has no miss. Marker names are unique and land on a cell.
+- A step-trace question has two to five steps. A cell step names a pointer from `start`, has no miss on its right cell, and an `elsewhere` fallback. A choice step has a `correct` id that is one of its options. `line` is inside the snippet.
 - A drag-pointers question has pointers and markers with unique names on real cells, at least one pointer that has to move, no miss on a pointer's right cell, and an `elsewhere` explanation for every pointer.
 - `correct` ids exist in their option lists. Option ids and option texts are unique within a question or follow-up.
 - Ids are lowercase kebab-case. Unknown keys are rejected, so typos do not pass silently.

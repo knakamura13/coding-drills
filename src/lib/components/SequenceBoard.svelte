@@ -11,12 +11,14 @@
 		/** Pointers the learner moves. Leave empty to make the cells themselves the answer. */
 		pointers?: readonly PointerView[];
 		note: string | null;
+		/** False when the cells are context for another control, so nothing invites a tap. */
+		tappable?: boolean;
 		locked: boolean;
 		onselect: (id: string) => void;
 		onplace?: (name: string, at: number) => void;
 	}
 
-	let { presentation, name, cells, pointers = [], note, locked, onselect, onplace }: Props = $props();
+	let { presentation, name, cells, pointers = [], note, tappable = true, locked, onselect, onplace }: Props = $props();
 
 	const placing = $derived(pointers.length > 0);
 
@@ -39,7 +41,9 @@
 	const groupLabel = $derived(
 		placing
 			? `${name ? `${name} ` : ''}${presentation}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}. Drag a pointer to a cell, or tap a pointer and then a cell. With a pointer focused, the arrow keys move it.`
-			: `${name ? `${name} ` : ''}${presentation}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}. Tap a cell, or use the arrow keys and Enter.`
+			: tappable
+				? `${name ? `${name} ` : ''}${presentation}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}. Tap a cell, or use the arrow keys and Enter.`
+				: `${name ? `${name} ` : ''}${presentation}, ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}. Context for the question below.`
 	);
 
 	function accessibleName(cell: BoardCellView): string {

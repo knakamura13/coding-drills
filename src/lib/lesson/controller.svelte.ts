@@ -1,4 +1,4 @@
-import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion } from '$lib/content/schema';
+import { isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion } from '$lib/content/schema';
 import {
 	advance,
 	check,
@@ -62,7 +62,7 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		},
 		/** Changes whenever the learner reaches a new question or follow-up. */
 		get stepKey() {
-			return `${state.cursor}:${state.stage}`;
+			return `${state.cursor}:${state.stage}:${state.picks.length}`;
 		},
 		/** Flags created or updated during this run, for the summary. */
 		get flags() {
@@ -92,10 +92,12 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		},
 		select(optionId: string) {
 			const question = state.plan[state.cursor]?.question;
-			// A tap answers in one gesture. Multiple choice follows the preference. A drag
-			// answer has several pointers to place, so it always waits for Check.
+			// A tap, and each step of a trace, answers in one gesture. Multiple choice follows
+			// the preference. A drag answer has several pointers to place, so it waits for Check.
 			const immediate = question
-				? isTapCellQuestion(question) || (preferences.immediateFeedback && isChoiceQuestion(question))
+				? isTapCellQuestion(question) ||
+					isStepTraceQuestion(question) ||
+					(preferences.immediateFeedback && isChoiceQuestion(question))
 				: false;
 			state = select(state, optionId, immediate);
 		},

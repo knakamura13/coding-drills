@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
-import { isChoiceQuestion, isDragPointersQuestion, isTapCellQuestion, type Deck, type DragPointersQuestion, type TapCellQuestion } from '../content/schema.ts';
+import { isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, type Deck, type DragPointersQuestion, type StepTraceQuestion, type TapCellQuestion } from '../content/schema.ts';
 import {
 	advance,
 	check,
@@ -410,20 +410,25 @@ describe('random play over the shipped decks', () => {
 					// A drag answer places every pointer on some cell.
 					const pick = isDragPointersQuestion(planned)
 						? planned.pointers.map((pointer) => `${pointer.name}=${Math.floor(rng() * ids.length)}`).join(',')
-						: ids[Math.floor(rng() * ids.length)];
+						: isStepTraceQuestion(planned)
+							? (() => {
+									const offered = state.plan[state.cursor].stepOrders[state.picks.length];
+									return offered[Math.floor(rng() * offered.length)];
+								})()
+							: ids[Math.floor(rng() * ids.length)];
 					if (!pick) throw new Error('nothing to pick');
 					state = advance(check(select(state, pick)));
 					const now = progress(state);
 					expect(now).toBeGreaterThanOrEqual(lastProgress);
 					lastProgress = now;
 					steps += 1;
-					expect(steps).toBeLessThanOrEqual(deck.questions.length * 2);
+					expect(steps).toBeLessThanOrEqual(deck.questions.length * 6);
 				}
 				expect(state.completed).toHaveLength(deck.questions.length);
 				let choiceMisses = 0;
 				for (const done of state.completed) {
 					const question = deck.questions.find((item) => item.id === done.questionId)!;
-					if (isTapCellQuestion(question) || isDragPointersQuestion(question)) expect(done.followUp).toBeUndefined();
+					if (isTapCellQuestion(question) || isDragPointersQuestion(question) || isStepTraceQuestion(question)) expect(done.followUp).toBeUndefined();
 					else if (done.correct) expect(done.followUp).toBeUndefined();
 					else {
 						choiceMisses += 1;
@@ -664,5 +669,103 @@ describe('drag-pointers lessons', () => {
 				followUpCorrect: null
 			}
 		]);
+	});
+});
+
+function traceQuestion(): StepTraceQuestion {
+	return {
+		format: 'step-trace',
+		id: 'trace-sum',
+		prompt: 'Trace the scan.',
+		code: 'total = nums[l] + nums[r]\nif total < target:\n    l += 1',
+		sequence: { kind: 'array', name: 'nums', cells: ['1', '4', '6', '8'] },
+		start: [
+			{ name: 'l', at: 0 },
+			{ name: 'r', at: 3 }
+		],
+		steps: [
+			{
+				line: 3,
+				ask: 'Where does `l` sit after this pass?',
+				pointer: 'l',
+				correct: 1,
+				explanation: 'The sum is too small, so l moves.',
+				misses: [{ index: 3, explanation: 'l never jumps to r.' }],
+				elsewhere: 'l moves exactly one cell.'
+			},
+			{
+				line: 1,
+				ask: 'What is `total` on the next pass?',
+				options: [
+					{ id: 'ten', text: '10', explanation: '4 + 8 is 12, not 10.' },
+					{ id: 'twelve', text: '12', explanation: '4 + 8 is 12.' }
+				],
+				correct: 'twelve'
+			}
+		]
+	};
+}
+
+function traceLesson(): Deck {
+	return { id: 'trace-sample', title: 'Trace', description: 'Trace a scan.', heading: 'Trace it', questions: [traceQuestion()] };
+}
+
+describe('step-trace lessons', () => {
+	it('opens on step 1 with the pointers at their start cells and the step\'s line highlighted', () => {
+		const first = view(start(traceLesson()))!;
+		expect(first.format).toBe('step-trace');
+		expect(first.heading).toBe('Where does `l` sit after this pass?');
+		expect(first.trace).toEqual({ step: 1, total: 2, line: 3, kind: 'cell' });
+		expect(first.board?.cells.map((cell) => cell.markers)).toEqual([['l'], [], [], ['r']]);
+		expect(first.options).toEqual([]);
+		expect(first.canCheck).toBe(false);
+	});
+
+	it('checks a step as it is picked, then moves the pointer to the true cell on the next step', () => {
+		let state = select(start(traceLesson()), '3', true);
+		const wrong = view(state)!;
+		expect(wrong.board?.cells.map((cell) => [cell.tone, cell.reveal])).toEqual([
+			['idle', false],
+			['correct', true],
+			['idle', false],
+			['wrong', false]
+		]);
+		expect(wrong.board?.note).toBe('l never jumps to r.');
+		expect(wrong.verdict).toMatchObject({ correct: false, correctText: 'index 1, `4`' });
+
+		state = advance(state);
+		expect(state.completed).toEqual([]);
+		const next = view(state)!;
+		expect(next.trace).toEqual({ step: 2, total: 2, line: 1, kind: 'choice' });
+		expect(next.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], [], ['r']]);
+		expect(next.options.map((option) => option.id).sort()).toEqual(['ten', 'twelve']);
+		expect(next.verdict).toBeNull();
+		expect(progress(state)).toBe(0.5);
+	});
+
+	it('records one attempt after the last step, right only when every step was', () => {
+		const allRight = advance(select(advance(select(start(traceLesson()), '1', true)), 'twelve', true));
+		expect(allRight.completed).toEqual([{ deckId: 'trace-sample', questionId: 'trace-sum', pickedId: '1,twelve', correct: true }]);
+		expect(isFinished(allRight)).toBe(true);
+
+		const oneWrong = advance(select(advance(select(start(traceLesson()), '1', true)), 'ten', true));
+		expect(oneWrong.completed[0]).toMatchObject({ pickedId: '1,ten', correct: false });
+		expect(summarize(oneWrong).missed).toEqual([
+			{
+				questionId: 'trace-sum',
+				prompt: 'Trace the scan.',
+				pickedText: 'Step 2: 10',
+				correctText: 'Step 2: 12',
+				followUpCorrect: null
+			}
+		]);
+	});
+
+	it('explains a wrong value in the verdict, and ignores a pick the step does not offer', () => {
+		const second = advance(select(start(traceLesson()), '1', true));
+		expect(select(second, '1', true)).toBe(second);
+		const wrong = view(select(second, 'ten', true))!;
+		expect(wrong.verdict).toMatchObject({ correct: false, correctText: '12', explanation: '4 + 8 is 12, not 10.' });
+		expect(isPristine(second)).toBe(false);
 	});
 });
