@@ -1,0 +1,711 @@
+id: monotonic-stack-review
+title: "Monotonic stack: review"
+description: Fresh inputs for the Monotonic stack skills, for recall on later days. No worked examples this time.
+heading: What does the stack do?
+
+questions:
+  - id: waiting-indices-review
+    heading: Which indices are waiting?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+      ```
+
+      For `nums = [4, 8, 3, 5, 2, 6, 1]`, what does `stack` hold just before index 5 is read?
+    options:
+      - id: waiting
+        text: "`[1, 3, 4]`"
+        explanation: >-
+          The 8, the 5 and the 2 have no larger value after them yet. The 8 popped index 0 and the
+          5 popped index 2, so those two are answered and gone.
+      - id: values
+        text: "`[8, 5, 2]`"
+        explanation: >-
+          Those are the values at the waiting positions. The loop pushes `i`, so the stack holds
+          positions, and the values are read back as `nums[j]`.
+      - id: kept-popped
+        text: "`[1, 2, 3, 4]`"
+        explanation: >-
+          Index 2 holds 3, and the 5 at index 3 is larger, so it popped index 2 before it was
+          pushed. Index 2 has its answer.
+      - id: answered
+        text: "`[0, 2]`"
+        explanation: >-
+          Index 0 got 8 and index 2 got 5. Those are the answered positions; the stack keeps the
+          rest.
+    correct: waiting
+    followUps:
+      values:
+        prompt: "`stack.append(i)` pushes positions. How does the `while` test get the value at the top?"
+        options:
+          - id: lookup
+            text: "It reads `nums[stack[-1]]`, the value at the stored position"
+          - id: stored
+            text: The value is stored next to the position on the stack
+          - id: arrival
+            text: It uses `x`, the arriving value, for both sides
+        correct: lookup
+        explanation: >-
+          A position is enough to recover the value with one lookup, and it also says which slot of
+          `out` to fill. Storing values would lose the slot.
+      kept-popped:
+        prompt: The 5 at index 3 arrives with index 2, holding 3, on top. What happens first?
+        options:
+          - id: pops
+            text: "`3 < 5` is true, so index 2 is popped and `out[2]` becomes 5"
+          - id: pushes
+            text: Index 3 is pushed on top of index 2
+          - id: waits
+            text: Nothing, since pops happen only when the loop ends
+        correct: pops
+        explanation: >-
+          The `while` loop runs before the append. Every smaller top is popped and answered, and
+          only then does the arrival join the stack.
+      answered:
+        prompt: Does an index on the stack have its final answer in `out` yet?
+        options:
+          - id: not-yet
+            text: No, the stack holds exactly the indices still waiting for a larger value
+          - id: pushed-with
+            text: Yes, it is pushed with its answer
+          - id: some
+            text: Only the bottom one does
+        correct: not-yet
+        explanation: >-
+          `out[j]` is written in the same step that pops `j`. Until then, `out[j]` holds the -1 it
+          started with.
+
+  - format: tap-cell
+    id: beneath-top-review
+    heading: What sits under the new top?
+    tags: [stack, python]
+    prompt: Once index 5 is pushed, which index sits directly beneath it on `stack`? Tap it.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      next_greater([10, 4, 7, 3, 1, 5, 2])
+    sequence:
+      kind: array
+      name: nums
+      cells: [10, 4, 7, 3, 1, 5, 2]
+    correct: 2
+    explanation: >-
+      Before index 5, `stack` is `[0, 2, 3, 4]`. The 5 pops index 4 (1) and index 3 (3), then stops
+      at index 2, because `7 < 5` is false. Index 5 lands on index 2.
+    misses:
+      - index: 0
+        explanation: The 10 is waiting, but at the bottom, under index 2.
+      - index: 1
+        explanation: The 7 at index 2 popped this 4.
+      - index: 3
+        explanation: The arriving 5 pops this 3 before it is pushed.
+      - index: 4
+        explanation: >-
+          Index 4 comes just before index 5, but its 1 is smaller than 5, so the arrival pops it.
+      - index: 5
+        explanation: Index 5 is the new top itself. The question asks for the entry under it.
+      - index: 6
+        explanation: Index 6 has not been read when index 5 is pushed.
+
+  - id: what-waits-review
+    heading: What does a waiting index tell you?
+    tags: [stack]
+    prompt: >-
+      Partway through `next_greater`, index `j` is still on `stack` after index `i` has been
+      processed, with `j < i`. The loop pops while `nums[stack[-1]] < x`. What does that tell you?
+    options:
+      - id: none-larger
+        text: No value at positions `j + 1` through `i` is larger than `nums[j]`
+        explanation: >-
+          Any larger value in that range would have popped `j`: everything above `j` on the stack
+          is no larger than `nums[j]`, so the larger arrival pops down to `j` and then pops it.
+      - id: largest-so-far
+        text: "`nums[j]` is the largest value among positions 0 through `i`"
+        explanation: >-
+          A value waits when nothing after it is larger. Something before it may still be larger,
+          as the 10 is for the 7 in `[10, 7]`.
+      - id: smaller-than-arrival
+        text: "`nums[j]` is smaller than `nums[i]`"
+        explanation: >-
+          If it were smaller, index `i` would have popped it. Every value still waiting is at least
+          as large as the latest arrival.
+      - id: not-compared
+        text: Index `j` has not been compared with any later value yet
+        explanation: >-
+          A waiting index is compared with every arrival that reaches it on top. It stays because
+          each of those comparisons failed.
+    correct: none-larger
+    followUps:
+      largest-so-far:
+        prompt: After `next_greater([10, 7])`, which indices are still on the stack?
+        options:
+          - id: both
+            text: Both 0 and 1, since no value after either one is larger
+          - id: first-only
+            text: Only 0, since the 10 is the largest
+          - id: second-only
+            text: Only 1, since the 7 replaced the 10 on top
+        correct: both
+        explanation: >-
+          Only a later value can pop an index. The 7 is smaller than the 10 before it, but that
+          does not answer the 7.
+      smaller-than-arrival:
+        prompt: Can a value still waiting after index `i` is processed be smaller than `nums[i]`?
+        options:
+          - id: cannot
+            text: No, because index `i` pops every smaller value before it is pushed
+          - id: deep
+            text: Yes, if it sits deep in the stack where the loop does not reach
+          - id: equal
+            text: Yes, if it equals one of the values popped
+        correct: cannot
+        explanation: >-
+          The values on the stack never increase from bottom to top. So once the loop meets a top
+          that is not smaller, everything beneath it is not smaller either.
+      not-compared:
+        prompt: When is a waiting index compared with an arrival?
+        options:
+          - id: on-top
+            text: Whenever it is the top while that arrival's `while` loop runs
+          - id: on-push
+            text: Only once, when it is pushed
+          - id: at-end
+            text: Only after the loop ends
+        correct: on-top
+        explanation: >-
+          The test reads `nums[stack[-1]]`, the top. An index meets every arrival while it is on
+          top, and loses its place only when one of them is larger.
+
+  - format: drag-pointers
+    id: arrival-pops-drag-review
+    heading: Where does the popping stop?
+    tags: [stack, python]
+    prompt: >-
+      The 7 at index 5 is arriving. Drag `last` to the last index its `while` loop pops, and drag
+      `top` to the index on top of `stack` when the loop stops.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      next_greater([8, 2, 6, 1, 3, 7, 4])
+    sequence:
+      kind: array
+      name: nums
+      cells: [8, 2, 6, 1, 3, 7, 4]
+    markers:
+      - { name: i, at: 5 }
+    pointers:
+      - name: last
+        start: 6
+        correct: 2
+        explanation: >-
+          Before index 5, `stack` is `[0, 2, 4]`. The 7 pops index 4 (3), then index 2 (6), and the
+          6 is the last one smaller than 7.
+        misses:
+          - index: 4
+            explanation: Index 4 is on top when the 7 arrives, so it is popped first, not last.
+          - index: 0
+            explanation: The 8 is not smaller than 7, so the loop stops before popping it.
+          - index: 3
+            explanation: The 3 at index 4 already popped this 1.
+          - index: 1
+            explanation: The 6 at index 2 already popped this 2.
+        elsewhere: The 7 pops index 4 and then index 2, so index 2 goes last.
+      - name: top
+        start: 3
+        correct: 0
+        explanation: >-
+          After the two pops, index 0 is on top, and `8 < 7` is false, so the loop stops with it
+          there. Index 5 is then pushed onto it.
+        misses:
+          - index: 2
+            explanation: Index 2 is the last one popped. The loop stops at the next top, which stays.
+          - index: 4
+            explanation: Index 4 is popped first.
+          - index: 5
+            explanation: Index 5 is pushed after the loop stops.
+        elsewhere: When the loop stops, index 0 is the only entry left.
+
+  - format: step-trace
+    id: pop-count-trace-review
+    heading: Predict each arrival
+    tags: [stack, python]
+    prompt: >-
+      The cells are `nums` in the order they are pushed. `top` marks the top of `stack`, which is
+      `[1, 2]` after index 2. Predict each step.
+    code: |
+      nums = [3, 6, 1, 4, 2, 2, 8, 5]
+      out = [-1] * len(nums)
+      stack = []
+      for i, x in enumerate(nums):
+          while stack and nums[stack[-1]] < x:
+              j = stack.pop()
+              out[j] = x
+          stack.append(i)
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 6, 1, 4, 2, 2, 8, 5]
+    start:
+      - { name: top, at: 2 }
+    steps:
+      - line: 5
+        ask: The 4 at index 3 arrives. How many indices does its `while` loop pop?
+        options:
+          - id: one
+            text: "1"
+            explanation: >-
+              Index 2 holds 1, which is smaller than 4, so it is popped. Index 1 holds 6, and
+              `6 < 4` is false.
+          - id: zero
+            text: "0"
+            explanation: The top holds 1, and `1 < 4` is true, so at least one pop happens.
+          - id: two
+            text: "2"
+            explanation: The 6 at index 1 is larger than 4, so the loop stops after one pop.
+        correct: one
+      - line: 5
+        ask: When that loop stops, which index is on top? Tap it.
+        pointer: top
+        correct: 1
+        explanation: The 6 at index 1 survives the test, so it is on top when the loop stops.
+        misses:
+          - index: 2
+            explanation: Index 2 was just popped.
+          - index: 0
+            explanation: The 6 at index 1 popped this 3 earlier.
+          - index: 3
+            explanation: Index 3 is pushed only after the loop stops.
+        elsewhere: The loop stops with index 1 on top.
+      - line: 5
+        ask: The 2 at index 5 arrives with index 4, also a 2, on top. How many indices does it pop?
+        options:
+          - id: zero
+            text: "0"
+            explanation: >-
+              `2 < 2` is false, so the equal value on top stays. Index 5 is pushed above it, and
+              both 2s wait.
+          - id: one
+            text: "1"
+            explanation: >-
+              That would pop on an equal value, which `<=` does. With `<`, the 2 on top is not
+              smaller than the arriving 2.
+          - id: two
+            text: "2"
+            explanation: >-
+              The loop stops at the first top that is not smaller. The 2 at index 4 stops it at
+              once.
+        correct: zero
+        also:
+          - { name: top, at: 5 }
+      - line: 5
+        ask: "The 8 at index 6 arrives with `stack` at `[1, 3, 4, 5]`. How many indices does it pop?"
+        options:
+          - id: four
+            text: "4"
+            explanation: >-
+              2, 2, 4 and 6 are all smaller than 8, so the loop pops every entry, both equal 2s
+              included.
+          - id: one
+            text: "1"
+            explanation: The loop tests again after each pop, and every value left is smaller than 8.
+          - id: three
+            text: "3"
+            explanation: >-
+              The two 2s are separate entries, and each is popped on its own. The 6 at the bottom
+              goes too.
+          - id: two
+            text: "2"
+            explanation: >-
+              The 4 at index 3 and the 6 at index 1 are smaller than 8 as well, so the loop keeps
+              going.
+        correct: four
+        also:
+          - { name: top, at: 6 }
+      - line: 5
+        ask: The 5 at index 7 arrives. How many indices does its `while` loop pop?
+        options:
+          - id: zero
+            text: "0"
+            explanation: >-
+              The 8 emptied the stack and is its only entry. `8 < 5` is false, so nothing is
+              popped, and index 7 is pushed above index 6.
+          - id: one
+            text: "1"
+            explanation: >-
+              A pop needs a smaller top. The only entry holds 8, which is larger than 5, so it stays.
+          - id: two
+            text: "2"
+            explanation: >-
+              Only one entry is on the stack, the 8, and it is not smaller than 5. Nothing is popped.
+        correct: zero
+
+  - id: equal-values-review
+    heading: What does this return?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      print(next_greater([3, 1, 3, 4]))
+      ```
+
+      What does this print?
+    options:
+      - id: strict
+        text: "`[4, 3, 4, -1]`"
+        explanation: >-
+          The second 3 pops the 1 but not the first 3, since `3 < 3` is false. The 4 then pops both
+          3s, so each of them gets 4.
+      - id: or-equal
+        text: "`[3, 3, 4, -1]`"
+        explanation: >-
+          This lets the second 3 answer the first. That is what `<=` computes. With `<`, an equal
+          value is not larger, so index 0 waits for the 4.
+      - id: one-pop
+        text: "`[-1, 3, 4, -1]`"
+        explanation: >-
+          The 4 does pop index 2, but the `while` loop then tests the new top. Index 0 holds 3,
+          which is smaller than 4, so it is popped too.
+      - id: largest-right
+        text: "`[4, 4, 4, -1]`"
+        explanation: >-
+          This stores the largest value to the right. The task is the first larger value, and for
+          the 1 that is the 3 right after it.
+    correct: strict
+    followUps:
+      or-equal:
+        prompt: The second 3 arrives with index 0, also a 3, on top. Does it pop index 0?
+        options:
+          - id: keeps-waiting
+            text: No, `3 < 3` is false, so index 0 keeps waiting
+          - id: yes-equal
+            text: Yes, equal values answer each other
+          - id: yes-older
+            text: Yes, because index 0 is older
+        correct: keeps-waiting
+        explanation: >-
+          The test is strict, so a top leaves only for a larger value. `<=` would also pop on equal
+          values, which answers a different question.
+      one-pop:
+        prompt: The 4 pops index 2. The new top is index 0, holding 3. What does the `while` loop do next?
+        options:
+          - id: tests-again
+            text: Tests again and pops index 0, since `3 < 4`
+          - id: stops-one
+            text: Stops, since each arrival pops one index
+          - id: stops-oldest
+            text: Stops, since index 0 was pushed first
+        correct: tests-again
+        explanation: >-
+          A `while` loop repeats until its test fails or the stack is empty. One arrival can answer
+          every smaller value waiting on top.
+      largest-right:
+        prompt: For the 1 at index 1, which value does `next_greater` store?
+        options:
+          - id: first-larger
+            text: 3, the first larger value to its right
+          - id: largest
+            text: 4, the largest value to its right
+          - id: no-answer
+            text: -1, since a 3 appears twice
+        correct: first-larger
+        explanation: >-
+          The 3 at index 2 arrives first and is larger, so it pops index 1 at once. The 4 never
+          sees index 1.
+
+  - id: distance-review
+    heading: What does this write?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      def steps_to_greater(nums):
+          out = [0] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = i - j
+              stack.append(i)
+          return out
+      ```
+
+      For `nums = [5, 1, 4, 6, 2, 3]`, the 6 at index 3 pops two indices. What does it write into
+      `out[0]`?
+    options:
+      - id: three
+        text: "3"
+        explanation: >-
+          Index 0 waits until the 6 arrives at index 3, so `i - j` is `3 - 0`.
+      - id: six
+        text: "6"
+        explanation: >-
+          6 is the value that answers index 0. This function stores `i - j`, the number of steps
+          between the two positions.
+      - id: second-pop
+        text: "2"
+        explanation: >-
+          Index 0 is the second index the 6 pops, after index 2. The order of pops plays no part in
+          `i - j`.
+    correct: three
+    followUps:
+      six:
+        prompt: "In `out[j] = i - j`, what are `i` and `j`?"
+        options:
+          - id: indices
+            text: Both are indices, the arrival's and the popped one's
+          - id: values
+            text: Both are values from `nums`
+          - id: value-index
+            text: "`i` is the arriving value and `j` is an index"
+        correct: indices
+        explanation: >-
+          `enumerate` gives `i` as a position, and the stack stores positions, so `i - j` counts
+          steps. The arriving value is `x`.
+      second-pop:
+        prompt: The 6 pops index 2 and then index 0. What does it write into `out[2]` and `out[0]`?
+        options:
+          - id: own
+            text: 1 and 3, each its own `3 - j`
+          - id: order
+            text: 1 and 2, one per pop in order
+          - id: same
+            text: 3 and 3, the arrival's index for both
+        correct: own
+        explanation: >-
+          Every pop uses the same `i` and its own `j`, so index 2 gets `3 - 2` and index 0 gets
+          `3 - 0`.
+
+  - id: total-operations-review
+    heading: How many stack operations?
+    tags: [stack, complexity]
+    prompt: |-
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+      ```
+
+      `next_greater([1, 6, 2, 5, 3, 4, 2])` ends with `stack` holding `[1, 3, 5, 6]`. Over the
+      whole call, how many pushes and how many pops are there?
+    options:
+      - id: seven-three
+        text: 7 pushes and 3 pops
+        explanation: >-
+          Every index is pushed once, so 7 pushes. Four indices are still there at the end, so the
+          other 3 each left by one pop: the 1, the first 2 and the 3.
+      - id: seven-seven
+        text: 7 pushes and 7 pops
+        explanation: >-
+          Only a larger later value pops an index. Indices 1, 3, 5 and 6 never meet one, so they
+          are never popped.
+      - id: seven-six
+        text: 7 pushes and 6 pops
+        explanation: >-
+          The last index always stays, but so does every index that no larger value follows. Here
+          four indices stay.
+      - id: seven-four
+        text: 7 pushes and 4 pops
+        explanation: >-
+          4 is the number of indices left on the stack. The pops are the indices that are gone.
+    correct: seven-three
+    followUps:
+      seven-seven:
+        prompt: The 6 at index 1 is the largest value. Is it ever popped?
+        options:
+          - id: never
+            text: No, nothing after it is larger, and the loop does not clear the stack at the end
+          - id: at-end
+            text: Yes, when the loop finishes
+          - id: by-last
+            text: Yes, by the last value, 2
+        correct: never
+        explanation: >-
+          A pop happens only inside the `while` loop, when a larger value arrives. The 6 waits
+          until the function returns.
+      seven-six:
+        prompt: Which indices stay on the stack at the end?
+        options:
+          - id: no-larger-after
+            text: Every index with no larger value anywhere after it
+          - id: last-only
+            text: Only the last index
+          - id: largest-only
+            text: Only the index of the largest value
+        correct: no-larger-after
+        explanation: >-
+          The last index is one of them, but here the 6, the 5 and the 4 also have nothing larger
+          after them, so they stay too.
+      seven-four:
+        prompt: "7 indices are pushed and 4 are left at the end. How many were popped?"
+        options:
+          - id: three
+            text: 3, the pushes minus the indices left
+          - id: four
+            text: 4, the size of the final stack
+          - id: eleven
+            text: 11, the pushes plus the indices left
+        correct: three
+        explanation: >-
+          Each index enters once and leaves at most once. The ones that are gone left by a pop, so
+          the pops are 7 - 4.
+
+  - format: tap-cell
+    id: leftover-bottom-review
+    heading: What is left on the stack?
+    tags: [stack, python]
+    prompt: When the loop ends, which index is at the bottom of `stack`? Tap it.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      next_greater([4, 9, 2, 9, 5, 1, 3])
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 9, 2, 9, 5, 1, 3]
+    correct: 1
+    explanation: >-
+      The first 9 pops the 4 and is never popped itself: the second 9 is equal, and `9 < 9` is
+      false. `stack` ends as `[1, 3, 4, 6]`, with index 1 at the bottom.
+    misses:
+      - index: 0
+        explanation: The 9 at index 1 popped this 4.
+      - index: 2
+        explanation: The second 9 popped this 2.
+      - index: 3
+        explanation: >-
+          The second 9 waits, but it does not pop the first one, since an equal value is not
+          larger. It sits on top of index 1.
+      - index: 4
+        explanation: The 5 waits, but it was pushed above both 9s.
+      - index: 5
+        explanation: The 3 at index 6 popped this 1.
+      - index: 6
+        explanation: Index 6 was pushed last, so it is the top, not the bottom.
+
+  - id: leftover-values-review
+    heading: What is left on the stack?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+      ```
+
+      When `next_greater([6, 9, 3, 2, 5, 8, 4])` returns, which indices are still in `stack`, and
+      what does `out` hold at those positions?
+    options:
+      - id: three-left
+        text: Indices 1, 5 and 6, each still -1
+        explanation: >-
+          The 9, the 8 and the 4 have no larger value after them, so nothing pops them and their
+          slots keep the starting -1. `out` is `[9, -1, 5, 5, 8, -1, -1]`.
+      - id: only-last
+        text: Only index 6, still -1
+        explanation: >-
+          The last index always stays, but so does any index with nothing larger after it. The 9
+          and the 8 qualify too.
+      - id: last-value
+        text: Indices 1, 5 and 6, each set to 4, the last value
+        explanation: >-
+          `out` changes only when an index is popped. The 4 at the end pops nothing, and no line
+          runs after the loop to fill in leftovers.
+      - id: own-values
+        text: Indices 1, 5 and 6, holding their own values 9, 8 and 4
+        explanation: >-
+          A slot of `out` holds the answer for that position, never its own value. Leftover slots
+          keep the starting -1.
+    correct: three-left
+    followUps:
+      only-last:
+        prompt: The 9 at index 1 never sees a larger value. Where is it when the loop ends?
+        options:
+          - id: still-there
+            text: Still on the stack, since nothing popped it
+          - id: popped-by-eight
+            text: Popped by the 8 at index 5
+          - id: cleared
+            text: Gone, since the loop clears the stack at the end
+        correct: still-there
+        explanation: >-
+          8 is not larger than 9, and no code runs after the loop to clear the stack. Index 1 stays
+          from its push until the function returns.
+      last-value:
+        prompt: Which line writes into `out`, and when does it run?
+        options:
+          - id: on-pop
+            text: "`out[j] = x`, only right after index `j` is popped"
+          - id: after-loop
+            text: "`out[j] = x`, once more for each leftover after the loop"
+          - id: on-push
+            text: "`stack.append(i)`, which copies `x` into `out`"
+        correct: on-pop
+        explanation: >-
+          The only write is inside the `while` loop. An index that is never popped is never written,
+          so it keeps its -1.
+      own-values:
+        prompt: "`out` starts as `[-1] * len(nums)`. What does a -1 that survives the loop say?"
+        options:
+          - id: none-larger
+            text: No larger value appears to the right of that position
+          - id: holds-minus-one
+            text: The position itself holds -1
+          - id: popped-last
+            text: The position was popped by the last value
+        correct: none-larger
+        explanation: >-
+          -1 is the "no answer" marker. It survives exactly at the positions that stay on the
+          stack, because nothing after them is larger.
