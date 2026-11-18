@@ -58,6 +58,7 @@ describe('examPassed', () => {
 		expect(drills).toHaveLength(5);
 		expect(examPassed(drills, checkpoint.mix, [legacy])).toBe(true);
 		expect(examPassed(drills, checkpoint.mix, [{ ...legacy, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...legacy, examRulesVersion: 2 }])).toBe(false);
 		expect(examPassed(drills, checkpoint.mix, [current])).toBe(false);
 
 		const sitting = drills.map((drill) => ({
@@ -71,6 +72,21 @@ describe('examPassed', () => {
 		expect(view.find((entry) => entry.id === 'traversal-layers')?.main[0].lockedBy).toEqual([]);
 		expect(projected([current]).find((entry) => entry.id === 'traversal-layers')?.main[0].lockedBy)
 			.toContainEqual({ id: 'reachability', title: 'Reachability' });
+	});
+
+	it('carries forward prior simultaneous-spread passes, including version 2', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'traversal-layers')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const original = { ...attempt('multi-source-bfs', true), deckId: 'graph-traversal-grids' };
+		expect(drills).toHaveLength(5);
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 2 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
