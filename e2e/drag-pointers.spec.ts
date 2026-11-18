@@ -91,6 +91,8 @@ test.describe('drag the pointers', () => {
 	test('dragging a pointer with the mouse drops it on the nearest cell', async ({ page }) => {
 		const question = await show(page, 'sum-step-too-small');
 		const moving = movingPointer(question);
+		// The board can sit below the fold on a short phone screen, and raw mouse input only reaches what is visible.
+		await handle(page, moving.name).scrollIntoViewIfNeeded();
 		const from = (await handle(page, moving.name).boundingBox())!;
 		const to = (await cell(page, moving.correct).boundingBox())!;
 		await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

@@ -89,7 +89,10 @@ test.describe('tap the cell', () => {
 		const landscapeCode = await page.locator('.code-pane').boundingBox();
 		const landscapeBoard = await page.locator('.board-pane').boundingBox();
 		expect(landscapeBoard!.x).toBeGreaterThan(landscapeCode!.x + landscapeCode!.width - 4);
-		expect(Math.abs(landscapeBoard!.y - landscapeCode!.y)).toBeLessThan(32);
+		// Side by side means the two panes share a band of the screen. Their tops differ with the
+		// font and with how long the shuffled first question's snippet is, so do not compare tops.
+		expect(landscapeBoard!.y).toBeLessThan(landscapeCode!.y + landscapeCode!.height);
+		expect(landscapeBoard!.y + landscapeBoard!.height).toBeGreaterThan(landscapeCode!.y);
 	});
 
 	test('cells are large enough to tap', async ({ page }) => {
