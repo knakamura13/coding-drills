@@ -1,0 +1,680 @@
+id: link-rewrites-review
+title: "Link rewrites: review"
+description: Fresh inputs for following a next link, saving a link before redirecting it, and handling the first node. No worked examples.
+heading: What happens next?
+
+questions:
+  - format: step-trace
+    id: kth-node-trace-review
+    heading: Follow the links
+    tags: [linked-list, python]
+    prompt: >-
+      `kth` walks `k` links from `head` on the list `2 -> 6 -> 5 -> 9 -> 1`. The cells are the
+      nodes in list order. Predict each step before it is shown.
+    code: |
+      def kth(head, k):
+          node = head
+          for _ in range(k):
+              node = node.next
+          return node.val
+
+      kth(head, 3)
+    sequence:
+      kind: array
+      cells: [2, 6, 5, 9, 1]
+    start:
+      - { name: node, at: 0 }
+    steps:
+      - line: 3
+        ask: The first pass runs. Where is `node` now?
+        pointer: node
+        correct: 1
+        explanation: >-
+          One pass runs `node = node.next` once, so `node` follows one link, from 2 to 6.
+        misses:
+          - index: 2
+            explanation: >-
+              One pass is one hop. `node.next` from 2 is 6, the next node, not the one after it.
+          - index: 0
+            explanation: >-
+              Line 4 moves `node` on every pass, so it leaves the head on the first one.
+        elsewhere: 'One pass follows one link, from 2 to 6.'
+      - line: 3
+        ask: All 3 passes have run. Where is `node`?
+        pointer: node
+        correct: 3
+        explanation: >-
+          Three hops from the head pass 6 and 5 and land on 9. Reaching the node at position `k`
+          takes `k` hops, because a linked list has no way to jump to a position.
+        misses:
+          - index: 2
+            explanation: >-
+              The head is not one of the hops. Three passes move `node` three links away from 2,
+              which is 9.
+          - index: 4
+            explanation: >-
+              That is four hops from the head. The loop runs exactly 3 times.
+        elsewhere: 'Three hops from 2 reach 9.'
+      - line: 5
+        ask: Suppose the call were `kth(head, 5)` on the same list. What would line 5 do?
+        options:
+          - id: crash
+            text: Raise `AttributeError`
+            explanation: >-
+              Four hops reach the tail, 1. The fifth hop follows the tail's empty link, so `node`
+              is `None`, and reading `.val` from `None` is an error.
+          - id: tail
+            text: Return 1
+            explanation: >-
+              1 is four hops away. The fifth pass still runs `node = node.next` from the tail, and
+              the tail's `next` is `None`.
+          - id: none
+            text: Return `None`
+            explanation: >-
+              `node` is `None` after the fifth hop, but line 5 reads `node.val`, and `None` has no
+              `val`.
+        correct: crash
+
+  - id: three-node-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      `Node(val, next=None)` stores a value and a link.
+
+      ```python
+      x = Node(1)
+      y = Node(2)
+      z = Node(3)
+      z.next = x
+      x.next = y
+      print(z.next.next.val, y.next)
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`2 None`"
+        explanation: >-
+          Line 4 links `z` to `x` and line 5 links `x` to `y`, so two hops from `z` reach the 2.
+          No line sets `y.next`, so it keeps its default.
+      - id: one-hop
+        text: "`1 None`"
+        explanation: >-
+          1 is `z.next.val`, one hop. `z.next.next` follows a second link, from `x` to `y`.
+      - id: made-order
+        text: "`2 3`"
+        explanation: >-
+          `z` was made after `y`, but making nodes in order does not link them. Only lines 4 and 5
+          set links, and neither one touches `y`.
+      - id: z-tail
+        text: It raises `AttributeError`
+        explanation: >-
+          This treats `z` as the end of the list because it was made last. `z.next = x` links it
+          onward, so the list reads `3 -> 1 -> 2` and two hops from `z` land on a real node.
+    correct: right
+    followUps:
+      one-hop:
+        prompt: How many links does `z.next.next` follow?
+        options:
+          - id: two
+            text: Two, from `z` to `x` and then from `x` to `y`
+          - id: one
+            text: One, since `.next.next` names the node right after `z`
+          - id: three
+            text: Three, counting `z` itself
+        correct: two
+        explanation: >-
+          Each `.next` follows one link from wherever the previous one landed. Two in a row move
+          two nodes along.
+      made-order:
+        prompt: Which line sets `y.next`?
+        options:
+          - id: no-line
+            text: No line does, so it is still the default from `Node(2)`
+          - id: line-three
+            text: Line 3, because `z` is made right after `y`
+          - id: line-five
+            text: Line 5, because `x.next = y` links both ways
+        correct: no-line
+        explanation: >-
+          A link exists only where a line assigns it, and each assignment sets one node's `next`.
+          A singly linked node never learns which node points at it.
+      z-tail:
+        prompt: Is `z` the tail of this list?
+        options:
+          - id: first
+            text: No, line 4 gives it a link, so it comes first
+          - id: made-last
+            text: Yes, because it was made last
+          - id: largest
+            text: Yes, because it holds the largest value
+        correct: first
+        explanation: >-
+          The tail is the node whose `next` is `None`. Here that is `y`. Neither the order the
+          nodes were made in nor their values decide where a node sits.
+
+  - id: values-after-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      ```python
+      def values_after(node):
+          out = []
+          while node.next is not None:
+              node = node.next
+              out.append(node.val)
+          return out
+
+      head = Node(5, Node(4, Node(2)))
+      print(values_after(head))
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`[4, 2]`"
+        explanation: >-
+          Each pass hops first and then records, so the head's 5 is never recorded. The pass that
+          lands on the tail still appends 2, and then the test sees the tail's empty link and stops.
+      - id: with-head
+        text: "`[5, 4, 2]`"
+        explanation: >-
+          The append comes after the hop in the loop body, so the first value recorded is the one
+          after the head.
+      - id: with-none
+        text: "`[4, 2, None]`"
+        explanation: >-
+          The test looks one link ahead. Once `node` is on the tail, it fails, so the loop never
+          hops onto the empty link and never appends for it.
+      - id: drops-tail
+        text: "`[4]`"
+        explanation: >-
+          The pass that moves onto the tail began with `node` on 4, whose `next` was not `None`. That
+          pass runs its whole body, including the append.
+    correct: right
+    followUps:
+      with-head:
+        prompt: When is the head's value appended?
+        options:
+          - id: never
+            text: Never, because the first append comes after the first hop
+          - id: first-pass
+            text: On the first pass, before the hop
+          - id: after-loop
+            text: After the loop ends
+        correct: never
+        explanation: >-
+          The body runs in order: `node = node.next`, then `out.append(node.val)`. By the time
+          anything is appended, `node` has left the head.
+      with-none:
+        prompt: "`node` is on the tail, holding 2. What does `while node.next is not None` do?"
+        options:
+          - id: fails
+            text: It fails, so the body does not run again
+          - id: passes
+            text: It passes, so `None` is appended
+          - id: raises
+            text: It raises an error, because the tail has no `next`
+        correct: fails
+        explanation: >-
+          The tail does have a `next`; it is `None`. The test compares it with `None` and ends the
+          loop, leaving `node` on the tail.
+      drops-tail:
+        prompt: In the pass that moves `node` onto the tail, does the append still run?
+        options:
+          - id: yes
+            text: Yes, the test ran before the hop, and the append follows it
+          - id: stops
+            text: No, the loop stops as soon as `node` reaches the tail
+          - id: only-if
+            text: Only if the tail's `next` is not `None`
+        correct: yes
+        explanation: >-
+          A `while` test runs only at the top of each pass. Once a pass starts, its whole body runs,
+          even if the test would fail now.
+
+  - id: delete-after-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      # head is 3 -> 6 -> 2 -> 8, and p is the node holding 6
+      gone = p.next
+      p.next = p.next.next
+      print(values(head), gone.next.val)
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`[3, 6, 8] 8`"
+        explanation: >-
+          Line 2 changes only `p`'s link, so the walk skips 2. The 2 itself was not rewritten, and
+          `gone` still reaches it, so `gone.next` is still the 8.
+      - id: cleared
+        text: "`[3, 6, 8]`, then `AttributeError`"
+        explanation: >-
+          Unlinking a node does not touch its own `next`. Only the link that led to it changes.
+      - id: still-listed
+        text: "`[3, 6, 2, 8] 8`"
+        explanation: >-
+          A name on a node does not keep it in the list. The walk follows links, and line 2 made
+          `p`'s link skip the 2.
+      - id: removes-p
+        text: "`[3, 2, 8] 8`"
+        explanation: >-
+          The line rewrites `p`'s link, so it changes what comes after `p`. `p` stays in the list.
+    correct: right
+    followUps:
+      cleared:
+        prompt: After `p.next = p.next.next`, which links have changed?
+        options:
+          - id: only-p
+            text: Only the link out of `p`; the 2 still links to 8
+          - id: both
+            text: The link out of `p`, and the 2's link is cleared
+          - id: all
+            text: Every link after `p`
+        correct: only-p
+        explanation: >-
+          One assignment changes one link. The removed node keeps its old `next` until something
+          else rewrites it.
+      still-listed:
+        prompt: "`gone` still refers to the node holding 2. Does a walk from `head` reach it?"
+        options:
+          - id: no
+            text: No, a walk follows links and no link leads to it
+          - id: yes-named
+            text: Yes, as long as some name refers to it
+          - id: yes-freed
+            text: Yes, until Python frees it
+        correct: no
+        explanation: >-
+          Being in the list means being reachable by following links from the head. A separate
+          name keeps the node alive but does not put it back on the path.
+      removes-p:
+        prompt: Which node does `p.next = p.next.next` take out of the walk?
+        options:
+          - id: after-p
+            text: The node after `p`, which holds 2
+          - id: p
+            text: "`p` itself, which holds 6"
+          - id: two-after
+            text: The node two after `p`, which holds 8
+        correct: after-p
+        explanation: >-
+          The line points `p` past its successor. Taking a node out of the walk means changing the
+          link that leads to it, and that link belongs to the node before it.
+
+  - id: insert-three-lines-review
+    heading: Which order works?
+    tags: [linked-list, python]
+    prompt: >-
+      `head` is `7 -> 1 -> 5`, `p` is the node holding 1, and `new = Node(9)`. `values(n)` lists
+      the values a walk from `n` reaches. Which order of lines makes `values(head)` give
+      `[7, 1, 9, 5]`?
+    options:
+      - id: save-first
+        text: "`after = p.next`, `p.next = new`, `new.next = after`"
+        explanation: >-
+          `after` holds the 5 before `p`'s link changes. The new node can then link to it after `p`
+          has been pointed at the 9.
+      - id: read-late
+        text: "`p.next = new`, `after = p.next`, `new.next = after`"
+        explanation: >-
+          By the second line `p.next` is already the 9, so `after` is the 9 and the 9 links to
+          itself. The 5 is lost and the walk repeats 9 forever.
+      - id: wrong-save
+        text: "`after = new.next`, `p.next = new`, `new.next = after`"
+        explanation: >-
+          This saves the new node's link, which is still empty, instead of `p`'s. The 9 ends the
+          list, so the walk gives `[7, 1, 9]`.
+      - id: move-name
+        text: "`after = p.next`, `new.next = after`, `p = new`"
+        explanation: >-
+          The new node links to the 5, but nothing links to the new node. `p = new` only moves the
+          name `p`, so the walk still gives `[7, 1, 5]`.
+    correct: save-first
+    followUps:
+      read-late:
+        prompt: When `after = p.next` runs second, which node does it save?
+        options:
+          - id: new-node
+            text: The new node, because `p.next` was changed first
+          - id: five
+            text: The node holding 5
+          - id: p-node
+            text: "`p` itself"
+        correct: new-node
+        explanation: >-
+          A line reads a link as it is when the line runs. Saving the old successor only works
+          before the link is overwritten.
+      wrong-save:
+        prompt: What does `new.next` hold before any line sets it?
+        options:
+          - id: default
+            text: "`None`, the default from `Node(9)`"
+          - id: five
+            text: The node holding 5
+          - id: p-node
+            text: "`p`, the node it will follow"
+        correct: default
+        explanation: >-
+          A fresh node links nowhere. The link worth saving is the one out of `p`, because that is
+          the one the insert overwrites.
+      move-name:
+        prompt: What does `p = new` change in the list?
+        options:
+          - id: nothing
+            text: Nothing, because it moves a name and leaves every link alone
+          - id: replaces
+            text: It puts the new node where the node holding 1 was
+          - id: links
+            text: It links the node holding 1 to the new node
+        correct: nothing
+        explanation: >-
+          Assigning to a name never changes a link. To put a node into the list, an assignment to
+          some node's `next` is needed, here `p.next = new`.
+
+  - format: tap-cell
+    id: unsaved-hop-review
+    heading: Where does `cur` go?
+    tags: [linked-list, python]
+    prompt: >-
+      The cells are the list `4 -> 7 -> 1 -> 5` in its original order. One pass of a reversal has
+      already turned 4's link to `None`, so `prev` is on 4 and `cur` is on 7. This pass forgets to
+      save `cur.next` first. Tap the node `cur` moves to.
+    code: |
+      cur.next = prev
+      cur = cur.next
+    sequence:
+      kind: array
+      cells: [4, 7, 1, 5]
+    markers:
+      - { name: prev, at: 0 }
+      - { name: cur, at: 1 }
+    correct: 0
+    explanation: >-
+      Line 1 points 7 back at 4, so line 2 follows that new link back to 4. The old link to 1 was
+      the only way to 1 and 5, and it is gone. A reversal saves it first with `nxt = cur.next`.
+    misses:
+      - index: 2
+        explanation: >-
+          1 was where 7's link led before line 1. Line 1 replaced that link, and line 2 reads the
+          new one.
+      - index: 1
+        explanation: >-
+          `cur = cur.next` moves `cur` to wherever 7's link leads after line 1, and 7 does not
+          link to itself.
+      - index: 3
+        explanation: >-
+          5 was two hops ahead even before line 1, and one `.next` moves one node.
+
+  - id: two-passes-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      # head is 9 -> 3 -> 6 -> 2
+      prev, cur = None, head
+      for _ in range(2):
+          nxt = cur.next
+          cur.next = prev
+          prev = cur
+          cur = nxt
+      print(values(prev), values(cur))
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`[3, 9] [6, 2]`"
+        explanation: >-
+          The first pass turns 9's link to `None` and the second turns 3's link back to 9, so a walk
+          from `prev` reads 3, 9. `cur` was moved to the saved 6, whose link was never touched.
+      - id: forward
+        text: "`[9, 3] [6, 2]`"
+        explanation: >-
+          `prev` is on 3, the last node turned, and 3 now links back to 9. A walk from `prev` reads
+          the turned part backwards from the original order.
+      - id: attached
+        text: "`[3, 9, 6, 2] [6, 2]`"
+        explanation: >-
+          The first pass sent 9's link to `prev`, which was `None` then. Nothing links the turned
+          part to the 6, so a walk from `prev` stops after 9.
+      - id: one-node
+        text: "`[3] [6, 2]`"
+        explanation: >-
+          3 is not alone. The second pass gave it a link to `prev`, which was the 9 at that moment.
+    correct: right
+    followUps:
+      forward:
+        prompt: After the second pass, where does 3's link lead?
+        options:
+          - id: to-nine
+            text: Back to 9, because the second pass set it to `prev`
+          - id: to-six
+            text: Forward to 6, as in the original list
+          - id: to-none
+            text: To `None`, because 3 is the newest turned node
+        correct: to-nine
+        explanation: >-
+          `cur.next = prev` points each node at the one before it in the original order. Read from
+          `prev`, the turned part comes out reversed.
+      attached:
+        prompt: Which link joins the turned part to the 6?
+        options:
+          - id: none-joins
+            text: No link does, because 9's link was set to `prev`, which started as `None`
+          - id: nine-to-six
+            text: 9's link, which still leads past 3
+          - id: three-to-six
+            text: 3's link, which still leads to 6
+        correct: none-joins
+        explanation: >-
+          The old first node becomes the end of the turned part, so its link is `None`. Until the
+          loop finishes, `cur` is the only way to reach the rest.
+      one-node:
+        prompt: After the second pass, what does 3's `next` refer to?
+        options:
+          - id: nine
+            text: The node holding 9, which was `prev` when the link was set
+          - id: cleared
+            text: Nothing, because turning a link clears it
+          - id: six
+            text: The node holding 6
+        correct: nine
+        explanation: >-
+          Each pass sets `cur.next = prev` before `prev` moves. The node turned on this pass links
+          to the node turned on the pass before.
+
+  - id: drop-first-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      def drop_first(head):
+          head = head.next
+          return head
+
+      nums = Node(3, Node(9, Node(4)))
+      rest = drop_first(nums)
+      print(values(rest), values(nums))
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`[9, 4] [3, 9, 4]`"
+        explanation: >-
+          The function moves its own name to the 9 and returns that node, so `rest` starts at 9.
+          No link was rewritten and `nums` was never reassigned, so a walk from `nums` still reads
+          all three values.
+      - id: caller-moved
+        text: "`[9, 4] [9, 4]`"
+        explanation: >-
+          `head = head.next` moves the name inside the function. The caller's `nums` is a separate
+          name and is still on the 3.
+      - id: cut-off
+        text: "`[9, 4] [3]`"
+        explanation: >-
+          Moving a name past the 3 does not touch the 3's own link. It still leads to 9.
+    correct: right
+    followUps:
+      caller-moved:
+        prompt: Which node does `nums` refer to after the call?
+        options:
+          - id: three
+            text: Still the node holding 3
+          - id: nine
+            text: The node holding 9, since `head` moved there
+          - id: gone
+            text: No node, since the call used it up
+        correct: three
+        explanation: >-
+          A parameter starts as a second name on the caller's object. Reassigning it moves only
+          that name, so the caller has to store what the function returns.
+      cut-off:
+        prompt: Does `head = head.next` change the node holding 3?
+        options:
+          - id: no
+            text: No, it moves a name, and 3's link still leads to 9
+          - id: cuts
+            text: Yes, it cuts 3's link
+          - id: deletes
+            text: Yes, it deletes the node
+        correct: no
+        explanation: >-
+          Only an assignment to `something.next` changes a link. Moving a name past a node leaves
+          that node and its link as they were.
+
+  - format: tap-cell
+    id: sentinel-two-matches-review
+    heading: Where does `p` stop?
+    tags: [linked-list, python]
+    prompt: >-
+      `remove_val` removes every node holding `target`. The cells are the dummy, the two nodes of
+      `8 -> 8`, and the `None` after them. Tap the node `p` is on when the loop ends.
+    code: |
+      def remove_val(head, target):
+          dummy = Node(0, head)
+          p = dummy
+          while p.next is not None:
+              if p.next.val == target:
+                  p.next = p.next.next
+              else:
+                  p = p.next
+          return dummy.next
+
+      remove_val(Node(8, Node(8)), 8)
+    sequence:
+      kind: array
+      cells: [0, 8, 8, 'None']
+    markers:
+      - { name: dummy, at: 0 }
+      - { name: head, at: 1 }
+    correct: 0
+    explanation: >-
+      Both 8s match, so both passes take line 6 and rewrite `dummy.next`, first to the second 8 and
+      then to `None`. `p` moves only on line 8, so it never leaves `dummy`, and the call returns
+      `None`, an empty list.
+    misses:
+      - index: 1
+        explanation: >-
+          `p` moves only when the node after it is kept. The first 8 matches, so line 6 unlinks it
+          and `p` stays on `dummy`.
+      - index: 2
+        explanation: >-
+          After the first rewrite the second 8 is `dummy.next`. It matches too, so line 6 unlinks it
+          while `p` is still on `dummy`.
+      - index: 3
+        explanation: >-
+          `p` never lands on `None`. The loop ends when `p.next` is `None`, and `p` is still a node.
+
+  - id: return-head-review
+    heading: What does this print?
+    tags: [linked-list, python]
+    prompt: |-
+      This `remove_val` returns `head` instead of `dummy.next`. `values(n)` lists the values a walk
+      from `n` reaches.
+
+      ```python
+      def remove_val(head, target):
+          dummy = Node(0, head)
+          p = dummy
+          while p.next is not None:
+              if p.next.val == target:
+                  p.next = p.next.next
+              else:
+                  p = p.next
+          return head
+
+      print(values(remove_val(Node(6, Node(1)), 6)))
+      ```
+    options:
+      - id: right
+        text: "`[6, 1]`"
+        explanation: >-
+          The 6 is unlinked from `dummy`, but `head` still refers to it, and its own link still
+          leads to 1. Returning `dummy.next` would give `[1]`.
+      - id: follows
+        text: "`[1]`"
+        explanation: >-
+          That is what `dummy.next` holds at the end. The name `head` was never reassigned, so it
+          still refers to the node that was removed.
+      - id: cut
+        text: "`[6]`"
+        explanation: >-
+          Line 6 rewrites `dummy`'s link, not the 6's. The removed node keeps its link to 1.
+      - id: dummy
+        text: "`[0, 1]`"
+        explanation: >-
+          `dummy` is a local helper node that is never returned. The function hands back whatever
+          `head` refers to.
+    correct: right
+    followUps:
+      follows:
+        prompt: After the 6 is unlinked, which node does `head` refer to?
+        options:
+          - id: removed
+            text: Still the removed 6
+          - id: new-first
+            text: The 1, which is now first
+          - id: dummy
+            text: The dummy node
+        correct: removed
+        explanation: >-
+          A name keeps referring to its object until it is reassigned, and unlinking reassigns
+          nothing. `dummy.next` is the name that tracks the current first node.
+      cut:
+        prompt: Line 6 changes `dummy.next`. What does the removed 6's own `next` hold?
+        options:
+          - id: still-one
+            text: Still the 1, because nothing rewrote it
+          - id: cleared
+            text: "`None`, set when it was removed"
+          - id: dummy
+            text: "`dummy`, its old predecessor"
+        correct: still-one
+        explanation: >-
+          Removing a node rewrites its predecessor's link only. The removed node still links into
+          the list, which is why returning it gives a wrong answer that looks plausible.
+      dummy:
+        prompt: Which node does `return head` hand back?
+        options:
+          - id: passed-in
+            text: The node the caller passed in
+          - id: first
+            text: The dummy, because it sits first
+          - id: current
+            text: Whatever `dummy.next` is at the end
+        correct: passed-in
+        explanation: >-
+          `head` is the parameter, and the function never assigns to it. It returns the same node
+          the caller passed in, whatever happened to the links around it.
