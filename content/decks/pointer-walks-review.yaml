@@ -1,0 +1,666 @@
+id: pointer-walks-review
+title: "Pointer walks: review"
+description: Fresh inputs for the Pointer walks skills, for recall on later days. No worked examples this time.
+heading: What does this give?
+
+questions:
+  - format: step-trace
+    id: even-length-hops-review
+    heading: Where does fast land?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      The cells are the list `8 -> 4 -> 1 -> 6 -> 3 -> 7`, then the `None` after its tail. Predict
+      each step before it is shown.
+    code: |
+      slow = fast = head
+      while fast and fast.next:
+          slow = slow.next
+          fast = fast.next.next
+    sequence:
+      kind: array
+      cells: [8, 4, 1, 6, 3, 7, 'None']
+    start:
+      - { name: slow, at: 0 }
+      - { name: fast, at: 0 }
+    steps:
+      - line: 2
+        ask: The first two rounds run. Where is `fast` now?
+        pointer: fast
+        correct: 4
+        explanation: >-
+          Each round moves `fast` two nodes: from the 8 to the 1, then to the 3. `slow` is on the 1.
+        misses:
+          - index: 2
+            explanation: >-
+              The 1 is where `fast` is after one round. A second round takes it two more nodes, to
+              the 3.
+          - index: 5
+            explanation: >-
+              `fast` lands on every second node from the start: the 8, the 1, the 3. It skips the 7.
+        elsewhere: 'Two rounds of two hops take `fast` from the 8 to the 3.'
+        also:
+          - { name: slow, at: 2 }
+      - line: 2
+        ask: The test passes on the 3. Where does `fast` go next?
+        pointer: fast
+        correct: 6
+        explanation: >-
+          The 3's `next` is the 7, and the 7's `next` is `None`. Two hops from the 3 go one step past
+          the tail. `slow` moves to the 6.
+        misses:
+          - index: 5
+            explanation: >-
+              The 7 is one hop from the 3. Line 4 reads `.next` twice, and the second read gives the
+              `None` after the tail.
+        elsewhere: 'Two hops from the 3 go past the tail, the 7, to `None`.'
+        also:
+          - { name: slow, at: 3 }
+      - line: 2
+        ask: The loop test runs with `fast` as `None`. What happens?
+        options:
+          - id: short-circuit
+            text: The test is false at `fast`, and `fast.next` is never read
+            explanation: >-
+              `and` stops at the first false side. `fast` is `None`, so the loop ends without
+              reading `.next` from it. `slow` is on the 6, the second of the two middles.
+          - id: raises
+            text: It raises `AttributeError` on `fast.next`
+            explanation: >-
+              It would if `fast.next` were tested first. Here `fast` is checked on the left, and
+              `and` skips the right side once the left is false.
+          - id: runs-again
+            text: The body runs once more, then the loop ends
+            explanation: >-
+              The body only runs when both sides of the test are true. With `fast` as `None`, the
+              first side is already false.
+        correct: short-circuit
+
+  - id: odd-guard-crash-review
+    heading: Which list breaks it?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      ```python
+      fast = head
+      while fast:
+          fast = fast.next.next
+      ```
+
+      This loop tests only `fast`. Which of these lists makes it raise `AttributeError`?
+    options:
+      - id: empty
+        text: The empty list, where `head` is `None`
+        explanation: >-
+          `head` is `None`, so `while fast` is false at once. The body never runs, and nothing reads
+          a link.
+      - id: two
+        text: A list of 2 nodes
+        explanation: >-
+          From the first node, two hops go past the second node to `None`. The test then fails,
+          and the loop ends cleanly.
+      - id: three
+        text: A list of 3 nodes
+        explanation: >-
+          After one round `fast` is on the third node, the tail. It is a node, so the test passes,
+          but `fast.next` is `None` and reading `.next` from it raises. The test needs
+          `fast.next` as well.
+      - id: four
+        text: A list of 4 nodes
+        explanation: >-
+          With an even length, `fast` goes from the first node to the third, then past the fourth
+          to `None`. The test then fails before any read.
+    correct: three
+    followUps:
+      empty:
+        prompt: When `head` is `None`, how many times does the body of `while fast` run?
+        options:
+          - id: zero
+            text: Zero, since `None` is false
+          - id: once
+            text: Once, then it fails on `None.next`
+          - id: forever
+            text: Forever, since `None` never changes
+        correct: zero
+        explanation: >-
+          A `while` test is checked before each round, including the first. An empty list never
+          reaches the line that reads a link.
+      two:
+        prompt: On a 2-node list, what is `fast` after one round?
+        options:
+          - id: none-after
+            text: "`None`, one step past the second node"
+          - id: second
+            text: The second node
+          - id: error
+            text: Nothing, because the round raises
+        correct: none-after
+        explanation: >-
+          The first `.next` reaches the second node, a real node, so the second `.next` is safe and
+          gives `None`. The next test then ends the loop.
+      four:
+        prompt: On a 4-node list, which test ends the loop?
+        options:
+          - id: none-test
+            text: The one after `fast` becomes `None`, which is false
+          - id: tail-test
+            text: The one with `fast` on the tail
+          - id: never
+            text: None of them; the loop raises first
+        correct: none-test
+        explanation: >-
+          With an even length, `fast` never lands on the tail. It jumps from the third node to the
+          `None` after the fourth, and `while fast` stops there.
+
+  - id: two-hop-guard-review
+    heading: Which test is safe?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      ```python
+      node = head
+      while ???:
+          node = node.next.next
+      ```
+
+      Which loop test keeps this safe on every list, including the empty one?
+    options:
+      - id: node-first
+        text: "`node and node.next`"
+        explanation: >-
+          The left side rules out `None` before the right side reads `node.next`. When both pass,
+          `node.next.next` reads from two real nodes.
+      - id: link-first
+        text: "`node.next and node`"
+        explanation: >-
+          Both conditions are there, but in the wrong order. `and` checks the left side first, so
+          `node.next` is read even when `node` is `None`, on an empty or even-length list.
+      - id: link-only
+        text: "`node.next is not None`"
+        explanation: >-
+          This is safe while `node` is a node, but nothing checks `node` itself. On an empty list,
+          or once `node` jumps past the tail of an even-length list, it reads `.next` from `None`.
+      - id: either
+        text: "`node is not None or node.next is not None`"
+        explanation: >-
+          `or` is true as soon as `node` is a node, so the tail passes too, and the body reads past
+          it. When `node` is `None`, the right side reads `None.next`. Every list ends in an error.
+    correct: node-first
+    followUps:
+      link-first:
+        prompt: In `a and b`, which side does Python evaluate first?
+        options:
+          - id: left
+            text: The left, and the right only if the left is true
+          - id: both
+            text: Both, before combining them
+          - id: right
+            text: The right, then the left
+        correct: left
+        explanation: >-
+          `and` short-circuits from left to right. The guard that rules out `None` has to sit on the
+          left so it can stop the read on the right.
+      link-only:
+        prompt: On an empty list, what does the test `node.next is not None` do?
+        options:
+          - id: raises
+            text: It raises, because `node` is `None`
+          - id: skips-loop
+            text: It is false, so the loop is skipped
+          - id: passes-test
+            text: It is true, because `None` is not `None.next`
+        correct: raises
+        explanation: >-
+          The test reads through `node` before it compares anything. A name that holds `None` has
+          to be checked before any `.next` is read from it.
+      either:
+        prompt: "`node` is on the tail. Is `node is not None or node.next is not None` true?"
+        options:
+          - id: left-true
+            text: Yes, because the left side alone is true
+          - id: tail-none
+            text: No, because the tail's `next` is `None`
+          - id: error
+            text: It raises before it can decide
+        correct: left-true
+        explanation: >-
+          `or` needs only one true side. Two hops need both `node` and `node.next` to be nodes, so
+          the sides have to be joined with `and`.
+
+  - format: drag-pointers
+    id: nth-gap-drag-review
+    heading: Where do they stop?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      The cells are a dummy node and then `7 -> 2 -> 9 -> 4 -> 6`, drawn after the `for` loop with
+      `n = 3`. Drag `slow` and `fast` to where they are when line 8 runs.
+    code: |
+      dummy = Node(0, head)
+      slow = fast = dummy
+      for _ in range(n):    # n = 3
+          fast = fast.next
+      while fast.next:
+          slow = slow.next
+          fast = fast.next
+      slow.next = slow.next.next
+    sequence:
+      kind: array
+      cells: [dummy, 7, 2, 9, 4, 6]
+    pointers:
+      - name: slow
+        start: 0
+        correct: 2
+        explanation: >-
+          The loop runs twice, so `slow` moves from the dummy to the 2. It stays 3 behind `fast`,
+          and line 8 removes the 9, the third node from the end.
+        misses:
+          - index: 3
+            explanation: >-
+              That is the node to remove. Line 8 unlinks the node after `slow`, so `slow` has to
+              stop one node before it, on the 2.
+          - index: 1
+            explanation: >-
+              That is one round. `fast` is still on the 4, which has a `next`, so the loop runs
+              again.
+        elsewhere: '`slow` stays 3 nodes behind `fast`, which puts it on the 2.'
+      - name: fast
+        start: 3
+        correct: 5
+        explanation: >-
+          The loop stops once `fast` has no `next`, which is the tail, the 6.
+        misses:
+          - index: 4
+            explanation: >-
+              The 4 still has a `next`, so the loop runs once more.
+        elsewhere: 'The loop ends with `fast` on the tail, the 6.'
+
+  - id: cycle-ahead-review
+    heading: How many rounds?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      Both pointers are inside a cycle of 5 nodes. Going forward around it, `fast` is 2 nodes
+      **ahead** of `slow`. Each round, `slow = slow.next` and `fast = fast.next.next`. After how many
+      rounds are they on the same node?
+    options:
+      - id: two
+        text: 2 rounds
+        explanation: >-
+          2 is how far `fast` is ahead, but `fast` cannot meet `slow` by going backwards. It has to
+          come round the cycle and close the distance behind `slow`.
+      - id: three
+        text: 3 rounds
+        explanation: >-
+          Being 2 ahead in a cycle of 5 means being 3 behind. `fast` gains 1 node a round, so the
+          3 nodes close in 3 rounds.
+      - id: five
+        text: 5 rounds, one lap of the cycle
+        explanation: >-
+          `fast` does not need a whole lap. It needs to make up the distance from behind `slow`,
+          and it gains on `slow` every round.
+      - id: never
+        text: Never, because `fast` is already past `slow`
+        explanation: >-
+          In a cycle there is no "past". A pointer ahead is also behind, and `fast` keeps gaining
+          until they meet.
+    correct: three
+    followUps:
+      two:
+        prompt: In a cycle of 5, `fast` is 2 nodes ahead of `slow`. How far behind `slow` is it?
+        options:
+          - id: three-behind
+            text: 3 nodes, the rest of the way round
+          - id: two-behind
+            text: 2 nodes, the same distance
+          - id: five-behind
+            text: 5 nodes, a full lap
+        correct: three-behind
+        explanation: >-
+          Ahead and behind add up to the cycle length. `fast` closes the gap from behind, so the
+          distance behind is the one that counts.
+      five:
+        prompt: How many nodes does `fast` gain on `slow` each round?
+        options:
+          - id: one
+            text: One, the difference between 2 and 1
+          - id: two
+            text: Two, since it moves two nodes
+          - id: lap
+            text: It depends on the cycle length
+        correct: one
+        explanation: >-
+          Speeds of 2 and 1 differ by 1, so the gap changes by exactly 1 a round. The number of
+          rounds equals the gap, not the cycle length.
+      never:
+        prompt: In a cycle, can `fast` stay ahead of `slow` for good?
+        options:
+          - id: comes-round
+            text: No, the cycle brings it round behind `slow`, and it keeps gaining
+          - id: stays-ahead
+            text: Yes, once ahead it moves away faster
+          - id: sometimes
+            text: Only if the cycle has an even number of nodes
+        correct: comes-round
+        explanation: >-
+          Moving away from `slow` in a cycle is the same as coming up behind it. Each round shrinks
+          the distance behind by 1, so they meet.
+
+  - id: kth-from-end-gap-review
+    heading: How far ahead?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      `kth_from_end(head, k)` should return the value `k` nodes from the end, where `k = 1` is the
+      tail and `k` is at most the length.
+
+      ```python
+      def kth_from_end(head, k):
+          slow = fast = head
+          for _ in range(???):
+              fast = fast.next
+          while fast.next:
+              slow = slow.next
+              fast = fast.next
+          return slow.val
+      ```
+
+      How many hops ahead must `fast` start?
+    options:
+      - id: k-minus-one
+        text: "`k - 1`"
+        explanation: >-
+          `fast` stops on the tail, the first node from the end. `slow` ends `k - 1` nodes behind
+          it, which is the `k`-th from the end. For `k = 1` the gap is 0 and `slow` is the tail.
+      - id: k
+        text: "`k`"
+        explanation: >-
+          A gap of `k` leaves `slow` one node too far back. That suits removing a node, where
+          `slow` stops before the target. When `k` equals the length, `fast` is `None` and the loop
+          test raises.
+      - id: k-plus-one
+        text: "`k + 1`"
+        explanation: >-
+          That is two nodes too far back. When `k` is the length or one less, `fast` runs past the
+          end before the loop, and `fast.next` raises.
+      - id: index
+        text: "`len - k`, the index of the target from the front"
+        explanation: >-
+          The function never counts the list, and a gap from the front does not stay fixed to the
+          end. On `10 -> 20 -> 30 -> 40 -> 50 -> 60` with `k = 2`, a gap of 4 returns 20, not 50.
+    correct: k-minus-one
+    followUps:
+      k:
+        prompt: "`fast` is on the tail and `slow` is `k` nodes behind it. Which node is `slow`?"
+        options:
+          - id: k-plus-one-th
+            text: The (k + 1)-th from the end, one too far back
+          - id: kth
+            text: The k-th from the end
+          - id: k-minus-one-th
+            text: The (k - 1)-th from the end
+        correct: k-plus-one-th
+        explanation: >-
+          The tail is the first from the end, so a node `d` behind it is the (d + 1)-th. To land on
+          the k-th, the gap must be `k - 1`.
+      k-plus-one:
+        prompt: With `k + 1` hops and `k` equal to the length, where is `fast` after the `for` loop?
+        options:
+          - id: crashed
+            text: Nowhere; the last hop reads `.next` from `None` and raises
+          - id: on-none
+            text: On `None`, and the loop then skips
+          - id: on-tail
+            text: On the tail
+        correct: crashed
+        explanation: >-
+          A list of length `L` allows at most `L` hops from the head, the last one landing on
+          `None`. Hop `L + 1` reads through `None`.
+      index:
+        prompt: Why does the gap have to be measured from the end?
+        options:
+          - id: walk-stops-at-end
+            text: The walk stops when `fast` reaches the tail, so the gap places `slow` back from it
+          - id: index-works
+            text: It does not; an index from the front gives the same node
+          - id: length-known
+            text: Because the function already knows the length
+        correct: walk-stops-at-end
+        explanation: >-
+          Both pointers move until `fast` hits the tail, so `slow` ends a fixed distance from the
+          end, whatever the length. That is what lets one pass find a node counted from the end.
+
+  - format: tap-cell
+    id: no-dummy-runs-off-review
+    heading: Where is fast?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      This removes the n-th node from the end without a dummy node. The cells are `5 -> 3 -> 8`,
+      then the `None` after its tail. With `n = 3`, the target is the head. Tap where `fast` is when
+      line 4 first runs.
+    code: |
+      slow = fast = head
+      for _ in range(n):    # n = 3
+          fast = fast.next
+      while fast.next:
+          slow = slow.next
+          fast = fast.next
+      slow.next = slow.next.next
+    sequence:
+      kind: array
+      cells: [5, 3, 8, 'None']
+    markers:
+      - { name: head, at: 0 }
+    correct: 3
+    explanation: >-
+      Three hops from the 5 go to the 3, the 8, then the `None` after the tail. Line 4 then reads
+      `fast.next` from `None` and raises. Even without the error, no node sits before the head for
+      `slow` to rewrite. A dummy in front of the head fixes both.
+    misses:
+      - index: 2
+        explanation: >-
+          The 8 is two hops from the 5. Three hops go one step further, past the tail.
+      - index: 1
+        explanation: >-
+          The 3 is one hop. The `for` loop runs three times.
+      - index: 0
+        explanation: >-
+          `slow` stays on the 5. `fast` moves three times in the `for` loop.
+
+  - format: tap-cell
+    id: late-fast-middle-review
+    heading: Which middle does it stop on?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      Here `fast` starts one node ahead of `slow`. The cells are `6 -> 9 -> 1 -> 7 -> 3 -> 5`. Tap
+      the node `slow` is on when the loop ends.
+    code: |
+      slow = head
+      fast = head.next
+      while fast and fast.next:
+          slow = slow.next
+          fast = fast.next.next
+    sequence:
+      kind: array
+      cells: [6, 9, 1, 7, 3, 5]
+    correct: 2
+    explanation: >-
+      `fast` goes from the 9 to the 7, then to the 5, the tail, and the loop stops. `slow` moved
+      twice, to the 1, the first of the two middles. Starting `fast` one node ahead gives one round
+      fewer on an even-length list.
+    misses:
+      - index: 3
+        explanation: >-
+          The 7 is where `slow` stops when both start on the head. Here `fast` starts one node
+          ahead, so it reaches the tail a round sooner.
+      - index: 1
+        explanation: >-
+          That is one round. After it, `fast` is on the 7, which has a `next`, so another round
+          runs.
+      - index: 5
+        explanation: >-
+          The 5 is where `fast` stops. `slow` covers half the distance.
+      - index: 4
+        explanation: >-
+          `slow` moves one node per round, and there are only two rounds.
+      - index: 0
+        explanation: >-
+          The test passes at the start, since `fast` is on the 9 and has a `next`, so `slow` moves.
+
+  - id: value-check-fooled-review
+    heading: Which list fools it?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      ```python
+      def has_cycle(head):
+          slow = fast = head
+          while fast and fast.next:
+              slow = slow.next
+              fast = fast.next.next
+              if slow.val == fast.val:
+                  return True
+          return False
+      ```
+
+      On which list does this give the wrong answer? "Back to" means the tail's link leads to that
+      earlier node.
+    options:
+      - id: repeats-no-cycle
+        text: "`4 -> 1 -> 4 -> 9 -> 4`, no cycle"
+        explanation: >-
+          After two rounds `slow` is on the second 4 and `fast` on the third. They are different
+          nodes with the same value, so it returns `True` for a list with no cycle.
+      - id: distinct-no-cycle
+        text: "`3 -> 8 -> 6 -> 1 -> 2`, no cycle"
+        explanation: >-
+          The values are all different, so the test never matches. `fast` stops on the tail and the
+          function returns `False`, which is right.
+      - id: distinct-cycle
+        text: "`7 -> 2 -> 5 -> 9`, then back to the 2"
+        explanation: >-
+          The list has a cycle, and the pointers do land on the same node, so the values match too.
+          `True` is right here.
+      - id: repeats-cycle
+        text: "`1 -> 1 -> 1`, then back to the first 1"
+        explanation: >-
+          The values match at once and it returns `True`, but the list does have a cycle, so the
+          answer is right, if only by luck.
+    correct: repeats-no-cycle
+    followUps:
+      distinct-no-cycle:
+        prompt: Can comparing values report a cycle when no two nodes hold the same value?
+        options:
+          - id: no-match
+            text: No, the values only match when it is the same node
+          - id: yes-match
+            text: Yes, two nodes can still compare equal
+          - id: always
+            text: Yes, it reports one on every list
+        correct: no-match
+        explanation: >-
+          With all values different, equal values mean the same node. The value test only goes
+          wrong when two different nodes share a value.
+      distinct-cycle:
+        prompt: When `slow is fast`, is `slow.val == fast.val` also true?
+        options:
+          - id: always-true
+            text: Yes, a node always has the same value as itself
+          - id: not-always
+            text: Not always; it depends on the values
+          - id: never
+            text: No, the comparison only looks at different nodes
+        correct: always-true
+        explanation: >-
+          The value test fires whenever the identity test would. Its flaw is the other direction:
+          it also fires for two different nodes.
+      repeats-cycle:
+        prompt: "The list `1 -> 1 -> 1` has a cycle. Is `True` the right answer for it?"
+        options:
+          - id: right-answer
+            text: Yes; it is right for a bad reason, but it is right
+          - id: wrong-answer
+            text: No, repeated values make any `True` wrong
+          - id: no-cycle
+            text: No, a list of equal values cannot have a cycle
+        correct: right-answer
+        explanation: >-
+          The question asks where the output is wrong. Here the cycle is real, so `True` matches the
+          truth. The bug shows on a list with repeats and no cycle.
+
+  - id: check-before-move-review
+    heading: What does this print?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      This version tests for a meeting before it moves the pointers.
+
+      ```python
+      def has_cycle(head):
+          slow = fast = head
+          while fast and fast.next:
+              if slow is fast:
+                  return True
+              slow = slow.next
+              fast = fast.next.next
+          return False
+
+      print(has_cycle(Node(3, Node(8, Node(1)))), has_cycle(Node(5)))
+      ```
+
+      Neither list has a cycle. What does this print?
+    options:
+      - id: true-false
+        text: "`True False`"
+        explanation: >-
+          Both pointers start on the head, so on the 3-node list the first test sees `slow is fast`
+          and returns `True`. The 1-node list never enters the loop and returns `False`. Moving
+          first, then testing, avoids the false start.
+      - id: false-false
+        text: "`False False`"
+        explanation: >-
+          That is what a correct version prints. This one tests before anything has moved, when the
+          two names still hold the same node.
+      - id: true-true
+        text: "`True True`"
+        explanation: >-
+          The 1-node list fails the loop test, because its only node has no `next`. The meeting test
+          inside the loop never runs for it.
+      - id: false-true
+        text: "`False True`"
+        explanation: >-
+          The 1-node list never runs the loop body, so it cannot return `True`. The 3-node list is
+          the one that enters the loop.
+    correct: true-false
+    followUps:
+      false-false:
+        prompt: On the first pass, before anything moves, is `slow is fast` true?
+        options:
+          - id: same-start
+            text: Yes, both names were set to the head
+          - id: different
+            text: No, `fast` starts one node ahead
+          - id: no-compare
+            text: No, `is` compares values
+        correct: same-start
+        explanation: >-
+          `slow = fast = head` binds both names to one node. A meeting only means something after
+          the pointers have moved at different speeds.
+      true-true:
+        prompt: "For `Node(5)`, does the loop test `fast and fast.next` pass?"
+        options:
+          - id: fails
+            text: No, the only node's `next` is `None`
+          - id: passes
+            text: Yes, `fast` is a node
+          - id: raises
+            text: It raises on `fast.next`
+        correct: fails
+        explanation: >-
+          Both sides must be true. With one node, the right side is `None`, so the body, and the
+          meeting test inside it, never runs.
+      false-true:
+        prompt: Which list enters the loop body?
+        options:
+          - id: three-node
+            text: The 3-node list, since its head has a `next`
+          - id: one-node
+            text: The 1-node list, since its head is a node
+          - id: both
+            text: Both, since neither is empty
+        correct: three-node
+        explanation: >-
+          The test needs a node with a following node. Only the 3-node list has one, so only it can
+          reach the `return True` inside the loop.
