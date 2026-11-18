@@ -1,0 +1,321 @@
+id: pointer-walks-checkpoint
+title: "Pointer walks: checkpoint"
+description: Unlink the n-th node from the end, or tell a cycle from repeated values, on new inputs. Each item combines safe hops, a gap or a speed, and where the walk stops.
+heading: What does this give?
+
+questions:
+  - id: walk-exam-remove-head
+    heading: What does this print?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      def remove_nth(head, n):
+          dummy = Node(0, head)
+          slow = fast = dummy
+          for _ in range(n):
+              fast = fast.next
+          while fast.next:
+              slow = slow.next
+              fast = fast.next
+          slow.next = slow.next.next
+          return dummy.next
+
+      print(values(remove_nth(Node(2, Node(7, Node(5, Node(9)))), 4)))
+      ```
+    options:
+      - id: right
+        text: "`[7, 5, 9]`"
+        explanation: >-
+          Four hops from the dummy put `fast` on the 9, the tail, so the `while` loop never runs.
+          `slow` is still on the dummy, line 9 points the dummy past the 2, and `dummy.next` is now
+          the 7.
+      - id: unchanged
+        text: "`[2, 7, 5, 9]`"
+        explanation: Look at which node's link line 9 rewrites, and what `dummy.next` is afterwards.
+      - id: second
+        text: "`[2, 5, 9]`"
+        explanation: Count the rounds the `while` loop runs once `fast` has made its four hops.
+      - id: raises
+        text: It raises `AttributeError`
+        explanation: Look at where `fast` lands after four hops from the dummy.
+    correct: right
+    followUps:
+      unchanged:
+        prompt: When line 9 runs, which node's link changes?
+        options:
+          - id: dummy-link
+            text: The dummy's, which now skips the 2
+          - id: head-link
+            text: The 2's, which now skips the 7
+          - id: none-changes
+            text: None, because the head has no predecessor
+        correct: dummy-link
+        explanation: >-
+          The dummy is the predecessor the head lacks. Rewriting its link removes the head, and
+          returning `dummy.next` hands back the new first node.
+      second:
+        prompt: After the `for` loop, `fast` is on the 9. How many times does the `while` loop run?
+        options:
+          - id: zero-rounds
+            text: Zero, because the 9 has no `next`
+          - id: one-round
+            text: Once, to move `slow` onto the 2
+          - id: four-rounds
+            text: Four times, once per hop of `fast`
+        correct: zero-rounds
+        explanation: >-
+          A gap of `n` from the dummy leaves `fast` on the tail when `n` is the length. `slow` stays
+          on the dummy, one node before the head.
+      raises:
+        prompt: The list has 4 nodes. Where is `fast` after four hops from the dummy?
+        options:
+          - id: on-tail
+            text: On the tail, the 9
+          - id: on-none
+            text: On the `None` after the tail
+          - id: on-five
+            text: On the 5
+        correct: on-tail
+        explanation: >-
+          The dummy adds one node in front, so `n` hops from it reach the `n`-th node. With `n`
+          equal to the length, that is the tail, and `fast.next` is safe to read.
+
+  - id: walk-exam-while-fast
+    heading: What does this print?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      This version loops on `while fast` instead of `while fast.next`. `values(n)` lists the
+      values a walk from `n` reaches.
+
+      ```python
+      def remove_nth(head, n):
+          dummy = Node(0, head)
+          slow = fast = dummy
+          for _ in range(n):
+              fast = fast.next
+          while fast:
+              slow = slow.next
+              fast = fast.next
+          slow.next = slow.next.next
+          return dummy.next
+
+      print(values(remove_nth(Node(4, Node(6, Node(1, Node(3, Node(8))))), 2)))
+      ```
+    options:
+      - id: right
+        text: "`[4, 6, 1, 3]`"
+        explanation: >-
+          The loop now runs until `fast` is `None`, one round past the tail. `slow` ends on the 3
+          instead of the 1, so line 9 removes the 8, the last node, instead of the 3.
+      - id: intended
+        text: "`[4, 6, 1, 8]`"
+        explanation: Count how many rounds run once the stopping test changes to `while fast`.
+      - id: early
+        text: "`[4, 6, 3, 8]`"
+        explanation: Check whether the changed test makes the walk stop sooner or later.
+      - id: raises
+        text: It raises `AttributeError`
+        explanation: Look at which node `slow` ends on, and whether it has a `next`.
+    correct: right
+    followUps:
+      intended:
+        prompt: Under `while fast`, where is `fast` when the loop ends?
+        options:
+          - id: past-tail
+            text: On `None`, one step past the tail
+          - id: tail
+            text: On the tail, the 8
+          - id: before-tail
+            text: On the 3
+        correct: past-tail
+        explanation: >-
+          `while fast` keeps going as long as `fast` is a node, including the tail. That extra round
+          moves `slow` one node too far, so the node after it is one too late.
+      early:
+        prompt: Compared with `while fast.next`, how many rounds does `while fast` run?
+        options:
+          - id: one-more
+            text: One more, since it also runs with `fast` on the tail
+          - id: one-fewer
+            text: One fewer, since `None` is reached sooner
+          - id: same
+            text: The same, since both stop at the end
+        correct: one-more
+        explanation: >-
+          Both pointers move together, so an extra round shifts `slow` one node toward the end.
+          The removed node moves one toward the end as well.
+      raises:
+        prompt: When the loop ends, `slow` is on the 3. Is `slow.next.next` safe to read?
+        options:
+          - id: safe
+            text: Yes, `slow.next` is the 8, a real node
+          - id: unsafe
+            text: No, `slow.next` is `None`
+          - id: slow-none
+            text: No, `slow` is `None`
+        correct: safe
+        explanation: >-
+          With `n = 2`, `slow` ends on the second node from the end, so its `next` is the tail. The
+          read only fails when `n = 1`, where `slow` lands on the tail itself.
+
+  - id: walk-exam-cycle-check
+    heading: Which check is right?
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      A list may have any length, including zero, and may hold the same value in several nodes. Its
+      tail may link back to an earlier node. Each option moves `slow` one node and `fast` two nodes
+      a round, unless it says otherwise. Which one returns `True` for exactly the lists that have a
+      cycle?
+    options:
+      - id: identity
+        text: "Loop `while fast and fast.next`; after moving, return `True` if `slow is fast`"
+        explanation: >-
+          The test rules out `None` before any two-hop read, so every acyclic list ends with
+          `False`. `is` matches only when both names hold one node, which in a cycle happens
+          within a lap once both are inside.
+      - id: values
+        text: "Loop `while fast and fast.next`; after moving, return `True` if values are equal"
+        explanation: Think about a list with no cycle that holds 3 in two different nodes.
+      - id: seen-values
+        text: "Walk once; return `True` when `node.val` is already in a set of seen values"
+        explanation: Think about what the set remembers about each node it passes.
+      - id: link-guard
+        text: "Loop `while fast.next`; after moving, return `True` if `slow is fast`"
+        explanation: Think about an empty list, and a list with an even number of nodes.
+    correct: identity
+    followUps:
+      values:
+        prompt: What can equal values in two pointers mean?
+        options:
+          - id: same-or-different
+            text: The same node, or two different nodes that hold one value
+          - id: same-only
+            text: Only that both pointers are on the same node
+          - id: cycle-only
+            text: Only that the list has a cycle
+        correct: same-or-different
+        explanation: >-
+          A value is data a node holds, not the node. On an acyclic list with repeats, the pointers
+          can sit on two different nodes with equal values, and the check reports a cycle that is
+          not there.
+      seen-values:
+        prompt: "On the acyclic list `5 -> 5`, what does the set of seen values report?"
+        options:
+          - id: false-positive
+            text: A cycle, because the second 5 is already in the set
+          - id: no-cycle
+            text: No cycle, because the walk reaches the end
+          - id: crash
+            text: An error, because the set cannot hold repeats
+        correct: false-positive
+        explanation: >-
+          A set of values merges different nodes that hold the same value. Storing the nodes
+          themselves would work, but that takes O(n) space where two pointers take O(1).
+      link-guard:
+        prompt: On an acyclic list of 2 nodes, what happens on the second test of `while fast.next`?
+        options:
+          - id: reads-none
+            text: "`fast` is `None` after one round, so `fast.next` raises"
+          - id: stops
+            text: "`fast` is on the tail, so the loop stops cleanly"
+          - id: passes
+            text: "`fast` wraps to the head, so the test passes"
+        correct: reads-none
+        explanation: >-
+          Two hops from the first of two nodes go past the tail. The test has to rule out `None`
+          before it reads `.next`, which `while fast and fast.next` does.
+
+  - format: step-trace
+    id: walk-exam-cycle-trace
+    heading: Follow the walk
+    tags: [linked-list, two-pointers, python]
+    prompt: >-
+      The cells are `5 -> 8 -> 3 -> 7 -> 3 -> 1` in order, and the 1 links back to the first 3, so
+      the list has a cycle. The board cannot draw that link. Predict each step before it is shown.
+    code: |
+      def has_cycle(head):
+          slow = fast = head
+          while fast and fast.next:
+              slow = slow.next
+              fast = fast.next.next
+              if slow is fast:
+                  return True
+          return False
+    sequence:
+      kind: array
+      cells: [5, 8, 3, 7, 3, 1]
+    start:
+      - { name: slow, at: 0 }
+      - { name: fast, at: 0 }
+    steps:
+      - line: 3
+        ask: The first two rounds run. Where is `fast` now?
+        pointer: fast
+        correct: 4
+        explanation: >-
+          Two hops a round take `fast` from the 5 to the first 3, then to the second 3. `slow` is
+          on the first 3.
+        misses:
+          - index: 2
+            explanation: >-
+              That is after one round. The second round takes `fast` two more nodes, to the second
+              3.
+          - index: 5
+            explanation: >-
+              Two rounds of two hops cover four links from the 5, which reach the second 3, not the 1.
+        elsewhere: 'Four links from the 5 reach the second 3.'
+        also:
+          - { name: slow, at: 2 }
+      - line: 6
+        ask: Both pointers are on a node holding 3. Does `slow is fast` return `True` here?
+        options:
+          - id: different-nodes
+            text: No, they are two different nodes that both hold 3
+            explanation: >-
+              `slow` is on the first 3 and `fast` on the second. `is` asks about the node, not its
+              value, so the walk goes on.
+          - id: same-value
+            text: Yes, both hold 3
+            explanation: >-
+              Equal values are not one node. A value check would stop here, and on a list like this
+              without the back link it would report a cycle that is not there.
+        correct: different-nodes
+      - line: 3
+        ask: The third round runs. Where is `fast` now?
+        pointer: fast
+        correct: 2
+        explanation: >-
+          One hop from the second 3 is the 1, and the 1 links back to the first 3. `fast` has gone
+          round the cycle. `slow` moves to the 7.
+        misses:
+          - index: 5
+            explanation: >-
+              The 1 is one hop. The second hop follows the 1's link, which leads back to the first
+              3.
+          - index: 0
+            explanation: >-
+              The 1 links back to the first 3, not to the head. The 5 and the 8 are not in the
+              cycle.
+        elsewhere: 'Two hops from the second 3 go through the 1 and back to the first 3.'
+        also:
+          - { name: slow, at: 3 }
+      - line: 3
+        ask: The fourth round runs. Where does `slow` meet `fast`?
+        pointer: slow
+        correct: 4
+        explanation: >-
+          `slow` moves from the 7 to the second 3, and `fast` goes from the first 3, through the 7,
+          to the second 3. Now `slow is fast`, and the function returns `True`.
+        misses:
+          - index: 2
+            explanation: >-
+              `fast` was on the first 3, but it moves two hops this round, to the second 3, and
+              `slow` moves there too.
+          - index: 5
+            explanation: >-
+              `slow` moves one node a round, from the 7 to the second 3. The 1 is one further.
+        elsewhere: '`slow` takes one hop from the 7, to the second 3, where `fast` also lands.'
+        also:
+          - { name: fast, at: 4 }
