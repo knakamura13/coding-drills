@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import ActionCard from '$lib/components/ActionCard.svelte';
 	import AuthNotice from '$lib/components/AuthNotice.svelte';
@@ -64,7 +65,7 @@
 					kicker="Next up"
 					title={next.title}
 					description={next.description}
-					href="/play/{next.id}"
+					href={resolve(`/play/${next.id}`)}
 					action="Start {next.title}"
 				>
 					{#if nextStat}
@@ -88,13 +89,16 @@
 				kicker="Weak spots"
 				title="{snap.weak} {snap.weak === 1 ? 'question' : 'questions'} you have missed"
 				description="Practice the ones you fail most often, whether or not they are due."
-				href="/weak"
+				href={resolve('/weak')}
 				action="Drill {weakTaking} weak {weakTaking === 1 ? 'spot' : 'spots'}"
 			/>
 		{/if}
 	</div>
 
-	<p class="browse"><a href="/decks">Browse all {data.deckCount} decks</a></p>
+	<p class="browse">
+		<a href={resolve('/decks')}>Browse all {data.deckCount} decks</a>
+		<a href={resolve('/tree')}>View the mastery tree</a>
+	</p>
 </main>
 
 <style>
@@ -178,8 +182,11 @@
 	}
 
 	.browse {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 4px 18px;
 		margin-top: 20px;
-		text-align: center;
 	}
 
 	.browse a {

@@ -28,7 +28,8 @@
 		display: flex;
 		align-items: center;
 		gap: 8.5px;
-		padding: max(24px, calc(env(safe-area-inset-top) + 12px)) 27px 0 8.5px;
+		padding: max(24px, calc(env(safe-area-inset-top) + 12px)) max(27px, env(safe-area-inset-right)) 0
+			max(8.5px, env(safe-area-inset-left));
 	}
 
 	.close {
