@@ -101,6 +101,14 @@ test.describe('checkpoint exam', () => {
 		await expect(detail.getByRole('link', { name: /^Practice in/ }).first()).toBeVisible();
 	});
 
+	test('a later miss drops a mastered skill back to practicing in the tree', async ({ page }) => {
+		const drill = teaching.find((item) => item.skillId)!;
+		const miss = { ...attempts([drill], [false], 0)[0]!, id: 'decay-miss' };
+		await seed(page, [...masteredPath(), miss]);
+		await page.goto('/tree');
+		await expect(page.locator(`#skill-${drill.skillId}`)).toContainText('Practicing');
+	});
+
 	test('the exam page has no accessibility violations', async ({ page }) => {
 		await seed(page, masteredPath());
 		await page.goto(`/exam/${CHECKPOINT.id}`);
