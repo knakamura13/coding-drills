@@ -1,0 +1,283 @@
+id: interval-merging-checkpoint
+title: "Interval merging: checkpoint"
+description: Insert a new range into a sorted list of ranges when it overlaps several of them, on new inputs. Each item combines drawing endpoints, the touching rule, and the running end.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-insert-result
+    heading: What does the insert give?
+    tags: [intervals]
+    prompt: >-
+      A list of ranges is sorted by start, and no two of them overlap. Touching ranges merge. What
+      does inserting `[4, 10]` into `[[1, 2], [3, 5], [6, 7], [8, 9], [11, 13]]` give?
+    options:
+      - id: right
+        text: "`[[1, 2], [3, 10], [11, 13]]`"
+        explanation: >-
+          `[1, 2]` ends before 4, so it is copied. `[3, 5]` overlaps the new range and starts
+          earlier, so the merged start is 3. `[6, 7]` and `[8, 9]` lie inside it, so the end stays
+          10. `[11, 13]` starts past 10 and is copied as it is.
+      - id: bridged
+        text: "`[[1, 2], [3, 13]]`"
+        explanation: >-
+          Check what lies between 10 and 11. Only a shared endpoint counts as touching.
+      - id: new-start
+        text: "`[[1, 2], [4, 10], [11, 13]]`"
+        explanation: >-
+          Every range the new one absorbs adds its points. Look at where `[3, 5]` begins.
+      - id: last-end
+        text: "`[[1, 2], [3, 9], [11, 13]]`"
+        explanation: >-
+          9 is where the last absorbed range ends, but the new range itself reaches further.
+    correct: right
+    followUps:
+      bridged:
+        prompt: Is there a point inside both `[3, 10]` and `[11, 13]`?
+        options:
+          - id: right
+            text: No, a gap lies between 10 and 11
+          - id: neighbors
+            text: Yes, 10 and 11 are next to each other
+          - id: outer
+            text: Yes, both lie inside `[3, 13]`
+        correct: right
+        explanation: >-
+          Touching means one range ends exactly where the other starts. A gap, however small,
+          keeps them apart, so the last phase copies `[11, 13]` unchanged.
+      new-start:
+        prompt: The new range `[4, 10]` absorbs `[3, 5]`. What is the merged start?
+        options:
+          - id: right
+            text: 3, the smaller of the two starts
+          - id: new
+            text: 4, the start of the range being inserted
+          - id: overlap
+            text: 5, where the two first overlap
+        correct: right
+        explanation: >-
+          Absorbing a range keeps every point of both, so the start is `min(4, 3)`. The first
+          absorbed range can begin before the new one does.
+      last-end:
+        prompt: The insert absorbs `[8, 9]` last. What is the merged end?
+        options:
+          - id: right
+            text: 10, the larger of 9 and the new range's end
+          - id: nine
+            text: 9, the end of the last range absorbed
+          - id: seven
+            text: 7, the end of `[6, 7]`
+        correct: right
+        explanation: >-
+          The end is a running `max`. Ranges nested inside the new one cannot pull it back
+          from 10.
+
+  - id: checkpoint-absorbed-run
+    format: drag-pointers
+    heading: Place the absorbed run
+    tags: [intervals]
+    prompt: >-
+      The ranges are sorted by start and none overlap. Touching ranges merge. The new range
+      `[5, 13]` is inserted. Drag `first` and `last` to the first and the last existing range that
+      merge with it.
+    code: |
+      spans = [[1, 2], [4, 5], [6, 8], [9, 10], [13, 15], [17, 18]]
+      new = [5, 13]
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[1,2]', '[4,5]', '[6,8]', '[9,10]', '[13,15]', '[17,18]']
+    pointers:
+      - name: first
+        start: 5
+        correct: 1
+        explanation: >-
+          `[4, 5]` ends at 5, where the new range starts, so the two touch and merge. `[1, 2]`
+          ends before 5.
+        misses:
+          - index: 2
+            explanation: >-
+              `[6, 8]` merges, but it is not the first. `[4, 5]` shares the point 5 with the new
+              range, and touching ranges merge.
+          - index: 0
+            explanation: "`[1, 2]` ends at 2, before the new range starts at 5, so it is copied as it is."
+        elsewhere: The run starts at the first range that ends at or after the new start, 5.
+      - name: last
+        start: 0
+        correct: 4
+        explanation: >-
+          `[13, 15]` starts at 13, where the new range ends, so it merges and the result is
+          `[4, 15]`. `[17, 18]` starts past 15.
+        misses:
+          - index: 3
+            explanation: >-
+              `[9, 10]` merges, but it is not the last. `[13, 15]` shares the point 13 with the
+              new range.
+          - index: 5
+            explanation: >-
+              `[17, 18]` starts at 17. Even after the merge reaches 15, 17 is past it, so it stays
+              apart.
+        elsewhere: The run ends at the last range that starts at or before the merged end.
+
+  - id: checkpoint-insert-trace
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, python]
+    prompt: >-
+      The ranges are sorted by start and none overlap. Touching ranges merge. Predict each step
+      before it is shown.
+    code: |
+      def insert(spans, new):
+          out, i = [], 0
+          while i < len(spans) and spans[i][1] < new[0]:
+              out.append(spans[i])
+              i += 1
+          lo, hi = new
+          while i < len(spans) and spans[i][0] <= hi:
+              lo = min(lo, spans[i][0])
+              hi = max(hi, spans[i][1])
+              i += 1
+          out.append([lo, hi])
+          return out + spans[i:]
+
+      insert([[0, 1], [3, 4], [5, 7], [8, 11], [13, 14]], [2, 8])
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[0,1]', '[3,4]', '[5,7]', '[8,11]', '[13,14]']
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 3
+        ask: Where is `i` when the first `while` stops?
+        pointer: i
+        correct: 1
+        explanation: >-
+          `[0, 1]` ends at 1, before the new start 2, so it is copied. `[3, 4]` ends at 4, which
+          is not before 2, so the copying stops at index 1.
+        misses:
+          - index: 0
+            explanation: "`[0, 1]` ends at 1, before 2, so the first loop copies it and moves on."
+          - index: 2
+            explanation: >-
+              `[3, 4]` ends at 4, not before the new start 2. It reaches into the new range, so
+              the copying stops there.
+        elsewhere: The first loop stops at the first range that does not end before 2.
+      - line: 7
+        ask: Where is `i` when the second `while` stops?
+        pointer: i
+        correct: 4
+        explanation: >-
+          `[8, 11]` starts at 8, which equals `hi`, so it is absorbed and `hi` grows to 11.
+          `[13, 14]` starts past 11, so the loop stops at index 4.
+        misses:
+          - index: 3
+            explanation: >-
+              `[8, 11]` starts at 8, and `hi` is 8 by then. `8 <= 8` is True, so the touching
+              range is absorbed and the loop moves on.
+          - index: 2
+            explanation: "`[5, 7]` lies inside `[2, 8]`, so it is absorbed."
+          - index: 1
+            explanation: "`[3, 4]` starts at 3, at most 8, so the second loop absorbs it."
+        elsewhere: The second loop stops at the first range that starts after `hi`.
+      - line: 12
+        ask: What does the call return?
+        options:
+          - id: right
+            text: '`[[0, 1], [2, 11], [13, 14]]`'
+            explanation: >-
+              `lo` stays 2, since every absorbed range starts later. `hi` ends at 11 from
+              `[8, 11]`. `[13, 14]` is the tail that `spans[i:]` adds back.
+          - id: absorbed-start
+            text: '`[[0, 1], [3, 11], [13, 14]]`'
+            explanation: >-
+              3 is where the first absorbed range starts, but `lo` is `min(2, 3)`, and the new
+              range starts earlier.
+          - id: touch-apart
+            text: '`[[0, 1], [2, 8], [8, 11], [13, 14]]`'
+            explanation: >-
+              `[8, 11]` touches `[2, 8]` at 8, and touching ranges merge, so it was absorbed.
+          - id: bridged
+            text: '`[[0, 1], [2, 14]]`'
+            explanation: >-
+              Nothing covers 12. `[13, 14]` starts past `hi`, 11, so it is copied unchanged.
+        correct: right
+
+  - id: checkpoint-strict-insert
+    heading: What does this print?
+    tags: [intervals, python]
+    prompt: |-
+      Touching ranges merge, but this insert's second loop uses `<`.
+
+      ```python
+      def insert(spans, new):
+          out, i = [], 0
+          while i < len(spans) and spans[i][1] < new[0]:
+              out.append(spans[i])
+              i += 1
+          lo, hi = new
+          while i < len(spans) and spans[i][0] < hi:
+              lo = min(lo, spans[i][0])
+              hi = max(hi, spans[i][1])
+              i += 1
+          out.append([lo, hi])
+          return out + spans[i:]
+
+      print(insert([[1, 3], [6, 9], [10, 12]], [3, 6]))
+      ```
+    options:
+      - id: right
+        text: "`[[1, 6], [6, 9], [10, 12]]`"
+        explanation: >-
+          The first loop is unchanged, so `[1, 3]` is not copied: it ends at the new start, not
+          before it. The second loop absorbs it, and `lo` becomes 1. `[6, 9]` starts at 6, and
+          `6 < 6` fails, so it is left out though it touches the new range.
+      - id: correct-merge
+        text: "`[[1, 9], [10, 12]]`"
+        explanation: >-
+          That is what `<=` in the second loop would give. Trace the strict test on `[6, 9]`.
+      - id: both-apart
+        text: "`[[1, 3], [3, 6], [6, 9], [10, 12]]`"
+        explanation: >-
+          The first loop copies only ranges that end before 3. Check where `[1, 3]` ends.
+      - id: left-apart
+        text: "`[[1, 3], [3, 9], [10, 12]]`"
+        explanation: >-
+          Check which loop handles each touching neighbor, and which comparison each loop uses.
+    correct: right
+    followUps:
+      correct-merge:
+        prompt: When `[6, 9]` is read, `hi` is 6. What does `spans[i][0] < hi` give?
+        options:
+          - id: right
+            text: "`False`, so `[6, 9]` is left out"
+          - id: absorbed
+            text: "`True`, so `[6, 9]` is absorbed"
+        correct: right
+        explanation: >-
+          `6 < 6` is False. The strict test treats a range that starts exactly at `hi` as
+          separate, which breaks the touching rule on the right side.
+      both-apart:
+        prompt: Does the first loop copy `[1, 3]` when the new start is 3?
+        options:
+          - id: right
+            text: No, `3 < 3` is False, so the second loop takes it
+          - id: copies
+            text: Yes, it ends at 3, which is not after the new start
+        correct: right
+        explanation: >-
+          The first loop copies only ranges that end strictly before the new start. `[1, 3]`
+          touches `[3, 6]`, so it falls through to the merge loop.
+      left-apart:
+        prompt: Which side of `[3, 6]` does the strict `<` break?
+        options:
+          - id: right
+            text: Only the right, where `[6, 9]` starts exactly at `hi`
+          - id: left
+            text: Only the left, where `[1, 3]` ends exactly at the new start
+          - id: both
+            text: Both sides
+        correct: right
+        explanation: >-
+          The left touch is decided by the first loop's `<`, which is still right: `[1, 3]` is
+          not copied, so it is absorbed. The right touch is decided by the second loop, which now
+          leaves `[6, 9]` out.
