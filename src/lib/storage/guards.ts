@@ -40,6 +40,8 @@ export function isAttempt(value: unknown): value is Attempt {
 		isId(value.questionId) &&
 		isId(value.pickedId) &&
 		typeof value.correct === 'boolean' &&
+		(value.examRulesVersion === undefined ||
+			(typeof value.examRulesVersion === 'number' && Number.isSafeInteger(value.examRulesVersion) && value.examRulesVersion > 0)) &&
 		(value.followUp === undefined || isFollowUp(value.followUp)) &&
 		(value.reviewOf === undefined ||
 			(isRecord(value.reviewOf) && isId(value.reviewOf.deckId) && isId(value.reviewOf.questionId)))

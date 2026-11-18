@@ -1,3 +1,6 @@
+/** Version 2 expanded the Count islands checkpoint to five items. */
+export const EXAM_RULES_VERSION = 2;
+
 export interface QuestionRef {
 	deckId: string;
 	questionId: string;
@@ -16,6 +19,8 @@ export interface Attempt extends QuestionRef {
 	day: string;
 	/** The due drill this fresh example reviewed. */
 	reviewOf?: QuestionRef;
+	/** Exam rules in effect when the attempt was saved. Older attempts omit this. */
+	examRulesVersion?: number;
 	/**
 	 * The option picked on a multiple-choice question, or the cell index for a
 	 * tap-cell question (`"0"`, `"1"`, …).

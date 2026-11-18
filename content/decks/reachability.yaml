@@ -1,0 +1,190 @@
+id: reachability
+title: Reachability
+description: Find legal neighbors, mark each discovery, and explore a region of land.
+questions:
+  - id: reachability-tap-east
+    format: tap-cell
+    tags:
+      - bfs
+    prompt: '**Example:** Moving right from column 0 reads column 1. This row has land at columns 0 and 1 and
+      water at column 2. Starting at the marked cell, tap the land cell one step right.'
+    code: |
+      row = [1, 1, 0]
+      start = 0
+    sequence:
+      kind: array
+      name: row
+      cells:
+        - '1'
+        - '1'
+        - '0'
+    markers:
+      - name: start
+        at: 0
+    correct: 1
+    explanation: One step right increases the column by one. Column 1 is in bounds and holds land.
+    misses:
+      - index: 0
+        explanation: This is the starting cell. Moving right increases the column.
+      - index: 2
+        explanation: This is two columns away and contains water.
+  - id: reachability-diagonal-neighbor
+    tags:
+      - bfs
+      - dfs
+    prompt: '**Example:** (1, 1) → (0, 1) is one upward step. With moves up, down, left and right only, is
+      (2, 2) one step from (1, 1)?'
+    options:
+      - id: valid
+        text: It is two moves away
+        explanation: The row and column both change. A legal move changes exactly one coordinate by one.
+      - id: mistake
+        text: It is one move away
+        explanation: The row and column both change. A legal move changes exactly one coordinate by one.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Which coordinates change from (1, 1) to (2, 2)?
+        options:
+          - id: right
+            text: Both row and column
+          - id: wrong
+            text: The row only
+        correct: right
+        explanation: The row and column both change. A legal move changes exactly one coordinate by one.
+  - id: reachability-reject-negative-row
+    tags:
+      - bfs
+      - dfs
+    prompt: '**Example:** In a two-row grid, row 2 is beyond the bottom. At row 0, which check stops an upward
+      step from reading Python’s last row?'
+    options:
+      - id: valid
+        text: '`0 <= r < len(grid)`'
+        explanation: Moving up from row 0 produces −1. Python accepts a negative index and reads from the end
+          unless the guard rejects it.
+      - id: mistake
+        text: '`r < len(grid)`'
+        explanation: Moving up from row 0 produces −1. Python accepts a negative index and reads from the end
+          unless the guard rejects it.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Does row −1 pass the check `r < 2`?
+        options:
+          - id: right
+            text: Yes, −1 is less than 2
+          - id: wrong
+            text: No, the check requires nonnegative rows
+        correct: right
+        explanation: Moving up from row 0 produces −1. Python accepts a negative index and reads from the end
+          unless the guard rejects it.
+  - id: reachability-mark-convergence
+    tags:
+      - bfs
+      - dfs
+    prompt: '**Example:** When A adds B to the queue, it marks B seen immediately. C later finds B beside it,
+      while B is still waiting. What should C do?'
+    options:
+      - id: valid
+        text: Skip B because it is already seen
+        explanation: Seen means discovered, including cells still waiting in the queue. B already has a turn
+          coming.
+      - id: mistake
+        text: Queue B because it has not had a turn
+        explanation: Seen means discovered, including cells still waiting in the queue. B already has a turn
+          coming.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Can a cell be in seen before it is popped?
+        options:
+          - id: right
+            text: Yes, once it is queued
+          - id: wrong
+            text: No, seen only holds finished cells
+        correct: right
+        explanation: Seen means discovered, including cells still waiting in the queue. B already has a turn
+          coming.
+  - id: reachability-mark-start
+    tags:
+      - bfs
+      - dfs
+    prompt: '**Example:** Mark B when you queue it. The start A is queued first. When should A be marked?'
+    options:
+      - id: valid
+        text: As soon as A is queued
+        explanation: The start follows the same rule as every neighbor. A later visit to a neighbor must not
+          rediscover A.
+      - id: mistake
+        text: When a neighbor queues A again
+        explanation: The start follows the same rule as every neighbor. A later visit to a neighbor must not
+          rediscover A.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: If a neighbor can walk back to an unmarked start, what can it do?
+        options:
+          - id: right
+            text: Queue the start a second time
+          - id: wrong
+            text: Skip it because its turn already ended
+        correct: right
+        explanation: The start follows the same rule as every neighbor. A later visit to a neighbor must not
+          rediscover A.
+  - id: reachability-stop-at-water
+    tags:
+      - bfs
+      - dfs
+    prompt: |-
+      **Example:** A row of land continues until water blocks the walk. In the grid below, which land does a search from (0, 0) reach? Move only in the four cardinal directions.
+
+      ```text
+      1101
+      0001
+      ```
+    options:
+      - id: valid
+        text: The first two cells of the top row
+        explanation: The water in column 2 and the water beneath the left pair cut off the right region.
+      - id: mistake
+        text: All four land cells in the grid
+        explanation: The water in column 2 and the water beneath the left pair cut off the right region.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: Can the top-right land be reached by crossing water?
+        options:
+          - id: right
+            text: No, water stops the walk
+          - id: wrong
+            text: Yes, if land resumes afterward
+        correct: right
+        explanation: The water in column 2 and the water beneath the left pair cut off the right region.
+  - id: reachability-empty-frontier
+    tags:
+      - bfs
+      - dfs
+    prompt: '**Example:** For one isolated land cell, the frontier empties after one pop. In a larger walk,
+      what does an empty frontier mean when each popped land cell offers all its legal neighbors?'
+    options:
+      - id: valid
+        text: The current region has been explored
+        explanation: Every discovered cell has been processed. Any still-undiscovered land lies outside the
+          start’s reachable region.
+      - id: mistake
+        text: Every patch of land in the grid is explored
+        explanation: Every discovered cell has been processed. Any still-undiscovered land lies outside the
+          start’s reachable region.
+    correct: valid
+    followUps:
+      mistake:
+        prompt: If a patch of land has no path from the start, will it ever enter this frontier?
+        options:
+          - id: right
+            text: No, it requires a new start
+          - id: wrong
+            text: Yes, when the last cell is popped
+        correct: right
+        explanation: Every discovered cell has been processed. Any still-undiscovered land lies outside the
+          start’s reachable region.
