@@ -16,6 +16,18 @@ import { cardKey, countedAttempts } from './srs';
  * every paired drill has a counted correct attempt: the first attempt on that
  * question for some day was right. Any other attempt on a paired drill means
  * the skill is being practiced.
+ *
+ * The evidence is an attempt the log can count. Today that attempt is a
+ * multiple-choice question. A richer lesson (#18) can feed `skillState` once
+ * it writes an attempt, or replace the drill list here, without `examGate`
+ * learning the lesson format.
+ *
+ * Recency is ignored, so one old correct attempt masters the skill for good.
+ * Review decay (#19) belongs in `skillState`: drop the skill out of the
+ * mastered set and every exam that requires it locks again, including one
+ * that had passed. Whether a passed exam should stay passed is not decided.
+ * Quizzes (#20) are not a node and not a disposition. Keep and rewrite drills
+ * are the only evidence that moves a skill.
  */
 export const MASTERY_RULE =
 	'Placeholder: keep and rewrite drills are paired with skills in list order. A skill is mastered when every paired drill was answered right on the first try of some day. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
@@ -41,7 +53,9 @@ export interface ExamGate {
 /**
  * An exam is locked while any required skill is unmastered. It is available
  * once the last of those skills is mastered, and passed only when `passed` is
- * also true. A passed flag does not open a locked exam.
+ * also true. A passed flag does not open a locked exam. The mastered set is
+ * recomputed on each read, so a skill that leaves it (review decay, #19)
+ * locks the exam again.
  */
 export function examGate(requires: readonly string[], mastered: ReadonlySet<string>, passed: boolean): ExamGate {
 	const remaining = requires.filter((id) => !mastered.has(id));

@@ -116,12 +116,13 @@ function tree(): Curriculum {
 						branchId: 'one',
 						after: [],
 						skills: [
-							{ id: 'a1', title: 'First', pathId: 'alpha', branchId: 'one', line: 'main', after: [] },
-							{ id: 'a2', title: 'Second', pathId: 'alpha', branchId: 'one', line: 'main', after: ['a1'] }
+							{ kind: 'skill', id: 'a1', title: 'First', pathId: 'alpha', branchId: 'one', line: 'main', after: [] },
+							{ kind: 'skill', id: 'a2', title: 'Second', pathId: 'alpha', branchId: 'one', line: 'main', after: ['a1'] }
 						],
 						forks: [],
 						checkpoints: [
 							{
+								kind: 'checkpoint',
 								id: 'alpha-exam',
 								title: 'Alpha exam',
 								summary: 'Both.',
@@ -147,8 +148,9 @@ function tree(): Curriculum {
 						after: ['alpha'],
 						afterNote: 'Alpha leads in.',
 						skills: [
-							{ id: 'b1', title: 'Beta skill', pathId: 'beta', branchId: 'two', line: 'main', after: ['a2'] },
+							{ kind: 'skill', id: 'b1', title: 'Beta skill', pathId: 'beta', branchId: 'two', line: 'main', after: ['a2'] },
 							{
+								kind: 'skill',
 								id: 'b-fork',
 								title: 'Fork skill',
 								pathId: 'beta',
@@ -160,6 +162,7 @@ function tree(): Curriculum {
 						forks: [{ id: 'side', title: 'Side', after: null, skillIds: ['b-fork'] }],
 						checkpoints: [
 							{
+								kind: 'checkpoint',
 								id: 'beta-exam',
 								title: 'Beta exam',
 								summary: 'Waits on both branches.',
