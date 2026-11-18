@@ -3,6 +3,7 @@ import { basename, extname, join } from 'node:path';
 import { parse } from 'yaml';
 import { branchSchema, compileCurriculum, type Curriculum } from './curriculum.ts';
 import { ContentError, loadDecks } from './loadDecks.ts';
+import { isChoiceQuestion } from './schema.ts';
 
 /** Node-only. Reads, parses, and validates the curriculum at build and test time. */
 
@@ -40,7 +41,7 @@ export function loadCurriculum(curriculumDir: string, decksDir: string): Curricu
 		deck.questions.map((question) => ({
 			deckId: deck.id,
 			questionId: question.id,
-			followUpIds: Object.keys(question.followUps)
+			followUpIds: isChoiceQuestion(question) ? Object.keys(question.followUps) : []
 		}))
 	);
 	return compileCurriculum(branches, questions);
