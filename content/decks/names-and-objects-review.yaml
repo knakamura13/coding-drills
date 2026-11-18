@@ -1,0 +1,698 @@
+id: names-and-objects-review
+title: "Names and objects: review"
+description: Fresh inputs for following a reference, telling rebinding from changing an object, and predicting shared state. No worked examples.
+heading: What happens next?
+
+questions:
+  - format: drag-pointers
+    id: name-arrows-review
+    heading: Which list does each name refer to?
+    tags: [python]
+    prompt: >-
+      Cell 0 is the list that line 1 builds and cell 1 is the list that line 2 builds. Drag `n`,
+      `k` and `j` to the list each one refers to after the code runs.
+    code: |
+      m = [0]
+      n = m[:]
+      k = n
+      j = m
+    sequence:
+      kind: array
+      cells: ['[0]', '[0]']
+    markers:
+      - { name: m, at: 0 }
+    pointers:
+      - name: n
+        start: 0
+        correct: 1
+        explanation: '`m[:]` builds a new list with the same items, and `n` names that new list.'
+        misses:
+          - index: 0
+            explanation: >-
+              A full slice is a copy. `m[:]` builds a second list, cell 1, so `n` does not share
+              `m`'s list.
+        elsewhere: '`n` names the copy that `m[:]` builds, cell 1.'
+      - name: k
+        start: 0
+        correct: 1
+        explanation: '`k = n` points `k` at the object `n` refers to, the copy in cell 1.'
+        misses:
+          - index: 0
+            explanation: >-
+              `k = n` follows `n`, not the list `n` was copied from. `n` refers to cell 1, so `k`
+              does too.
+        elsewhere: '`k = n` points `k` at the list `n` names, cell 1.'
+      - name: j
+        start: 1
+        correct: 0
+        explanation: '`j = m` makes `j` a second name for the list from line 1.'
+        misses:
+          - index: 1
+            explanation: >-
+              Assignment builds no list. `j = m` points `j` at the list `m` names, cell 0.
+        elsewhere: '`j = m` points `j` at the list `m` names, cell 0.'
+
+  - id: which-is-false-review
+    heading: Which one is False?
+    tags: [python]
+    prompt: |-
+      ```python
+      x = [3, 3]
+      y = x[:]
+      z = x
+      ```
+
+      Which expression is `False`?
+    options:
+      - id: slice-is
+        text: "`x is y`"
+        explanation: >-
+          `x[:]` builds a new list, so `x` and `y` are two objects. `is` asks for one object, so
+          `x is y` is `False`.
+      - id: slice-eq
+        text: "`x == y`"
+        explanation: >-
+          The slice copied every item, so `x` and `y` hold equal values. `==` compares values,
+          so it is `True`.
+      - id: alias-is
+        text: "`x is z`"
+        explanation: '`z = x` adds a second name to the list `x` names, so `x is z` is `True`.'
+      - id: cross-eq
+        text: "`y == z`"
+        explanation: >-
+          `z` names `x`'s list, and `y` is a copy of it, so both hold `[3, 3]` and `==` is
+          `True`.
+    correct: slice-is
+    followUps:
+      slice-eq:
+        prompt: "`y` is a slice copy of `x`. What does `x == y` check?"
+        options:
+          - id: values
+            text: That both lists hold equal items in the same order
+          - id: object
+            text: That both names refer to one list
+          - id: origin
+            text: That `y` was built from `x`
+        correct: values
+        explanation: >-
+          `==` compares contents. A copy has the same contents as its source, so they compare
+          equal even though they are separate objects.
+      alias-is:
+        prompt: After `z = x`, how many lists do `x` and `z` refer to?
+        options:
+          - id: one
+            text: One, the list built on line 1
+          - id: two
+            text: Two, since assignment makes a copy
+          - id: none
+            text: None, since `z` only stores the values
+        correct: one
+        explanation: >-
+          Assignment binds a name to an existing object. `x` and `z` are two names for one list,
+          so `x is z` is `True`.
+      cross-eq:
+        prompt: Can two separate list objects compare equal with `==`?
+        options:
+          - id: yes
+            text: Yes, when their items are equal in order
+          - id: no
+            text: No, `==` is `False` for separate objects
+          - id: only-copies
+            text: Only when one was copied directly from the other
+        correct: yes
+        explanation: >-
+          Separate objects with equal items compare equal. `y` and `z` are separate lists that
+          both hold `[3, 3]`.
+
+  - id: swap-params-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      def swap_names(a, b):
+          a, b = b, a
+          return a
+
+      x = [1, 2]
+      y = [3]
+      z = swap_names(x, y)
+      z.append(0)
+      print(x, y)
+      ```
+
+      What does this print?
+    options:
+      - id: z-is-y
+        text: "`[1, 2] [3, 0]`"
+        explanation: >-
+          Inside the call, `a` and `b` start on `x`'s and `y`'s lists, and the swap moves the local
+          names only. `a` then names `y`'s list, so `z` is `y`'s list and the 0 lands there.
+      - id: caller-swapped
+        text: "`[3, 0] [1, 2]`"
+        explanation: >-
+          This has the swap reaching the caller's names. `a, b = b, a` rebinds the parameters
+          only. `x` and `y` keep their own lists.
+      - id: ignores-swap
+        text: "`[1, 2, 0] [3]`"
+        explanation: >-
+          `a` started on `x`'s list, but line 2 moved it before `return a` ran. The function
+          returns `y`'s list.
+      - id: returns-copy
+        text: "`[1, 2] [3]`"
+        explanation: >-
+          This treats the returned value as a copy. `return a` hands back the object `a` refers to,
+          so `z.append(0)` changes a caller's list.
+    correct: z-is-y
+    followUps:
+      caller-swapped:
+        prompt: Does `a, b = b, a` inside the function change which lists `x` and `y` name?
+        options:
+          - id: local-only
+            text: No, it rebinds the parameter names only
+          - id: swaps-caller
+            text: Yes, parameters are other spellings of the caller's names
+          - id: swaps-contents
+            text: Yes, it swaps the contents of the two lists
+        correct: local-only
+        explanation: >-
+          A parameter is a new local name bound to the argument object. Rebinding it moves only that
+          local name. The caller's `x` and `y` still refer to their lists.
+      ignores-swap:
+        prompt: Which list does `a` refer to when `return a` runs?
+        options:
+          - id: second
+            text: The list passed as `b`, which is `y`'s
+          - id: first
+            text: The list passed first, since `a` was bound to it
+          - id: both
+            text: A new list that joins the two
+        correct: second
+        explanation: >-
+          A name refers to whatever it was last bound to. Line 2 rebinds `a` to `b`'s object, so
+          the function returns `y`'s list.
+      returns-copy:
+        prompt: Does `return a` copy the list that `a` refers to?
+        options:
+          - id: no-copy
+            text: No, the caller gets a reference to that same list
+          - id: copies
+            text: Yes, the caller always gets a fresh copy
+          - id: copies-if-swapped
+            text: Only when the name was rebound in the function
+        correct: no-copy
+        explanation: >-
+          Returning passes back a reference, as passing an argument does. `z` and `y` name one
+          list, so appending through `z` shows in `y`.
+
+  - id: clear-or-rebind-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      def reset(log):
+          log = []
+
+      def wipe(log):
+          log.clear()
+
+      a = [1, 2]
+      b = [1, 2]
+      reset(a)
+      wipe(b)
+      print(a, b)
+      ```
+
+      What does this print?
+    options:
+      - id: only-b
+        text: "`[1, 2] []`"
+        explanation: >-
+          `reset` points its local `log` at a new empty list and the caller's list is untouched.
+          `wipe` calls `clear()` on the caller's list itself, so `b` prints empty.
+      - id: both-empty
+        text: "`[] []`"
+        explanation: >-
+          `log = []` moves only the local name. `a` still refers to the list it had, which nothing
+          changed.
+      - id: neither
+        text: "`[1, 2] [1, 2]`"
+        explanation: >-
+          This assumes each function works on a copy. `log` refers to the caller's list, so
+          `log.clear()` empties `b`'s list.
+      - id: reversed
+        text: "`[] [1, 2]`"
+        explanation: >-
+          This swaps the two effects. The method call changes the object; the assignment only
+          moves a name.
+    correct: only-b
+    followUps:
+      both-empty:
+        prompt: What does `log = []` inside `reset` change?
+        options:
+          - id: local-name
+            text: Only which list the local name `log` refers to
+          - id: callers-list
+            text: The caller's list, which becomes empty
+          - id: callers-name
+            text: Which list the caller's `a` refers to
+        correct: local-name
+        explanation: >-
+          Assigning to a parameter rebinds the local name. The caller's name and the caller's
+          list are both left as they were.
+      neither:
+        prompt: When `wipe(b)` runs, what does `log` refer to?
+        options:
+          - id: same
+            text: The same list `b` names
+          - id: copy
+            text: A copy of `b`'s list
+          - id: new-empty
+            text: A new empty list
+        correct: same
+        explanation: >-
+          The parameter is bound to the argument object itself. `log.clear()` therefore empties the
+          list that `b` names.
+      reversed:
+        prompt: Which of these changes the object a name refers to?
+        options:
+          - id: method
+            text: "`log.clear()`"
+          - id: assign
+            text: "`log = []`"
+          - id: neither
+            text: Neither one
+        correct: method
+        explanation: >-
+          A mutating method acts on the object. Plain assignment never changes an object; it only
+          moves the name on its left.
+
+  - format: step-trace
+    id: trace-sort-then-slice-review
+    heading: Follow the names
+    tags: [python]
+    prompt: >-
+      The cells are list objects. `list A` is the list `data` names, and `list B` is built on
+      line 3. The trace starts inside the call `tidy(data)`, with `xs` on list A. Predict each step
+      before it is shown.
+    code: |
+      def tidy(xs):
+          xs.sort()
+          xs = xs[:2]
+          xs.append(0)
+          return xs
+
+      data = [5, 3, 4]
+      out = tidy(data)
+      print(data, out)
+    sequence:
+      kind: array
+      cells: [list A, list B]
+    start:
+      - { name: data, at: 0 }
+      - { name: xs, at: 0 }
+    steps:
+      - line: 2
+        ask: Line 2 runs. What does `data` hold now?
+        options:
+          - id: sorted
+            text: '`[3, 4, 5]`'
+            explanation: >-
+              `xs.sort()` sorts the list `xs` refers to in place. That is list A, which `data` also
+              names.
+          - id: unsorted
+            text: '`[5, 3, 4]`'
+            explanation: >-
+              That would follow `xs = sorted(xs)`, which builds a new list. The `.sort()` method
+              reorders list A itself, and `data` names list A.
+        correct: sorted
+      - line: 3
+        ask: Line 3 runs. Which list does `xs` refer to now?
+        pointer: xs
+        correct: 1
+        explanation: >-
+          `xs[:2]` builds a new list, list B, holding `[3, 4]`, and the assignment moves `xs` onto
+          it. List A keeps all three items.
+        misses:
+          - index: 0
+            explanation: >-
+              A slice never trims the list it reads from. `xs[:2]` builds a new list, and `xs = ...`
+              moves the name onto it.
+        elsewhere: '`xs` moves onto the new list that `xs[:2]` builds, list B.'
+      - line: 4
+        ask: Line 4 runs. What does `data` hold now?
+        options:
+          - id: unchanged
+            text: '`[3, 4, 5]`'
+            explanation: >-
+              `xs` refers to list B, so the 0 goes there. `data` still names list A, which line 4
+              does not touch.
+          - id: appended
+            text: '`[3, 4, 5, 0]`'
+            explanation: >-
+              That would need `xs` to still refer to list A. Line 3 moved it onto list B.
+          - id: trimmed
+            text: '`[3, 4, 0]`'
+            explanation: >-
+              This treats line 3 as trimming list A. The slice built list B, and list A kept its
+              three items.
+        correct: unchanged
+      - line: 8
+        ask: The call returns. Is `out is data` true?
+        options:
+          - id: different
+            text: No, `out` names list B
+            explanation: >-
+              `return xs` hands back the list `xs` refers to at that moment, which is list B. So
+              `print(data, out)` shows `[3, 4, 5] [3, 4, 0]`.
+          - id: same
+            text: Yes, `tidy` returns the list it was given
+            explanation: >-
+              `return xs` returns whatever `xs` refers to when it runs. Line 3 moved `xs` to list B,
+              so `out` names list B, not `data`'s list.
+        correct: different
+
+  - id: list-or-tuple-plus-equals-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      a = [1]
+      b = a
+      b += [2]
+      c = (1,)
+      d = c
+      d += (2,)
+      print(a, c)
+      ```
+
+      What does this print?
+    options:
+      - id: list-only
+        text: "`[1, 2] (1,)`"
+        explanation: >-
+          A list can change, so `b += [2]` extends the list `a` also names. A tuple cannot change,
+          so `d += (2,)` builds a new tuple and moves only `d`. `c` keeps `(1,)`.
+      - id: always-rebinds
+        text: "`[1] (1,)`"
+        explanation: >-
+          For a list, `+=` changes the object in place, so the 2 shows through `a` as well.
+      - id: tuple-in-place
+        text: "`[1, 2] (1, 2)`"
+        explanation: >-
+          A tuple has no in-place extend. `d += (2,)` builds a new tuple and points `d` at it,
+          so `c` still refers to `(1,)`.
+      - id: swapped
+        text: "`[1] (1, 2)`"
+        explanation: >-
+          This has the two types backwards. The list is the one that can change in place, and the
+          tuple is the one that cannot.
+    correct: list-only
+    followUps:
+      always-rebinds:
+        prompt: For a list `b`, how does `b += [2]` differ from `b = b + [2]`?
+        options:
+          - id: in-place
+            text: "`+=` extends the same list; `b + [2]` builds a new one"
+          - id: same
+            text: They are identical
+          - id: plus-in-place
+            text: "`b + [2]` extends the list; `+=` builds a new one"
+        correct: in-place
+        explanation: >-
+          Lists implement `+=` as an in-place extend, so every name on that list sees the change.
+          `b = b + [2]` builds a new list and moves only `b`.
+      tuple-in-place:
+        prompt: Can a tuple be changed after it is built?
+        options:
+          - id: immutable
+            text: No, so `+=` builds a new tuple and rebinds the name
+          - id: mutable
+            text: Yes, `+=` extends it like a list
+          - id: error
+            text: No, so `d += (2,)` raises an error
+        correct: immutable
+        explanation: >-
+          Tuples are immutable. `+=` on a tuple falls back to building `d + (2,)` and assigning it
+          to `d`, which leaves `c`'s tuple alone.
+      swapped:
+        prompt: Which of the two types can be changed in place?
+        options:
+          - id: list
+            text: The list `[1]`
+          - id: tuple
+            text: The tuple `(1,)`
+          - id: both
+            text: Both of them
+        correct: list
+        explanation: >-
+          Lists are mutable and tuples are not. That is why `+=` changes a shared list but only
+          rebinds a name for a tuple.
+
+  - id: slice-assign-review
+    heading: Which one changes the caller's list?
+    tags: [python]
+    prompt: |-
+      Each option is the whole body of `def f(xs):`. Each version is called as `f(nums)` on a
+      fresh `nums = [4, 2]`.
+
+      After which body does `nums` no longer print `[4, 2]`?
+    options:
+      - id: slice-assign
+        text: "`xs[:] = [1]`"
+        explanation: >-
+          Assigning to the slice `xs[:]` replaces every item of the list `xs` refers to, in place.
+          That is the caller's list, so `nums` prints `[1]`.
+      - id: plus
+        text: "`xs = xs + [1]`"
+        explanation: >-
+          `xs + [1]` builds a new list, and `xs = ...` moves the local name onto it. `nums` keeps
+          `[4, 2]`.
+      - id: sorted
+        text: "`xs = sorted(xs)`"
+        explanation: >-
+          `sorted` returns a new list and leaves its argument alone. `nums` keeps `[4, 2]`.
+      - id: reversed
+        text: "`xs = list(reversed(xs))`"
+        explanation: >-
+          `list(...)` builds a new list from the reversed items. Only the local name moves, so
+          `nums` keeps `[4, 2]`.
+    correct: slice-assign
+    followUps:
+      plus:
+        prompt: Does `xs + [1]` change the list `xs` refers to?
+        options:
+          - id: new
+            text: No, it builds a new list and leaves `xs`'s list alone
+          - id: extends
+            text: Yes, it adds 1 to the end of `xs`'s list
+          - id: error
+            text: It raises an error, since `xs` is a parameter
+        correct: new
+        explanation: >-
+          `+` on lists builds a fresh list. Only `+=`, `append` and other in-place operations
+          change the original.
+      sorted:
+        prompt: What is the difference between `sorted(xs)` and `xs.sort()`?
+        options:
+          - id: new-vs-in-place
+            text: "`sorted` returns a new list; `.sort()` reorders `xs`'s list itself"
+          - id: same
+            text: None; both reorder `xs`'s list
+          - id: swapped
+            text: "`.sort()` returns a new list; `sorted` reorders `xs`'s list"
+        correct: new-vs-in-place
+        explanation: >-
+          `sorted` builds and returns a sorted copy. `.sort()` sorts in place and returns `None`.
+      reversed:
+        prompt: Does `list(reversed(xs))` change the order of `xs`'s list?
+        options:
+          - id: no
+            text: No, it builds a new list in reverse order
+          - id: yes
+            text: Yes, `reversed` flips `xs`'s list in place
+          - id: only-list
+            text: Only when wrapped in `list(...)`
+        correct: no
+        explanation: >-
+          `reversed` reads the list backwards without changing it, and `list(...)` collects those
+          items into a new list. `xs.reverse()` is the in-place version.
+
+  - format: tap-cell
+    id: shared-board-row-review
+    heading: Which row is unchanged?
+    tags: [python]
+    prompt: >-
+      The cells show the rows of `board` before line 3 runs. Which row still prints `[0, 0]` after
+      line 3? Tap it.
+    code: |
+      row = [0, 0]
+      board = [row, row[:], row]
+      board[2][1] = 5
+    sequence:
+      kind: array
+      name: board
+      cells: ['[0, 0]', '[0, 0]', '[0, 0]']
+    correct: 1
+    explanation: >-
+      `row[:]` built a separate copy for slot 1. Slots 0 and 2 both hold `row` itself, so the write
+      through slot 2 shows in slot 0 too. `board` prints `[[0, 5], [0, 0], [0, 5]]`.
+    misses:
+      - index: 0
+        explanation: >-
+          Slot 0 holds the same list as slot 2, `row`. The write through `board[2]` changes that
+          one list, so slot 0 shows the 5 too.
+      - index: 2
+        explanation: '`board[2][1] = 5` writes into this row directly, so it now prints `[0, 5]`.'
+
+  - id: slice-of-rows-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      table = [[0] * 2 for _ in range(3)]
+      copy = table[:]
+      copy[0][0] = 1
+      copy[1] = [9, 9]
+      print(table)
+      ```
+
+      What does this print?
+    options:
+      - id: shallow
+        text: "`[[1, 0], [0, 0], [0, 0]]`"
+        explanation: >-
+          `table[:]` is a new outer list holding the same three rows. Writing inside `copy[0]`
+          changes a shared row. `copy[1] = [9, 9]` replaces a slot of the copy only.
+      - id: deep
+        text: "`[[0, 0], [0, 0], [0, 0]]`"
+        explanation: >-
+          The slice copied the outer list, not the rows. `copy[0]` and `table[0]` are one row, so
+          the 1 shows in `table`.
+      - id: alias
+        text: "`[[1, 0], [9, 9], [0, 0]]`"
+        explanation: >-
+          `copy` is a separate outer list. Replacing its slot 1 does not touch `table`'s slot 1.
+      - id: shared-rows
+        text: "`[[1, 0], [1, 0], [1, 0]]`"
+        explanation: >-
+          The comprehension runs `[0] * 2` on every pass, so the three rows are separate lists.
+    correct: shallow
+    followUps:
+      deep:
+        prompt: Does `table[:]` copy the rows inside `table`?
+        options:
+          - id: outer-only
+            text: No, the new outer list holds the same row objects
+          - id: rows-too
+            text: Yes, every row is copied as well
+          - id: nothing
+            text: No, it returns `table` itself
+        correct: outer-only
+        explanation: >-
+          A slice is a shallow copy. It builds a new outer list, and its slots refer to the same
+          rows, so a write inside a row shows through both.
+      alias:
+        prompt: What does `copy[1] = [9, 9]` change?
+        options:
+          - id: copy-slot
+            text: Slot 1 of the outer list `copy` names
+          - id: shared-row
+            text: The row object both lists hold at slot 1
+          - id: table-slot
+            text: Slot 1 of `table` as well, since they share
+        correct: copy-slot
+        explanation: >-
+          Assigning to a slot changes which object that slot of that one list refers to. The old
+          row is untouched, and `table`'s slot 1 still holds it.
+      shared-rows:
+        prompt: How many row lists does `[[0] * 2 for _ in range(3)]` build?
+        options:
+          - id: three
+            text: Three, one per pass of the comprehension
+          - id: one
+            text: One, stored three times
+          - id: two
+            text: Two, one per item in `[0] * 2`
+        correct: three
+        explanation: >-
+          A comprehension evaluates its expression on every pass. Repeating with `* 3` would share
+          one row; the comprehension does not.
+
+  - id: returned-row-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      def first_row(grid):
+          return grid[0]
+
+      g = [[1, 2], [3, 4]]
+      r = first_row(g)
+      g[1] = r
+      r.append(5)
+      print(g)
+      ```
+
+      What does this print?
+    options:
+      - id: all-shared
+        text: "`[[1, 2, 5], [1, 2, 5]]`"
+        explanation: >-
+          `first_row` returns the row object itself, and `g[1] = r` stores that same object in
+          slot 1. Both slots and `r` name one list, so the 5 shows twice.
+      - id: return-copies
+        text: "`[[1, 2], [1, 2, 5]]`"
+        explanation: >-
+          This treats `return grid[0]` as returning a copy. It returns the row object that
+          `g[0]` holds.
+      - id: store-copies
+        text: "`[[1, 2, 5], [1, 2]]`"
+        explanation: >-
+          This treats `g[1] = r` as storing a copy. Assigning to a slot stores a reference to the
+          object `r` names.
+      - id: no-sharing
+        text: "`[[1, 2], [1, 2]]`"
+        explanation: >-
+          `r` is not a separate list. The call hands back `g[0]`'s row, so appending through `r`
+          changes `g`.
+    correct: all-shared
+    followUps:
+      return-copies:
+        prompt: After `r = first_row(g)`, is `r is g[0]` true?
+        options:
+          - id: same
+            text: Yes, `r` names the row `g[0]` holds
+          - id: copy
+            text: No, `return` hands back a copy of the row
+          - id: values
+            text: No, `r` holds the values but no list
+        correct: same
+        explanation: >-
+          Indexing and returning both pass references along without copying. `r` and `g[0]` are
+          one list.
+      store-copies:
+        prompt: What does `g[1] = r` put into slot 1?
+        options:
+          - id: reference
+            text: A reference to the list `r` names
+          - id: copy
+            text: A copy of that list
+          - id: values
+            text: The items of `r`, added to the old row
+        correct: reference
+        explanation: >-
+          Assigning into a list slot stores a reference, the same as assigning to a name. Slot 1
+          and `r` now refer to one list.
+      no-sharing:
+        prompt: Which list does `r.append(5)` change?
+        options:
+          - id: grid-row
+            text: The row that started as `g[0]`
+          - id: separate
+            text: A separate list that only `r` sees
+          - id: grid-outer
+            text: The outer list `g`, which gains a 5
+        correct: grid-row
+        explanation: >-
+          `r` refers to the row that `first_row` returned, which is `g[0]`'s row. Appending through
+          any name on that row changes it for every name.
