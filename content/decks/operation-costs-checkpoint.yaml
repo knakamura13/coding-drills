@@ -1,0 +1,304 @@
+id: operation-costs-checkpoint
+title: "Operation costs: checkpoint"
+description: Compare two duplicate checks under a time or memory limit. Each item combines the Operation costs skills on code used nowhere else.
+heading: Which check fits?
+
+questions:
+  - id: checkpoint-million-ids
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      def dup_a(ids):
+          return len(set(ids)) < len(ids)
+
+      def dup_b(ids):
+          for i in range(len(ids)):
+              for j in range(i + 1, len(ids)):
+                  if ids[i] == ids[j]:
+                      return True
+          return False
+      ```
+
+      `ids` can hold 1,000,000 numbers, usually all different, and memory is not a concern. Which
+      check fits, and why?
+    options:
+      - id: set-check
+        text: '`dup_a`: about n set steps, paid for with O(n) extra memory'
+        explanation: >-
+          Building the set hashes each id once, about 1,000,000 steps on average, and the two `len`
+          calls add one step each. The set can hold up to `n` ids, which is allowed here. With no
+          repeat, `dup_b` compares every pair: 499,999,500,000 comparisons.
+      - id: pair-check
+        text: '`dup_b`: it needs no extra memory and stops at the first repeat'
+        explanation: >-
+          Early stopping helps only when a repeat exists and turns up early. Here the ids are
+          usually all different. How many comparisons does that case make?
+      - id: one-pass-each
+        text: 'Either one: each makes a single pass over `ids`'
+        explanation: Where does the inner loop of `dup_b` start over?
+      - id: len-only
+        text: '`dup_a`: it is O(1), since `len` is O(1)'
+        explanation: '`len` is cheap. What has to happen before `len(set(ids))` can be read?'
+    correct: set-check
+    followUps:
+      pair-check:
+        prompt: With 1,000,000 ids and no repeat, how many comparisons does `dup_b` make?
+        options:
+          - id: pairs
+            text: About 500 billion, one per pair of positions
+          - id: million
+            text: About 1,000,000, one per id
+          - id: two-million
+            text: About 2,000,000, two per id
+        correct: pairs
+        explanation: >-
+          The inner loop repeats for every outer pass, so the costs multiply: n(n - 1) / 2 pairs.
+          Saving memory is worth it only when the time still fits.
+      one-pass-each:
+        prompt: How many times does the inner loop of `dup_b` run?
+        options:
+          - id: per-outer
+            text: Once for every pass of the outer loop
+          - id: once
+            text: Once, after the outer loop
+          - id: never
+            text: Only when a repeat is found
+        correct: per-outer
+        explanation: >-
+          A loop inside a loop restarts on every outer pass, so its cost is multiplied. A single
+          pass would need a set or a sort to remember what has been seen.
+      len-only:
+        prompt: What does `len(set(ids))` cost for `n` ids?
+        options:
+          - id: build
+            text: About n steps to build the set, then one more for `len`
+          - id: constant
+            text: One step, since both calls are built in
+          - id: n-squared
+            text: About n² steps, since a set compares each pair
+        correct: build
+        explanation: >-
+          Price each operation and add them in order. `set(ids)` hashes every id, which is O(n) on
+          average, and only the `len` that follows is O(1).
+
+  - id: checkpoint-tight-memory
+    tags: [complexity, python]
+    prompt: >-
+      A sensor's code may keep only a few extra numbers, never a second list or a set. `readings`
+      holds 2,000 numbers that must stay in their original order. Which duplicate check fits?
+    options:
+      - id: pairs
+        text: Compare every pair with two loops, about 2 million comparisons
+        explanation: >-
+          2,000 readings make 2,000 × 1,999 / 2 = 1,999,000 pairs, which runs quickly. The loops
+          keep only `i` and `j`, so the memory limit holds and the list is never changed. A
+          quadratic check is fine when `n` is this small.
+      - id: set-length
+        text: '`len(set(readings)) < len(readings)`, the fastest check'
+        explanation: It is fast, but what does it build, and how large can that get?
+      - id: sorted-copy
+        text: '`s = sorted(readings)`, then compare neighbors in `s`'
+        explanation: What does `sorted` return, and how many numbers does it hold?
+      - id: sort-in-place
+        text: '`readings.sort()`, then compare neighbors'
+        explanation: What does `sort()` do to `readings`?
+    correct: pairs
+    followUps:
+      set-length:
+        prompt: How much memory does `set(readings)` take?
+        options:
+          - id: grows
+            text: Room for up to 2,000 numbers, one per distinct reading
+          - id: none
+            text: None, since it is thrown away right after `len`
+          - id: constant
+            text: A fixed amount, whatever the size of the list
+        correct: grows
+        explanation: >-
+          A set holds every distinct item it was given, so it is O(n) extra memory while it exists.
+          Discarding it later does not lower the peak.
+      sorted-copy:
+        prompt: What does `sorted(readings)` give you?
+        options:
+          - id: new-list
+            text: A new list holding all 2,000 readings in order
+          - id: view
+            text: A sorted view of `readings` that shares its memory
+          - id: in-place
+            text: The same list, sorted in place
+        correct: new-list
+        explanation: >-
+          `sorted` always builds and returns a new list, so it takes O(n) extra memory. That
+          breaks the limit even though the original order is kept.
+      sort-in-place:
+        prompt: Which rule does `readings.sort()` break?
+        options:
+          - id: order
+            text: The readings must stay in their original order
+          - id: speed
+            text: The check must run in O(n)
+          - id: none
+            text: None, since it needs no extra list
+        correct: order
+        explanation: >-
+          `sort()` reorders the caller's list. A cost limit is not the only rule a choice has to
+          meet, and Python's sort also uses some scratch memory as it merges.
+
+  - id: checkpoint-trace-two-checks
+    format: step-trace
+    heading: Predict each step
+    tags: [complexity, python, hash-map]
+    prompt: >-
+      Two duplicate checks run on the same list. Each returns the index where it first sees a
+      value repeat. Predict each step before it is shown.
+    code: |
+      nums = [8, 3, 5, 3, 1]
+
+      def by_set(nums):
+          seen = set()
+          for i in range(len(nums)):
+              if nums[i] in seen:
+                  return i
+              seen.add(nums[i])
+
+      def by_pairs(nums):
+          for i in range(len(nums)):
+              for j in range(i + 1, len(nums)):
+                  if nums[i] == nums[j]:
+                      return j
+    sequence:
+      kind: array
+      name: nums
+      cells: [8, 3, 5, 3, 1]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: In `by_set(nums)`, where is `i` when it returns?
+        pointer: i
+        correct: 3
+        explanation: '8, 3 and 5 are added to `seen`. At index 3 the 3 is already there, so it returns 3.'
+        misses:
+          - index: 1
+            explanation: Is 3 in `seen` the first time it is read?
+          - index: 4
+            explanation: Does `by_set` keep going after it finds a repeat?
+        elsewhere: Which index holds the first value that was already added?
+      - line: 6
+        ask: How many `in seen` tests did `by_set` make?
+        options:
+          - id: four
+            text: '4'
+            explanation: One test per index from 0 to 3, each about one step on average.
+          - id: three
+            text: '3'
+            explanation: Count the test at index 3 too. That is the one that finds the repeat.
+          - id: one
+            text: '1'
+            explanation: Does `in seen` run once per pass of the loop?
+        correct: four
+      - line: 12
+        ask: How many `==` comparisons does `by_pairs(nums)` make before it returns?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              With `i` at 0, the 8 is compared with 4 values and matches none. With `i` at 1, the 3
+              meets the 5 and then the 3 at index 3: 4 + 2 is 6.
+          - id: four
+            text: '4'
+            explanation: How many comparisons does the pass with `i` at 0 make before the 3 is checked?
+          - id: ten
+            text: '10'
+            explanation: Does `by_pairs` finish every pair before it returns?
+        correct: six
+        also:
+          - { name: i, at: 1 }
+      - ask: With 1,000 different numbers and no repeat, how many tests or comparisons does each make?
+        options:
+          - id: set-wins
+            text: '`by_set` makes 1,000 tests, and `by_pairs` 499,500 comparisons'
+            explanation: >-
+              `by_set` pays about one step per item, n in all, and keeps up to `n` values in `seen`.
+              `by_pairs` keeps no extra list but repeats a scan per item, n(n - 1) / 2 in all.
+          - id: both-n
+            text: Both make about 1,000
+            explanation: Does the inner loop of `by_pairs` run once, or once per outer pass?
+          - id: both-pairs
+            text: Both make about 499,500
+            explanation: What does one `in seen` test cost on a set?
+        correct: set-wins
+
+  - id: checkpoint-old-and-new
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      def overlap_a(old, new):
+          known = set(old)
+          return any(x in known for x in new)
+
+      def overlap_b(old, new):
+          return any(x in old for x in new)
+      ```
+
+      `old` is a list of 100,000 different ids and `new` is a list of 10 ids, none of them in `old`.
+      Counting one step per item added to a set, per set test, and per list comparison, about how
+      many steps does each call take?
+    options:
+      - id: right
+        text: '`overlap_a` about 100,010 and `overlap_b` about 1,000,000'
+        explanation: >-
+          `overlap_a` builds the set once (100,000 adds), then makes 10 tests: the phases add.
+          `overlap_b` runs a 100,000-item list scan for each of the 10 ids: the repeat multiplies.
+          The set costs O(n) memory and saves only a factor of about 10 here, but if `new` grew to
+          100,000 ids the gap would be 200,000 against 10 billion.
+      - id: both-million
+        text: Both about 1,000,000
+        explanation: Is `set(old)` built once, or once per id in `new`?
+      - id: set-free
+        text: '`overlap_a` about 10 and `overlap_b` about 1,000,000'
+        explanation: What does building `known` from 100,000 ids cost?
+      - id: both-sum
+        text: Both about 100,010
+        explanation: In `overlap_b`, how many items does each missing `x in old` compare?
+    correct: right
+    followUps:
+      both-million:
+        prompt: How many times does `set(old)` run in `overlap_a`?
+        options:
+          - id: once
+            text: Once, before `any` starts testing
+          - id: per-id
+            text: Once for each id in `new`
+          - id: lazy
+            text: Never, since `any` skips it
+        correct: once
+        explanation: >-
+          `known` is built on its own line and then reused by every test. Its cost adds to the
+          tests instead of multiplying them.
+      set-free:
+        prompt: About how many steps does `set(old)` take for 100,000 ids?
+        options:
+          - id: n
+            text: About 100,000, one per id added
+          - id: one
+            text: About one, like a single lookup
+          - id: log
+            text: About 17, since a set halves its search
+        correct: n
+        explanation: >-
+          A lookup into an existing set is about one step, but building it adds every item. That
+          build is the price of the cheap lookups.
+      both-sum:
+        prompt: '`x` is not in the 100,000-item list `old`. How many comparisons does `x in old` make?'
+        options:
+          - id: all
+            text: All 100,000, once for each item of `old`
+          - id: one
+            text: One, through a hash
+          - id: half
+            text: About 50,000
+        correct: all
+        explanation: >-
+          A missing value costs a full list scan, and `any` runs that scan for every id in `new`.
+          Ten scans of 100,000 is about 1,000,000.

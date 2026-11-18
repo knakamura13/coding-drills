@@ -1,0 +1,572 @@
+id: operation-costs
+title: Operation costs
+description: Price one list, set, or queue operation, add the costs of steps that run one after another, and multiply a cost that repeats. Each card opens with a worked example, then asks for one decision.
+heading: What does this cost?
+
+questions:
+  - id: list-or-set-lookup
+    heading: Which cost stays flat?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      **Worked example:** `5 in [8, 5, 2]` compares 5 with 8, then with 5, and stops after two
+      comparisons. A missing value is compared with every item. A set finds a value through its
+      hash instead, so one check costs about the same at any size, on average.
+
+      Now `ids` is a list of `n` different numbers, and `id_set = set(ids)` holds the same numbers.
+      `-1` is not among them, and `42` is.
+
+      Which line costs about the same no matter how large `n` grows (on average)?
+    options:
+      - id: list-in
+        text: '`-1 in ids`'
+        explanation: >-
+          A list keeps no index of its values, so `in` compares -1 with the items from the front.
+          -1 is missing, so the check reaches the end of the list: `n` comparisons.
+      - id: set-in
+        text: '`-1 in id_set`'
+        explanation: >-
+          The set hashes -1 and looks in one place, so the check costs about the same for 10 numbers
+          or 10 million. That is an average-case claim: many values with colliding hashes can slow a
+          lookup, but ordinary numbers do not.
+      - id: index
+        text: '`ids.index(ids[-1])`'
+        explanation: >-
+          `ids[-1]` is a quick read of the last slot, but `index` then searches for that value from
+          the front. The numbers are all different, so it is found only at the end, after checking all
+          `n` items.
+      - id: count
+        text: '`ids.count(42)`'
+        explanation: >-
+          `count` has to read every item, because a later item could also be 42. It makes `n`
+          comparisons every time.
+    correct: set-in
+    followUps:
+      list-in:
+        prompt: '`ids` holds 1,000 numbers and none of them is -1. How many comparisons does `-1 in ids` make?'
+        options:
+          - id: every-item
+            text: 1,000, one per item, because a list is searched from the front
+          - id: one-hash
+            text: One, because Python hashes -1 and jumps to it
+          - id: halving
+            text: About 10, by halving the list like a binary search
+        correct: every-item
+        explanation: >-
+          Only sets and dictionaries look values up by hash. A list check is a scan, and a missing
+          value is its worst case. A list does not know whether it is sorted, so it never halves.
+      index:
+        prompt: '`v = ids[-1]` reads the last number. What does `ids.index(v)` then do?'
+        options:
+          - id: search-value
+            text: It compares `v` with each item from the front until one matches
+          - id: same-slot
+            text: It goes straight to the last slot, since that is where `v` came from
+          - id: index-hashes
+            text: It finds `v` through a hash, like a set
+        correct: search-value
+        explanation: >-
+          Reading by position is one step at any size. Finding a value means comparing items until
+          one matches, and a list does not remember where a value came from.
+      count:
+        prompt: Where can `ids.count(42)` stop?
+        options:
+          - id: end
+            text: Only at the end, since any later item could be another 42
+          - id: first-match
+            text: At the first 42 it finds
+          - id: stored
+            text: Right away, since a list keeps a tally of each value
+        correct: end
+        explanation: >-
+          A list stores items, not tallies, so counting means reading all `n` of them. `in` and
+          `index` can stop at a match, but `count` cannot.
+
+  - id: trace-list-membership
+    format: step-trace
+    heading: Count the comparisons
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** `'b' in ['a', 'b']` compares with `'a'`, then with `'b'`, and stops after 2
+      comparisons. The loop below makes the same comparisons that `target in nums` makes, and
+      counts them. Predict each step before it is shown.
+    code: |
+      nums = [6, 2, 9, 4, 7, 1]
+      target = 4
+      checks = 0
+      for i in range(len(nums)):
+          checks += 1
+          if nums[i] == target:
+              break
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 2, 9, 4, 7, 1]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: Where is `i` when the loop stops?
+        pointer: i
+        correct: 3
+        explanation: '6, 2 and 9 do not match. `nums[3]` is 4, so `break` ends the loop there.'
+        misses:
+          - index: 5
+            explanation: >-
+              The scan stops at the first match. Once `nums[3] == 4`, `break` runs, and 7 and 1 are
+              never compared.
+          - index: 2
+            explanation: '`nums[2]` is 9, not 4, so the loop moves on to index 3.'
+          - index: 4
+            explanation: '`nums[3]` already matched. `break` runs before `i` can reach 4.'
+        elsewhere: The loop stops on the first cell that holds 4, which is index 3.
+      - line: 5
+        ask: What is `checks` when the loop stops?
+        options:
+          - id: four
+            text: '4'
+            explanation: 'Indices 0, 1, 2 and 3 were each compared once: four comparisons.'
+          - id: three
+            text: '3'
+            explanation: >-
+              3 is the index where it stopped. Counting from index 0, that was the fourth
+              comparison.
+          - id: six
+            text: '6'
+            explanation: The loop broke at index 3, so the last two cells were never compared.
+        correct: four
+      - ask: Now set `target = 5`, which is not in `nums`. What is `checks`?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              Nothing matches, so every cell is compared before the loop runs out. A missing value
+              is the most expensive check on a list.
+          - id: zero
+            text: '0'
+            explanation: >-
+              The list cannot know 5 is missing without looking. It has to compare 5 with each item
+              to rule it out.
+          - id: three
+            text: '3'
+            explanation: >-
+              Half the list is the average for a value found at a random spot. A missing value is
+              never found, so the scan reads all of it.
+        correct: six
+      - ask: '`nums` grows to 600 numbers, still without a 5. What is `checks` for `target = 5`?'
+        options:
+          - id: six-hundred
+            text: '600'
+            explanation: >-
+              One comparison per item, so a missing value costs `n`. That is why `x in some_list`
+              is O(n), and why a set is the usual choice for repeated membership checks.
+          - id: six
+            text: '6'
+            explanation: The loop runs once per item of `nums`, so its count follows the length of the list.
+          - id: one
+            text: '1'
+            explanation: A list is never searched by hash. Only a set or a dictionary can answer in about one step.
+        correct: six-hundred
+
+  - id: insert-front-shift
+    format: tap-cell
+    heading: Tap where the 8 lands
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** `nums.append(5)` writes one new slot at the end and moves nothing.
+      `nums.insert(0, 5)` has to make room at index 0, so every item already in the list moves one
+      slot to the right. The cells show `nums` before the insert, plus the new slot past the end.
+      Tap the cell where the 8 sits after the insert.
+    code: |
+      nums = [3, 1, 4, 8]
+      nums.insert(0, 5)
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 1, 4, 8]
+      pastEnd: true
+    correct: 4
+    explanation: >-
+      `nums` becomes `[5, 3, 1, 4, 8]`. The 3, 1, 4 and 8 each moved one slot right to free index 0,
+      so the 8 now sits in the new slot at index 4. An insert at the front moves all `n` items, which
+      makes it O(n).
+    misses:
+      - index: 3
+        explanation: >-
+          A list has no gap at the front to fill. To put 5 at index 0, Python moves every item one
+          slot right, the 8 included.
+      - index: 0
+        explanation: Index 0 is where the new 5 goes. The 8 moves the other way, to the right.
+      - index: 1
+        explanation: That is where the 3 moves. Each item moves one slot, so the 8 goes from 3 to 4.
+      - index: 2
+        explanation: That is where the 1 moves. Each item moves one slot, so the 8 goes from 3 to 4.
+
+  - id: queue-pop-front
+    heading: Which removal moves the rest?
+    tags: [complexity, python, queue]
+    prompt: |-
+      **Worked example:** a queue serves its oldest item first. With `queue = ['a', 'b', 'c']`,
+      `queue.append('d')` adds at the back and moves nothing.
+
+      Now take the oldest item away. Which of these removals has to move the items that remain?
+
+      ```python
+      from collections import deque
+      queue = ['a', 'b', 'c']
+      dq = deque(['a', 'b', 'c'])
+      ```
+    options:
+      - id: pop-front
+        text: '`queue.pop(0)`, which returns `''a''`'
+        explanation: >-
+          A list keeps its items in one block that starts at index 0. Removing `'a'` leaves index 0
+          empty, so `'b'` and `'c'` each slide one slot left. That is `n - 1` moves, O(n).
+          `dq.popleft()` removes `'a'` without moving anything, so a deque is the usual queue.
+      - id: pop-end
+        text: '`queue.pop()`, which returns `''c''`'
+        explanation: >-
+          Nothing sits after `'c'`, so nothing moves and `pop()` is O(1). But it takes the newest
+          item, not the oldest, so it does not serve the queue in order.
+      - id: popleft
+        text: '`dq.popleft()`, which returns `''a''`'
+        explanation: >-
+          A deque is built to add and remove at both ends. `popleft()` unlinks `'a'` and leaves
+          `'b'` and `'c'` where they are, so it is O(1).
+    correct: pop-front
+    followUps:
+      pop-end:
+        prompt: '`queue.pop()` moves nothing. Why is it still the wrong removal for a queue?'
+        options:
+          - id: newest
+            text: It removes the newest item, so the oldest would wait longest
+          - id: slow
+            text: It also shifts the items, just more quickly
+          - id: error
+            text: A list cannot pop without an index
+        correct: newest
+        explanation: >-
+          A queue is first in, first out. Taking from the back makes the list a stack, which is
+          last in, first out. The front of a list is the only end that serves in order, and it is
+          the expensive end.
+      popleft:
+        prompt: Why does `dq.popleft()` move nothing when `queue.pop(0)` moves two items?
+        options:
+          - id: both-ends
+            text: A deque can free space at its front, so the other items stay put
+          - id: lazy
+            text: A deque moves the items later, in the background
+          - id: smaller
+            text: A deque holds fewer items than a list
+        correct: both-ends
+        explanation: >-
+          A list must keep index 0 at the start of its block, so a gap there is filled by sliding.
+          A deque tracks where its front is, so removing from either end is O(1). Reading
+          `dq[i]` far from the ends is slower than on a list, which is the price.
+
+  - id: add-two-phases
+    heading: How many steps?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      **Worked example:** a loop over 5 items followed by a second loop over the same 5 items takes
+      5 + 5 = 10 steps. Phases that run one after the other add.
+
+      Now:
+
+      ```python
+      def has_successor(nums):
+          seen = set()
+          for x in nums:          # phase 1
+              seen.add(x)
+          for x in nums:          # phase 2
+              if x + 1 in seen:
+                  return True
+          return False
+      ```
+
+      `nums` holds 1,000 even numbers, so no `x + 1` is found. Counting one step per `add` and one
+      per `in` test (each is one step on average), about how many steps does the call take?
+    options:
+      - id: add
+        text: About 2,000, from 1,000 adds and then 1,000 tests
+        explanation: >-
+          Phase 2 starts after phase 1 has finished, so their counts add: 1,000 + 1,000. In big-O
+          terms that is O(n) + O(n), which is still O(n).
+      - id: multiply
+        text: About 1,000,000, from 1,000 tests for each of the 1,000 adds
+        explanation: >-
+          Costs multiply only when one loop runs inside another. Here the second loop begins after
+          the first has ended, so each phase runs its 1,000 steps once.
+      - id: larger-only
+        text: About 1,000, since only one of the two phases counts
+        explanation: >-
+          Big-O drops the smaller term when you name a growth class, but a step count does not.
+          Both phases run, so both sets of steps happen.
+    correct: add
+    followUps:
+      multiply:
+        prompt: When does a cost of `n` steps get multiplied by another `n`?
+        options:
+          - id: nested
+            text: When the second loop runs inside the first, once per pass
+          - id: sequence
+            text: Whenever two loops appear in the same function
+          - id: same-list
+            text: Whenever two loops read the same list
+        correct: nested
+        explanation: >-
+          Nesting repeats the inner loop on every outer pass, so the counts multiply. Two loops in
+          sequence each run once, so the counts add.
+      larger-only:
+        prompt: Phase 1 takes 1,000 steps and phase 2 takes 1,000 steps. What does dropping the smaller term mean?
+        options:
+          - id: growth-class
+            text: Naming a growth class can ignore a smaller term, but every step still runs
+          - id: skipped
+            text: Python skips the cheaper phase
+          - id: max
+            text: The total is always the larger phase's count
+        correct: growth-class
+        explanation: >-
+          O(n² + n) is written O(n²) because the `n` stops mattering as `n` grows. A count is
+          different: 1,000 + 1,000 is 2,000 steps, and here neither phase is smaller.
+
+  - id: trace-two-loops
+    format: step-trace
+    heading: Predict the counter
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** two loops over 3 items, one after the other, take 3 + 3 = 6 steps. Step
+      through the code below and predict `work` before each step is shown.
+    code: |
+      nums = [5, 8, 3, 6]
+      work = 0
+      total = 0
+      for i in range(len(nums)):
+          total += nums[i]
+          work += 1
+      top = nums[0]
+      for i in range(len(nums)):
+          top = max(top, nums[i])
+          work += 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 8, 3, 6]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: What is `work` when the first loop ends?
+        options:
+          - id: four
+            text: '4'
+            explanation: The first loop runs once per item and adds 1 each time.
+          - id: three
+            text: '3'
+            explanation: '`i` ends at 3, but it took the values 0, 1, 2 and 3: four passes.'
+          - id: twenty-two
+            text: '22'
+            explanation: 22 is `total`, the sum of the values. `work` adds 1 per pass, whatever the value.
+        correct: four
+        also:
+          - { name: i, at: 3 }
+      - line: 8
+        ask: Where does `i` sit on the first pass of the second loop?
+        pointer: i
+        correct: 0
+        explanation: '`range(len(nums))` starts again at 0. The second loop reads every item from the start.'
+        misses:
+          - index: 3
+            explanation: >-
+              The second loop does not carry on from where the first stopped. It is a new
+              `range`, so `i` starts over at 0.
+        elsewhere: A fresh `range(len(nums))` always starts at 0.
+      - line: 8
+        ask: What is `work` when the second loop ends?
+        options:
+          - id: eight
+            text: '8'
+            explanation: The second loop adds 4 more to the 4 from the first. Phases in sequence add.
+          - id: sixteen
+            text: '16'
+            explanation: >-
+              4 × 4 would need the second loop to run inside the first. It runs after it, once, so
+              it adds 4.
+          - id: four
+            text: '4'
+            explanation: The second loop does not reset `work`. It adds its 4 steps to the 4 already there.
+        correct: eight
+        also:
+          - { name: i, at: 3 }
+      - ask: '`nums` grows to 40 items. What is `work` at the end?'
+        options:
+          - id: eighty
+            text: '80'
+            explanation: Each loop takes 40 steps, so the total is 40 + 40, or 2n. That is O(n).
+          - id: sixteen-hundred
+            text: '1600'
+            explanation: 40 × 40 multiplies the loops. They run one after the other, so they add.
+          - id: forty
+            text: '40'
+            explanation: Both loops run in full. The first 40 steps still happen before the second 40.
+        correct: eighty
+
+  - id: scan-inside-loop
+    heading: How many comparisons?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** `for x in a: if x in b_set: ...` makes one set test per item of `a`. Each
+      test is one step on average, so `n` items cost about `n` steps: `n` × 1.
+
+      Now `b` is a **list** of `m` items:
+
+      ```python
+      def common(a, b):
+          out = []
+          for x in a:
+              if x in b:
+                  out.append(x)
+          return out
+      ```
+
+      `a` has `n` items and none of them is in `b`. How many comparisons does the call make?
+    options:
+      - id: product
+        text: n × m, because each of the n tests scans all m items of `b`
+        explanation: >-
+          One `x in b` on a list costs `m` comparisons when `x` is missing. The loop repeats that
+          cost `n` times, so the total is n × m. With `b_set = set(b)` built once, it drops to
+          about m + n.
+      - id: sum
+        text: n + m, one pass over `a` and one pass over `b`
+        explanation: >-
+          `b` is not scanned once. The scan sits inside the loop, so it starts over for every item
+          of `a`.
+      - id: just-n
+        text: n, one test per item of `a`
+        explanation: >-
+          That count would hold for a set. On a list, each test is a scan of `m` comparisons, not
+          one step.
+      - id: just-m
+        text: m, because Python scans `b` once and remembers it
+        explanation: >-
+          Python keeps no memory of earlier scans. Each `x in b` compares `x` with the items of
+          `b` again from the front.
+    correct: product
+    followUps:
+      sum:
+        prompt: In this function, how many times is `b` scanned from the front?
+        options:
+          - id: per-item
+            text: Once for each item of `a`, since the test sits inside the loop
+          - id: once
+            text: Once, before the loop starts
+          - id: twice
+            text: Twice, once per loop in the function
+        correct: per-item
+        explanation: >-
+          A cost inside a loop is paid on every pass, so it multiplies by the number of passes.
+          Costs add only when the steps run one after the other.
+      just-n:
+        prompt: '`x` is missing from the list `b` of `m` items. How many comparisons does one `x in b` make?'
+        options:
+          - id: m
+            text: '`m`, one for each item of `b`'
+          - id: one
+            text: One, like a set lookup
+          - id: half
+            text: About m / 2 on average
+        correct: m
+        explanation: >-
+          Price the operation first, then multiply. A list test costs `m` when the value is
+          missing, and the loop runs it `n` times.
+      just-m:
+        prompt: After `x in b` finishes, what does Python keep for the next test?
+        options:
+          - id: nothing
+            text: Nothing, so the next test scans `b` from the front again
+          - id: index
+            text: An index of `b`'s values, built on the first scan
+          - id: position
+            text: The position where the last scan stopped
+        correct: nothing
+        explanation: >-
+          A list builds no index as you search it. If you want fast repeated tests, build a set
+          yourself, once, before the loop.
+
+  - id: trace-nested-membership
+    format: step-trace
+    heading: Count the comparisons
+    tags: [complexity, python]
+    prompt: >-
+      The inner loop makes the comparisons that `x in b` makes, and counts them. The cells show
+      `b`. Predict each step before it is shown.
+    code: |
+      a = [2, 7, 4]
+      b = [5, 4, 9, 2]
+      checks = 0
+      for x in a:
+          for j in range(len(b)):
+              checks += 1
+              if b[j] == x:
+                  break
+    sequence:
+      kind: array
+      name: b
+      cells: [5, 4, 9, 2]
+    start:
+      - { name: j, at: 0 }
+    steps:
+      - line: 5
+        ask: On the pass with `x` at 2, where does `j` stop?
+        pointer: j
+        correct: 3
+        explanation: '5, 4 and 9 are not 2. `b[3]` is 2, so the inner loop breaks there after 4 checks.'
+        misses:
+          - index: 0
+            explanation: '`b[0]` is 5, not 2, so the scan moves on.'
+          - index: 1
+            explanation: '`b[1]` is 4. That matches the third item of `a`, not the 2 being searched for now.'
+        elsewhere: The scan stops at the first cell that holds 2, which is index 3.
+      - line: 4
+        ask: What is `checks` after the pass with `x` at 7?
+        options:
+          - id: eight
+            text: '8'
+            explanation: '7 is not in `b`, so its scan reads all 4 cells. 4 for the 2, plus 4 for the 7, is 8.'
+          - id: five
+            text: '5'
+            explanation: A missing value does not stop early. The 7 is compared with every cell of `b`.
+          - id: four
+            text: '4'
+            explanation: '`checks` is not reset between passes. The 2 already added 4.'
+        correct: eight
+      - line: 4
+        ask: What is `checks` when the outer loop ends?
+        options:
+          - id: ten
+            text: '10'
+            explanation: '4 sits at index 1, so its scan stops after 2 checks: 4 + 4 + 2 is 10.'
+          - id: twelve
+            text: '12'
+            explanation: 3 × 4 assumes every scan reads all of `b`. The scan for 4 stops at index 1.
+          - id: nine
+            text: '9'
+            explanation: '`b[1]` is the second cell, so finding 4 takes 2 checks, not 1.'
+        correct: ten
+        also:
+          - { name: j, at: 1 }
+      - ask: '`a` and `b` each grow to 100 items, and no item of `a` is in `b`. What is `checks`?'
+        options:
+          - id: ten-thousand
+            text: '10,000'
+            explanation: >-
+              Each of the 100 outer passes scans all 100 cells: 100 × 100. A repeated cost
+              multiplies, so `x in b` inside a loop is O(n × m).
+          - id: two-hundred
+            text: '200'
+            explanation: 100 + 100 would mean `b` is scanned once. The scan runs again on every outer pass.
+          - id: hundred
+            text: '100'
+            explanation: That counts one check per item of `a`. Each missing item costs a full scan of `b`.
+        correct: ten-thousand
