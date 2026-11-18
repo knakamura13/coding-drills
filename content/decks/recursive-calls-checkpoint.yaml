@@ -1,0 +1,310 @@
+id: recursive-calls-checkpoint
+title: "Recursive calls: checkpoint"
+description: Predict whether the calls stop and how many are live at once, on new inputs. Each item combines the stopping case, the smaller call, and the return.
+heading: What does this do?
+
+questions:
+  - id: checkpoint-halves-frames
+    tags: [recursion]
+    prompt: |-
+      A call is *live* from the moment it starts until it returns. Count the first call too.
+
+      ```python
+      def biggest(nums, lo, hi):
+          if lo == hi:
+              return nums[lo]
+          mid = (lo + hi) // 2
+          left = biggest(nums, lo, mid)
+          right = biggest(nums, mid + 1, hi)
+          return max(left, right)
+
+      biggest([6, 2, 9, 4, 1, 7, 3, 5], 0, 7)
+      ```
+
+      How many calls run in total, and how many are live at most at one moment?
+    options:
+      - id: fifteen-four
+        text: 15 calls, at most 4 live at once
+        explanation: >-
+          Every range splits until it holds one item, so there are 8 + 4 + 2 + 1 = 15 calls. The
+          deepest chain is the ranges of size 8, 4, 2 and 1, so 4 calls are live at most. The left
+          call returns before the right one starts, so two halves are never live together.
+      - id: fifteen-fifteen
+        text: 15 calls, at most 15 live at once
+        explanation: >-
+          That treats every call as live until the end. Check when a finished call stops being
+          live.
+      - id: fifteen-eight
+        text: 15 calls, at most 8 live at once
+        explanation: >-
+          That counts one live call per item. Check how many calls are waiting while the call on
+          a single item runs.
+      - id: fifteen-three
+        text: 15 calls, at most 3 live at once
+        explanation: >-
+          That counts the splits, not the calls in the chain. Check whether the first call is
+          counted.
+    correct: fifteen-four
+    followUps:
+      fifteen-fifteen:
+        prompt: >-
+          `biggest(nums, 0, 3)` has returned, and `biggest(nums, 4, 7)` is running. Is the first
+          of those still live?
+        options:
+          - id: returned
+            text: No, it stopped being live when it returned
+          - id: stays
+            text: Yes, every call stays live until the first call ends
+          - id: parallel
+            text: Yes, the two halves run at the same time
+        correct: returned
+        explanation: >-
+          A call's frame is removed when it returns. Only the chain of calls still waiting on each
+          other is live, here at most one call per range size.
+      fifteen-eight:
+        prompt: How many calls are live while `biggest(nums, 0, 0)` runs?
+        options:
+          - id: chain
+            text: "4: the ranges 0 to 7, 0 to 3, 0 to 1, and 0 to 0"
+          - id: items
+            text: 8, one for each item
+          - id: one
+            text: 1, only the call on index 0
+        correct: chain
+        explanation: >-
+          Each waiting call is one range that contains index 0. The calls on the other items have
+          not started yet or have already returned.
+      fifteen-three:
+        prompt: 8 items halve to 1 item in three splits. How many calls are in that chain?
+        options:
+          - id: four
+            text: Four, the first call plus one below it per split
+          - id: three
+            text: Three, one for each split
+          - id: two
+            text: Two, the first call and the deepest
+        correct: four
+        explanation: >-
+          Each split makes one more call below the one that split. Three splits below the first
+          call make a chain of four.
+
+  - id: checkpoint-odd-even-stop
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def drop(n):
+          if n == 1:
+              return 0
+          return 1 + drop(n - 2)
+      ```
+
+      What happens for `drop(7)` and for `drop(8)`?
+    options:
+      - id: three-error
+        text: "`drop(7)` returns 3, and `drop(8)` raises RecursionError"
+        explanation: >-
+          `drop(7)` calls with 5, 3 and 1. The call on 1 returns 0, and the three calls above it
+          each add 1. `drop(8)` goes through 6, 4, 2, 0 and -2. It never meets 1, so the calls
+          pile up until Python raises RecursionError.
+      - id: three-four
+        text: "`drop(7)` returns 3, and `drop(8)` returns 4"
+        explanation: >-
+          That stops the even chain somewhere near 1. Check which value the stopping case tests
+          for.
+      - id: four-error
+        text: "`drop(7)` returns 4, and `drop(8)` raises RecursionError"
+        explanation: >-
+          That counts the calls, not what they return. Check what the call on 1 adds.
+      - id: both-error
+        text: Both raise RecursionError
+        explanation: >-
+          Trace the arguments of `drop(7)` and check whether one of them is exactly 1.
+    correct: three-error
+    followUps:
+      three-four:
+        prompt: "`drop(8)` reaches a call with 0. Does that call stop?"
+        options:
+          - id: goes-on
+            text: No, only `n == 1` stops, so it calls with -2 next
+          - id: below
+            text: Yes, 0 is below 1, so the calls end
+          - id: python
+            text: Yes, Python stops a count at 0
+        correct: goes-on
+        explanation: >-
+          A stopping case catches only what it tests for. An even start stays even, so it steps
+          over 1 and keeps going down.
+      four-error:
+        prompt: "`drop(7)` makes 4 calls, and the deepest returns 0. What does `drop(7)` return?"
+        options:
+          - id: three
+            text: 3, one for each call that adds `1 +`
+          - id: four
+            text: 4, one for each call
+          - id: zero
+            text: 0, the deepest call's value
+        correct: three
+        explanation: >-
+          The call on 1 returns 0 and adds nothing. Each of the three calls above it adds 1 as
+          the value passes back up.
+      both-error:
+        prompt: Which arguments does `drop(7)` pass along?
+        options:
+          - id: lands
+            text: 5, 3 and then 1, which stops
+          - id: past
+            text: 5, 3, 1 and then -1
+          - id: by-one
+            text: 6, 5, 4 and so on, never 1
+        correct: lands
+        explanation: >-
+          Taking 2 at a time from an odd number lands on every odd number below it, so 1 is
+          reached.
+
+  - id: checkpoint-steps-frames
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def steps(n):
+          if n == 0:
+              return 0
+          if n % 2 == 0:
+              return 1 + steps(n // 2)
+          return 1 + steps(n - 1)
+
+      steps(10)
+      ```
+
+      What does `steps(10)` return, and how many calls are live at most at one moment? Count the
+      first call too.
+    options:
+      - id: five-six
+        text: Returns 5, with at most 6 calls live
+        explanation: >-
+          The arguments go 10, 5, 4, 2, 1, 0, so six calls are live while `steps(0)` runs. That
+          call returns 0, and the five calls above it each add 1.
+      - id: five-five
+        text: Returns 5, with at most 5 calls live
+        explanation: >-
+          That leaves out one call in the chain. Check whether the call that returns at once is
+          live too.
+      - id: six-six
+        text: Returns 6, with at most 6 calls live
+        explanation: >-
+          That adds 1 for every call. Check what the deepest call adds.
+      - id: five-ten
+        text: Returns 5, with at most 10 calls live
+        explanation: >-
+          That assumes one call per unit of `n`. Check what the even calls pass along.
+    correct: five-six
+    followUps:
+      five-five:
+        prompt: "`steps(0)` returns at once. Is it live while it runs?"
+        options:
+          - id: counts
+            text: Yes, it has a frame while the five calls above it wait
+          - id: no-frame
+            text: No, a call that does not recurse uses no frame
+          - id: adders
+            text: No, only calls that add `1 +` count
+        correct: counts
+        explanation: >-
+          Every call gets a frame, even one that returns straight away. So the deepest moment is
+          the five waiting calls plus `steps(0)`.
+      six-six:
+        prompt: "`steps(0)` returns 0. How many calls add 1 on the way back?"
+        options:
+          - id: five
+            text: Five, every call except `steps(0)`
+          - id: six
+            text: Six, every call
+          - id: one
+            text: One, the first call
+        correct: five
+        explanation: >-
+          The stopping case returns 0 without adding. Each of the other calls runs `1 + ...` once
+          its smaller call returns.
+      five-ten:
+        prompt: Which arguments do the calls after `steps(10)` get?
+        options:
+          - id: mixed
+            text: 5, 4, 2, 1 and then 0
+          - id: by-one
+            text: 9, 8, 7 and so on, down to 0
+          - id: halves
+            text: 5, 2, 1 and then 0
+        correct: mixed
+        explanation: >-
+          An even `n` halves and an odd `n` drops by one. 10 halves to 5, 5 drops to 4, then 4
+          and 2 halve, and 1 drops to 0.
+
+  - id: checkpoint-halve-stops
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def halve(n):
+          if n == 1:
+              return 0
+          return 1 + halve(n // 2)
+      ```
+
+      Which call raises RecursionError?
+    options:
+      - id: zero
+        text: "`halve(0)`"
+        explanation: >-
+          0 is already below the stopping value, and `0 // 2` is 0. Each call passes the same 0
+          on, so the calls never get closer to 1 and pile up until Python raises RecursionError.
+      - id: thousand
+        text: "`halve(1000)`"
+        explanation: >-
+          A large start does not mean a deep stack here. Count how many times 1000 can halve.
+      - id: seven
+        text: "`halve(7)`"
+        explanation: >-
+          An odd start does not skip 1 here. Trace what `//` does to 7.
+      - id: none
+        text: None of them, since halving always reaches 1
+        explanation: >-
+          Halving reaches 1 from any positive start. Check the start that is not positive.
+    correct: zero
+    followUps:
+      thousand:
+        prompt: How many calls are live at most during `halve(1000)`?
+        options:
+          - id: ten
+            text: 10, since the argument halves on every call
+          - id: thousand
+            text: 1,000, one for each unit of `n`
+          - id: five-hundred
+            text: About 500, one for every two units
+        correct: ten
+        explanation: >-
+          The arguments go 1000, 500, 250, 125, 62, 31, 15, 7, 3 and 1. Halving keeps the chain
+          short even for large inputs.
+      seven:
+        prompt: Which arguments do the calls after `halve(7)` get?
+        options:
+          - id: lands
+            text: 3, then 1, which stops
+          - id: fraction
+            text: 3.5, which never equals 1
+          - id: past
+            text: 3, 1 and then 0
+        correct: lands
+        explanation: >-
+          `//` drops the fraction, so 7 becomes 3 and 3 becomes 1. The call on 1 returns
+          without calling again.
+      none:
+        prompt: What is `0 // 2`?
+        options:
+          - id: zero
+            text: 0, so the next call gets 0 again
+          - id: one
+            text: 1, rounded up
+          - id: error
+            text: An error, since 0 can't be halved
+        correct: zero
+        explanation: >-
+          Half of nothing is nothing. A call that gets 0 makes a call that gets 0, and none of
+          them is the call on 1.
