@@ -79,6 +79,28 @@ describe('review', () => {
 });
 
 describe('replay', () => {
+	it('credits a substituted review once even when two devices answer different variants', () => {
+		const reviewOf = { deckId: 'deck', questionId: 'q1' };
+		const log = [
+			attempt('2026-10-10', 'good'),
+			attempt('2026-10-11', 'good', { questionId: 'q2', reviewOf }),
+			attempt('2026-10-11', 'again', { questionId: 'q3', reviewOf })
+		];
+		expect(card(log)).toMatchObject({ due: '2026-10-14', reps: 2, correct: true });
+		expect(card(log, 'q3')).toMatchObject({ due: '2026-10-12', correct: false });
+	});
+
+	it('credits the due original even when the prompt was already answered on another device', () => {
+		const reviewOf = { deckId: 'deck', questionId: 'q1' };
+		const log = [
+			attempt('2026-10-10', 'good'),
+			attempt('2026-10-11', 'good', { questionId: 'q2' }),
+			attempt('2026-10-11', 'again', { questionId: 'q2', reviewOf })
+		];
+		expect(card(log)).toMatchObject({ due: '2026-10-12', lapses: 1, correct: false });
+		expect(card(log, 'q2')).toMatchObject({ due: '2026-10-12', reps: 1, correct: true });
+	});
+
 	it('starts nothing for a question that was never attempted', () => {
 		expect(replay([]).size).toBe(0);
 	});

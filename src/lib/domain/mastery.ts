@@ -258,7 +258,7 @@ export interface TreeView {
  * there. The rest are paired by position, as `pairInOrder` does, counting only
  * the drills that name no skill.
  */
-function teachingBySkill(path: CurriculumPath, drills: readonly CurriculumDrill[]): Map<string, CurriculumDrill[]> {
+export function teachingBySkill(path: CurriculumPath, drills: readonly CurriculumDrill[]): Map<string, CurriculumDrill[]> {
 	const teaching = drills.filter(
 		(drill) => drill.pathId === path.id && (drill.disposition === 'keep' || drill.disposition === 'rewrite')
 	);

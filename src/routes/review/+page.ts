@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { localDay } from '$lib/domain/days';
 import { curriculum } from 'virtual:curriculum';
-import { drillsOfSkill } from '$lib/domain/mastery';
+import { teachingBySkill } from '$lib/domain/mastery';
 import { cardKey } from '$lib/domain/srs';
 import { reviewStatus } from '$lib/review/queue';
 import { getRepository } from '$lib/storage';
@@ -17,9 +17,14 @@ export const load: PageLoad = async ({ url }) => {
 	const { decks } = await import('virtual:decks');
 	// `?skill=<id>` limits the sitting to what is due on one skill. An unknown skill is ignored.
 	const skill = url.searchParams.get('skill');
-	const drills = skill ? drillsOfSkill(curriculum, skill) : [];
+	const bySkill = new Map(
+		curriculum.branches.flatMap((branch) =>
+			branch.paths.flatMap((path) => [...teachingBySkill(path, curriculum.drills)])
+		)
+	);
+	const drills = (skill && bySkill.get(skill)) || [];
 	const only = drills.length > 0 ? new Set(drills.map((drill) => cardKey(drill.deckId, drill.questionId))) : undefined;
-	const { entries } = reviewStatus(decks, getRepository().attempts(), localDay(new Date()), undefined, only);
+	const { entries } = reviewStatus(decks, getRepository().attempts(), localDay(new Date()), undefined, only, bySkill);
 	if (entries.length === 0) redirect(307, only ? '/tree' : '/');
 	return { entries, limited: Boolean(only) };
 };

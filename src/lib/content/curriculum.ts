@@ -78,6 +78,8 @@ const drillSchema = z
 		 * Without it, mastery pairs the drill with a skill by list position.
 		 */
 		skill: id.optional(),
+		/** A fresh example that can substitute for a due drill of the named skill. */
+		variant: z.literal(true).optional(),
 		/**
 		 * Exam drills only: the skills on `path` this item checks. A failed sitting sends the
 		 * learner to review those skills. Without it, the checkpoint's whole path is reviewed.
@@ -206,6 +208,7 @@ export interface CurriculumDrill {
 	pathId: string;
 	/** The skill this drill teaches, when the mapping names one. */
 	skillId?: string;
+	variant?: true;
 	/** For an exam drill: the skills it checks, when the mapping names them. */
 	tests?: readonly string[];
 	/** For an exam drill: the checkpoint it belongs to, when the mapping names one. */
@@ -549,6 +552,9 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					}
 				}
 			}
+			if (drill.variant && (!drill.skill || drill.disposition !== 'keep')) {
+				throw new ContentError(`drill "${drill.questionId}" sets variant, which requires a keep drill with a skill`);
+			}
 			if (drill.skill) {
 				if (drill.disposition !== 'keep' && drill.disposition !== 'rewrite') {
 					throw new ContentError(`drill "${drill.questionId}" sets skill, which only a keep or rewrite drill can do`);
@@ -564,6 +570,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				disposition: drill.disposition,
 				pathId: drill.path,
 				...(drill.skill ? { skillId: drill.skill } : {}),
+				...(drill.variant ? { variant: drill.variant } : {}),
 				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
 				...(drill.checkpoint ? { checkpointId: drill.checkpoint } : {}),
 				covers: dedupe(drill.covers ?? []),

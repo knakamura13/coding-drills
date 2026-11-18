@@ -1,4 +1,5 @@
-import type { Deck, DeckSummary, Question } from '$lib/content/schema';
+import type { CurriculumDrill } from '$lib/content/curriculum';
+import type { Deck, DeckSummary } from '$lib/content/schema';
 import type { LessonEntry } from '$lib/domain/lesson';
 import { cardKey, daysUntilNextDue, dueCards, replay } from '$lib/domain/srs';
 import type { Attempt } from '$lib/storage/types';
@@ -45,23 +46,51 @@ export function reviewStatus(
 	today: string,
 	limit = REVIEW_SIZE,
 	/** Card keys to limit the sitting to, such as the drills of one skill. */
-	only?: ReadonlySet<string>
+	only?: ReadonlySet<string>,
+	bySkill: ReadonlyMap<string, readonly CurriculumDrill[]> = new Map()
 ): ReviewStatus {
-	const questions = new Map<string, Question>();
-	const headings = new Map(decks.map((deck) => [deck.id, deck.heading]));
+	const questions = new Map<string, LessonEntry>();
 	for (const deck of decks) {
-		for (const question of deck.questions) questions.set(cardKey(deck.id, question.id), question);
+		for (const question of deck.questions) {
+			questions.set(cardKey(deck.id, question.id), { deckId: deck.id, heading: deck.heading, question });
+		}
 	}
 
 	const { cards, due: allDue } = scheduled(decks, attempts, today);
 	const due = only ? allDue.filter((card) => only.has(cardKey(card.deckId, card.questionId))) : allDue;
+	const reserved = new Set(allDue.map((card) => cardKey(card.deckId, card.questionId)));
+	const lastSeen = new Map(attempts.map((attempt) => [cardKey(attempt.deckId, attempt.questionId), attempt.day]));
+	const skillByQuestion = new Map<string, string>();
+	const variantsBySkill = new Map<string, string[]>();
+	for (const [skill, drills] of bySkill) {
+		const variants: string[] = [];
+		for (const drill of drills) {
+			const key = cardKey(drill.deckId, drill.questionId);
+			skillByQuestion.set(key, skill);
+			if (drill.variant && questions.has(key)) variants.push(key);
+		}
+		if (variants.length > 0) variantsBySkill.set(skill, variants);
+	}
+	for (const keys of variantsBySkill.values()) {
+		keys.sort((a, b) => {
+			const observedA = lastSeen.get(a) ?? '';
+			const observedB = lastSeen.get(b) ?? '';
+			return observedA.localeCompare(observedB) || a.localeCompare(b);
+		});
+	}
+
 	return {
 		dueCount: due.length,
-		entries: due.slice(0, limit).map((card) => ({
-			deckId: card.deckId,
-			heading: headings.get(card.deckId),
-			question: questions.get(cardKey(card.deckId, card.questionId))!
-		})),
+		entries: due.slice(0, limit).map((card) => {
+			const key = cardKey(card.deckId, card.questionId);
+			const skill = skillByQuestion.get(key);
+			const variant = skill && card.correct
+				? variantsBySkill.get(skill)?.find((candidate) => !reserved.has(candidate) && (lastSeen.get(candidate) ?? '') < today)
+				: undefined;
+			if (!variant) return questions.get(key)!;
+			reserved.add(variant);
+			return { ...questions.get(variant)!, reviewOf: { deckId: card.deckId, questionId: card.questionId } };
+		}),
 		nextInDays: due.length > 0 ? 0 : daysUntilNextDue(cards, today)
 	};
 }

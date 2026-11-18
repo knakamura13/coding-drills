@@ -21,6 +21,7 @@ import {
 	type PlacementResult
 } from './drag';
 import { shuffled, type Rng } from './shuffle';
+import type { QuestionRef } from '$lib/storage/types';
 import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
 import { checkStep, parsePicks, positionsBefore, stepCorrectPick, stepPickIds, stepPickLabel } from './trace';
 
@@ -45,12 +46,7 @@ import { checkStep, parsePicks, positionsBefore, stepCorrectPick, stepPickIds, s
 
 export type Stage = 'question' | 'followUp';
 
-export interface PlannedQuestion {
-	/** The deck the question belongs to. A review lesson mixes decks. */
-	deckId: string;
-	/** The deck's default heading, used when the question has none. */
-	heading?: string;
-	question: Question;
+export interface PlannedQuestion extends LessonEntry {
 	/** Option ids in the order the learner sees them. */
 	optionOrder: string[];
 	/** Follow-up option ids in display order, keyed by the wrong option that triggers each. */
@@ -59,9 +55,8 @@ export interface PlannedQuestion {
 	stepOrders: string[][];
 }
 
-export interface Completed {
-	deckId: string;
-	questionId: string;
+export interface Completed extends QuestionRef {
+	reviewOf?: QuestionRef;
 	/** The option picked on the main question. */
 	pickedId: string;
 	correct: boolean;
@@ -86,15 +81,15 @@ export interface LessonState {
 /** A question and where it came from, so lessons can mix decks. */
 export interface LessonEntry {
 	deckId: string;
+	reviewOf?: QuestionRef;
 	/** The deck's default heading. */
 	heading?: string;
 	question: Question;
 }
 
 function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonState {
-	const planned = shuffled(entries, rng).map(({ deckId, heading, question }) => ({
-		deckId,
-		heading,
+	const planned = shuffled(entries, rng).map(({ question, ...entry }) => ({
+		...entry,
 		question,
 		optionOrder: isTapCellQuestion(question)
 			? Array.from({ length: cellCount(question) }, (_, index) => cellPickId(index))
@@ -197,9 +192,10 @@ export function check(state: LessonState): LessonState {
 }
 
 function finishQuestion(state: LessonState, done: Completed): LessonState {
+	const reviewOf = currentPlanned(state)?.reviewOf;
 	return {
 		...state,
-		completed: [...state.completed, done],
+		completed: [...state.completed, reviewOf ? { ...done, reviewOf } : done],
 		cursor: state.cursor + 1,
 		stage: 'question',
 		selected: null,
