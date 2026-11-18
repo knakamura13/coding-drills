@@ -60,6 +60,26 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
 };
 
+/** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */
+const AUDITED_DECKS = new Set([
+	'binary-search-on-answer',
+	'complexity-analysis',
+	'cost-python-data-model',
+	'graph-algorithms',
+	'graph-traversal-grids',
+	'hash-maps-prefix-sums',
+	'heaps-top-k',
+	'linked-lists',
+	'monotonic-stack',
+	'one-dimensional-dp',
+	'pattern-identification',
+	'recursion-backtracking',
+	'sorting-interval-sweeps',
+	'trees-traversals-bst',
+	'two-dimensional-dp-greedy',
+	'two-pointers-sliding-window'
+]);
+
 function level(id: string) {
 	return { id, title: id };
 }
@@ -87,17 +107,22 @@ describe('shipped curriculum', () => {
 	const curriculum = loadCurriculum('content/curriculum', 'content/decks');
 	const decks = loadDecks('content/decks');
 	const paths = curriculum.branches.flatMap((item) => item.paths);
+	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
 	it('lists the 43 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
 	it('maps each of the 94 primary drills once, onto a real question', () => {
-		expect(curriculum.drills).toHaveLength(94);
-		expect(new Set(curriculum.drills.map((drill) => drill.questionId)).size).toBe(94);
-		const known = new Map(decks.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id])));
+		expect(audited).toHaveLength(94);
+		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(94);
+		const known = new Map(
+			decks
+				.filter((deck) => AUDITED_DECKS.has(deck.id))
+				.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id]))
+		);
 		expect(known.size).toBe(94);
-		for (const drill of curriculum.drills) {
+		for (const drill of audited) {
 			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
 		}
 	});
@@ -105,7 +130,7 @@ describe('shipped curriculum', () => {
 	it('matches the per-branch keep, rewrite, exam, and retire counts', () => {
 		for (const [branchId, expected] of Object.entries(COUNTS)) {
 			const counts: Record<string, number> = { keep: 0, rewrite: 0, exam: 0, retire: 0 };
-			for (const drill of curriculum.drills.filter((item) => {
+			for (const drill of audited.filter((item) => {
 				const path = paths.find((candidate) => candidate.id === item.pathId);
 				return path?.branchId === branchId;
 			})) {
