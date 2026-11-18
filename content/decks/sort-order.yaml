@@ -1,0 +1,482 @@
+id: sort-order
+title: Sort order
+description: Read what a sort key compares, decide how ties come out, and tell a sort in place from a returned copy. Each card opens with a worked example, then asks for one decision.
+heading: What does this give?
+
+questions:
+  - id: key-by-remainder
+    heading: What does this print?
+    tags: [sorting, python]
+    prompt: |-
+      **Worked example:** `sorted(["kiwi", "fig", "banana"], key=len)` works out one key per
+      item, 4, 3 and 6, and orders the items by those keys: `['fig', 'kiwi', 'banana']`. The items
+      come back unchanged. Only their order follows the keys.
+
+      Now:
+
+      ```python
+      print(sorted([12, 7, 30, 4], key=lambda n: n % 10))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[30, 12, 4, 7]`"
+        explanation: >-
+          The keys are the last digits: 2, 7, 0 and 4. Ordered by key, 30 (key 0) comes first, then
+          12 (2), 4 (4) and 7 (7). The numbers themselves come back, not their keys.
+      - id: by-value
+        text: "`[4, 7, 12, 30]`"
+        explanation: >-
+          That is the plain sort with no key. The key stands in for each number whenever two are
+          compared, so 30, whose last digit is 0, counts as the smallest.
+      - id: keys
+        text: "`[0, 2, 4, 7]`"
+        explanation: >-
+          Those are the keys, sorted. The key only decides where each item goes. The list that
+          comes back holds the numbers you passed in.
+      - id: descending
+        text: "`[7, 4, 12, 30]`"
+        explanation: >-
+          That runs from the largest key, 7, down to the smallest, 0. `sorted` goes the other way
+          unless it is given `reverse=True`.
+    correct: right
+    followUps:
+      by-value:
+        prompt: "With `key=lambda n: n % 10`, what does the sort compare when it compares 30 and 4?"
+        options:
+          - id: keys
+            text: 0 and 4, the results of the key function
+          - id: items
+            text: 30 and 4, the numbers themselves
+          - id: both
+            text: The keys first, then the numbers whenever the keys tie
+        correct: keys
+        explanation: >-
+          The key function runs once per item, and the sort compares only what it returns. 30 % 10
+          is 0, so 30 counts as the smallest. When two keys tie, the items are not compared at all.
+      keys:
+        prompt: What does `sorted(items, key=f)` return?
+        options:
+          - id: items
+            text: The original items, arranged by their keys
+          - id: keys
+            text: The values `f(x)`, in sorted order
+          - id: pairs
+            text: Pairs of each key and its item
+        correct: items
+        explanation: >-
+          The key decides the order and is then thrown away. With `n % 10` as the key you get 30
+          back, not 0.
+      descending:
+        prompt: In which direction does `sorted` order the keys when `reverse` is not given?
+        options:
+          - id: ascending
+            text: From the smallest key up
+          - id: descending
+            text: From the largest key down
+          - id: input
+            text: In the order the items came in
+        correct: ascending
+        explanation: >-
+          `sorted` and `list.sort` are ascending by default. Pass `reverse=True` to start from the
+          largest key.
+
+  - id: uppercase-first
+    format: tap-cell
+    heading: Tap the word it prints
+    tags: [sorting, python]
+    prompt: >-
+      **Worked example:** strings compare one character at a time by code point, and every
+      uppercase letter comes before every lowercase one: `"B"` is 66 and `"a"` is 97. So
+      `sorted(["bat", "Cow"])` is `['Cow', 'bat']`. Tap the word that the code below prints.
+    code: |
+      words = ["mango", "Pear", "apple", "Kiwi"]
+      print(sorted(words)[0])
+    sequence:
+      kind: array
+      name: words
+      cells: [mango, Pear, apple, Kiwi]
+    correct: 3
+    explanation: >-
+      Kiwi and Pear start with uppercase letters, which sort before every lowercase letter, and K
+      (75) comes before P (80). So `sorted(words)[0]` is Kiwi.
+    misses:
+      - index: 0
+        explanation: >-
+          mango is first in the input, but `sorted` reorders everything. A lowercase m comes after
+          both words that start with a capital.
+      - index: 1
+        explanation: >-
+          Pear does start with a capital, but P (80) comes after K (75), so Kiwi is ahead of it.
+      - index: 2
+        explanation: >-
+          apple would be first if case were ignored, as with `key=str.lower`. The default compares
+          code points, and a lowercase a (97) comes after every capital.
+
+  - id: pair-comparison
+    heading: What does this print?
+    tags: [sorting, python]
+    prompt: |-
+      **Worked example:** tuples compare from the left, and the first position that differs
+      decides. `(2, 9) < (3, 1)` is `True` because 2 < 3, and the 9 is never looked at.
+      `(2, 4) < (2, 9)` is `True` because the first values tie, so the second values decide.
+
+      Now:
+
+      ```python
+      pairs = [(3, 1), (1, 5), (3, 0), (1, 2)]
+      print(sorted(pairs))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[(1, 2), (1, 5), (3, 0), (3, 1)]`"
+        explanation: >-
+          The first values put both 1s ahead of both 3s. Within each tie the second value decides,
+          so (1, 2) comes before (1, 5), and (3, 0) before (3, 1).
+      - id: first-only
+        text: "`[(1, 5), (1, 2), (3, 1), (3, 0)]`"
+        explanation: >-
+          That compares only the first values and keeps tied pairs in input order. With no key,
+          a tie on the first value moves on to the second.
+      - id: second-first
+        text: "`[(3, 0), (3, 1), (1, 2), (1, 5)]`"
+        explanation: >-
+          That orders by the second value. Tuples compare from the left, so the first value is
+          looked at first.
+      - id: by-sum
+        text: "`[(3, 0), (1, 2), (3, 1), (1, 5)]`"
+        explanation: >-
+          That orders by each pair's total. With no key, `sorted` compares the tuples with `<`,
+          not their sums.
+    correct: right
+    followUps:
+      first-only:
+        prompt: "`(1, 5)` and `(1, 2)` tie on their first value. What does a plain `sorted` do next?"
+        options:
+          - id: next
+            text: Compares 5 with 2, which puts `(1, 2)` first
+          - id: input
+            text: Keeps them in input order, `(1, 5)` first
+          - id: either
+            text: Treats them as equal and may put either first
+        correct: next
+        explanation: >-
+          With no key, the things being compared are the whole tuples, and a tuple comparison only
+          stops at the first difference. Input order matters only when two items compare equal.
+      second-first:
+        prompt: Which values decide whether `(1, 5)` or `(3, 0)` comes first?
+        options:
+          - id: first
+            text: The first values, 1 and 3
+          - id: second
+            text: The second values, 5 and 0
+          - id: sums
+            text: The totals, 6 and 3
+        correct: first
+        explanation: >-
+          Comparison starts at position 0 and only moves right on a tie. 1 < 3, so `(1, 5)` comes
+          first, however large its second value is.
+      by-sum:
+        prompt: What does `sorted(pairs)` compare when no key is given?
+        options:
+          - id: tuples
+            text: The tuples themselves, position by position
+          - id: sums
+            text: The total of each tuple
+          - id: lengths
+            text: The length of each tuple
+        correct: tuples
+        explanation: >-
+          With no key, items are compared with `<`, and for tuples that goes from left to right. To
+          order by total, pass `key=sum`.
+
+  - id: two-record-tie
+    heading: In what order do they come out?
+    tags: [sorting, python]
+    prompt: |-
+      **Worked example:** `sorted([("ann", 90), ("bo", 85), ("cy", 90)], key=lambda r: r[1])`
+      gives `[('bo', 85), ('ann', 90), ('cy', 90)]`. ann and cy have the same key, 90, so they tie.
+      Python's sort is stable: tied items keep the order they came in.
+
+      Now:
+
+      ```python
+      tasks = [("write", 2), ("test", 1), ("deploy", 2)]
+      print(sorted(tasks, key=lambda t: t[1]))
+      ```
+
+      In what order do the task names come out?
+    options:
+      - id: right
+        text: test, write, deploy
+        explanation: >-
+          test has the smallest key, 1. write and deploy both have 2, a tie, so the stable sort
+          leaves them as they came: write, then deploy.
+      - id: by-name
+        text: test, deploy, write
+        explanation: >-
+          That breaks the tie by name. The key is only `t[1]`, so the names are never compared.
+      - id: either
+        text: test first, then write and deploy in no fixed order
+        explanation: >-
+          Python guarantees that its sort is stable. The tie comes out as write, deploy every time.
+      - id: whole-tuple
+        text: deploy, test, write
+        explanation: >-
+          That sorts the whole tuples, which compare by name first. The key makes every comparison
+          look at `t[1]` only.
+    correct: right
+    followUps:
+      by-name:
+        prompt: "With `key=lambda t: t[1]`, what does the sort compare for write and deploy?"
+        options:
+          - id: keys
+            text: 2 against 2, a tie
+          - id: names
+            text: Their names, since the keys are equal
+          - id: tuples
+            text: The whole tuples
+        correct: keys
+        explanation: >-
+          The sort compares keys and nothing else. When keys are equal, it does not fall back to
+          the items. Stability leaves them in input order.
+      either:
+        prompt: What does it mean that Python's sort is stable?
+        options:
+          - id: stable
+            text: Items with equal keys keep their input order
+          - id: any
+            text: Items with equal keys may come out in any order
+          - id: reversed
+            text: Items with equal keys come out in reverse input order
+        correct: stable
+        explanation: >-
+          Both `sorted` and `list.sort` promise it, so a tie never shuffles. That promise is what
+          lets you sort by one key and keep an earlier order inside each group.
+      whole-tuple:
+        prompt: "What does `key=lambda t: t[1]` change about the comparisons?"
+        options:
+          - id: number
+            text: Each task is compared by its number, not by the whole tuple
+          - id: nothing
+            text: Nothing, the tuples still compare by name first
+          - id: output
+            text: The result holds only the numbers
+        correct: number
+        explanation: >-
+          Without a key, tuples compare from the left, so the names would decide. With the key,
+          every comparison uses `t[1]`, and the tuples themselves still come back.
+
+  - id: tie-break-key
+    heading: Which key gives this order?
+    tags: [sorting, python]
+    prompt: |-
+      **Worked example:** a key can return a tuple. `key=lambda r: (r[1], r[0])` sorts by `r[1]`,
+      and where those tie, by `r[0]`, because tuples compare from the left. On
+      `[("dee", 4), ("cal", 6), ("abe", 4)]` it gives `[('abe', 4), ('dee', 4), ('cal', 6)]`.
+
+      Now the rows are `[("kim", 9), ("al", 7), ("jo", 9), ("bea", 7)]`. Which key sorts them
+      by score from high to low, and breaks a tie by name from A to Z?
+    options:
+      - id: right
+        text: "`key=lambda r: (-r[1], r[0])`"
+        explanation: >-
+          Negating the score turns high scores into small keys, so the 9s come first. The name is
+          left as it is, so it sorts A to Z inside each score: jo, kim, al, bea.
+      - id: reverse-all
+        text: "`key=lambda r: (r[1], r[0])` with `reverse=True`"
+        explanation: >-
+          `reverse=True` flips the comparison of the whole key, names included, so each tie comes
+          out Z to A: kim before jo.
+      - id: score-only
+        text: "`key=lambda r: -r[1]`"
+        explanation: >-
+          This orders the scores correctly, but the names are not part of the key. Ties stay in
+          input order, kim before jo.
+      - id: name-first
+        text: "`key=lambda r: (r[0], -r[1])`"
+        explanation: >-
+          The name sits in the first position, so it decides first: al, bea, jo, kim. The score
+          would only matter between two rows with the same name.
+    correct: right
+    followUps:
+      reverse-all:
+        prompt: With the key `(score, name)`, which part does `reverse=True` reverse?
+        options:
+          - id: both
+            text: Both, so names also run from Z to A inside a score
+          - id: first
+            text: Only the score, the first position
+          - id: ties
+            text: Only the order of tied rows
+        correct: both
+        explanation: >-
+          `reverse=True` reverses each comparison of whole keys, every position of the tuple. To
+          flip one part only, negate it inside the key, as `-r[1]` does for a number.
+      score-only:
+        prompt: "With `key=lambda r: -r[1]`, where do kim and jo end up relative to each other?"
+        options:
+          - id: input
+            text: kim first, as in the input
+          - id: name
+            text: jo first, by name
+          - id: random
+            text: Either order, at random
+        correct: input
+        explanation: >-
+          Both keys are -9, so they tie, and the stable sort keeps the order they came in. To order
+          ties by name, the name has to be part of the key.
+      name-first:
+        prompt: In the key `(r[0], -r[1])`, which part is compared first?
+        options:
+          - id: name
+            text: "`r[0]`, the name"
+          - id: score
+            text: The score, because it is a number
+          - id: larger
+            text: Whichever part differs more
+        correct: name
+        explanation: >-
+          A tuple key is compared from position 0. Put the field that should decide first in the
+          first position, and the tie-breaker after it.
+
+  - id: tied-landing
+    format: tap-cell
+    heading: Tap the name at index 2
+    tags: [sorting, python]
+    prompt: >-
+      **Worked example:** with `key=len`, `["ab", "c", "de"]` sorts to `['c', 'ab', 'de']`. ab and
+      de tie at 2, so they keep their input order. Below, tap the name that lands at index 2 of
+      `order`.
+    code: |
+      age = {"lu": 30, "max": 25, "ida": 30, "ben": 25}
+      names = ["lu", "max", "ida", "ben"]
+      order = sorted(names, key=age.get)
+      print(order[2])
+    sequence:
+      kind: array
+      name: names
+      cells: [lu, max, ida, ben]
+    correct: 0
+    explanation: >-
+      The two 25s come first, max then ben, in their input order. The two 30s follow, lu then ida,
+      so `order` is `['max', 'ben', 'lu', 'ida']` and index 2 holds lu.
+    misses:
+      - index: 1
+        explanation: max has the smaller age, 25, and comes first among the 25s, so it lands at index 0.
+      - index: 2
+        explanation: >-
+          ida ties with lu at 30. The key is only the age, so the names are never compared, and lu,
+          which came first, stays ahead at index 2.
+      - index: 3
+        explanation: ben is the second of the two 25s, so it lands at index 1.
+
+  - id: trace-sort-names
+    format: step-trace
+    heading: Follow the names
+    tags: [sorting, python]
+    prompt: >-
+      **Worked example:** `b = sorted(a)` builds a new list and points `b` at it, leaving `a`'s list
+      alone. `a.sort()` reorders `a`'s own list and returns `None`. The cells are objects, not a
+      Python list: the list built on line 1, a second list, and `None`. The arrows show what each
+      name refers to. Predict each step before it is shown.
+    code: |
+      nums = [5, 1, 4]
+      out = nums
+      res = nums
+      out = sorted(nums)
+      res = nums.sort()
+      print(nums, out, res)
+    sequence:
+      kind: array
+      cells: [list A, list B, None]
+    start:
+      - { name: nums, at: 0 }
+      - { name: out, at: 0 }
+      - { name: res, at: 0 }
+    steps:
+      - line: 4
+        ask: Line 4 runs. Which object does `out` refer to now?
+        pointer: out
+        correct: 1
+        explanation: >-
+          `sorted` builds a new list, `[1, 4, 5]`, and returns it, so `out` moves to list B. List A
+          still holds `[5, 1, 4]`.
+        misses:
+          - index: 0
+            explanation: >-
+              `sorted` never changes the list it reads, and it does not hand that list back. It
+              returns a new one, and `out` now refers to it.
+          - index: 2
+            explanation: >-
+              `None` is what the `.sort()` method returns. The function `sorted` returns a list.
+        elsewhere: "`sorted` returns a new list, list B."
+      - line: 5
+        ask: Line 5 runs. Which object does `res` refer to now?
+        pointer: res
+        correct: 2
+        explanation: >-
+          `nums.sort()` reorders list A where it is and returns `None`, so `res` is `None`.
+        misses:
+          - index: 0
+            explanation: >-
+              The sort does happen on list A, but the method does not return the list it sorted.
+              It returns `None`.
+          - index: 1
+            explanation: >-
+              List B came from `sorted` on line 4. `nums.sort()` builds no list at all.
+        elsewhere: "`.sort()` returns `None`."
+      - line: 6
+        ask: What does `nums` hold when line 6 prints?
+        options:
+          - id: sorted
+            text: "`[1, 4, 5]`"
+            explanation: >-
+              Line 5 sorted list A in place, and `nums` still refers to list A. Line 6 prints
+              `[1, 4, 5] [1, 4, 5] None`.
+          - id: original
+            text: "`[5, 1, 4]`"
+            explanation: >-
+              That was list A before line 5. `nums.sort()` changed list A itself, so every name on
+              it sees the sorted order.
+          - id: none
+            text: "`None`"
+            explanation: >-
+              `None` went to `res`. `nums` was never reassigned, so it still refers to list A, which
+              is now sorted.
+        correct: sorted
+
+  - id: sorted-leaves-original
+    format: tap-cell
+    heading: Tap the value it prints
+    tags: [sorting, python]
+    prompt: >-
+      **Worked example:** after `a = [2, 1]`, calling `a.sort()` changes `a` to `[1, 2]`. Writing
+      `b = sorted(a)` instead gives `b` the value `[1, 2]` and leaves `a` as `[2, 1]`. Tap the cell
+      holding the value this code prints.
+    code: |
+      nums = [6, 3, 9, 1]
+      out = sorted(nums)
+      print(nums[0])
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 3, 9, 1]
+    correct: 0
+    explanation: >-
+      `sorted` returned a new list, `out = [1, 3, 6, 9]`. `nums` was never changed, so `nums[0]` is
+      still 6.
+    misses:
+      - index: 1
+        explanation: 3 is `nums[1]`, or `out[1]`. The code reads index 0 of `nums`.
+      - index: 2
+        explanation: >-
+          9 is the largest value. It would lead only after a sort from high to low, and `nums` was
+          not sorted at all.
+      - index: 3
+        explanation: >-
+          1 is `out[0]`, the front of the sorted copy. `nums[0]` reads the original list, which
+          `sorted` leaves alone.

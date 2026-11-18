@@ -1,0 +1,234 @@
+id: sort-order-checkpoint
+title: "Sort order: checkpoint"
+description: Predict the order a sort produces and which lists it changes, on new inputs. Each item combines reading the key, handling ties, and telling a sort in place from a returned copy.
+heading: What does this give?
+
+questions:
+  - id: checkpoint-alias-and-ties
+    heading: What does this print?
+    tags: [sorting, python]
+    prompt: |-
+      ```python
+      names = ["dot", "Bea", "al", "Cy"]
+      first = names
+      ranked = sorted(names, key=len)
+      names.sort()
+      print(first[0], ranked[0])
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`Bea al`"
+        explanation: >-
+          `first` is a second name for the list that `names.sort()` reorders to `['Bea', 'Cy',
+          'al', 'dot']`, where capitals lead. `ranked` is a new list ordered by length. al and Cy
+          tie at 2, and the stable sort keeps al, which came first: `['al', 'Cy', 'dot', 'Bea']`.
+      - id: alias
+        text: "`dot al`"
+        explanation: Which list does `first` refer to when line 5 runs?
+      - id: tie-by-value
+        text: "`Bea Cy`"
+        explanation: What does `key=len` compare when two names have length 2?
+      - id: ignore-case
+        text: "`al al`"
+        explanation: Where do capital letters sort in a plain string sort?
+    correct: right
+    followUps:
+      alias:
+        prompt: "`first = names` runs before `names.sort()`. What does `first` refer to afterwards?"
+        options:
+          - id: same
+            text: The one list both names share, which `.sort()` reordered
+          - id: copy
+            text: A copy of the list as it was on line 1
+          - id: none
+            text: "`None`, the value `.sort()` returns"
+        correct: same
+        explanation: >-
+          `first = names` copies the reference, not the list. `.sort()` reorders that one list in
+          place, so `first[0]` reads the sorted order.
+      tie-by-value:
+        prompt: al and Cy both have length 2. Which one comes first in `ranked`?
+        options:
+          - id: input
+            text: al, since it came first in the input
+          - id: capital
+            text: Cy, since a capital sorts before a lowercase letter
+          - id: either
+            text: Either one, ties have no fixed order
+        correct: input
+        explanation: >-
+          With `key=len`, the two keys are both 2, so they tie, and the stable sort leaves them as
+          they came. The strings themselves are compared only in a sort with no key, like
+          `names.sort()`.
+      ignore-case:
+        prompt: Which does a plain `names.sort()` put first, `"Bea"` or `"al"`?
+        options:
+          - id: capital
+            text: "`\"Bea\"`, since every capital sorts before every lowercase letter"
+          - id: alphabet
+            text: "`\"al\"`, since a comes before b"
+          - id: shorter
+            text: "`\"al\"`, since it is shorter"
+        correct: capital
+        explanation: >-
+          A plain string sort compares code points, and B (66) is less than a (97). To ignore case,
+          sort with `key=str.lower`.
+
+  - id: checkpoint-which-lists
+    heading: Which names hold this list?
+    tags: [sorting, python]
+    prompt: |-
+      ```python
+      xs = [4, 1, 3]
+      ys = xs
+      zs = sorted(ys, reverse=True)
+      zs.sort()
+      ys.sort(reverse=True)
+      ```
+
+      Which names refer to `[4, 3, 1]` when this ends?
+    options:
+      - id: right
+        text: "`xs` and `ys`"
+        explanation: >-
+          `xs` and `ys` name one list, and the last line sorts it from high to low in place. `zs`
+          started as a new list, `[4, 3, 1]`, but `zs.sort()` then put it in ascending order,
+          `[1, 3, 4]`.
+      - id: only-ys
+        text: Only `ys`
+        explanation: What did `ys = xs` copy?
+      - id: only-zs
+        text: Only `zs`
+        explanation: What does `.sort()` do to the list it is called on?
+    correct: right
+    followUps:
+      only-ys:
+        prompt: "`ys = xs` runs, then later `ys.sort(reverse=True)`. What happens to `xs`?"
+        options:
+          - id: shared
+            text: It changes too, because both names refer to one list
+          - id: copy
+            text: Nothing, `ys` got its own copy
+          - id: none
+            text: It becomes `None`
+        correct: shared
+        explanation: >-
+          Assignment gives the list a second name and copies nothing. Sorting through either name
+          reorders the one list they share.
+      only-zs:
+        prompt: "`zs` holds `[4, 3, 1]`. What does `zs.sort()` do to it?"
+        options:
+          - id: in-place
+            text: Reorders it where it is, to `[1, 3, 4]`
+          - id: discarded
+            text: Nothing, because the result is not saved
+          - id: none
+            text: Sets `zs` to `None`
+        correct: in-place
+        explanation: >-
+          `.sort()` changes the list itself and returns `None`. Throwing that `None` away loses
+          nothing, because the reordering has already happened.
+
+  - id: checkpoint-tuple-key
+    heading: In what order do they come out?
+    tags: [sorting, python]
+    prompt: |-
+      ```python
+      people = [("Kai", 31), ("ana", 25), ("Zed", 25), ("bo", 31)]
+      out = sorted(people, key=lambda p: (-p[1], p[0].lower()))
+      print([name for name, age in out])
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`['bo', 'Kai', 'ana', 'Zed']`"
+        explanation: >-
+          `-p[1]` puts the 31s ahead of the 25s. Inside each age, the lowercased name decides: bo
+          before kai, and ana before zed. The names come back with their original capitals.
+      - id: stable-only
+        text: "`['Kai', 'bo', 'ana', 'Zed']`"
+        explanation: What does the second part of the key do for two people of the same age?
+      - id: case-sensitive
+        text: "`['Kai', 'bo', 'Zed', 'ana']`"
+        explanation: Look again at `.lower()`.
+      - id: ascending
+        text: "`['ana', 'Zed', 'bo', 'Kai']`"
+        explanation: What does the minus sign do to the order of ages?
+    correct: right
+    followUps:
+      stable-only:
+        prompt: Kai and bo are both 31. What decides which comes first?
+        options:
+          - id: second-part
+            text: The key's second part, the lowercased names kai and bo
+          - id: input
+            text: Their input order, since their ages tie
+          - id: original
+            text: The names as written, capitals first
+        correct: second-part
+        explanation: >-
+          The whole tuple is the key. The first parts tie at -31, so the second parts decide, and
+          "bo" < "kai". Input order would matter only if both parts tied.
+      case-sensitive:
+        prompt: "Under the key `p[0].lower()`, which comes first: `\"Zed\"` or `\"ana\"`?"
+        options:
+          - id: ana
+            text: "`\"ana\"`, since \"ana\" < \"zed\""
+          - id: zed
+            text: "`\"Zed\"`, since capitals sort first"
+          - id: tie
+            text: They tie, so input order decides
+        correct: ana
+        explanation: >-
+          The key lowercases the names before comparing, so the capital Z has no pull. Without
+          `.lower()`, `"Zed"` would come first.
+      ascending:
+        prompt: What does `-p[1]` do to the order of ages?
+        options:
+          - id: largest
+            text: Puts the largest age first
+          - id: smallest
+            text: Nothing, the smallest age still comes first
+          - id: error
+            text: It raises an error, since a key can't be negative
+        correct: largest
+        explanation: >-
+          The sort is still ascending, but on -31 and -25. -31 is smaller, so the 31-year-olds come
+          first. Negating a number is the usual way to reverse one part of a tuple key.
+
+  - id: checkpoint-first-code
+    format: tap-cell
+    heading: Tap the code it prints
+    tags: [sorting, python]
+    prompt: Tap the code that this prints.
+    code: |
+      codes = ["b7", "b2", "a9", "A7", "B2"]
+      out = sorted(codes, key=lambda c: (c[1], c[0].lower()))
+      print(out[0])
+    sequence:
+      kind: array
+      name: codes
+      cells: [b7, b2, a9, A7, B2]
+    correct: 1
+    explanation: >-
+      The key puts the digit first, so the two codes ending in 2 lead. b2 and B2 both have the key
+      `('2', 'b')`, a tie, and the stable sort keeps b2, which came first:
+      `['b2', 'B2', 'A7', 'b7', 'a9']`.
+    misses:
+      - index: 0
+        explanation: >-
+          b7's digit is 7. The key compares the digit first, and two codes end in 2.
+      - index: 2
+        explanation: >-
+          a is the smallest letter, but the letter is the key's second part. The digit decides
+          first, and 9 is the largest.
+      - index: 3
+        explanation: >-
+          A7 would lead if the letter were compared first. The key's first part is the digit.
+      - index: 4
+        explanation: >-
+          B2 ties with b2, because the key lowercases the letter: both keys are `('2', 'b')`. The
+          codes themselves are never compared, so input order decides, and b2 came first.
