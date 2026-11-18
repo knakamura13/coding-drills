@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
-import type { Deck } from '../content/schema.ts';
+import { isChoiceQuestion, isTapCellQuestion, type Deck, type TapCellQuestion } from '../content/schema.ts';
 import {
 	advance,
 	check,
@@ -97,13 +97,13 @@ describe('createLesson', () => {
 		const state = createLesson(deck, seededRng(3));
 		expect(state.plan.map((p) => p.question.id).sort()).toEqual(deck.questions.map((q) => q.id).sort());
 		for (const planned of state.plan) {
-			expect([...planned.optionOrder].sort()).toEqual(planned.question.options.map((o) => o.id).sort());
-			const wrong = planned.question.options.filter((o) => o.id !== planned.question.correct);
+			const question = planned.question;
+			if (!isChoiceQuestion(question)) throw new Error(`expected choice questions in ${deck.id}`);
+			expect([...planned.optionOrder].sort()).toEqual(question.options.map((o) => o.id).sort());
+			const wrong = question.options.filter((o) => o.id !== question.correct);
 			expect(Object.keys(planned.followUpOrders).sort()).toEqual(wrong.map((o) => o.id).sort());
 			for (const [optionId, order] of Object.entries(planned.followUpOrders)) {
-				expect([...order].sort()).toEqual(
-					planned.question.followUps[optionId].options.map((o) => o.id).sort()
-				);
+				expect([...order].sort()).toEqual(question.followUps[optionId].options.map((o) => o.id).sort());
 			}
 		}
 	});
@@ -403,8 +403,12 @@ describe('random play over the shipped decks', () => {
 				let lastProgress = 0;
 				while (!isFinished(state)) {
 					const current = view(state)!;
-					const pick = current.options[Math.floor(rng() * current.options.length)];
-					state = advance(check(select(state, pick.id)));
+					const ids = current.board
+						? current.board.cells.map((cell) => cell.id)
+						: current.options.map((option) => option.id);
+					const pick = ids[Math.floor(rng() * ids.length)];
+					if (!pick) throw new Error('nothing to pick');
+					state = advance(check(select(state, pick)));
 					const now = progress(state);
 					expect(now).toBeGreaterThanOrEqual(lastProgress);
 					lastProgress = now;
@@ -412,11 +416,18 @@ describe('random play over the shipped decks', () => {
 					expect(steps).toBeLessThanOrEqual(deck.questions.length * 2);
 				}
 				expect(state.completed).toHaveLength(deck.questions.length);
+				let choiceMisses = 0;
 				for (const done of state.completed) {
-					expect(done.followUp !== undefined).toBe(!done.correct);
+					const question = deck.questions.find((item) => item.id === done.questionId)!;
+					if (isTapCellQuestion(question)) expect(done.followUp).toBeUndefined();
+					else if (done.correct) expect(done.followUp).toBeUndefined();
+					else {
+						choiceMisses += 1;
+						expect(done.followUp).toBeDefined();
+					}
 				}
 				const summary = summarize(state);
-				expect(summary.followUpsAttempted).toBe(summary.total - summary.correctFirstTry);
+				expect(summary.followUpsAttempted).toBe(choiceMisses);
 				expect(lastProgress).toBe(1);
 			}
 		}
@@ -445,8 +456,10 @@ describe('createReviewLesson', () => {
 		const headings: Record<string, string | undefined> = {};
 		while (!isFinished(state)) {
 			const current = view(state)!;
+			const question = state.plan[state.cursor].question;
+			if (!isChoiceQuestion(question)) throw new Error('expected a choice question');
 			headings[state.plan[state.cursor].deckId] = current.heading;
-			state = advance(answer(state, state.plan[state.cursor].question.correct));
+			state = advance(answer(state, question.correct));
 		}
 		expect(headings).toEqual({ alpha: 'Alpha heading', beta: undefined });
 		expect(state.completed.map((done) => done.deckId).sort()).toEqual(['alpha', 'beta']);
@@ -456,6 +469,7 @@ describe('createReviewLesson', () => {
 		let state = createReviewLesson(entries, seededRng(1));
 		while (!isFinished(state)) {
 			const { question } = state.plan[state.cursor];
+			if (!isChoiceQuestion(question)) throw new Error('expected a choice question');
 			state = advance(answer(state, question.options.find((o) => o.id !== question.correct)!.id));
 			const followUp = question.followUps[state.mainPick!];
 			state = advance(answer(state, followUp.correct));
@@ -463,5 +477,101 @@ describe('createReviewLesson', () => {
 		const summary = summarize(state);
 		expect(summary.missed).toHaveLength(2);
 		expect(summary.followUpsCorrect).toBe(2);
+	});
+});
+
+function tapQuestion(): TapCellQuestion {
+	return {
+		format: 'tap-cell',
+		id: 'read-cell',
+		prompt: 'Which cell does nums[1] read?',
+		code: 'nums = [3, 0, 1, 2]',
+		sequence: { kind: 'array', name: 'nums', cells: ['3', '0', '1', '2'] },
+		markers: [{ name: 'i', at: 0 }],
+		correct: 1,
+		explanation: 'The second cell holds 0.',
+		misses: [
+			{ index: 0, explanation: 'Counted from 1.' },
+			{ index: 2, explanation: 'Searched for the value.' },
+			{ index: 3, explanation: 'Read the last cell.' }
+		]
+	};
+}
+
+function tapLesson(): Deck {
+	return {
+		id: 'tap-sample',
+		title: 'Tap',
+		description: 'Tap a cell.',
+		heading: 'Tap the cell',
+		questions: [tapQuestion()]
+	};
+}
+
+describe('tap-cell lessons', () => {
+	it('keeps cells in index order and does not invent follow-ups', () => {
+		const first = createLesson(tapLesson(), seededRng(1));
+		const second = createLesson(tapLesson(), seededRng(9));
+		expect(first.plan[0].optionOrder).toEqual(['0', '1', '2', '3']);
+		expect(second.plan[0].optionOrder).toEqual(first.plan[0].optionOrder);
+		expect(first.plan[0].followUpOrders).toEqual({});
+		expect(view(first)!.board?.cells[0].markers).toEqual(['i']);
+		expect(view(first)!.code).toBe('nums = [3, 0, 1, 2]');
+		expect(view(first)!.options).toEqual([]);
+	});
+
+	it('snaps a correct tap and finishes with no follow-up', () => {
+		const checked = select(start(tapLesson()), '1', true);
+		const seen = view(checked)!;
+		expect(seen.board?.cells.map((cell) => cell.tone)).toEqual(['idle', 'correct', 'idle', 'idle']);
+		expect(seen.board?.cells[1].reveal).toBe(false);
+		expect(seen.verdict).toMatchObject({ correct: true, explanation: 'The second cell holds 0.' });
+		expect(seen.seeWhy).toBeNull();
+		const done = advance(checked);
+		expect(done.completed).toEqual([
+			{ deckId: 'tap-sample', questionId: 'read-cell', pickedId: '1', correct: true }
+		]);
+		expect(isFinished(done)).toBe(true);
+	});
+
+	it('highlights a wrong cell, explains it, and reveals the right cell before moving on', () => {
+		const checked = select(start(tapLesson()), '0', true);
+		const seen = view(checked)!;
+		expect(seen.board?.cells.map((cell) => [cell.tone, cell.reveal])).toEqual([
+			['wrong', false],
+			['correct', true],
+			['idle', false],
+			['idle', false]
+		]);
+		expect(seen.board?.note).toBe('Counted from 1.');
+		expect(seen.verdict?.correctText).toBe('index 1, `0`');
+		const done = advance(checked);
+		expect(done.stage).toBe('question');
+		expect(done.completed[0]).toEqual({
+			deckId: 'tap-sample',
+			questionId: 'read-cell',
+			pickedId: '0',
+			correct: false
+		});
+		expect(summarize(done)).toMatchObject({
+			total: 1,
+			correctFirstTry: 0,
+			followUpsAttempted: 0,
+			followUpsCorrect: 0,
+			missed: [
+				{
+					questionId: 'read-cell',
+					pickedText: 'index 0, `3`',
+					correctText: 'index 1, `0`',
+					followUpCorrect: false
+				}
+			]
+		});
+	});
+
+	it('ignores a pick that is not a cell', () => {
+		const state = start(tapLesson());
+		expect(select(state, 'nope', true)).toBe(state);
+		expect(advance(answer(state, '9'))).toBe(answer(state, '9'));
 	});
 });

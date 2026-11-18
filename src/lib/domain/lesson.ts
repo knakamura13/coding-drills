@@ -1,5 +1,7 @@
-import type { Deck, FollowUp, Question } from '$lib/content/schema';
+import { isChoiceQuestion, isTapCellQuestion, type Deck, type FollowUp, type Question, type TapCellQuestion } from '$lib/content/schema';
+import { sequenceModel, type SequenceCell } from './board';
 import { shuffled, type Rng } from './shuffle';
+import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
 
 /**
  * The lesson loop as a pure state machine.
@@ -10,9 +12,11 @@ import { shuffled, type Rng } from './shuffle';
  *     feedback (wrong)  --advance--> follow-up (keyed by the wrong option picked)
  *       follow-up --select/check--> feedback --advance--> next question
  *
- * A wrong answer can only leave the question stage through its follow-up,
- * which is the rule this app exists to enforce. Every transition returns a
- * new state, and invalid transitions return the state unchanged.
+ * A wrong multiple-choice answer can only leave the question stage through its
+ * follow-up. A tap-cell question has no second stage: the tapped cell's
+ * explanation is the feedback, and advance records the attempt either way.
+ * Every transition returns a new state, and invalid transitions return the
+ * state unchanged.
  */
 
 export type Stage = 'question' | 'followUp';
@@ -64,19 +68,23 @@ function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonStat
 		deckId,
 		heading,
 		question,
-		optionOrder: shuffled(
-			question.options.map((option) => option.id),
-			rng
-		),
-		followUpOrders: Object.fromEntries(
-			Object.entries(question.followUps).map(([optionId, followUp]) => [
-				optionId,
-				shuffled(
-					followUp.options.map((option) => option.id),
+		optionOrder: isTapCellQuestion(question)
+			? Array.from({ length: cellCount(question) }, (_, index) => cellPickId(index))
+			: shuffled(
+					question.options.map((option) => option.id),
 					rng
+				),
+		followUpOrders: isChoiceQuestion(question)
+			? Object.fromEntries(
+					Object.entries(question.followUps).map(([optionId, followUp]) => [
+						optionId,
+						shuffled(
+							followUp.options.map((option) => option.id),
+							rng
+						)
+					])
 				)
-			])
-		)
+			: {}
 	}));
 	return {
 		deckId: id,
@@ -119,6 +127,7 @@ function currentPlanned(state: LessonState): PlannedQuestion | null {
 function currentFollowUp(state: LessonState): FollowUp | null {
 	const planned = currentPlanned(state);
 	if (!planned || state.stage !== 'followUp' || state.mainPick === null) return null;
+	if (!isChoiceQuestion(planned.question)) return null;
 	return planned.question.followUps[state.mainPick] ?? null;
 }
 
@@ -160,6 +169,16 @@ export function advance(state: LessonState): LessonState {
 	const { question } = planned;
 
 	if (state.stage === 'question') {
+		if (isTapCellQuestion(question)) {
+			const result = checkTap(question, state.selected);
+			if (!result) return state;
+			return finishQuestion(state, {
+				deckId: planned.deckId,
+				questionId: question.id,
+				pickedId: state.selected,
+				correct: result.correct
+			});
+		}
 		if (state.selected === question.correct) {
 			return finishQuestion(state, {
 				deckId: planned.deckId,
@@ -191,6 +210,22 @@ export function progress(state: LessonState): number {
 
 export type OptionState = 'idle' | 'selected' | 'correct' | 'wrong';
 
+/** One cell of the sequence board, plus how the current answer has marked it. */
+export interface BoardCellView extends SequenceCell {
+	tone: OptionState;
+	/** The right cell after a wrong tap. The renderer fades it in when motion is allowed. */
+	reveal: boolean;
+}
+
+export interface BoardView {
+	kind: 'sequence';
+	presentation: 'array' | 'string';
+	name?: string;
+	cells: BoardCellView[];
+	/** Explanation of the tapped cell, once the answer is checked. */
+	note: string | null;
+}
+
 export interface OptionView {
 	id: string;
 	text: string;
@@ -213,18 +248,23 @@ export interface SeeWhy {
 
 export interface LessonView {
 	stage: Stage;
+	format: 'choice' | 'tap-cell';
 	/** 1-based position of the current question. */
 	position: number;
 	total: number;
 	heading: string | undefined;
 	/** The original problem. Pinned above the follow-up too. */
 	prompt: string;
+	/** The snippet beside a tap-cell sequence. Null for multiple choice. */
+	code: string | null;
+	/** The sequence to tap. Null for multiple choice. */
+	board: BoardView | null;
 	/** The follow-up question, when in the follow-up stage. */
 	followUpPrompt: string | null;
 	options: OptionView[];
 	canCheck: boolean;
 	verdict: Verdict | null;
-	/** Available only after a wrong main answer. */
+	/** Available only after a wrong multiple-choice answer. */
 	seeWhy: SeeWhy | null;
 }
 
@@ -258,6 +298,26 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 		canCheck: !state.checked && state.selected !== null
 	};
 
+	if (isTapCellQuestion(question)) {
+		const result = state.checked && state.selected !== null ? checkTap(question, state.selected) : null;
+		return {
+			...base,
+			format: 'tap-cell',
+			code: question.code,
+			board: boardView(question, state.selected, state.checked),
+			followUpPrompt: null,
+			options: [],
+			verdict: result
+				? {
+						correct: result.correct,
+						correctText: cellLabel(question, question.correct),
+						explanation: result.explanation
+					}
+				: null,
+			seeWhy: null
+		};
+	}
+
 	if (state.stage === 'question') {
 		const states = optionStates(planned.optionOrder, state.selected, state.checked, question.correct);
 		const byId = new Map(question.options.map((option) => [option.id, option]));
@@ -286,7 +346,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 				};
 			}
 		}
-		return { ...base, followUpPrompt: null, options, verdict, seeWhy };
+		return { ...base, format: 'choice', code: null, board: null, followUpPrompt: null, options, verdict, seeWhy };
 	}
 
 	const followUp = currentFollowUp(state)!;
@@ -302,7 +362,36 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 					explanation: followUp.explanation
 				}
 			: null;
-	return { ...base, followUpPrompt: followUp.prompt, options, verdict, seeWhy: null };
+	return { ...base, format: 'choice', code: null, board: null, followUpPrompt: followUp.prompt, options, verdict, seeWhy: null };
+}
+
+function boardView(question: TapCellQuestion, selected: string | null, checked: boolean): BoardView {
+	const model = sequenceModel({
+		presentation: question.sequence.kind,
+		name: question.sequence.name,
+		values: question.sequence.cells,
+		pastEnd: question.sequence.pastEnd,
+		markers: question.markers
+	});
+	const result = checked && selected !== null ? checkTap(question, selected) : null;
+	return {
+		kind: 'sequence',
+		presentation: model.presentation,
+		name: model.name,
+		note: result?.explanation ?? null,
+		cells: model.cells.map((cell) => {
+			let tone: OptionState = 'idle';
+			let reveal = false;
+			if (!checked) tone = cell.id === selected ? 'selected' : 'idle';
+			else if (result?.correct) tone = cell.id === selected ? 'correct' : 'idle';
+			else if (result && cell.id === selected) tone = 'wrong';
+			else if (result && cell.index === question.correct) {
+				tone = 'correct';
+				reveal = true;
+			}
+			return { ...cell, tone, reveal };
+		})
+	};
 }
 
 export interface MissedQuestion {
@@ -327,6 +416,7 @@ export function summarize(state: LessonState): Summary {
 	);
 	const missed: MissedQuestion[] = [];
 	let correctFirstTry = 0;
+	let followUpsAttempted = 0;
 	let followUpsCorrect = 0;
 	for (const done of state.completed) {
 		if (done.correct) {
@@ -334,8 +424,21 @@ export function summarize(state: LessonState): Summary {
 			continue;
 		}
 		const question = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
+		if (isTapCellQuestion(question)) {
+			missed.push({
+				questionId: question.id,
+				prompt: question.prompt,
+				pickedText: cellLabel(question, Number(done.pickedId)),
+				correctText: cellLabel(question, question.correct),
+				followUpCorrect: false
+			});
+			continue;
+		}
 		const followUpCorrect = done.followUp?.correct ?? false;
-		if (followUpCorrect) followUpsCorrect += 1;
+		if (done.followUp) {
+			followUpsAttempted += 1;
+			if (followUpCorrect) followUpsCorrect += 1;
+		}
 		missed.push({
 			questionId: question.id,
 			prompt: question.prompt,
@@ -347,7 +450,7 @@ export function summarize(state: LessonState): Summary {
 	return {
 		total: state.completed.length,
 		correctFirstTry,
-		followUpsAttempted: missed.length,
+		followUpsAttempted,
 		followUpsCorrect,
 		missed
 	};

@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
-import type { Question } from '../src/lib/content/schema.ts';
+import { isChoiceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
@@ -11,25 +11,31 @@ export const allDecks = loadDecks('content/decks');
 
 const text = (markdown: string) => plainText(markdown, 1000);
 
+function asChoice(question: Question): ChoiceQuestion {
+	if (!isChoiceQuestion(question)) throw new Error(`${question.id} is not a multiple-choice question`);
+	return question;
+}
+
 export function optionOf(question: Question, optionId: string) {
-	const option = question.options.find((candidate) => candidate.id === optionId);
+	const option = asChoice(question).options.find((candidate) => candidate.id === optionId);
 	if (!option) throw new Error(`no option ${optionId} on ${question.id}`);
 	return option;
 }
 
 export function firstWrongId(question: Question): string {
-	return question.options.find((option) => option.id !== question.correct)!.id;
+	return asChoice(question).options.find((option) => option.id !== question.correct)!.id;
 }
 
 /** Finds which deck question is on screen by comparing its option labels. */
-export async function currentQuestion(page: Page): Promise<Question> {
+export async function currentQuestion(page: Page): Promise<ChoiceQuestion> {
 	await page.getByRole('radio').first().waitFor();
 	const shown = (await page.locator('fieldset label').allInnerTexts()).map((label) => label.trim()).sort();
 	const match = deck.questions.find((candidate) => {
+		if (!isChoiceQuestion(candidate)) return false;
 		const expected = candidate.options.map((option) => text(option.text)).sort();
 		return JSON.stringify(expected) === JSON.stringify(shown);
 	});
-	if (!match) throw new Error(`no deck question has these options: ${shown.join(' | ')}`);
+	if (!match || !isChoiceQuestion(match)) throw new Error(`no deck question has these options: ${shown.join(' | ')}`);
 	return match;
 }
 
@@ -38,10 +44,25 @@ export async function currentQuestion(page: Page): Promise<Question> {
  * options read the same are told apart by their problem text.
  */
 export async function currentQuestionAny(page: Page): Promise<{ question: Question; deckId: string }> {
-	await page.getByRole('radio').first().waitFor();
+	const board = page.getByRole('group', { name: /Tap a cell/ });
+	await board.or(page.getByRole('radio').first()).first().waitFor();
+	if (await board.count()) {
+		const pageText = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+		const candidates = allDecks.flatMap((candidateDeck) =>
+			candidateDeck.questions
+				.filter(isTapCellQuestion)
+				.filter((candidate) => pageText.includes(text(candidate.prompt).replace(/\s+/g, ' ').slice(0, 40)))
+				.map((question) => ({ question, deckId: candidateDeck.id }))
+		);
+		if (candidates.length === 0) throw new Error('a sequence is showing but no tap question matched');
+		if (candidates.length === 1) return candidates[0];
+		const match = candidates.find(({ question }) => pageText.includes(question.code.slice(0, 24)));
+		return match ?? candidates[0];
+	}
 	const shown = (await page.locator('fieldset label').allInnerTexts()).map((label) => label.trim()).sort();
 	const candidates = allDecks.flatMap((candidateDeck) =>
 		candidateDeck.questions
+			.filter(isChoiceQuestion)
 			.filter((candidate) => JSON.stringify(candidate.options.map((option) => text(option.text)).sort()) === JSON.stringify(shown))
 			.map((question) => ({ question, deckId: candidateDeck.id }))
 	);
@@ -57,12 +78,17 @@ export async function pickAndCheck(page: Page, label: string) {
 	await page.getByRole('button', { name: 'Check', exact: true }).click();
 }
 
-export async function answerMain(page: Page, question: Question, optionId: string) {
-	await pickAndCheck(page, text(optionOf(question, optionId).text));
+export async function answerMain(page: Page, question: Question, optionId: string | number) {
+	if (isTapCellQuestion(question)) {
+		const index = typeof optionId === 'number' ? optionId : Number(optionId);
+		await page.getByRole('button', { name: new RegExp(`^Index ${index},`) }).click();
+		return;
+	}
+	await pickAndCheck(page, text(optionOf(question, String(optionId)).text));
 }
 
 export async function answerFollowUp(page: Page, question: Question, mainPick: string, right: boolean) {
-	const followUp = question.followUps[mainPick];
+	const followUp = asChoice(question).followUps[mainPick];
 	const target = right
 		? followUp.correct
 		: followUp.options.find((option) => option.id !== followUp.correct)!.id;

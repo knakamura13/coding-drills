@@ -1,3 +1,4 @@
+import { isChoiceQuestion, isTapCellQuestion } from '$lib/content/schema';
 import {
 	advance,
 	check,
@@ -69,8 +70,7 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		/** A human label for what a flag on the current screen would refer to. */
 		get flagLabel() {
 			const planned = state.plan[state.cursor];
-			if (!planned) return '';
-			if (state.stage === 'question') return 'The main question';
+			if (!planned || state.stage === 'question' || !isChoiceQuestion(planned.question)) return 'The main question';
 			const picked = planned.question.options.find((option) => option.id === state.mainPick);
 			return `The follow-up shown after picking "${picked?.text ?? 'an option'}"`;
 		},
@@ -90,7 +90,10 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 			return existing?.note ?? '';
 		},
 		select(optionId: string) {
-			state = select(state, optionId, preferences.immediateFeedback);
+			const question = state.plan[state.cursor]?.question;
+			// A tap answers in one gesture. The Check button is for multiple choice.
+			const immediate = preferences.immediateFeedback || (question ? isTapCellQuestion(question) : false);
+			state = select(state, optionId, immediate);
 		},
 		check() {
 			state = check(state);

@@ -14,6 +14,7 @@
 	import Markdown from './Markdown.svelte';
 	import OptionList from './OptionList.svelte';
 	import ProblemCard from './ProblemCard.svelte';
+	import SequenceBoard from './SequenceBoard.svelte';
 	import ProgressHeader from './ProgressHeader.svelte';
 	import QuitDialog from './QuitDialog.svelte';
 	import SeeWhySheet from './SeeWhySheet.svelte';
@@ -148,7 +149,7 @@
 {#if lesson.summary}
 	<Summary summary={lesson.summary} flags={lesson.flags} onretry={() => lesson.restart()} />
 {:else if screen}
-	<div class="stage" style:--sheet-h="{verdict ? sheetHeight : 0}px">
+	<div class={['stage', { tap: screen.board !== null }]} style:--sheet-h="{verdict ? sheetHeight : 0}px">
 		<ProgressHeader progress={lesson.progress} onclose={requestQuit} />
 
 		<main>
@@ -170,20 +171,60 @@
 				<div class="pinned"><ProblemCard prompt={screen.prompt} /></div>
 			{/if}
 
-			<OptionList
-				options={screen.options}
-				selectedId={lesson.selectedId}
-				locked={verdict !== null}
-				legend={screen.stage === 'followUp' ? 'Follow-up answers' : 'Answers'}
-				name={lesson.stepKey}
-				onselect={(id) => {
-					lesson.select(id);
-					cue();
-				}}
-			/>
+			{#if screen.board}
+				<div class="workspace">
+					{#if screen.code}
+						<div class="code-pane">
+							<pre class="code"><code>{screen.code}</code></pre>
+						</div>
+					{/if}
+					<div class="board-pane">
+						{#key lesson.stepKey}
+							<SequenceBoard
+								presentation={screen.board.presentation}
+								name={screen.board.name}
+								cells={screen.board.cells}
+								note={screen.board.note}
+								locked={verdict !== null}
+								onselect={(id) => {
+									lesson.select(id);
+									cue();
+									// The sheet covers the bottom of a short landscape screen, so bring the
+									// cell's explanation up above it. scroll-margin accounts for the sheet.
+									void tick().then(() => {
+										// Twice: the sheet's height lands after the first frame, and the page
+										// padding grows to match it. The second scroll clears that cover.
+										const reveal = () =>
+											document.getElementById('cell-feedback')?.scrollIntoView({
+												block: 'end',
+												inline: 'nearest'
+											});
+										requestAnimationFrame(() => {
+											reveal();
+											requestAnimationFrame(reveal);
+										});
+									});
+								}}
+							/>
+						{/key}
+					</div>
+				</div>
+			{:else}
+				<OptionList
+					options={screen.options}
+					selectedId={lesson.selectedId}
+					locked={verdict !== null}
+					legend={screen.stage === 'followUp' ? 'Follow-up answers' : 'Answers'}
+					name={lesson.stepKey}
+					onselect={(id) => {
+						lesson.select(id);
+						cue();
+					}}
+				/>
+			{/if}
 		</main>
 
-		{#if !verdict && !preferences.immediateFeedback}
+		{#if !verdict && !preferences.immediateFeedback && !screen.board}
 			<div class="footer">
 				<Button
 					disabled={!screen.canCheck}
@@ -206,7 +247,11 @@
 			primary={whyGate && !whySeen ? 'Why?' : 'Continue'}
 			onprimary={onPrimary}
 		>
-			{#if verdict.correct}
+			{#if screen.board && !verdict.correct}
+				<p class="answer">
+					The correct answer: <strong><Markdown source={verdict.correctText} inline /></strong>
+				</p>
+			{:else if verdict.correct}
 				<Markdown source={verdict.explanation} />
 			{:else}
 				<p class="answer">
@@ -313,6 +358,68 @@
 	.followup-label :global(svg) {
 		flex: none;
 		margin: -0.35px 0 0 -3.9px;
+	}
+
+	/* Portrait: the snippet sits above the sequence. Landscape: they share the row. */
+	.workspace {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		min-width: 0;
+	}
+
+	.code-pane,
+	.board-pane {
+		min-width: 0;
+	}
+
+	.code {
+		margin: 0;
+		padding: 14px;
+		overflow-x: auto;
+		border: 2px solid var(--pre-line);
+		border-radius: 12px;
+		background: var(--pre-bg);
+		color: var(--text);
+		font-family: var(--mono);
+		font-size: 13px;
+		line-height: 1.55;
+		white-space: pre;
+		tab-size: 4;
+	}
+
+	@media (orientation: landscape) {
+		.stage.tap {
+			max-width: min(960px, 100%);
+		}
+
+		.stage.tap .intro {
+			/* The question heading states the task. The title stays in the accessibility tree. */
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			margin: -1px;
+			padding: 0;
+			overflow: hidden;
+			clip: rect(0 0 0 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.stage.tap .question {
+			margin-bottom: 8px;
+		}
+
+		.stage.tap .pinned {
+			margin-bottom: 8px;
+		}
+
+		.workspace {
+			display: grid;
+			grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+			gap: 16px;
+			align-items: start;
+		}
 	}
 
 	.footer {
