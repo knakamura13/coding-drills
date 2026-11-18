@@ -80,6 +80,8 @@ const AUDITED_DECKS = new Set([
 	'two-pointers-sliding-window'
 ]);
 
+const ARRAYS_AND_STRINGS_DECKS = new Set(['arrays-and-strings', 'arrays-and-strings-review', 'arrays-and-strings-checkpoint']);
+
 function level(id: string) {
 	return { id, title: id };
 }
@@ -124,6 +126,17 @@ describe('shipped curriculum', () => {
 		expect(known.size).toBe(94);
 		for (const drill of audited) {
 			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
+		}
+	});
+
+	it('maps the 22 new Arrays and strings drills onto that path', () => {
+		const added = curriculum.drills.filter((drill) => ARRAYS_AND_STRINGS_DECKS.has(drill.deckId));
+		const questions = decks.filter((deck) => ARRAYS_AND_STRINGS_DECKS.has(deck.id)).flatMap((deck) => deck.questions);
+		expect(added).toHaveLength(22);
+		expect(added.map((drill) => drill.questionId).sort()).toEqual(questions.map((question) => question.id).sort());
+		for (const drill of added) {
+			expect(drill.pathId, drill.questionId).toBe('arrays-and-strings');
+			expect(drill.disposition, drill.questionId).toBe(drill.deckId === 'arrays-and-strings-checkpoint' ? 'exam' : 'keep');
 		}
 	});
 
