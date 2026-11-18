@@ -156,6 +156,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Feasible limits: teaching levels | `feasible-limits` | in review |
 | Sequences and search #11 | Feasible limits: review variants | `feasible-limits-review` | in review |
 | Sequences and search #11 | Feasible limits: checkpoint | `feasible-limits-checkpoint` | in review |
+| Sequences and search #11 | Variable windows: teaching levels | `variable-windows` | in review |
+| Sequences and search #11 | Variable windows: review variants | `variable-windows-review` | in review |
+| Sequences and search #11 | Variable windows: checkpoint | `variable-windows-checkpoint` | in review |
 | Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
 | Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
 | Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |

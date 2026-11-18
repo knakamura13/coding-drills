@@ -1,0 +1,625 @@
+id: variable-windows-review
+title: "Variable windows: review"
+description: Fresh inputs for the Variable windows skills, for recall on later days. No worked examples this time.
+heading: What happens next?
+
+questions:
+  - id: slide-signed-sum-review
+    heading: Which update is right?
+    tags: [sliding-window, python]
+    prompt: >-
+      `nums = [-2, 5, 0, 4, -3, 6]`, `k = 4`, and `s = 7`, the sum of `nums[0:4]`. Which line
+      turns `s` into the sum of `nums[1:5]`?
+    options:
+      - id: right
+        text: '`s += nums[4] - nums[0]`, giving 6'
+        explanation: >-
+          The window loses `nums[0]`, the -2, and gains `nums[4]`, the -3. 7 - (-2) + (-3) is 6,
+          which is 5 + 0 + 4 + -3.
+      - id: minus-kept
+        text: '`s += nums[4] - nums[1]`, giving -1'
+        explanation: >-
+          `nums[1]`, the 5, is the first value of the new window, so it stays. This subtracts it
+          and keeps the -2 that should have gone.
+      - id: swapped
+        text: '`s += nums[0] - nums[4]`, giving 8'
+        explanation: >-
+          That adds the -2 at the old left edge and subtracts the -3 arriving on the right. With
+          negative values the swap is easy to miss, since both moves are small.
+      - id: no-subtract
+        text: '`s += nums[4]`, giving 4'
+        explanation: >-
+          Nothing is taken away, so `s` keeps the -2 at index 0 and now adds five values. The
+          window has to stay four values wide.
+    correct: right
+    followUps:
+      minus-kept:
+        prompt: The window `nums[0:4]` becomes `nums[1:5]`. Which index leaves?
+        options:
+          - { id: zero, text: 'Index 0, the -2' }
+          - { id: one, text: 'Index 1, where the new window starts' }
+          - { id: four, text: 'Index 4, the -3' }
+        correct: zero
+        explanation: >-
+          The value that leaves is the old first one, at `right - k`, which is 4 - 4 here. Index
+          1 starts the new window and stays in the sum.
+      swapped:
+        prompt: Both values are negative. Which one should be subtracted?
+        options:
+          - { id: leaving, text: 'The -2 at index 0, which leaves' }
+          - { id: entering, text: 'The -3 at index 4, which comes in' }
+          - { id: smaller, text: 'Whichever of the two is smaller' }
+        correct: leaving
+        explanation: >-
+          The value that leaves is always subtracted and the one that comes in is always added,
+          whatever their signs. Taking away -2 raises the sum by 2, and adding -3 lowers it by 3.
+      no-subtract:
+        prompt: After `s += nums[4]` alone, which values does `s` add up?
+        options:
+          - { id: five, text: '`nums[0]` through `nums[4]`, five values' }
+          - { id: new-window, text: '`nums[1]` through `nums[4]`, the new window' }
+          - { id: one, text: '`nums[4]` alone' }
+        correct: five
+        explanation: >-
+          `s` already held the first four values, and nothing took the -2 away. A fixed window
+          subtracts one value for every value it adds.
+
+  - id: leaving-index-review
+    heading: Which index leaves?
+    tags: [sliding-window, python]
+    prompt: |-
+      ```python
+      def window_sums(nums, k):
+          s = sum(nums[:k])
+          sums = [s]
+          for i in range(k, len(nums)):
+              s += nums[i] - nums[___]
+              sums.append(s)
+          return sums
+      ```
+
+      `window_sums([2, 6, 3, 1, 7, 4], 3)` should return `[11, 10, 11, 12]`. Which index fills
+      the blank?
+    options:
+      - id: right
+        text: '`i - k`'
+        explanation: >-
+          On the pass with `i` at 3, `nums[0]` leaves: 11 + 1 - 2 is 10. The value `k` places
+          behind `i` is always the one leaving.
+      - id: plus-one
+        text: '`i - k + 1`'
+        explanation: >-
+          That subtracts the value where the new window starts, `nums[1]` on the first pass,
+          which stays. The sums come out `[11, 6, 10, 13]`.
+      - id: previous
+        text: '`i - 1`'
+        explanation: >-
+          That subtracts the value just before the new one, which is still inside a window three
+          values wide. The sums come out `[11, 9, 15, 12]`.
+      - id: minus-one
+        text: '`i - k - 1`'
+        explanation: >-
+          On the first pass that index is -1, and Python reads the last value without an error.
+          The sums come out `[11, 8, 13, 11]`.
+    correct: right
+    followUps:
+      plus-one:
+        prompt: When `i` is 3 and `k` is 3, the window becomes `nums[1:4]`. What is `nums[i - k + 1]`?
+        options:
+          - { id: first, text: '`nums[1]`, the first value of the new window' }
+          - { id: leaving, text: '`nums[0]`, the value that leaves' }
+          - { id: middle, text: '`nums[2]`, the middle value' }
+        correct: first
+        explanation: >-
+          `i - k + 1` is where the new window starts, so its value stays in the sum. The value
+          that leaves sits one place earlier, at `i - k`.
+      previous:
+        prompt: For which `k` is `nums[i - 1]` the value that leaves?
+        options:
+          - { id: one, text: 'Only `k = 1`, a window one value wide' }
+          - { id: every, text: 'Every `k`, since the window moves one step' }
+          - { id: two, text: 'Only `k = 2`' }
+        correct: one
+        explanation: >-
+          The leaving index is `i - k`, which equals `i - 1` only when `k` is 1. In a wider
+          window `nums[i - 1]` is still inside.
+      minus-one:
+        prompt: On the pass with `i` at 3, what does `nums[i - k - 1]` read?
+        options:
+          - { id: last, text: '`nums[-1]`, the last value, 4' }
+          - { id: error, text: 'Nothing, it raises `IndexError`' }
+          - { id: leaving, text: '`nums[0]`, the value that leaves' }
+        correct: last
+        explanation: >-
+          A negative index counts back from the end, so the mistake does not crash. On later
+          passes it subtracts a value that left one pass earlier.
+
+  - id: tap-leaving-review
+    format: tap-cell
+    heading: Tap the cell that leaves
+    tags: [sliding-window, python]
+    prompt: '`k = 3` and `right` moves to 5. Tap the cell whose value this pass subtracts.'
+    code: |
+      k = 3
+      right = 5
+      s += nums[right] - nums[right - k]
+    sequence: { kind: array, name: nums, cells: [6, 1, 9, 4, 4, 2, 8] }
+    markers:
+      - { name: right, at: 5 }
+    correct: 2
+    explanation: >-
+      `right - k` is 5 - 3, which is 2. The window was cells 2 to 4 and becomes cells 3 to 5, so
+      cell 2 is the one that leaves.
+    misses:
+      - index: 0
+        explanation: Cell 0 left two passes ago, when `right` moved to 3.
+      - index: 1
+        explanation: Cell 1 left on the previous pass, when `right` moved to 4. It is `right - k - 1`.
+      - index: 3
+        explanation: Cell 3 is `right - k + 1`, the first cell of the new window. It stays.
+      - index: 4
+        explanation: Cell 4 is inside both the old window, cells 2 to 4, and the new one, cells 3 to 5.
+      - index: 5
+        explanation: Cell 5 is `nums[right]`, the value this pass adds, not the one it subtracts.
+      - index: 6
+        explanation: Cell 6 has not come in yet. It joins when `right` moves to 6.
+
+  - id: first-full-window-review
+    heading: When is the first window full?
+    tags: [sliding-window, python]
+    prompt: |-
+      ```python
+      def window_sums(nums, k):
+          sums = []
+          s = 0
+          for right, x in enumerate(nums):
+              s += x
+              if right >= k:
+                  s -= nums[right - k]
+              if ___:
+                  sums.append(s)
+          return sums
+      ```
+
+      `window_sums([4, 2, 5, 1], 2)` should return `[6, 7, 6]`. Which test fills the blank?
+    options:
+      - id: right
+        text: '`right >= k - 1`'
+        explanation: >-
+          On the pass with `right` at `k - 1`, `s` holds exactly `k` values for the first time,
+          4 + 2 here. From then on each pass adds one and subtracts one.
+      - id: k
+        text: '`right >= k`'
+        explanation: >-
+          That skips the first full window, `4, 2`, and returns `[7, 6]`. On the pass with
+          `right` at `k`, the window has already moved once.
+      - id: always
+        text: '`right >= 0`'
+        explanation: >-
+          That records `s` on every pass, including the first, when it holds only the 4. The call
+          returns `[4, 6, 7, 6]`.
+    correct: right
+    followUps:
+      k:
+        prompt: On the pass with `right` at `k - 1`, how many values has `s` added?
+        options:
+          - { id: k, text: '`k` values, the first full window' }
+          - { id: k-minus-one, text: '`k - 1` values, one short of a window' }
+          - { id: k-plus-one, text: '`k + 1` values, one too many' }
+        correct: k
+        explanation: >-
+          Indices 0 through `k - 1` are `k` values, so the first window is complete on that pass.
+          Waiting for `right >= k` records it only after it has slid.
+      always:
+        prompt: With `k = 2`, what does `s` hold after the pass with `right` at 0?
+        options:
+          - { id: partial, text: 'Only the 4, one value short of a window' }
+          - { id: full, text: 'The first window, 4 + 2' }
+          - { id: zero, text: '0, since nothing is added until the window is full' }
+        correct: partial
+        explanation: >-
+          The loop adds one value per pass, so for the first `k - 1` passes `s` is a partial
+          window. Recording it then adds sums of fewer than `k` values.
+
+  - id: last-copy-review
+    heading: What does the dictionary hold?
+    tags: [sliding-window, hash-map]
+    prompt: >-
+      The window is `q, r, r, s`, so `counts` is `{"q": 1, "r": 2, "s": 1}`. The `q` at the left
+      edge leaves. What are `counts` and `len(counts)` afterwards?
+    options:
+      - id: right
+        text: '`{"r": 2, "s": 1}`, so 2 types'
+        explanation: >-
+          The `q` was the only one, so its count reaches 0 and the key is deleted. The window
+          `r, r, s` holds 2 types.
+      - id: zero-key
+        text: '`{"q": 0, "r": 2, "s": 1}`, so 3 types'
+        explanation: >-
+          The count is right, but the key stays. `len(counts)` then counts a type that is no
+          longer in the window.
+      - id: next-cell
+        text: '`{"q": 1, "r": 1, "s": 1}`, so 3 types'
+        explanation: >-
+          That takes a copy away from the first `r`, which is still in the window, and leaves the
+          `q` that went.
+    correct: right
+    followUps:
+      zero-key:
+        prompt: '`counts` holds `"q": 0`. What does `len(counts)` count that it should not?'
+        options:
+          - { id: absent, text: 'A type with no copies left in the window' }
+          - { id: nothing, text: 'Nothing, since `len` skips keys whose value is 0' }
+          - { id: twice, text: 'The `r` twice, since it has 2 copies' }
+        correct: absent
+        explanation: >-
+          `len` counts keys, not copies, and a key whose count is 0 is still a key. Deleting it at
+          0 keeps `len(counts)` equal to the number of types present.
+      next-cell:
+        prompt: The left edge moves from the `q` to the first `r`. Whose count should drop?
+        options:
+          - { id: old, text: 'The `q`, read before `left` moves' }
+          - { id: new, text: 'The first `r`, now at the left edge' }
+          - { id: neither, text: 'Neither, since counts change only when a key is deleted' }
+        correct: old
+        explanation: >-
+          The leaving value is read at the old `left`. Moving `left` first subtracts a value that
+          stays and keeps one that has gone.
+
+  - id: overwrite-count-review
+    heading: Which change fixes it?
+    tags: [sliding-window, hash-map, python]
+    prompt: |-
+      ```python
+      def types_per_window(s, k):
+          counts = {}
+          out = []
+          for right, ch in enumerate(s):
+              counts[ch] = 1
+              if right >= k:
+                  gone = s[right - k]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+              if right >= k - 1:
+                  out.append(len(counts))
+          return out
+      ```
+
+      `types_per_window("aaba", 3)` returns `[2, 1]`, but the window `a, b, a` holds 2 types.
+      Which change makes it right for every input?
+    options:
+      - id: right
+        text: 'Write `counts[ch] = counts.get(ch, 0) + 1`'
+        explanation: >-
+          `counts[ch] = 1` forgets the copies already in the window. With the count kept, the
+          first removal of an `a` leaves 1 behind, and the call returns `[2, 2]`.
+      - id: at-most-zero
+        text: 'Delete a key when `counts[gone] <= 0` instead of `== 0`'
+        explanation: >-
+          The `a` count is exactly 0 when its key goes, so the call still returns `[2, 1]`. The
+          count was already wrong before the removal.
+      - id: remove-first
+        text: 'Do the removal before adding `ch`'
+        explanation: >-
+          That happens to give `[2, 2]` here, since the `a` that comes in is re-added after the
+          `a` that leaves. On `"aaab"` it returns `[1, 1]` instead of `[1, 2]`.
+    correct: right
+    followUps:
+      at-most-zero:
+        prompt: After the pass with `right` at 1, what is `counts["a"]`, and how many `a` days are in the window?
+        options:
+          - { id: one-two, text: 'The count is 1, but two `a` days are in the window' }
+          - { id: two-two, text: 'The count is 2, matching the two `a` days' }
+          - { id: zero-two, text: 'The count is 0, since no `a` has left yet' }
+        correct: one-two
+        explanation: >-
+          The second `a` resets the count to 1 instead of raising it to 2. Any test on the count
+          later starts from that wrong number, so the fix is in the line that adds.
+      remove-first:
+        prompt: With the removal first, what goes wrong on `"aaab"` when `right` is 3?
+        options:
+          - { id: lost, text: 'The `a` key is deleted though two `a` days stay in the window' }
+          - { id: nothing, text: 'Nothing, the window `a, a, b` is counted as 2 types' }
+          - { id: error, text: 'It raises a `KeyError` on the missing `a`' }
+        correct: lost
+        explanation: >-
+          The count of `a` is still 1 after three `a` days, so one removal takes it to 0 and the
+          key goes. Swapping the order hides the wrong count on some inputs but does not fix it.
+
+  - id: trace-types-review
+    format: step-trace
+    heading: Predict each step
+    tags: [sliding-window, hash-map, python]
+    prompt: >-
+      The first window `d, c, d` has been counted, and `counts` is `{"d": 2, "c": 1}`. Step
+      through the rest and predict each value before it is shown.
+    code: |
+      def types_per_window(s, k):
+          counts = {}
+          out = []
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              if right >= k:
+                  gone = s[right - k]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+              if right >= k - 1:
+                  out.append(len(counts))
+          return out
+
+      types_per_window("dcdeecd", 3)
+    sequence: { kind: string, name: s, cells: [d, c, d, e, e, c, d] }
+    start:
+      - { name: right, at: 2 }
+    steps:
+      - line: 12
+        ask: On the pass with `right` at 3, what does line 12 append?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The `e` comes in and the `d` at index 0 goes out. The `d` at index 2 stays, so the
+              window `c, d, e` holds 3 types.
+          - id: two
+            text: '2'
+            explanation: >-
+              That deletes `d` when one copy leaves. Its count was 2, so it drops to 1 and the
+              key stays.
+          - id: four
+            text: '4'
+            explanation: >-
+              Only three letters appear in this string, so no window can hold 4 types. Line 8
+              removes the `d` at index 0.
+        correct: three
+        also:
+          - { name: right, at: 3 }
+      - line: 12
+        ask: On the pass with `right` at 4, what does line 12 append?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              The second `e` comes in and the only `c` goes out. Its count reaches 0 and the key
+              is deleted, so the window `d, e, e` holds 2 types.
+          - id: three
+            text: '3'
+            explanation: >-
+              That keeps `"c": 0` in `counts`. Line 10 deletes the key when the last `c` leaves.
+        correct: two
+        also:
+          - { name: right, at: 4 }
+      - line: 8
+        ask: After the pass with `right` at 6, what is `counts["e"]`?
+        options:
+          - id: one
+            text: '1'
+            explanation: >-
+              The `e` at index 3 leaves and the one at index 4 stays. The window `e, c, d` holds
+              one `e`.
+          - id: two
+            text: '2'
+            explanation: >-
+              `s[right - k]` is `s[3]`, an `e`, so line 8 takes one away. The window `e, c, d`
+              holds only one.
+          - id: zero
+            text: '0'
+            explanation: >-
+              Only one `e` leaves. The `e` at index 4 is still in the window, so the key stays
+              with a count of 1.
+        correct: one
+        also:
+          - { name: right, at: 6 }
+      - line: 13
+        ask: What does the call return?
+        options:
+          - id: right
+            text: '`[2, 3, 2, 2, 3]`'
+            explanation: >-
+              The windows are `d, c, d`, `c, d, e`, `d, e, e`, `e, e, c` and `e, c, d`, one entry
+              for each.
+          - id: late
+            text: '`[3, 2, 2, 3]`'
+            explanation: >-
+              The first full window is counted on the pass with `right` at 2, which is `k - 1`.
+              That window, `d, c, d`, holds 2 types.
+          - id: no-delete
+            text: '`[2, 3, 3, 3, 3]`'
+            explanation: >-
+              That keeps every key whose count reaches 0. Line 10 deletes them, so a type that
+              has left is not counted.
+        correct: right
+
+  - id: drag-shrink-review
+    format: drag-pointers
+    heading: Where does the left edge stop?
+    tags: [sliding-window, hash-map]
+    prompt: >-
+      At most 2 types are allowed. The window is `c, c, d, c, d`, and the `e` at index 5 has just
+      come in. Drag `left` to where the loop stops.
+    code: |
+      # counts == {"c": 3, "d": 2, "e": 1}
+      while len(counts) > 2:
+          gone = s[left]
+          counts[gone] -= 1
+          if counts[gone] == 0:
+              del counts[gone]
+          left += 1
+    sequence: { kind: string, name: s, cells: [c, c, d, c, d, e] }
+    markers:
+      - { name: right, at: 5 }
+    pointers:
+      - name: left
+        start: 0
+        correct: 4
+        explanation: >-
+          The loop removes `c`, `c`, `d` and then the `c` at index 3. That last removal is the
+          only one that takes a count to 0, so it stops with the window `d, e`.
+        misses:
+          - index: 1
+            explanation: >-
+              After one removal the window `c, d, c, d, e` still holds 3 types. A single `if`
+              would stop here, but the `while` keeps going.
+          - index: 2
+            explanation: >-
+              Both leading `c` days are gone, but another `c` sits at index 3, so the `c` count is
+              still 1 and the window holds 3 types.
+          - index: 3
+            explanation: >-
+              The `d` count dropped from 2 to 1, but no key was deleted. The window `c, d, e`
+              still holds 3 types.
+          - index: 5
+            explanation: >-
+              Jumping to the `e` throws away the `d` at index 4, which can stay: `d, e` holds only
+              2 types.
+        elsewhere: The loop runs until the window holds at most 2 types, and stops there.
+
+  - id: record-after-shrink-review
+    heading: Where does the record go?
+    tags: [sliding-window, hash-map, python]
+    prompt: |-
+      ```python
+      def longest(s, k):
+          counts = {}
+          left = best = 0
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              # (A)
+              while len(counts) > k:
+                  # (B)
+                  gone = s[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              # (C)
+          return best
+      ```
+
+      `longest("tutuvvw", 2)` should return 4, from `t, u, t, u`. Where does
+      `best = max(best, right - left + 1)` go?
+    options:
+      - id: after
+        text: At (C), after the loop
+        explanation: >-
+          By (C) the window holds at most `k` types, so every length recorded belongs to a valid
+          stretch. The call returns 4.
+      - id: before
+        text: At (A), before the loop
+        explanation: >-
+          That records the window while it may still hold `k + 1` types. When the `v` arrives the
+          window `t, u, t, u, v` is recorded, and the call returns 5.
+      - id: inside
+        text: At (B), at the top of the loop body
+        explanation: >-
+          The loop body runs only while the window is too wide, so every length it records is of
+          a broken window. The call returns 5.
+      - id: off-by-one
+        text: 'At (C), but as `right - left`'
+        explanation: >-
+          The place is right, but the length is one short. The call returns 3.
+    correct: after
+    followUps:
+      before:
+        prompt: When the `v` at index 4 comes in, the window is `t, u, t, u, v`. Is that a stretch the problem allows?
+        options:
+          - { id: too-many, text: 'No, it holds 3 types, so its length must not be recorded' }
+          - { id: later, text: 'Yes, since the loop is about to fix it' }
+          - { id: valid-end, text: 'Yes, since the day it ends on is valid on its own' }
+        correct: too-many
+        explanation: >-
+          A window can break the limit for a moment, between adding a day and the repair. Only a
+          window that has been repaired is a stretch that counts.
+      inside:
+        prompt: When does the body of `while len(counts) > k` run?
+        options:
+          - { id: broken, text: 'Only while the window holds more than `k` types' }
+          - { id: every, text: 'Once on every pass, before the window grows' }
+          - { id: valid, text: 'Only when the window is valid' }
+        correct: broken
+        explanation: >-
+          The loop test is the definition of a broken window. Anything recorded inside the body
+          describes a window the problem does not allow.
+      off-by-one:
+        prompt: The window runs from index `left` to index `right`, both included. How many days is that?
+        options:
+          - { id: plus-one, text: '`right - left + 1`' }
+          - { id: diff, text: '`right - left`' }
+          - { id: right, text: '`right + 1`' }
+        correct: plus-one
+        explanation: >-
+          A window from index 2 to index 2 holds one day, and `right - left` would call it 0.
+          Counting both ends adds one.
+
+  - id: zero-limit-suffixes-review
+    heading: How many valid stretches end here?
+    tags: [sliding-window]
+    prompt: |-
+      A window may hold at most one 0.
+
+      ```python
+      zeros = left = total = 0
+      for right, x in enumerate(nums):
+          if x == 0:
+              zeros += 1
+          while zeros > 1:
+              if nums[left] == 0:
+                  zeros -= 1
+              left += 1
+          total += right - left + 1
+      ```
+
+      `nums = [1, 0, 1, 1, 0, 1, 1, 0]`. Before the pass with `right` at 7, `left` is 2. How many
+      valid stretches end at index 7?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          The third 0 arrives, so the loop removes indices 2, 3 and 4, the last of which is the 0
+          at index 4. `left` stops at 5, and the stretches starting at 5, 6 and 7 are valid.
+      - id: four
+        text: '4'
+        explanation: >-
+          That stops `left` on the 0 at index 4. The window `0, 1, 1, 0` still holds two 0s.
+      - id: five
+        text: '5'
+        explanation: >-
+          That removes only one value, the 1 at index 2. The window from index 3 still holds the
+          0s at indices 4 and 7.
+      - id: two
+        text: '2'
+        explanation: >-
+          That is `right - left` with `left` at 5. The single 0 at index 7 is a valid stretch too.
+    correct: three
+    followUps:
+      four:
+        prompt: The window starts on the 0 at index 4 and ends on the 0 at index 7. Is it valid?
+        options:
+          - { id: two-zeros, text: 'No, it holds two 0s, so the 0 at index 4 has to leave too' }
+          - { id: stopped, text: 'Yes, since the loop just stopped on a 0' }
+          - { id: ends, text: 'Yes, since a 0 at either end does not count' }
+        correct: two-zeros
+        explanation: >-
+          The loop has to move `left` past the 0 it is removing, not onto it. `zeros` drops only
+          when that 0 leaves, which is when `left` goes from 4 to 5.
+      five:
+        prompt: After one value leaves, the window starts at index 3. How many 0s does it hold?
+        options:
+          - { id: two, text: 'Two, at indices 4 and 7, so it is still invalid' }
+          - { id: one, text: 'One, since a value has left' }
+          - { id: none, text: 'None, since index 3 holds a 1' }
+        correct: two
+        explanation: >-
+          Removing a 1 does not change `zeros`. The loop keeps going until a 0 leaves, which here
+          takes three removals.
+      two:
+        prompt: With `left` at 5 and `right` at 7, which starts give a valid stretch ending at 7?
+        options:
+          - { id: three, text: 'Indices 5, 6 and 7, so three of them' }
+          - { id: two, text: 'Indices 5 and 6, since 7 - 5 is 2' }
+          - { id: one, text: 'Only index 5, the whole window' }
+        correct: three
+        explanation: >-
+          The starts run from `left` to `right`, both included, which is `right - left + 1` of
+          them. The stretch of the single 0 at index 7 counts.
