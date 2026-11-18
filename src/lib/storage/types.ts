@@ -1,5 +1,5 @@
-/** Version 2 expanded the Count islands checkpoint to five items. */
-export const EXAM_RULES_VERSION = 2;
+/** Version 3 expands the simultaneous-spread checkpoint to five items. */
+export const EXAM_RULES_VERSION = 3;
 
 export interface QuestionRef {
 	deckId: string;

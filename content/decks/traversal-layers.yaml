@@ -1,0 +1,196 @@
+id: traversal-layers
+title: Traversal layers
+description: Trace the queue, label distances, and start a wave from several sources.
+questions:
+  - id: traversal-layer-pop-trace
+    format: step-trace
+    tags:
+      - bfs
+      - queue
+    prompt: |-
+      **Example:** With P waiting before Q, a queue removes P first.
+      Now the queue contains B and C, both at distance 1. D is the only new neighbor of B.
+      Predict the next node at the front of the queue after each step.
+    code: |-
+      node = queue.popleft()
+      queue.append(next_neighbor[node])
+      front = queue[0]
+      node = queue.popleft()
+      front = queue[0]
+    sequence:
+      kind: array
+      name: nodes
+      cells: [B, C, D]
+    start:
+      - name: front
+        at: 0
+    steps:
+      - line: 1
+        ask: After removing B and appending D, which node is at the front?
+        pointer: front
+        correct: 1
+        explanation: C was already waiting when D joined. Removing B leaves C at the front.
+        elsewhere: Appending D puts it behind C, which was already waiting.
+      - line: 4
+        ask: After the next pop, which node is at the front?
+        pointer: front
+        correct: 2
+        explanation: The second pop removes C, the last node at distance 1. D now starts the next layer.
+        elsewhere: The two pops removed B and C. D is the only node still waiting.
+  - id: traversal-layer-freeze-length
+    tags:
+      - bfs
+    prompt: '**Example:** Start a round with two queued nodes. Process those two even if they add new nodes.
+      A new round starts with P, Q, R. P adds two nodes. How many pops finish this round?'
+    options:
+      - id: correct
+        text: Three pops, for P, Q and R
+        explanation: The initial queue length defines this round. Discoveries from the round belong to the next
+          layer.
+      - id: other
+        text: Five pops, for P, Q, R and the new nodes
+        explanation: Separate the starting frontier from what it discovers.
+    correct: correct
+    followUps:
+      other:
+        prompt: At the start of the round, are the nodes found by P already in the queue?
+        options:
+          - id: 'yes'
+            text: They will arrive later
+          - id: 'no'
+            text: They are part of the initial queue
+        correct: 'yes'
+        explanation: The initial queue length defines this round. Discoveries from the round belong to the next
+          layer.
+  - id: traversal-layer-cross-edge
+    tags:
+      - bfs
+    prompt: |-
+      **Example:** A queue can hold nodes from more than one distance layer.
+      The queue starts with M followed by N, both one move from the start. BFS removes M
+      and appends its new neighbor X. Which node is first now?
+    options:
+      - id: correct
+        text: N, the other one-move node
+        explanation: The queue holds N followed by X. Adding a node at the back preserves the turn of each earlier
+          discovery.
+      - id: other
+        text: X, the newly discovered node
+        explanation: Write the remaining queue before appending X.
+    correct: correct
+    followUps:
+      other:
+        prompt: Where does X join the queue?
+        options:
+          - id: 'yes'
+            text: After the nodes already waiting
+          - id: 'no'
+            text: At the front of the queue
+        correct: 'yes'
+        explanation: The queue holds N followed by X. Adding a node at the back preserves the turn of each earlier
+          discovery.
+  - id: traversal-distance-one-step
+    tags:
+      - bfs
+    prompt: '**Example:** A start has distance 0, and its newly discovered neighbor has distance 1. A node with
+      label 4 discovers an unseen neighbor across one unit-cost edge. What label does the neighbor get?'
+    options:
+      - id: correct
+        text: 5 moves
+        explanation: Following one edge adds one move to the distance already traveled to reach its parent.
+      - id: other
+        text: 4 moves
+        explanation: Count the move from the parent to the neighbor.
+    correct: correct
+    followUps:
+      other:
+        prompt: Does taking the next edge use any of the moves in the path to the parent?
+        options:
+          - id: 'yes'
+            text: It adds an extra move
+          - id: 'no'
+            text: It reuses the parent’s final move
+        correct: 'yes'
+        explanation: Following one edge adds one move to the distance already traveled to reach its parent.
+  - id: traversal-distance-detour
+    tags:
+      - bfs
+    prompt: |-
+      **Example:** A wall is an illegal move even if it is on a straight line to the target. In this grid, S starts at minute 0. Move one cell per minute in four directions. When can BFS first reach T?
+
+      ```text
+      S#T
+      ...
+      ```
+    options:
+      - id: correct
+        text: Minute 4, by going around the wall
+        explanation: The shortest legal walk goes down, right twice, then up. Each edge contributes one minute.
+      - id: other
+        text: Minute 2, by moving straight across
+        explanation: Trace a walk that only enters open cells.
+    correct: correct
+    followUps:
+      other:
+        prompt: Can the first step from S move right?
+        options:
+          - id: 'yes'
+            text: The wall blocks that step
+          - id: 'no'
+            text: The wall costs one extra step
+        correct: 'yes'
+        explanation: The shortest legal walk goes down, right twice, then up. Each edge contributes one minute.
+  - id: traversal-seed-zero
+    tags:
+      - bfs
+    prompt: '**Example:** Two machines both start sending at time 0. Both are seed nodes. How should BFS prepare
+      its queue before processing any edges?'
+    options:
+      - id: correct
+        text: Queue both with distance 0
+        explanation: Both sources are already active at the start. Queue order breaks ties within minute zero
+          without changing their labels.
+      - id: other
+        text: Queue one with distance 0 and the other with distance 1
+        explanation: Think about when the second source starts sending.
+    correct: correct
+    followUps:
+      other:
+        prompt: Must a message travel to the second source before that source is active?
+        options:
+          - id: 'yes'
+            text: It is already active
+          - id: 'no'
+            text: It must get the first message
+        correct: 'yes'
+        explanation: Both sources are already active at the start. Queue order breaks ties within minute zero
+          without changing their labels.
+  - id: traversal-nearer-seed
+    tags:
+      - bfs
+    prompt: |-
+      **Example:** Each source’s first neighbors are reached in one move. In the row below, which source reaches X first? Each step is one position left or right.
+
+      ```text
+      S . . X S
+      ```
+    options:
+      - id: correct
+        text: The source to the right of X
+        explanation: The right source is one move away. The left source is three moves away. Starting both together
+          makes X’s label the smaller distance.
+      - id: other
+        text: The source to the left of X
+        explanation: Count from both starting positions to X.
+    correct: correct
+    followUps:
+      other:
+        prompt: How many moves does the source to the left need to reach X?
+        options:
+          - id: 'yes'
+            text: Three edges along the row
+          - id: 'no'
+            text: One move
+        correct: 'yes'
+        explanation: The right source is one move away. The left source is three moves away. Starting both together
+          makes X’s label the smaller distance.
