@@ -141,6 +141,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Boundary search: teaching levels | `boundary-search` | in review |
 | Sequences and search #11 | Boundary search: review variants | `boundary-search-review` | in review |
 | Sequences and search #11 | Boundary search: checkpoint | `boundary-search-checkpoint` | in review |
+| Sequences and search #11 | Interval merging: teaching levels | `interval-merging` | in review |
+| Sequences and search #11 | Interval merging: review variants | `interval-merging-review` | in review |
+| Sequences and search #11 | Interval merging: checkpoint | `interval-merging-checkpoint` | in review |
 | Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
 | Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
 | Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |

@@ -1,0 +1,589 @@
+id: interval-merging-review
+title: "Interval merging: review"
+description: Fresh inputs for the Interval merging skills, for recall on later days. No worked examples this time.
+heading: What happens next?
+
+questions:
+  - id: one-sided-review
+    heading: Is it right?
+    tags: [intervals, python]
+    prompt: >-
+      `overlaps(a, b)` returns `b[0] <= a[1]`, written for when `a` starts first. It is called as
+      `overlaps([7, 9], [2, 5])`. What does it return, and is that right?
+    options:
+      - id: right
+        text: "`True`, but the two ranges share no point"
+        explanation: >-
+          `2 <= 9` holds, so it returns `True`. Drawn, `[2, 5]` ends at 5 and `[7, 9]` begins at
+          7, with a gap between. The test misses that `b` can end before `a` starts.
+      - id: trusts-test
+        text: "`True`, and the two ranges overlap"
+        explanation: >-
+          The call does return `True`, but drawn, `[2, 5]` stops at 5 before `[7, 9]` begins
+          at 7.
+      - id: misreads-test
+        text: "`False`, and the two ranges share no point"
+        explanation: >-
+          The ranges are apart, but the helper compares only 2 with 9, and that comparison
+          holds.
+    correct: right
+    followUps:
+      trusts-test:
+        prompt: Which points do `[7, 9]` and `[2, 5]` both cover?
+        options:
+          - id: right
+            text: None, `[2, 5]` is over before `[7, 9]` begins
+          - id: middle
+            text: 5 through 7
+          - id: all
+            text: All of 2 to 9
+        correct: right
+        explanation: >-
+          For a shared point, each range must start at or before the other ends. `[7, 9]` starts
+          at 7, after `[2, 5]` has ended, so that fails.
+      misreads-test:
+        prompt: What is `2 <= 9`?
+        options:
+          - id: right
+            text: "`True`, so the helper says the ranges overlap"
+          - id: wrong
+            text: "`False`, so the helper says they are apart"
+        correct: right
+        explanation: >-
+          2 is less than 9, so the one-sided test passes and reports an overlap that is not
+          there. The full test also needs `a[0] <= b[1]`, and `7 <= 5` fails.
+
+  - id: merged-range-review
+    format: drag-pointers
+    heading: Place the merged range
+    tags: [intervals]
+    prompt: >-
+      The two ranges below are drawn on a number line. Drag `start` and `end` to the range they
+      cover together.
+    code: |
+      a = [4, 6]
+      b = [1, 5]
+      #   0 1 2 3 4 5 6 7
+      # a         [---]
+      # b   [-------]
+    sequence:
+      kind: array
+      name: line
+      cells: [0, 1, 2, 3, 4, 5, 6, 7]
+    pointers:
+      - name: start
+        start: 7
+        correct: 1
+        explanation: "`b` starts at 1, earlier than `a` at 4, so the merged range starts at 1."
+        misses:
+          - index: 4
+            explanation: >-
+              4 is where `a` starts, and `a` is listed first, but `b` starts earlier, at 1.
+        elsewhere: Neither range starts here. The merged range starts at the smaller start, 1.
+      - name: end
+        start: 0
+        correct: 6
+        explanation: "`a` reaches 6, past `b`'s end at 5, so the merged range ends at 6."
+        misses:
+          - index: 5
+            explanation: >-
+              5 is where `b` ends, and `b` is listed last, but `a` reaches further, to 6.
+        elsewhere: Neither range ends here. The merged range ends at the larger end, 6.
+
+  - id: disjoint-pair-review
+    heading: What does this print?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      ```python
+      def merge(spans):
+          out = []
+          for s, e in sorted(spans):
+              if out and s <= out[-1][1]:
+                  out[-1][1] = max(out[-1][1], e)
+              else:
+                  out.append([s, e])
+          return out
+
+      print(merge([[5, 7], [2, 3]]))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[[2, 3], [5, 7]]`"
+        explanation: >-
+          After sorting, `[2, 3]` comes first. `[5, 7]` starts at 5, past 3, so it starts a new
+          range. Nothing covers 4, so the two stay apart.
+      - id: bridged
+        text: "`[[2, 7]]`"
+        explanation: >-
+          That joins across 4, which neither range covers. 5 is not at most 3, so the test on
+          the merge line fails.
+      - id: input-order
+        text: "`[[5, 7], [2, 3]]`"
+        explanation: >-
+          The two do stay apart, but the order is off. Look at what the loop iterates over.
+    correct: right
+    followUps:
+      bridged:
+        prompt: Does any point lie in both `[2, 3]` and `[5, 7]`?
+        options:
+          - id: right
+            text: No, `[2, 3]` ends at 3 and `[5, 7]` starts at 5
+          - id: close
+            text: Yes, they are within 2 of each other
+          - id: outer
+            text: Yes, both lie inside `[2, 7]`
+        correct: right
+        explanation: >-
+          Two ranges merge only when one starts at or before the other ends. With a gap between
+          them, the output keeps them as two ranges.
+      input-order:
+        prompt: In what order does the loop read the ranges?
+        options:
+          - id: right
+            text: "`[2, 3]` then `[5, 7]`, because it loops over `sorted(spans)`"
+          - id: given
+            text: "`[5, 7]` then `[2, 3]`, as given"
+          - id: by-end
+            text: Largest end first
+        correct: right
+        explanation: >-
+          `sorted` orders lists by their first item, then their second, so the ranges arrive in
+          order of start. The output follows that order.
+
+  - id: half-open-test-review
+    heading: Which test merges them?
+    tags: [intervals]
+    prompt: >-
+      Bookings are half-open: `[9, 11]` holds the room from 9 up to, but not including, 11. So a
+      booking that ends at 11 and one that starts at 11 share no time and stay apart. A scan
+      sorted by start keeps the current booking's end in `end` and reads `[s, e]`. Which test
+      merges `[s, e]` into the current booking?
+    options:
+      - id: strict
+        text: "`s < end`"
+        explanation: >-
+          The next booking shares time only if it starts before the current one is over. When
+          `s == end` the current booking has just ended, so the strict test keeps the two apart,
+          as this rule asks.
+      - id: inclusive
+        text: "`s <= end`"
+        explanation: >-
+          That merges a booking that starts exactly at `end`. Under this rule `[9, 11]` and
+          `[11, 12]` touch without sharing time, so they must stay apart.
+      - id: greater
+        text: "`s > end`"
+        explanation: >-
+          That is True for the bookings that start after the current one ends, which are the ones
+          that must not merge.
+    correct: strict
+    followUps:
+      inclusive:
+        prompt: With half-open ranges, do `[9, 11]` and `[11, 12]` share any time?
+        options:
+          - id: right
+            text: No, `[9, 11]` stops just before 11
+          - id: both
+            text: Yes, both include 11
+          - id: touch
+            text: Yes, because they touch
+        correct: right
+        explanation: >-
+          A half-open range leaves out its end, so 11 belongs to `[11, 12]` alone. Touching is not
+          sharing here, so the test has to be strict.
+      greater:
+        prompt: When is `s > end` True?
+        options:
+          - id: right
+            text: When a gap separates the next booking from the current one
+          - id: shared
+            text: When the two bookings share time
+          - id: longer
+            text: When the next booking is longer
+        correct: right
+        explanation: >-
+          `s > end` describes a booking that begins after the current one is over. The merge test
+          is the opposite case, a start before `end`.
+
+  - id: touching-result-review
+    heading: What does this print?
+    tags: [intervals, python]
+    prompt: |-
+      Touching ranges merge. The ranges are already sorted by start.
+
+      ```python
+      spans = [[0, 2], [2, 3], [4, 6]]
+      out = [list(spans[0])]
+      for s, e in spans[1:]:
+          if s <= out[-1][1]:
+              out[-1][1] = max(out[-1][1], e)
+          else:
+              out.append([s, e])
+      print(out)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[[0, 3], [4, 6]]`"
+        explanation: >-
+          `[2, 3]` starts at 2, where `[0, 2]` ends, and `<=` lets it merge into `[0, 3]`.
+          `[4, 6]` starts at 4, past 3, so it starts a new range.
+      - id: bridged
+        text: "`[[0, 6]]`"
+        explanation: >-
+          No range covers the stretch between 3 and 4, so `[4, 6]` stays separate.
+      - id: strict
+        text: "`[[0, 2], [2, 3], [4, 6]]`"
+        explanation: >-
+          That is what `s < out[-1][1]` would print. The test here is `<=`, so a range that starts
+          at the current end merges.
+    correct: right
+    followUps:
+      bridged:
+        prompt: When `[4, 6]` is read, which end does the test compare 4 with?
+        options:
+          - id: right
+            text: 3, the end of the merged `[0, 3]`, and 4 is past it
+          - id: first-end
+            text: 2, the end of `[0, 2]`
+          - id: own-end
+            text: 6, its own end
+        correct: right
+        explanation: >-
+          `out[-1][1]` is the running end of the last range in `out`. 4 is not at most 3, so
+          `[4, 6]` is appended as a range of its own.
+      strict:
+        prompt: What does `2 <= 2` give?
+        options:
+          - id: right
+            text: "`True`, so `[2, 3]` merges into the range that ends at 2"
+          - id: wrong
+            text: "`False`, so `[2, 3]` starts a new range"
+        correct: right
+        explanation: >-
+          `<=` includes equality, and that is how this code says touching ranges merge.
+
+  - id: new-range-tap-review
+    format: tap-cell
+    heading: Tap where it appends
+    tags: [intervals, python]
+    prompt: >-
+      Touching ranges merge, and the ranges are sorted by start. Tap the first range for which
+      `out.append` runs inside the loop.
+    code: |
+      spans = [[1, 3], [3, 4], [4, 6], [7, 8], [8, 9]]
+      out = [list(spans[0])]
+      for i in range(1, len(spans)):
+          s, e = spans[i]
+          if s <= out[-1][1]:
+              out[-1][1] = max(out[-1][1], e)
+          else:
+              out.append([s, e])
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[1,3]', '[3,4]', '[4,6]', '[7,8]', '[8,9]']
+    correct: 3
+    explanation: >-
+      The running end is 6 by then, and `[7, 8]` starts at 7. `7 <= 6` is False, so it is
+      appended as a new range.
+    misses:
+      - index: 0
+        explanation: "`[1, 3]` seeds `out` before the loop, which starts at index 1."
+      - index: 1
+        explanation: "`[3, 4]` starts at 3, where `[1, 3]` ends. `3 <= 3` is True, so it merges."
+      - index: 2
+        explanation: "`[4, 6]` starts at 4, where the running end is, so `4 <= 4` merges it."
+      - index: 4
+        explanation: >-
+          `[8, 9]` touches `[7, 8]` and merges into it, and `[7, 8]` was appended first.
+
+  - id: running-end-review
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, python]
+    prompt: Touching ranges merge. Predict each step before it is shown.
+    code: |
+      spans = [[0, 3], [1, 8], [2, 5], [6, 7], [9, 10]]
+      out = [list(spans[0])]
+      for i in range(1, len(spans)):
+          s, e = spans[i]
+          if s <= out[-1][1]:
+              out[-1][1] = max(out[-1][1], e)
+          else:
+              out.append([s, e])
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[0,3]', '[1,8]', '[2,5]', '[6,7]', '[9,10]']
+    start:
+      - { name: i, at: 1 }
+    steps:
+      - line: 5
+        ask: After the pass with `i` at 2, what is `out[-1][1]`?
+        options:
+          - id: eight
+            text: '8'
+            explanation: >-
+              `[1, 8]` stretched the end to 8, and `[2, 5]` sits inside, so `max(8, 5)` keeps 8.
+          - id: five
+            text: '5'
+            explanation: >-
+              5 is the end of `[2, 5]` itself. Line 6 keeps the larger end, so a nested range
+              cannot shrink it.
+          - id: three
+            text: '3'
+            explanation: >-
+              3 was the end before `[1, 8]` was read. That pass merged and raised the end to 8.
+        correct: eight
+        also:
+          - { name: i, at: 2 }
+      - line: 5
+        ask: Where is `i` when line 8 first runs?
+        pointer: i
+        correct: 4
+        explanation: "`[9, 10]` starts at 9, past the running end 8, so line 8 appends it."
+        misses:
+          - index: 3
+            explanation: "`[6, 7]` starts at 6, inside the running end 8, so it merges."
+          - index: 2
+            explanation: "`[2, 5]` starts inside `[0, 8]` and merges."
+          - index: 1
+            explanation: "`[1, 8]` starts at 1, inside `[0, 3]`, so it merges and raises the end to 8."
+        elsewhere: >-
+          The loop starts at index 1, and line 8 first runs at the first range that starts past
+          the running end.
+      - ask: What does `out` hold when the loop ends?
+        options:
+          - id: right
+            text: '`[[0, 8], [9, 10]]`'
+            explanation: >-
+              Every range up to `[6, 7]` merges into `[0, 8]`. `[9, 10]` starts past 8, so it is
+              a range of its own.
+          - id: overwritten
+            text: '`[[0, 5], [6, 7], [9, 10]]`'
+            explanation: >-
+              That is what `out[-1][1] = e` would leave: `[2, 5]` cuts the end to 5, so `[6, 7]`
+              no longer merges. `max` keeps the end at 8.
+          - id: bridged
+            text: '`[[0, 10]]`'
+            explanation: >-
+              Nothing covers 8.5. The first range ends at 8 and `[9, 10]` starts at 9, so they
+              stay apart.
+        correct: right
+
+  - id: overwrite-end-review
+    heading: What does this print?
+    tags: [intervals, python]
+    prompt: |-
+      This merge sets the end with `=` instead of `max`. The ranges are sorted by start and
+      touching ranges merge.
+
+      ```python
+      spans = [[2, 12], [3, 5], [7, 8]]
+      out = [list(spans[0])]
+      for s, e in spans[1:]:
+          if s <= out[-1][1]:
+              out[-1][1] = e
+          else:
+              out.append([s, e])
+      print(out)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[[2, 5], [7, 8]]`"
+        explanation: >-
+          `[3, 5]` merges and the end 12 is overwritten with 5. Then `[7, 8]` starts past 5, so
+          it is appended, though `[2, 12]` covered it.
+      - id: max-result
+        text: "`[[2, 12]]`"
+        explanation: >-
+          That is the right merge, which `max` would give. Trace what this version stores when
+          it reads `[3, 5]`.
+      - id: merged-later
+        text: "`[[2, 8]]`"
+        explanation: >-
+          The end has already changed when `[7, 8]` is read, so the test fails and `[7, 8]` is
+          appended, not merged.
+      - id: dropped
+        text: "`[[2, 5]]`"
+        explanation: >-
+          `[7, 8]` fails the test, so the else branch adds it. Nothing is dropped.
+    correct: right
+    followUps:
+      max-result:
+        prompt: What is `out[-1][1]` right after `[3, 5]` is read?
+        options:
+          - id: right
+            text: 5, because `=` replaces the 12
+          - id: twelve
+            text: 12, because the end never shrinks
+          - id: three
+            text: 3, the start of `[3, 5]`
+        correct: right
+        explanation: >-
+          Only `max` protects the end from a nested range. With `=`, the last merged range sets
+          the end, even when it ends earlier.
+      merged-later:
+        prompt: When `[7, 8]` is read, what does `s <= out[-1][1]` compare?
+        options:
+          - id: right
+            text: "`7 <= 5`, which is False"
+          - id: twelve
+            text: "`7 <= 12`, which is True"
+          - id: own-end
+            text: "`8 <= 12`, which is True"
+        correct: right
+        explanation: >-
+          The end changed to 5 on the pass before. So `[7, 8]` looks like it starts after the
+          range, and it gets a range of its own.
+      dropped:
+        prompt: What happens to a range whose test fails?
+        options:
+          - id: right
+            text: It is appended as a new range
+          - id: skipped
+            text: It is skipped
+          - id: replaces
+            text: It replaces the last range
+        correct: right
+        explanation: >-
+          The else branch adds it to `out`. Every input range ends up inside some output range,
+          even when the merge is wrong.
+
+  - id: count-ranges-review
+    heading: How many ranges?
+    tags: [intervals]
+    prompt: >-
+      Touching ranges merge. How many ranges does merging
+      `[[1, 4], [2, 3], [5, 9], [6, 7], [10, 11]]` give? They are sorted by start.
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          `[2, 3]` sits inside `[1, 4]` and `[6, 7]` inside `[5, 9]`, so each merges. 5 is past 4
+          and 10 is past 9, so those start new ranges: `[1, 4]`, `[5, 9]` and `[10, 11]`.
+      - id: two
+        text: '2'
+        explanation: >-
+          That joins `[1, 4]` and `[5, 9]`, but nothing covers 4.5. 4 and 5 are neighboring whole
+          numbers, not a shared endpoint.
+      - id: five
+        text: '5'
+        explanation: >-
+          That keeps the nested ranges apart. `[2, 3]` lies inside `[1, 4]`, so every point of it
+          is shared, and it merges.
+    correct: three
+    followUps:
+      two:
+        prompt: Do `[1, 4]` and `[5, 9]` share a point?
+        options:
+          - id: right
+            text: No, `[1, 4]` ends at 4 and `[5, 9]` starts at 5
+          - id: neighbors
+            text: Yes, 4 and 5 are next to each other
+          - id: outer
+            text: Yes, both lie inside `[1, 9]`
+        correct: right
+        explanation: >-
+          Touching means one range ends where the other starts. Here the stretch from 4 to 5 is
+          left uncovered.
+      five:
+        prompt: Does `[2, 3]` overlap `[1, 4]`?
+        options:
+          - id: right
+            text: Yes, all of it lies inside `[1, 4]`
+          - id: not-past
+            text: No, neither range reaches past the other's end
+          - id: touching
+            text: Only if touching ranges merge
+        correct: right
+        explanation: >-
+          A nested range overlaps the one around it at every point. It merges, and `max` leaves
+          the end at 4.
+
+  - id: unsorted-scan-review
+    heading: What does this print?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      This merge forgot to sort first. Touching ranges merge.
+
+      ```python
+      def merge(spans):
+          out = []
+          for s, e in spans:
+              if out and s <= out[-1][1]:
+                  out[-1][1] = max(out[-1][1], e)
+              else:
+                  out.append([s, e])
+          return out
+
+      print(merge([[5, 7], [1, 2], [6, 9]]))
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: "`[[5, 9]]`"
+        explanation: >-
+          `[1, 2]` passes the test because 1 is at most 7, so it is folded into `[5, 7]` and its
+          start is lost. `[6, 9]` then stretches the end to 9.
+      - id: sorted-result
+        text: "`[[1, 2], [5, 9]]`"
+        explanation: >-
+          That is the right merge, and sorting first would give it. Without the sort, the loop
+          meets `[5, 7]` before anything else.
+      - id: unchanged
+        text: "`[[5, 7], [1, 2], [6, 9]]`"
+        explanation: >-
+          `[1, 2]` does not fail the test. The scan compares only its start with the current end.
+      - id: lowered-start
+        text: "`[[1, 9]]`"
+        explanation: >-
+          The start of a range in `out` is set when it is appended, and nothing changes it
+          afterward, so it stays 5.
+    correct: right
+    followUps:
+      sorted-result:
+        prompt: Which range does this loop read first?
+        options:
+          - id: right
+            text: "`[5, 7]`, because it reads the list as given"
+          - id: smallest
+            text: "`[1, 2]`, the smallest start"
+          - id: largest
+            text: "`[6, 9]`, the largest end"
+        correct: right
+        explanation: >-
+          Only `sorted` puts the smallest start first. Unsorted, `out` starts with `[5, 7]`, and
+          an earlier range read later is folded into it.
+      unchanged:
+        prompt: When `[1, 2]` is read, the current range is `[5, 7]`. What does `s <= out[-1][1]` give?
+        options:
+          - id: right
+            text: "`True`, since 1 <= 7"
+          - id: ends-before
+            text: "`False`, since `[1, 2]` ends before 5"
+          - id: starts-before
+            text: "`False`, since 1 < 5"
+        correct: right
+        explanation: >-
+          The test assumes starts never go backward, so it checks only the start against the
+          current end. Out of order, a range far to the left still passes.
+      lowered-start:
+        prompt: Which line can change the start of a range already in `out`?
+        options:
+          - id: right
+            text: None, the merge branch only updates `out[-1][1]`
+          - id: max-line
+            text: "`out[-1][1] = max(out[-1][1], e)`"
+          - id: append-line
+            text: "`out.append([s, e])`, which widens the current range"
+        correct: right
+        explanation: >-
+          The merge branch only raises the end. A start is fixed when its range is appended,
+          which is why the loop needs sorted starts.
