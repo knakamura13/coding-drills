@@ -1,4 +1,4 @@
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 
 /**
  * Registers the service worker (production only: in development it would cache
@@ -18,8 +18,9 @@ export function registerServiceWorker(): void {
 	});
 
 	void navigator.serviceWorker
-		// `none` makes the browser revalidate the worker and everything it imports on every update check.
-		.register('/service-worker.js', { updateViaCache: 'none' })
+		// Kit 3 emits an ES module worker. `none` makes the browser revalidate it, and everything it
+		// imports, on every update check.
+		.register('/service-worker.js', { type: 'module', updateViaCache: 'none' })
 		.then((registration) => {
 			// Browsers only check for a new worker on navigation, and a home-screen app can stay open for days.
 			document.addEventListener('visibilitychange', () => {

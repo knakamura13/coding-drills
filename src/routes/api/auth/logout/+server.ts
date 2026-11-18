@@ -1,6 +1,6 @@
 /** POST /api/auth/logout: drop the server session and the cookie. */
 
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import type { RequestHandler } from './$types';
 import { emptyResponse } from '$lib/server/http';
 import { clearSessionCookie } from '$lib/server/session';

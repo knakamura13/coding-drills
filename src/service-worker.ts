@@ -3,7 +3,8 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { build, files, prerendered, version } from '$service-worker';
+import { version } from '$app/env';
+import { assets, immutable, prerendered } from '$app/manifest';
 
 /**
  * Makes the app work with no connection.
@@ -27,9 +28,14 @@ const CLIENT_ROUTES = ['/review', '/weak', '/practice'];
 const NETWORK_TIMEOUT_MS = 4000;
 // Font subsets for scripts the app does not use are left out; the browser only fetches the subsets a page needs.
 const UNUSED_FONT_SUBSETS = /nunito-(cyrillic|cyrillic-ext|greek|greek-ext|vietnamese)-/;
-const ASSETS = [...build, ...files, ...prerendered].filter(
-	(path) => path !== '/healthz' && !UNUSED_FONT_SUBSETS.test(path)
-);
+/** Manifest paths have no leading slash. Cache keys use the request pathname, which does. */
+function rooted(path: string): string {
+	return path.startsWith('/') ? path : `/${path}`;
+}
+
+const ASSETS = [...immutable, ...assets, ...prerendered]
+	.map((entry) => rooted(entry.path))
+	.filter((path) => path !== '/healthz' && !UNUSED_FONT_SUBSETS.test(path));
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(

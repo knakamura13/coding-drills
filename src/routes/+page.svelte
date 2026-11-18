@@ -65,7 +65,7 @@
 					kicker="Next up"
 					title={next.title}
 					description={next.description}
-					href={resolve(`/play/${next.id}`)}
+					href={resolve('/play/[deckId]', { deckId: next.id })}
 					action="Start {next.title}"
 				>
 					{#if nextStat}

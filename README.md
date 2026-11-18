@@ -95,7 +95,7 @@ Decks are YAML files in `content/decks/`. The build validates them, and a deck w
 
 ## How it is built
 
-- SvelteKit 2, Svelte 5, TypeScript, pnpm. Plain CSS with design tokens. No runtime dependencies in the client bundle beyond the framework.
+- SvelteKit 3, Svelte 5, TypeScript, pnpm. Plain CSS with design tokens. No runtime dependencies in the client bundle beyond the framework.
 - A Vite plugin compiles `content/decks/*.yaml` into virtual modules and validates them with zod at build time: a small index of deck titles and question ids for the menu, home, decks, and progress; and one lazily loaded module per deck, so a lesson downloads only its own deck.
 - The lesson is a pure state machine (`src/lib/domain/lesson.ts`) with unit tests, including randomized play over every shipped deck. Svelte wraps it in `src/lib/lesson/controller.svelte.ts`.
 - Attempts and flags are stored in `localStorage` first, so the app works offline and signed out. A signed-in device also syncs them to Postgres through `/api/sync`.

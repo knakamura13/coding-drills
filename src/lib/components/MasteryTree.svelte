@@ -166,7 +166,7 @@
 								{/each}
 							</ul>
 							{#each skill.decks as deck (deck.deckId)}
-								<a class="practice" href={resolve(`/play/${deck.deckId}`)}>Practice in {deck.deckTitle}</a>
+								<a class="practice" href={resolve('/play/[deckId]', { deckId: deck.deckId })}>Practice in {deck.deckTitle}</a>
 							{/each}
 						{/if}
 					</div>
