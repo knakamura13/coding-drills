@@ -1,0 +1,280 @@
+id: growth-rates-checkpoint
+title: "Growth rates: checkpoint"
+description: Trace a small input, then predict how the steps or the memory grow when the input doubles. Each item combines the Growth rates skills on code used nowhere else.
+heading: Predict each step
+
+questions:
+  - id: checkpoint-doubling-inner
+    format: step-trace
+    tags: [complexity, python]
+    prompt: >-
+      The row shows the outer loop's indices. Trace `n = 4`, then predict the count when `n`
+      doubles.
+    code: |
+      n = 4
+      steps = 0
+      for i in range(n):
+          j = 1
+          while j < n:
+              j = j * 2
+              steps += 1
+    sequence:
+      kind: array
+      cells: [0, 1, 2, 3]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: On the pass with `i` at 0, how many times does the `while` body run?
+        options:
+          - id: two
+            text: '2'
+            explanation: '`j` goes 1, 2, 4. At 4 the test `j < n` fails, so the body runs twice.'
+          - id: four
+            text: '4'
+            explanation: '`j` doubles on each pass. Does it need `n` passes to reach `n`?'
+          - id: three
+            text: '3'
+            explanation: Check the test when `j` is 4.
+        correct: two
+      - line: 3
+        ask: What is `steps` when the outer loop ends?
+        options:
+          - id: eight
+            text: '8'
+            explanation: >-
+              Line 4 resets `j` to 1 on every outer pass, so each of the 4 passes adds 2 steps.
+          - id: sixteen
+            text: '16'
+            explanation: Is the inner loop `range(n)`, or does it double `j`?
+          - id: two
+            text: '2'
+            explanation: Look at line 4. What is `j` when each outer pass starts?
+        correct: eight
+        also:
+          - { name: i, at: 3 }
+      - ask: Now set `n = 8`. What is `steps`?
+        options:
+          - id: twenty-four
+            text: '24'
+            explanation: >-
+              Each inner loop now takes 3 doublings, 1 to 8, and there are 8 outer passes, so
+              8 × 3 is 24. Doubling `n` doubled the passes and made each one a step longer, so the
+              count tripled.
+          - id: sixteen
+            text: '16'
+            explanation: That doubles the outer passes. Does each inner loop stay at 2 steps when `n` is 8?
+          - id: thirty-two
+            text: '32'
+            explanation: That is four times the count. Does the inner loop double in length too?
+        correct: twenty-four
+
+  - id: checkpoint-row-table
+    format: step-trace
+    tags: [complexity, python]
+    prompt: >-
+      The row shows the loop's indices. Trace `table(4)`, then predict how much the returned value
+      holds when `n` doubles.
+    code: |
+      def table(n):
+          rows = []
+          for i in range(n):
+              rows.append([i] * (i + 1))
+          return rows
+
+      table(4)
+    sequence:
+      kind: array
+      cells: [0, 1, 2, 3]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: How many numbers does the row appended on the pass with `i` at 2 hold?
+        options:
+          - id: three
+            text: '3'
+            explanation: '`[2] * 3` is `[2, 2, 2]`, three numbers.'
+          - id: two
+            text: '2'
+            explanation: The repeat count is `i + 1`, not `i`.
+          - id: four
+            text: '4'
+            explanation: The row's length depends on `i`, not on `n`.
+        correct: three
+        also:
+          - { name: i, at: 2 }
+      - line: 5
+        ask: How many numbers does `table(4)` hold across all its rows?
+        options:
+          - id: ten
+            text: '10'
+            explanation: 'The rows hold 1, 2, 3 and 4 numbers: 10 in all.'
+          - id: four
+            text: '4'
+            explanation: That counts the rows. How many numbers is each row?
+          - id: sixteen
+            text: '16'
+            explanation: Is every row `n` long?
+        correct: ten
+        also:
+          - { name: i, at: 3 }
+      - ask: How many numbers does `table(8)` hold?
+        options:
+          - id: thirty-six
+            text: '36'
+            explanation: >-
+              1 + 2 + ... + 8 is 36, more than three times 10. The total is n(n + 1) / 2, so the
+              returned value grows like n², about four times per doubling for large `n`.
+          - id: twenty
+            text: '20'
+            explanation: That doubles 10. Do the rows stay the same length when `n` doubles?
+          - id: sixty-four
+            text: '64'
+            explanation: That makes every row 8 long. How long is the first row?
+        correct: thirty-six
+
+  - id: checkpoint-binary-digits
+    heading: How does the output grow?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def bits(n):
+          out = []
+          while n > 0:
+              out.append(n % 2)
+              n //= 2
+          return out
+      ```
+
+      `bits(13)` returns `[1, 0, 1, 1]`. How long is `bits(26)`, and how does the returned list
+      grow with `n`?
+    options:
+      - id: right
+        text: '5 items: one more per doubling of `n`, so O(log n)'
+        explanation: >-
+          Each pass appends one item and halves `n`. 26 halves to 13 on its first pass, and 13
+          needs the same 4 passes as before, so `bits(26)` is `[0, 1, 0, 1, 1]`.
+      - id: doubles
+        text: '8 items: twice as many, so O(n)'
+        explanation: How many passes does halving 26 take compared with 13?
+      - id: per-unit
+        text: '26 items: one per unit of `n`, so O(n)'
+        explanation: How much does `n //= 2` take off on each pass?
+      - id: constant
+        text: '4 items again: a returned list is one object, so O(1)'
+        explanation: Does the number of passes depend on `n`?
+    correct: right
+    followUps:
+      doubles:
+        prompt: '`n //= 2` halves `n` on each pass. How many more passes does 26 need than 13?'
+        options:
+          - id: one
+            text: One, since the first halving turns 26 into 13
+          - id: twice
+            text: Twice as many
+          - id: none
+            text: None
+        correct: one
+        explanation: >-
+          A halving loop pays one pass per doubling of its input. The list gains one item per
+          pass, so it grows by one too.
+      per-unit:
+        prompt: How many passes does `bits(13)` make?
+        options:
+          - id: four
+            text: Four, one per halving from 13 down to 0
+          - id: thirteen
+            text: Thirteen, one per unit of `n`
+          - id: one
+            text: One
+        correct: four
+        explanation: >-
+          13 halves to 6, 3, 1 and then 0. A loop that subtracts 1 each pass would take 13 passes,
+          but this one divides.
+      constant:
+        prompt: Does the length of the returned list depend on `n`?
+        options:
+          - id: grows
+            text: Yes, it gains one item for each halving of `n`
+          - id: fixed
+            text: No, a list is a single object of fixed size
+          - id: powers
+            text: Only when `n` is a power of two
+        correct: grows
+        explanation: >-
+          A list takes room for every item it holds. The number of items here is the number of
+          passes, which grows slowly with `n` but does grow.
+
+  - id: checkpoint-two-phases
+    heading: Count it, then double it
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def work(n):
+          steps = 0
+          for i in range(n):
+              steps += 1
+          for i in range(n):
+              for k in range(3):
+                  steps += 1
+          return steps
+      ```
+
+      What do `work(5)` and `work(10)` return?
+    options:
+      - id: right
+        text: 20, then 40
+        explanation: >-
+          The first loop adds 5 and the nested one adds 5 × 3 = 15, so `work(5)` is 20. Both
+          loops run `n` times and the inner loop stays at 3, so `work(10)` is 10 + 30 = 40. The
+          count is 4n, so doubling `n` doubles it.
+      - id: quadratic
+        text: 20, then 80
+        explanation: What is the length of the inner loop when `n` is 10?
+      - id: one-loop
+        text: 15, then 30
+        explanation: Which lines add to `steps`?
+      - id: inner-once
+        text: 8, then 16
+        explanation: How many times does the inner loop's body run on each outer pass?
+    correct: right
+    followUps:
+      quadratic:
+        prompt: The inner loop is `range(3)`. What happens to it when `n` doubles?
+        options:
+          - id: stays
+            text: It still runs 3 times per pass
+          - id: doubles
+            text: It doubles to 6 times per pass
+          - id: becomes-n
+            text: It runs `n` times per pass
+        correct: stays
+        explanation: >-
+          A nested loop multiplies the work only by its own length. With a fixed inner length of
+          3, the nested part grows like 3n, not like n².
+      one-loop:
+        prompt: Which loops add to `steps`?
+        options:
+          - id: both
+            text: The plain loop and the nested one, one after the other
+          - id: nested
+            text: Only the nested loop, because it does the most work
+          - id: plain
+            text: Only the plain loop
+        correct: both
+        explanation: >-
+          Every `steps += 1` that runs counts. The plain loop adds `n` and the nested one adds
+          3n, so their counts add.
+      inner-once:
+        prompt: With `n = 5`, how many times does the nested loop's body run in all?
+        options:
+          - id: fifteen
+            text: 15, three on each of the 5 outer passes
+          - id: three
+            text: 3, once for each value of `k`
+          - id: five
+            text: 5, once per outer pass
+        correct: fifteen
+        explanation: >-
+          The inner loop starts over on every outer pass. Its 3 steps repeat 5 times.

@@ -1,0 +1,643 @@
+id: growth-rates
+title: Growth rates
+description: Count the steps a loop takes, compare how the counts grow, and account for the memory a function allocates. Each card opens with a worked example, then asks for one decision.
+heading: How many steps?
+
+questions:
+  - id: count-one-loop
+    heading: What does this print?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** `for i in range(4): steps += 1` runs its body for `i` = 0, 1, 2 and 3,
+      so `steps` ends at 4. A `range` stops just before its stop value.
+
+      Now:
+
+      ```python
+      steps = 0
+      for i in range(1, 9, 3):
+          steps += 1
+      print(steps)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: '3'
+        explanation: >-
+          `i` takes 1, 4 and 7. The next value would be 10, which is not below 9, so the body runs
+          three times.
+      - id: ignores-step
+        text: '8'
+        explanation: >-
+          Eight values lie from 1 up to 8, but the loop does not visit each of them. It jumps from
+          1 to 4 to 7.
+      - id: stop-value
+        text: '9'
+        explanation: >-
+          9 is the stop value in `range(1, 9, 3)`, not a count of passes. The count depends on the
+          start and the step as well.
+      - id: one-past
+        text: '4'
+        explanation: >-
+          That counts a fourth pass with `i = 10`. The values are 1, 4 and 7, and the range ends
+          there.
+    correct: right
+    followUps:
+      ignores-step:
+        prompt: What does the third argument of `range(1, 9, 3)` do?
+        options:
+          - id: step
+            text: It makes each value 3 more than the one before
+          - id: repeat
+            text: It repeats each value 3 times
+          - id: passes
+            text: It sets how many passes the loop makes
+        correct: step
+        explanation: >-
+          The third argument is the step. `range(1, 9, 3)` produces 1, 4 and 7, so a step of 3
+          leaves out two numbers between passes.
+      stop-value:
+        prompt: In `range(start, stop, step)`, what is the stop value?
+        options:
+          - id: excluded
+            text: The first value the range would reach but leaves out
+          - id: count
+            text: The number of values the range produces
+          - id: last
+            text: The last value the loop runs with
+        correct: excluded
+        explanation: >-
+          A range keeps producing values while they are below the stop. Only `range(stop)`, which
+          starts at 0 with a step of 1, has exactly `stop` values.
+      one-past:
+        prompt: The values so far are 1, 4 and 7. Why is there no pass with `i = 10`?
+        options:
+          - id: not-below
+            text: 10 is not below the stop value 9
+          - id: three-max
+            text: A loop with a step of 3 runs at most three times
+          - id: multiple
+            text: 10 is not a multiple of 3
+        correct: not-below
+        explanation: >-
+          A range ends as soon as its next value would reach or pass the stop. After 7 comes 10,
+          which is past 9, so 7 is the last pass.
+
+  - id: trace-halving-chips
+    format: step-trace
+    heading: Predict each step
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** a pile of 4 chips halves to 2 and then to 1, which is two halvings.
+      The loop below keeps half of a pile of 16 chips on each pass until one chip is left. The
+      row shows the pile sizes in order, not a Python list. Predict each step before it is shown.
+    code: |
+      n = 16
+      halvings = 0
+      while n > 1:
+          n = n // 2
+          halvings += 1
+    sequence:
+      kind: array
+      name: pile
+      cells: [16, 8, 4, 2, 1]
+    start:
+      - { name: n, at: 0 }
+    steps:
+      - line: 3
+        ask: Where is `n` after two passes?
+        pointer: n
+        correct: 2
+        explanation: The first pass halves 16 to 8, and the second halves 8 to 4.
+        misses:
+          - index: 1
+            explanation: That is the pile after one pass. The second pass halves 8 again.
+          - index: 3
+            explanation: That takes three passes. Each pass divides `n` by 2 once.
+        elsewhere: Each pass divides `n` by 2 once, so after two passes it has gone 16, 8, 4.
+      - line: 3
+        ask: How many times does `halvings += 1` run before the loop ends?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              16 goes to 8, 4, 2 and 1, which is four halvings. Then `n > 1` is false and the loop
+              stops.
+          - id: five
+            text: '5'
+            explanation: >-
+              Five pile sizes appear, 16 through 1, but a halving is a move between two of them.
+              Five sizes have four moves between them.
+          - id: eight
+            text: '8'
+            explanation: >-
+              8 is the size of the pile after the first halving, not a count. Each pass halves the
+              pile, which shrinks it far faster than taking one chip away.
+          - id: three
+            text: '3'
+            explanation: >-
+              That stops at a pile of 2. The test is `n > 1`, and 2 is greater than 1, so one more
+              pass runs.
+        correct: four
+        also:
+          - { name: n, at: 4 }
+      - line: 3
+        ask: How many times is the test `n > 1` checked in all?
+        options:
+          - id: five
+            text: '5'
+            explanation: >-
+              It is true four times, at 16, 8, 4 and 2, and false once, at 1. That last check is
+              what ends the loop.
+          - id: four
+            text: '4'
+            explanation: >-
+              That counts only the checks that pass. A `while` loop checks its test once more after
+              the last pass, and that check fails.
+          - id: sixteen
+            text: '16'
+            explanation: >-
+              The test runs once per pass, plus one final check. The pile halves on each pass, so
+              there are far fewer than 16 passes.
+        correct: five
+
+  - id: count-triangle
+    heading: What does this print?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** with `for i in range(3):` around `for j in range(2):`, each of the 3
+      outer passes runs the inner body 2 times, so `steps` ends at 3 × 2 = 6.
+
+      Now the inner loop depends on `i`:
+
+      ```python
+      n = 5
+      steps = 0
+      for i in range(n):
+          for j in range(i):
+              steps += 1
+      print(steps)
+      ```
+
+      What does it print?
+    options:
+      - id: right
+        text: '10'
+        explanation: >-
+          The inner loop runs `i` times on each pass, so the passes add 0, 1, 2, 3 and 4. That
+          totals 10.
+      - id: square
+        text: '25'
+        explanation: >-
+          5 × 5 treats the inner loop as `range(n)`. Here it is `range(i)`, so early passes run it
+          fewer times.
+      - id: inclusive
+        text: '15'
+        explanation: >-
+          15 is 1 + 2 + 3 + 4 + 5, which counts one extra inner pass on every outer pass. The
+          inner range stops before `i`.
+      - id: one-per-pass
+        text: '5'
+        explanation: >-
+          That counts one step per outer pass. The body `steps += 1` sits inside the inner loop,
+          so a single outer pass can add several steps.
+    correct: right
+    followUps:
+      square:
+        prompt: On the pass with `i = 0`, how many times does the inner body run?
+        options:
+          - id: zero
+            text: Zero times, because `range(0)` is empty
+          - id: five
+            text: Five times, as on every pass
+          - id: once
+            text: Once
+        correct: zero
+        explanation: >-
+          The inner loop runs `i` times, so its count grows from pass to pass. Only a fixed inner
+          range such as `range(n)` gives the same count on every pass.
+      inclusive:
+        prompt: What values does `range(i)` produce when `i` is 3?
+        options:
+          - id: below
+            text: 0, 1 and 2
+          - id: through
+            text: 0, 1, 2 and 3
+          - id: from-one
+            text: 1, 2 and 3
+        correct: below
+        explanation: >-
+          `range(i)` starts at 0 and stops before `i`, so it has exactly `i` values. The pass with
+          `i` at 3 adds 3 steps, not 4.
+      one-per-pass:
+        prompt: How many times does `steps += 1` run on the pass with `i = 4`?
+        options:
+          - id: four
+            text: Four times, once for each value of `j`
+          - id: once
+            text: Once, since it is a single pass
+          - id: five
+            text: Five times
+        correct: four
+        explanation: >-
+          Every value of `j` runs the body again. On that pass `j` goes 0, 1, 2, 3, so the body
+          runs as many times as `range(4)` has values.
+
+  - id: double-the-grid
+    heading: What happens when n doubles?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** a single loop `for i in range(n): steps += 1` takes 4 steps when `n`
+      is 4 and 8 steps when `n` is 8. Doubling `n` doubles the count.
+
+      Now:
+
+      ```python
+      def grid_steps(n):
+          steps = 0
+          for i in range(n):
+              for j in range(n):
+                  steps += 1
+          return steps
+      ```
+
+      `grid_steps(6)` returns 36. What does `grid_steps(12)` return?
+    options:
+      - id: right
+        text: '144'
+        explanation: >-
+          12 outer passes each run 12 inner steps, so the count is 144, four times 36. Both loops
+          got twice as long.
+      - id: doubles
+        text: '72'
+        explanation: >-
+          72 is 36 doubled, which is right for one loop over `n`. Here both the outer and the
+          inner loop run `n` times.
+      - id: plus-one
+        text: '37'
+        explanation: >-
+          One extra step per doubling is how a halving loop grows. These loops walk every value
+          of `i` and `j` without skipping any.
+      - id: squared
+        text: '1296'
+        explanation: >-
+          1296 is 36 × 36. That squares the count, but doubling `n` multiplies each of the two
+          loop lengths by 2, not by 6.
+    correct: right
+    followUps:
+      doubles:
+        prompt: When `n` goes from 6 to 12, what happens to the number of inner steps on each outer pass?
+        options:
+          - id: also-doubles
+            text: It doubles too, so the total is multiplied by 2 twice
+          - id: same
+            text: It stays at 6, because only the outer loop grows
+          - id: halves
+            text: It halves, because the work is spread over more passes
+        correct: also-doubles
+        explanation: >-
+          The inner loop is `range(n)` as well, so each outer pass now runs 12 inner steps. Twice
+          as many passes, each twice as long, gives four times the count.
+      plus-one:
+        prompt: Which loop takes only about one more step when `n` doubles?
+        options:
+          - id: halving
+            text: A loop that halves what is left on each pass
+          - id: nested
+            text: A loop nested inside another loop over `n`
+          - id: every-item
+            text: A loop over every item from 0 to `n - 1`
+        correct: halving
+        explanation: >-
+          Halving 2n once gives n, so a halving loop needs just one extra pass after `n` doubles.
+          A loop over every value needs twice as many passes.
+      squared:
+        prompt: Doubling `n` turns the count n × n into what?
+        options:
+          - id: four-times
+            text: (2n) × (2n), which is 4 × n × n
+          - id: count-squared
+            text: (n × n) × (n × n)
+          - id: two-times
+            text: 2 × n × n
+        correct: four-times
+        explanation: >-
+          Replace `n` with `2n` everywhere it appears. The factor of 2 comes out of each loop, so
+          the count is multiplied by 2 × 2.
+
+  - id: trace-doubling-index
+    format: step-trace
+    heading: Predict each step
+    tags: [complexity, python]
+    prompt: >-
+      **Worked example:** with `n = 4`, `i` goes 1, 2, 4 and the loop stops, so `steps` is 2.
+      Doubling `i` reaches `n` in few passes. The row below shows the indices 0 to 8. Step
+      through `n = 8` and predict each step before it is shown.
+    code: |
+      n = 8
+      steps = 0
+      i = 1
+      while i < n:
+          i = i * 2
+          steps += 1
+    sequence:
+      kind: array
+      cells: [0, 1, 2, 3, 4, 5, 6, 7]
+      pastEnd: true
+    start:
+      - { name: i, at: 1 }
+    steps:
+      - line: 4
+        ask: Where is `i` after two passes?
+        pointer: i
+        correct: 4
+        explanation: The first pass doubles 1 to 2, and the second doubles 2 to 4.
+        misses:
+          - index: 3
+            explanation: That adds 1 on each pass. `i = i * 2` doubles, so it goes 1, 2, 4.
+          - index: 2
+            explanation: That is after one pass. The second pass doubles 2 again.
+          - index: 8
+            explanation: That takes three passes, 1 to 2 to 4 to 8.
+        elsewhere: Each pass doubles `i`, so after two passes it has gone 1, 2, 4.
+      - line: 4
+        ask: What is `steps` when the loop ends?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              `i` goes 1, 2, 4, 8. At 8 the test `i < n` is false, so three passes ran.
+          - id: seven
+            text: '7'
+            explanation: >-
+              Seven passes would take `i` from 1 to 8 one index at a time. Doubling skips most of
+              the indices.
+          - id: four
+            text: '4'
+            explanation: >-
+              That counts a pass with `i` at 8. The test `8 < 8` is false, so the loop ends before
+              a fourth pass.
+        correct: three
+        also:
+          - { name: i, at: 8 }
+      - ask: Run the same loop with `n = 16`. What is `steps` then?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              `i` goes 1, 2, 4, 8, 16. Doubling `n` costs one more doubling of `i`, so the count
+              rises from 3 to 4.
+          - id: six
+            text: '6'
+            explanation: >-
+              6 doubles the count, which is how a loop over every index grows. This loop doubles
+              `i`, so a twice-as-large `n` is one pass away.
+          - id: three
+            text: '3'
+            explanation: >-
+              After three passes `i` is 8, and `8 < 16` is still true. The count grows slowly, but
+              it does grow.
+        correct: four
+
+  - id: small-n-misleads
+    heading: Which takes more steps?
+    tags: [complexity]
+    prompt: >-
+      **Worked example:** at `n = 2`, a count of `5 * n` is 10 and a count of `n * n` is 4, so
+      the first is larger. At `n = 10` they are 50 and 100. The square has passed it and keeps
+      pulling ahead.
+
+
+      Now `scan` takes `3 * n + 10` steps and `pairs` takes `n * (n - 1) // 2` steps. At `n = 4`,
+      `scan` takes 22 steps and `pairs` takes 6. At `n = 100`, which takes more steps?
+    options:
+      - id: right
+        text: '`pairs`, with 4950 steps against 310'
+        explanation: >-
+          `pairs` grows with about n² / 2 and `scan` with 3n. They cross between 9 and 10. Past
+          that, `pairs` pulls further ahead with every increase in `n`.
+      - id: ahead-now
+        text: '`scan`, because it already takes more steps at `n = 4`'
+        explanation: >-
+          A small input says little about a large one. At `n = 10`, `pairs` takes 45 steps and
+          `scan` takes 40, so the order has already flipped.
+      - id: constant
+        text: '`scan`, because its count adds a fixed 10 steps'
+        explanation: >-
+          The 10 is the same at every `n`. At `n = 100` it is 10 of `scan`'s 310 steps, and
+          `pairs` takes 4950.
+      - id: same-ratio
+        text: Neither stays ahead, since both counts grow with `n` at the same pace
+        explanation: >-
+          Both grow, but not at the same pace. From `n = 10` to `n = 100`, `scan` goes from 40 to
+          310 steps and `pairs` goes from 45 to 4950.
+    correct: right
+    followUps:
+      ahead-now:
+        prompt: What decides which count is larger once `n` is large?
+        options:
+          - id: growth
+            text: How fast each count grows as `n` increases
+          - id: first-try
+            text: Which count is larger at the first `n` you try
+          - id: constants
+            text: Which formula has the larger constant
+        correct: growth
+        explanation: >-
+          A count that grows like n² overtakes any count that grows like n, however large that
+          one's constants are. The crossing point moves, but it always comes.
+      constant:
+        prompt: How much does the `+ 10` add to `scan` at `n = 100`?
+        options:
+          - id: ten
+            text: Ten steps, just as at any other `n`
+          - id: per-item
+            text: Ten steps for each of the 100 items
+          - id: doubles
+            text: Enough to double the count
+        correct: ten
+        explanation: >-
+          A constant term does not grow with `n`. It matters for tiny inputs and fades as the
+          other terms grow.
+      same-ratio:
+        prompt: >-
+          `pairs` takes 45 steps at `n = 10` and 4950 at `n = 100`. By about what factor did it grow
+          when `n` grew tenfold?
+        options:
+          - id: hundred
+            text: About a hundred, close to 10 × 10
+          - id: ten
+            text: Ten, the same as `n`
+          - id: two
+            text: About two
+        correct: hundred
+        explanation: >-
+          4950 / 45 is 110. A count that grows like n² is multiplied by about 100 when `n` is
+          multiplied by 10, while `scan` grows by under 8 times.
+
+  - id: auxiliary-set
+    heading: How much extra memory?
+    tags: [complexity, hash-map, python]
+    prompt: |-
+      **Worked example:** `def squares(nums): return [x * x for x in nums]` returns a list of
+      `n` numbers. Apart from the list it returns, it needs only the loop variable, so its
+      auxiliary space is O(1).
+
+      Now:
+
+      ```python
+      def count_distinct(nums):
+          seen = set()
+          for x in nums:
+              seen.add(x)
+          return len(seen)
+      ```
+
+      Not counting the input or the returned value, how much extra memory does it use in the
+      worst case?
+    options:
+      - id: linear
+        text: O(n)
+        explanation: >-
+          When every value is different, `seen` ends up holding all `n` of them. That set is
+          auxiliary storage, because the function does not return it.
+      - id: constant
+        text: O(1)
+        explanation: >-
+          The returned value is a single int, but that is not where the memory goes. The set is
+          built along the way, and it can grow as large as the input.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Quadratic space needs about one stored value per pair of items. Each pass adds at most
+          one value to the set.
+      - id: discarded
+        text: None, since `seen` is thrown away when the function returns
+        explanation: >-
+          Extra space counts what the function holds while it runs. The set is freed at the end,
+          but by then it may have held `n` values.
+    correct: linear
+    followUps:
+      constant:
+        prompt: '`count_distinct` returns one int. Where does the memory that grows with `n` live?'
+        options:
+          - id: set
+            text: In `seen`, which keeps every distinct value
+          - id: int
+            text: In the returned int, which gets bigger with `n`
+          - id: nowhere
+            text: Nowhere, because a loop reuses its variables
+        correct: set
+        explanation: >-
+          Auxiliary space is everything the function allocates besides its input and its result.
+          Here that is the set, which gains one entry per new value.
+      quadratic:
+        prompt: When `nums` has `n` items, how many values can `seen` hold at most?
+        options:
+          - id: n
+            text: '`n`, one per distinct value'
+          - id: n-squared
+            text: n × n, one per pair of values
+          - id: two
+            text: Two, the current value and the previous one
+        correct: n
+        explanation: >-
+          Each pass adds at most one value, and a set never stores a value twice. So `seen` never
+          holds more values than the input has items.
+      discarded:
+        prompt: When is a function's extra space measured?
+        options:
+          - id: peak
+            text: At its peak, while the function is still running
+          - id: after
+            text: Only after the function has returned
+          - id: returned
+            text: Only for the values the function returns
+        correct: peak
+        explanation: >-
+          Memory has to be available while it is in use. A set of `n` values freed at the end
+          still needed room for all of them first.
+
+  - id: returned-pairs
+    heading: How much memory?
+    tags: [complexity, python]
+    prompt: |-
+      **Worked example:** a function that returns `[2 * x for x in nums]` allocates one number
+      per item, so counting the returned list its memory is O(n).
+
+      Now:
+
+      ```python
+      def all_pairs(nums):
+          out = []
+          for i in range(len(nums)):
+              for j in range(i + 1, len(nums)):
+                  out.append((nums[i], nums[j]))
+          return out
+      ```
+
+      `all_pairs` on 4 items returns 6 pairs. Counting the returned list, how does its memory
+      grow with `n`?
+    options:
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          It returns one pair for every two items, which is n(n - 1) / 2 pairs. At 20 items that
+          is 190 pairs, so the output grows with the square of `n`.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          It returns one list, but the length of that list is what matters. On 10 items it holds
+          45 pairs, far more than 10.
+      - id: constant
+        text: O(1)
+        explanation: >-
+          Not counting the output, it needs only `i` and `j`. This question counts the returned
+          list, and that list grows.
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          A log n factor comes from halving or doubling. The inner loop here shortens by one item
+          per pass and never halves.
+    correct: quadratic
+    followUps:
+      linear:
+        prompt: What sets the memory of a returned list?
+        options:
+          - id: length
+            text: How many items it holds
+          - id: count
+            text: How many lists are returned
+          - id: input
+            text: The size of the input, always
+        correct: length
+        explanation: >-
+          A list takes room for each item it holds. Output can be smaller or larger than the
+          input. Here it is larger: one entry per pair.
+      constant:
+        prompt: The returned list counts in this question. How many pairs does it hold for 5 items?
+        options:
+          - id: ten
+            text: '10'
+          - id: five
+            text: '5'
+          - id: two
+            text: '2'
+        correct: ten
+        explanation: >-
+          The first item pairs with 4 others, the second with 3, and so on: 4 + 3 + 2 + 1. A
+          stated convention decides whether the output counts, and here it does.
+      n-log-n:
+        prompt: For `n` items, how many times does `out.append` run?
+        options:
+          - id: pairs
+            text: (n - 1) + (n - 2) + ... + 1 times, about n² / 2
+          - id: n-log-n
+            text: About n × log n times
+          - id: n
+            text: '`n` times'
+        correct: pairs
+        explanation: >-
+          The inner loop runs one fewer time on each pass. A sum that shrinks by one each time
+          adds up to about half of n².
