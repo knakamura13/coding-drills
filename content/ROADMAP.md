@@ -120,3 +120,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Exact search: review variants | `exact-search-review` | in review |
 | Sequences and search #11 | Exact search: checkpoint | `exact-search-checkpoint` | in review |
 | Sequences and search #11 | Pointer scans: predicting each step of a scan | `trace-the-scan` | in review |
+| Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
+| Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
+| Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |

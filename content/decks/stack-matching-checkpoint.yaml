@@ -1,0 +1,292 @@
+id: stack-matching-checkpoint
+title: "Stack matching: checkpoint"
+description: Decide whether mixed bracket strings are balanced, on new inputs. Each item combines pushing and popping, matching a closer to the top, and reading the stack that is left.
+heading: What does this give?
+
+questions:
+  - id: checkpoint-pick-balanced
+    heading: Which one is balanced?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop() != PAIRS[ch]:
+                  return False
+          return not stack
+      ```
+
+      For which string does `balanced` return `True`?
+    options:
+      - id: nested
+        text: "`([]){[]}`"
+        explanation: >-
+          `[]` closes inside the `(`, then the `)` closes it. `{[]}` does the same with a `{`.
+          Every closer pops an opener of its own type, and the stack is empty at the end.
+      - id: crossed
+        text: "`({)}[]`"
+        explanation: Look at the top of the stack when the first closer arrives.
+      - id: stray
+        text: "`(){}][`"
+        explanation: Look at what the stack holds when the `]` arrives.
+      - id: unclosed
+        text: "`{(())}[`"
+        explanation: Look at what the stack holds after the last character.
+    correct: nested
+    followUps:
+      crossed:
+        prompt: In `({)}[]`, what is on top of the stack when the `)` at index 2 arrives?
+        options:
+          - id: brace
+            text: The `{`, so the `)` fails
+          - id: paren
+            text: The `(`, since a `)` reaches for its own type
+          - id: nothing
+            text: Nothing, the stack is empty
+        correct: brace
+        explanation: >-
+          The `{` was pushed after the `(`, so it is on top. The `)` pops it, the types differ, and
+          the call returns `False` at index 2.
+      stray:
+        prompt: In `(){}][`, what does the stack hold when the `]` at index 4 arrives?
+        options:
+          - id: empty
+            text: Nothing, so the call returns `False` there
+          - id: bracket
+            text: The `[` from the last character
+          - id: brace
+            text: The `{`, left over from the `{}` pair
+        correct: empty
+        explanation: >-
+          `()` and `{}` each push and pop, so the stack is empty again. The scan reads left to
+          right, so the `[` after the `]` has not been pushed yet.
+      unclosed:
+        prompt: After `balanced` reads all of `{(())}[`, what is on the stack?
+        options:
+          - id: bracket
+            text: "`['[']`, so the call returns `False`"
+          - id: empty
+            text: Nothing, since every closer matched
+          - id: brace
+            text: "`['{']`, the outermost opener"
+        correct: bracket
+        explanation: >-
+          The `}` at index 5 closes the `{`, so the first six characters leave the stack empty. The
+          final `[` is pushed and never closed, and `return not stack` gives `False`.
+
+  - id: checkpoint-batch
+    heading: What does this print?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop() != PAIRS[ch]:
+                  return False
+          return not stack
+
+      tests = ['{()[]}', '([{}]', '[{]}()']
+      print([balanced(s) for s in tests])
+      ```
+    options:
+      - id: right
+        text: "`[True, False, False]`"
+        explanation: >-
+          `{()[]}` closes every opener in order. `([{}]` closes the `{` and the `[` but ends with
+          the `(` still open. In `[{]}()` the `]` pops the `{`, so it fails at index 2.
+      - id: ignores-leftover
+        text: "`[True, True, False]`"
+        explanation: Trace `([{}]` to the end and look at the stack.
+      - id: searches-deeper
+        text: "`[True, False, True]`"
+        explanation: Look at the top of the stack when the `]` in `[{]}()` arrives.
+    correct: right
+    followUps:
+      ignores-leftover:
+        prompt: "`([{}]` ends with the `(` still on the stack. What does `balanced` return for it?"
+        options:
+          - id: returns-false
+            text: "`False`, from `return not stack`"
+          - id: returns-true
+            text: "`True`, because no closer failed"
+          - id: error
+            text: It fails with `IndexError`
+        correct: returns-false
+        explanation: >-
+          A closer can only fail inside the loop, and an opener that is never closed fails nothing
+          there. The last line is the check that catches it.
+      searches-deeper:
+        prompt: In `[{]}()`, the `]` arrives with `{` on top. What happens?
+        options:
+          - id: fails
+            text: The `{` is popped, the types differ, and the call returns `False`
+          - id: under
+            text: The `[` under the `{` is popped instead
+          - id: waits
+            text: The `]` waits until the `}` has closed the `{`
+        correct: fails
+        explanation: >-
+          The matcher pops the top before it compares. A closer never reaches past the top, so the
+          crossed pair is rejected at index 2.
+
+  - id: checkpoint-complete
+    heading: What does this print?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      CLOSE = {'(': ')', '[': ']', '{': '}'}
+
+      def complete(s):
+          stack = []
+          for ch in s:
+              if ch in CLOSE:
+                  stack.append(ch)
+              elif not stack or CLOSE[stack.pop()] != ch:
+                  return None
+          return ''.join(CLOSE[c] for c in reversed(stack))
+
+      print(complete('[(){[]'))
+      ```
+    options:
+      - id: reversed
+        text: "`}]`"
+        explanation: >-
+          `()` and the inner `[]` are matched and popped. The `[` at index 0 and the `{` at index 3
+          are left, with the `{` on top. Closing from the top down gives `}` and then `]`.
+      - id: bottom-up
+        text: "`]}`"
+        explanation: Look at which leftover opener is on top, and which closer has to come first.
+      - id: none
+        text: "`None`"
+        explanation: Look at which line returns `None`, and whether any closer here fails.
+      - id: top-only
+        text: "`}`"
+        explanation: Look at how many openers are left on the stack.
+    correct: reversed
+    followUps:
+      bottom-up:
+        prompt: "The stack ends as `['[', '{']`. Which opener has to be closed first?"
+        options:
+          - id: brace
+            text: The `{`, because it was opened last
+          - id: bracket
+            text: The `[`, because it was opened first
+          - id: either
+            text: Either one, as long as both get closed
+        correct: brace
+        explanation: >-
+          A closer always meets the top of the stack. `]}` would send the `]` to the `{` and fail,
+          which is why `complete` walks the stack in reverse.
+      none:
+        prompt: Which line of `complete` can return `None`?
+        options:
+          - id: in-loop
+            text: The line inside the loop, when a closer fails
+          - id: last
+            text: The last line, when openers are left over
+          - id: both
+            text: Both of them
+        correct: in-loop
+        explanation: >-
+          The last line always returns a string, possibly an empty one. Leftover openers are the
+          input it turns into closers, not a failure.
+      top-only:
+        prompt: After a `}` closes the `{`, is `[(){[]}` balanced?
+        options:
+          - id: still-open
+            text: No, the `[` at index 0 is still open
+          - id: yes-top
+            text: Yes, the `{` was the only opener left
+          - id: yes-inner
+            text: Yes, the `]` at index 5 closed the first `[`
+        correct: still-open
+        explanation: >-
+          The `]` at index 5 popped the `[` at index 4, not the one at index 0. Two openers were left,
+          so two closers are needed.
+
+  - id: checkpoint-skip-bug
+    heading: Which answer is wrong?
+    tags: [stack, python]
+    prompt: |-
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def lenient(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif stack and stack[-1] == PAIRS[ch]:
+                  stack.pop()
+          return not stack
+      ```
+
+      `lenient` pops only when the closer matches the top, and otherwise moves on. For which
+      string does it give a different answer from a correct balance check?
+    options:
+      - id: stray
+        text: "`{}())`"
+        explanation: >-
+          `{}` and `()` match and leave the stack empty. The last `)` finds nothing open, which
+          should end the check with `False`, but `lenient` just moves on. The stack is empty at the
+          end, so it returns `True`.
+      - id: crossed
+        text: "`[{]}`"
+        explanation: Trace `lenient` and look at what is left on its stack at the end.
+      - id: unclosed
+        text: "`[[{}]`"
+        explanation: Trace `lenient` and look at what is left on its stack at the end.
+      - id: balanced
+        text: "`({}[])`"
+        explanation: Check whether `lenient` ever skips a closer on this string.
+    correct: stray
+    followUps:
+      crossed:
+        prompt: What is on `lenient`'s stack when it finishes `[{]}`?
+        options:
+          - id: bracket
+            text: "`['[']`, so it returns `False`, the same as a correct check"
+          - id: empty
+            text: Nothing, so it returns `True`
+          - id: both
+            text: "`['[', '{']`, since the `]` blocks the `}`"
+        correct: bracket
+        explanation: >-
+          The `]` does not match the `{` on top, so it is skipped. The `}` then pops the `{`, and
+          the `[` is left. The answer is `False`, right for the wrong reason.
+      unclosed:
+        prompt: What does `lenient('[[{}]')` leave on its stack?
+        options:
+          - id: first
+            text: The `[` at index 0, so it returns `False`
+          - id: nothing
+            text: Nothing, so it returns `True`
+          - id: brace
+            text: The `{`, since it never matched
+        correct: first
+        explanation: >-
+          The `}` and the `]` each match the top and pop it. The outer `[` is never closed, and the
+          last line rejects the leftover, as a correct check would.
+      balanced:
+        prompt: On `({}[])`, does `lenient` ever skip a closer?
+        options:
+          - id: never
+            text: No, each closer matches the top when it arrives
+          - id: nested
+            text: Yes, it skips closers inside another pair
+          - id: last
+            text: Yes, it skips the final `)`
+        correct: never
+        explanation: >-
+          On a balanced string every closer matches the top, so `lenient` pops exactly as a correct
+          check does and returns `True`. The two differ only when a closer is skipped.
