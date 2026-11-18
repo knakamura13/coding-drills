@@ -1,0 +1,302 @@
+id: exact-search-checkpoint
+title: "Exact search: checkpoint"
+description: Pick a search loop that works on every input, and diagnose one that stalls, on new values. Each item combines discarding a half, dropping the probe, and the one-cell range.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-one-change
+    heading: Which change still works?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+      ```
+
+      Each option makes one change to this function. After which change does it still return the
+      right answer for every sorted list of distinct values and every target?
+    options:
+      - id: round-up
+        text: "`mid = (lo + hi + 1) // 2`"
+        explanation: >-
+          Rounding up still picks a cell from `lo` to `hi`, and both updates step past it. So
+          every pass shrinks the range, a one-cell range is still probed, and the loop ends on an
+          empty range. Only the order of the probes changes.
+      - id: lt
+        text: "`while lo < hi:`"
+        explanation: Try a list with a single item that equals the target.
+      - id: hi-len
+        text: "`lo, hi = 0, len(a)`"
+        explanation: Try a target larger than every item.
+      - id: hi-mid
+        text: "`hi = mid` in the `else` branch"
+        explanation: Try a one-cell range whose item is larger than the target.
+    correct: round-up
+    followUps:
+      lt:
+        prompt: With `while lo < hi`, what does `search([11], 11)` return?
+        options:
+          - id: minus-one
+            text: "`-1`, because the loop body never runs"
+          - id: zero
+            text: "`0`, because `lo == hi` already points at the 11"
+          - id: hangs
+            text: Nothing, it loops forever
+        correct: minus-one
+        explanation: >-
+          `lo` and `hi` both start at 0, so `lo < hi` is false at once and the 11 is never
+          compared. With inclusive bounds the test has to let a one-cell range in.
+      hi-len:
+        prompt: With `lo, hi = 0, len(a)`, what happens on `search([2, 9], 15)`?
+        options:
+          - id: index-error
+            text: It probes index 2, past the end, and raises `IndexError`
+          - id: minus-one
+            text: It returns `-1`, like the original
+          - id: two
+            text: It returns 2, the length of the list
+        correct: index-error
+        explanation: >-
+          The probes read 9 at index 1, then `lo` and `hi` are both 2, so the loop reads `a[2]`.
+          An inclusive `hi` has to start on the last real cell, `len(a) - 1`.
+      hi-mid:
+        prompt: With `hi = mid`, what happens on `search([6, 14], 3)`?
+        options:
+          - id: hangs
+            text: "It reaches `lo = hi = 0` and repeats that pass forever"
+          - id: minus-one
+            text: It returns `-1` after two probes
+          - id: zero
+            text: It returns 0, the slot where 3 would go
+        correct: hangs
+        explanation: >-
+          The first probe reads 6, too big, so `hi = 0`. Then `mid` is 0, 6 is still too big,
+          and `hi = mid` leaves `hi` at 0. The range never shrinks, so the loop never ends.
+
+  - id: checkpoint-stalled-bounds
+    format: drag-pointers
+    heading: Find where it stalls
+    tags: [binary-search]
+    prompt: >-
+      This version updates `lo` with `lo = mid`. The call below never returns. Drag `lo` and `hi`
+      from where they start to the range the loop repeats forever.
+    code: |
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid
+              else:
+                  hi = mid - 1
+          return -1
+
+      search([5, 11, 16, 24, 30, 37, 45, 52], 52)
+    sequence:
+      kind: array
+      name: a
+      cells: [5, 11, 16, 24, 30, 37, 45, 52]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 6
+        explanation: >-
+          The probes read 24, 37 and 45, all too small, so `lo` goes to 3, 5 and then 6. With
+          `lo = 6` and `hi = 7`, `mid` is 13 // 2, which is 6 again. 45 is too small, `lo = mid`
+          leaves `lo` on 6, and the pass repeats with the 52 never probed.
+        misses:
+          - index: 7
+            explanation: >-
+              `lo` never gets there. In the range 6 to 7, `mid` rounds down to 6, and `lo = mid`
+              puts `lo` back on 6.
+          - index: 5
+            explanation: >-
+              `lo` passes 5. The probe at `lo = 5, hi = 7` is index 6, reads 45, too small, and
+              moves `lo` to 6.
+          - index: 3
+            explanation: >-
+              That is where the first probe leaves `lo`. The next probes, at 5 and 6, are too
+              small as well and move it on.
+        elsewhere: Every probe is too small, and `lo = mid` follows the probes to 3, 5 and then 6, where it sticks.
+      - name: hi
+        start: 7
+        correct: 7
+        explanation: >-
+          Every probe is smaller than 52, so `hi` never moves. The loop is stuck on the two-cell
+          range 6 to 7.
+        misses:
+          - index: 6
+            explanation: >-
+              `hi` moves only after a probe that is too big. Every probe here reads a value below
+              52.
+        elsewhere: No probe is too big, so `hi` stays on index 7.
+
+  - id: checkpoint-exposing-input
+    heading: Which call shows the bug?
+    tags: [binary-search]
+    prompt: |-
+      This version keeps inclusive bounds but tests `lo < hi`.
+
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: t-nineteen
+        text: "`search([12, 19], 19)`"
+        explanation: >-
+          The only probe is index 0, which reads 12, too small, so `lo = 1`. Now `lo == hi`, the
+          loop stops, and the call returns -1 though 19 is at index 1. The last candidate was
+          never compared.
+      - id: t-twelve
+        text: "`search([12, 19], 12)`"
+        explanation: Trace the first probe. Which cell does `mid` name in a two-cell range?
+      - id: t-fifteen
+        text: "`search([12, 19], 15)`"
+        explanation: Work out what a correct search returns for this call first.
+      - id: t-thirty
+        text: "`search([12, 19], 30)`"
+        explanation: Find the cell this version leaves unchecked, and what it holds.
+    correct: t-nineteen
+    followUps:
+      t-twelve:
+        prompt: On `[12, 19]`, the first probe is `(0 + 1) // 2`. What does it read when the target is 12?
+        options:
+          - id: match
+            text: 12 at index 0, a match, so it returns 0 correctly
+          - id: nineteen
+            text: 19 at index 1, so it misses the 12
+          - id: none
+            text: Nothing, the loop never runs
+        correct: match
+        explanation: >-
+          `mid` rounds down to the left cell, so a target in that cell is found on the first
+          probe. The bug hides in the cell the loop never reaches.
+      t-fifteen:
+        prompt: 15 is not in `[12, 19]`. What should a correct search return, and what does this one return?
+        options:
+          - id: both-minus-one
+            text: Both return `-1`, so the answers agree
+          - id: zero
+            text: A correct search returns 0, this one returns -1
+          - id: one
+            text: A correct search returns 1, this one returns -1
+        correct: both-minus-one
+        explanation: >-
+          A missing target gives -1 either way, so skipping the last cell changes nothing. A bug
+          shows only when the skipped cell holds the target.
+      t-thirty:
+        prompt: After the probe reads 12, `lo = hi = 1` and the loop stops. Which cell went unchecked, and does skipping it matter for 30?
+        options:
+          - id: no-matter
+            text: Index 1, which holds 19, so skipping it still gives the right `-1`
+          - id: matters
+            text: Index 1, and skipping it hides the 30
+          - id: none
+            text: No cell, both were compared
+        correct: no-matter
+        explanation: >-
+          The unchecked cell holds 19, not 30, so -1 is still right. The call has to put the
+          target in that last cell to show the bug.
+
+  - id: checkpoint-repair-hang
+    heading: Which fix works?
+    tags: [binary-search]
+    prompt: |-
+      ```python
+      def search(a, t):
+          lo, hi = 0, len(a) - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return -1
+      ```
+
+      `search([7, 15, 22, 38, 44, 61], 40)` never returns. Which one-line change makes `search`
+      correct for every sorted list and every target?
+    options:
+      - id: mid-minus-one
+        text: "`hi = mid - 1` in the `else` branch"
+        explanation: >-
+          The call reaches `lo = hi = 4`, probes 44, and `hi = mid` keeps `hi` at 4 forever.
+          Stepping `hi` past the probe drops the 44, the range becomes empty, and the call
+          returns -1. With both updates stepping past `mid`, every pass shrinks the range.
+      - id: lt
+        text: "`while lo < hi:`"
+        explanation: That stops the hang. Check what it does with a one-cell list that holds the target.
+      - id: round-up
+        text: "`mid = (lo + hi + 1) // 2`"
+        explanation: Trace the same call again with `mid` rounded up.
+      - id: guard
+        text: "Add `if lo == hi: break` at the top of the loop"
+        explanation: That stops the hang. Check what happens when the last candidate is the target.
+    correct: mid-minus-one
+    followUps:
+      lt:
+        prompt: With `while lo < hi`, what does `search([9], 9)` return?
+        options:
+          - id: minus-one
+            text: "`-1`, because the loop never runs"
+          - id: zero
+            text: "`0`, because `lo` already points at the 9"
+          - id: hangs
+            text: Nothing, it still hangs
+        correct: minus-one
+        explanation: >-
+          With inclusive bounds a one-cell range is a real candidate, and `lo < hi` shuts it out.
+          The hang is gone, but now a target in the last cell is reported missing.
+      round-up:
+        prompt: >-
+          With `mid = (lo + hi + 1) // 2`, the call reaches `lo = 4, hi = 5`. What does the next
+          pass do?
+        options:
+          - id: repeats
+            text: It probes 61 at index 5, and `hi = mid` leaves `hi` at 5, so the pass repeats
+          - id: finishes
+            text: It probes 44 at index 4, then the range empties and it returns -1
+          - id: drops
+            text: It probes 61 at index 5, and `hi` drops to 4
+        correct: repeats
+        explanation: >-
+          Rounding up only moves the stall. Whenever `mid` lands on `hi`, `hi = mid` changes
+          nothing. Only an update that steps past `mid` is sure to shrink the range.
+      guard:
+        prompt: With the guard added, what does `search([5, 13, 20], 20)` return?
+        options:
+          - id: minus-one
+            text: "`-1`, since it breaks at `lo = hi = 2` before comparing"
+          - id: two
+            text: "`2`, the index of 20"
+          - id: hangs
+            text: Nothing, it still hangs
+        correct: minus-one
+        explanation: >-
+          The probe reads 13, so `lo = 2 = hi`, and the guard breaks before the 20 is compared.
+          It hides the stall instead of fixing the update that caused it.
