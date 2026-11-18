@@ -13,6 +13,12 @@ import { ContentError } from './loadDecks.ts';
  *
  * An exam stays locked until every id in `requires` is mastered. One path
  * can move while another path that also leads into the exam has not.
+ *
+ * A path's members are skills and checkpoints (`PathNodeKind`). A lesson
+ * activity (#18), or a quiz if #20 keeps quizzes as tree nodes, would be
+ * another kind on the path. It would not be an edge and would not belong in
+ * `requires`. Spaced review (#19) is not a kind: it lives outside the tree
+ * and only changes which skills count as mastered.
  */
 
 const id = z
@@ -113,7 +119,11 @@ export interface SourceQuestion {
 	followUpIds: readonly string[];
 }
 
+/** Kinds a path contains today. Extend this when a path grows a new member. */
+export type PathNodeKind = 'skill' | 'checkpoint';
+
 export interface CurriculumSkill {
+	kind: 'skill';
 	id: string;
 	title: string;
 	pathId: string;
@@ -125,6 +135,7 @@ export interface CurriculumSkill {
 }
 
 export interface CurriculumCheckpoint {
+	kind: 'checkpoint';
 	id: string;
 	title: string;
 	summary: string;
@@ -330,6 +341,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		const skills: CurriculumSkill[] = [];
 		path.levels.forEach((level, index) => {
 			const skill: CurriculumSkill = {
+				kind: 'skill',
 				id: level.id,
 				title: level.title,
 				pathId,
@@ -343,6 +355,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		for (const fork of path.forks ?? []) {
 			fork.levels.forEach((level, index) => {
 				const skill: CurriculumSkill = {
+					kind: 'skill',
 					id: level.id,
 					title: level.title,
 					pathId,
@@ -390,6 +403,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				path.after.length > 1 ? path.after.flatMap((prerequisite) => skillsByPath.get(prerequisite)!.map((skill) => skill.id)) : [];
 			checkpoints = [
 				{
+					kind: 'checkpoint',
 					id: checkpoint.id,
 					title: checkpoint.title,
 					summary: checkpoint.summary,
@@ -417,6 +431,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					covered.add(required);
 				}
 				return {
+					kind: 'checkpoint',
 					id: checkpoint.id,
 					title: checkpoint.title,
 					summary: checkpoint.summary,
