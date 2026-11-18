@@ -1,0 +1,276 @@
+id: variable-windows-checkpoint
+title: "Variable windows: checkpoint"
+description: Count valid stretches and bound the cost of a window scan on new logs. Each item combines the Variable windows skills.
+heading: Which one is right?
+
+questions:
+  - id: checkpoint-count-log
+    heading: What does it return?
+    tags: [sliding-window, hash-map, python]
+    prompt: |-
+      ```python
+      def count_stretches(days, k):
+          counts = {}
+          left = total = 0
+          for right, d in enumerate(days):
+              counts[d] = counts.get(d, 0) + 1
+              while len(counts) > k:
+                  gone = days[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              total += right - left + 1
+          return total
+
+      log = ["plan", "test", "plan", "ship", "ship", "test", "ship"]
+      count_stretches(log, 2)
+      ```
+
+      What does the call return?
+    options:
+      - id: right
+        text: '18'
+        explanation: >-
+          After each repair `left` is 0, 0, 0, 2, 2, 3, 3, so the passes add 1, 2, 3, 2, 3, 3
+          and 4. The first `ship` forces out `plan`, `test`, and the second `test` forces out the
+          last `plan`.
+      - id: one-removal
+        text: '19'
+        explanation: When the first `ship` arrives, how many days have to leave?
+      - id: before-repair
+        text: '21'
+        explanation: Is every window counted after it holds at most 2 types?
+      - id: short-count
+        text: '11'
+        explanation: How many stretches end at `right` when `left == right`?
+    correct: right
+    followUps:
+      one-removal:
+        prompt: >-
+          The first `ship` arrives at index 3 and the window is `plan, test, plan, ship`. After one
+          day leaves, how many types does it hold?
+        options:
+          - { id: three, text: 'Still 3, so `test` has to leave as well' }
+          - { id: two, text: '2, since one type has gone' }
+          - { id: one, text: '1, since only `ship` is new' }
+        correct: three
+        explanation: >-
+          The first `plan` leaves, but `test`, another `plan` and `ship` remain. The `while`
+          removes days until a count reaches 0, which takes two removals here.
+      before-repair:
+        prompt: On the pass where the first `ship` arrives, the window briefly spans indices 0 to 3. Should those 4 starts count?
+        options:
+          - { id: after, text: 'No, only the starts left after the repair, which are 2 and 3' }
+          - { id: all, text: 'Yes, every start up to `right` counts' }
+          - { id: half, text: 'Only the starts from 1 to 3' }
+        correct: after
+        explanation: >-
+          A stretch from index 0 or 1 to index 3 holds three types. Counting before the `while`
+          adds those invalid stretches, which happens on two passes here.
+      short-count:
+        prompt: On the first pass, `left` and `right` are both 0. How many valid stretches end there?
+        options:
+          - { id: one, text: 'One, the single first day' }
+          - { id: zero, text: 'None, since `right - left` is 0' }
+          - { id: two, text: 'Two, the day and the empty stretch' }
+        correct: one
+        explanation: >-
+          The starts run from `left` to `right`, both included, so each pass adds
+          `right - left + 1`. Dropping the `+ 1` loses one stretch on every pass, 7 in all here.
+
+  - id: checkpoint-no-repeat-left
+    format: tap-cell
+    heading: Tap where the left edge sits
+    tags: [sliding-window, hash-map, python]
+    prompt: >-
+      This function counts the stretches of `s` in which no letter repeats. After its last pass,
+      tap the cell where `left` sits.
+    code: |
+      def count_no_repeat(s):
+          counts = {}
+          left = total = 0
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              while counts[ch] > 1:
+                  counts[s[left]] -= 1
+                  left += 1
+              total += right - left + 1
+          return total
+
+      count_no_repeat("abcbda")
+    sequence: { kind: string, name: s, cells: [a, b, c, b, d, a] }
+    correct: 2
+    explanation: >-
+      The second `b`, at index 3, pushes `left` past the `a` and the first `b`, to 2. The final
+      `a` repeats the `a` at index 0, but that copy has already left, so its count is 0 and
+      nothing moves. The window `c, b, d, a` repeats no letter.
+    misses:
+      - index: 0
+        explanation: >-
+          The window would hold both `b` days. `left` moved past index 1 when the second `b`
+          arrived, and it never moves back.
+      - index: 1
+        explanation: >-
+          That is one past the earlier `a`, which is where a "jump past the last copy" version
+          lands if it forgets that `left` is already at 2. It would move the left edge back and
+          bring in a repeated `b`.
+      - index: 3
+        explanation: >-
+          The `c` at index 2 repeats nothing, so it can stay. The loop stops as soon as the new
+          letter's count is 1.
+      - index: 4
+        explanation: >-
+          The last pass does not shrink at all: the earlier `a` has already left, so the new `a`
+          has a count of 1.
+      - index: 5
+        explanation: >-
+          Starting over at the new letter throws away `c, b, d`, which hold no repeat. The
+          window only loses letters while one repeats.
+
+  - id: checkpoint-count-cost
+    heading: What is the complexity?
+    tags: [sliding-window, complexity, hash-map]
+    prompt: |-
+      `count_stretches(days, k)` adds `right - left + 1` on every pass, so on a log of one type
+      it returns `n(n + 1) / 2`. Assume `1 <= k <= n` and that each dictionary read, write and
+      delete takes O(1). What are its tightest worst-case time and extra space?
+
+      ```python
+      def count_stretches(days, k):
+          counts = {}
+          left = total = 0
+          for right, d in enumerate(days):
+              counts[d] = counts.get(d, 0) + 1
+              while len(counts) > k:
+                  gone = days[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              total += right - left + 1
+          return total
+      ```
+    options:
+      - id: right
+        text: O(n) time and O(k) extra space
+        explanation: >-
+          Each day enters once and leaves at most once, since `left` never moves back, so all the
+          `while` passes together remove at most `n` days. Each pass adds a whole group of
+          stretches with one subtraction, and `counts` never holds more than `k + 1` keys.
+      - id: quadratic
+        text: O(n²) time, since it counts up to n(n + 1) / 2 stretches
+        explanation: Does the loop visit each stretch, or add them up in groups?
+      - id: k-per-pass
+        text: O(n·k) time, since the `while` can run up to `k` times per pass
+        explanation: Is the number of removals bounded per pass, or over the whole call?
+      - id: n-space
+        text: O(n) time and O(n) extra space, since `counts` keeps every type seen
+        explanation: What happens to a key when its last copy leaves?
+    correct: right
+    followUps:
+      quadratic:
+        prompt: On a pass with `left` at 2 and `right` at 9, how much work does `total += right - left + 1` do?
+        options:
+          - { id: one, text: 'One subtraction and one addition, for all 8 stretches at once' }
+          - { id: eight, text: 'Eight steps, one per stretch' }
+          - { id: ten, text: 'Ten steps, one per index up to `right`' }
+        correct: one
+        explanation: >-
+          The count of valid stretches ending at `right` is a formula, not a list to walk. The
+          answer can be far larger than the work, so the time is set by the moves of `left` and
+          `right`.
+      k-per-pass:
+        prompt: >-
+          With `k = 1`, the log is 50 days of `plan` followed by one `ship`. How many days leave on
+          the last pass?
+        options:
+          - { id: fifty, text: 'All 50 `plan` days, though `k` is 1' }
+          - { id: one, text: 'One, since `k` is 1' }
+          - { id: two, text: 'Two, which is `k + 1`' }
+        correct: fifty
+        explanation: >-
+          One pass can remove far more than `k` days. The bound comes from the whole call: each
+          day leaves at most once, so the removals add up to at most `n`.
+      n-space:
+        prompt: With `k = 2` and a log that uses 40 types, how many keys can `counts` hold at once?
+        options:
+          - { id: three, text: 'At most 3, one more than `k` for a moment before the repair' }
+          - { id: forty, text: 'Up to 40, one per type in the log' }
+          - { id: n, text: 'Up to `n`, one per day' }
+        correct: three
+        explanation: >-
+          A key is deleted when its count reaches 0, so `counts` only describes the current
+          window. The repair keeps that window at `k` types, so the space grows with `k`, not
+          with the log.
+
+  - id: checkpoint-fixed-window-cost
+    heading: What is the complexity?
+    tags: [sliding-window, complexity, hash-map]
+    prompt: |-
+      The function returns the most task types in any `k` consecutive days. Assume `1 <= k <= n`
+      and that each dictionary read, write and delete takes O(1). What are its tightest
+      worst-case time and extra space?
+
+      ```python
+      def most_types(days, k):
+          counts = {}
+          best = 0
+          for right, d in enumerate(days):
+              counts[d] = counts.get(d, 0) + 1
+              if right >= k:
+                  gone = days[right - k]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+              if right >= k - 1:
+                  best = max(best, len(counts))
+          return best
+      ```
+    options:
+      - id: right
+        text: O(n) time and O(k) extra space
+        explanation: >-
+          Each pass adds one day and removes at most one, so the work per pass is constant. The
+          window holds `k` days, plus one for a moment, so `counts` has at most `k + 1` keys.
+      - id: nk-time
+        text: O(n·k) time and O(k) extra space, since every window has `k` days to count
+        explanation: Does any pass look at all `k` days of its window?
+      - id: n-space
+        text: O(n) time and O(n) extra space, since `counts` gains a key for each new type
+        explanation: Can a type that left the window keep its key?
+      - id: constant-space
+        text: O(n) time and O(1) extra space, since only `best` is kept between passes
+        explanation: What does `counts` hold between passes?
+    correct: right
+    followUps:
+      nk-time:
+        prompt: How many dictionary updates does one pass make once the window is full?
+        options:
+          - { id: two, text: 'Two: one for the day coming in and one for the day going out' }
+          - { id: k, text: '`k`, one for each day in the window' }
+          - { id: right, text: '`right`, one for each day so far' }
+        correct: two
+        explanation: >-
+          The window is never rebuilt. Each pass changes only the counts of the day that comes in
+          and the day that leaves, so the whole call does O(n) updates.
+      n-space:
+        prompt: With `k = 3`, what is the most keys `counts` can hold at once, however many types the log uses?
+        options:
+          - { id: four, text: 'Four: the 3 days in the window plus the one just added' }
+          - { id: types, text: 'One per type in the whole log' }
+          - { id: three, text: 'Three, since keys are deleted before the day is added' }
+        correct: four
+        explanation: >-
+          A key goes when its count reaches 0, so `counts` describes only the current window.
+          The new day is added before the old one leaves, so for a moment there are `k + 1`.
+      constant-space:
+        prompt: Between passes, what is in `counts`?
+        options:
+          - { id: window, text: 'A count for each type in the current window, at most `k` of them' }
+          - { id: one, text: 'One number, the size of the window' }
+          - { id: log, text: 'One entry per day in the whole log' }
+        correct: window
+        explanation: >-
+          `counts` maps each type in the window to its copies there, so it grows with `k`. A
+          dictionary whose size depends on the input is not O(1) extra space.
