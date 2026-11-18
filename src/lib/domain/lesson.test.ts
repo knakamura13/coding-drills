@@ -394,6 +394,8 @@ describe('finishing', () => {
 describe('random play over the shipped decks', () => {
 	const decks = loadDecks('content/decks');
 
+	// Every deck is played 60 times, so this grows with the content. It took over 5 s on a CI runner with coverage on.
+
 	it('always terminates with one completion per question and a follow-up for every miss', () => {
 		for (const deck of decks) {
 			for (let seed = 1; seed <= 60; seed++) {
@@ -440,7 +442,7 @@ describe('random play over the shipped decks', () => {
 				expect(lastProgress).toBe(1);
 			}
 		}
-	});
+	}, 60_000);
 });
 
 describe('createReviewLesson', () => {
