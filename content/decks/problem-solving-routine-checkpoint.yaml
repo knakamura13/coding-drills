@@ -1,0 +1,326 @@
+id: problem-solving-routine-checkpoint
+title: "Problem-solving routine: checkpoint"
+description: Choose a test that separates two plausible procedures, on new problems. Each item combines restating the output, picking a test, and tracing both procedures on it.
+heading: Which test separates them?
+
+questions:
+  - id: checkpoint-first-max-index
+    tags: [python, arrays-strings]
+    prompt: |-
+      ```python
+      # Return the index of the largest value. If it
+      # appears more than once, return the first index.
+      def top_a(nums):
+          best = 0
+          for i in range(1, len(nums)):
+              if nums[i] > nums[best]:
+                  best = i
+          return best
+
+      def top_b(nums):
+          best = 0
+          for i in range(1, len(nums)):
+              if nums[i] >= nums[best]:
+                  best = i
+          return best
+      ```
+
+      Which test gives different answers from the two?
+    options:
+      - id: tied-max
+        text: "`[2, 9, 4, 9]`"
+        explanation: >-
+          The largest value, 9, appears twice. `top_a` keeps index 1 because the second 9 is not
+          greater. `top_b` moves to index 3 because it is equal. The statement asks for the first
+          index, so `top_b` is the wrong one.
+      - id: max-first
+        text: "`[9, 4, 2]`"
+        explanation: Look at whether any later value ever ties the current best.
+      - id: tied-below
+        text: "`[4, 4, 9]`"
+        explanation: Look at which value the tie is on, and whether it is still the best at the end.
+      - id: single
+        text: "`[8]`"
+        explanation: Look at how many times the loop body runs.
+    correct: tied-max
+    followUps:
+      max-first:
+        prompt: In `[9, 4, 2]`, does `>=` ever hold where `>` does not?
+        options:
+          - id: never
+            text: No, no later value equals the current best
+          - id: first
+            text: Yes, on the first comparison
+          - id: start
+            text: Yes, because 9 is at index 0
+        correct: never
+        explanation: >-
+          `>` and `>=` differ only on a tie with the current best. A separating test needs the
+          largest value at least twice.
+      tied-below:
+        prompt: "`top_b` moves to index 1 on the tie between the 4s. Where does it end?"
+        options:
+          - id: on-nine
+            text: On index 2, like `top_a`, because 9 beats both
+          - id: on-tie
+            text: On index 1
+          - id: on-start
+            text: On index 0
+        correct: on-nine
+        explanation: >-
+          A tie below the maximum is overwritten once a larger value arrives. Only a tie on the
+          largest value survives to the return.
+      single:
+        prompt: How many times does the loop run on `[8]`?
+        options:
+          - id: zero
+            text: Zero, since `range(1, 1)` is empty
+          - id: once
+            text: Once
+          - id: twice
+            text: Twice
+        correct: zero
+        explanation: >-
+          With one item, both functions return their starting `best`, index 0. A single item
+          cannot contain a tie.
+
+  - id: checkpoint-pair-count
+    tags: [python, arrays-strings]
+    prompt: |-
+      ```python
+      # Return how many index pairs i < j
+      # have nums[i] + nums[j] == target.
+      def pairs_a(nums, target):
+          count = 0
+          for i in range(len(nums)):
+              for j in range(i + 1, len(nums)):
+                  if nums[i] + nums[j] == target:
+                      count += 1
+          return count
+
+      def pairs_b(nums, target):
+          seen = set()
+          count = 0
+          for x in nums:
+              if target - x in seen:
+                  count += 1
+              seen.add(x)
+          return count
+      ```
+
+      Which test gives different answers from the two?
+    options:
+      - id: three-equal
+        text: "`nums = [3, 3, 3]`, `target = 6`"
+        explanation: >-
+          The three 3s make three pairs, so `pairs_a` returns 3. `pairs_b` adds at most 1 for each
+          value. The third 3 has two earlier partners but adds 1, so `pairs_b` returns 2.
+      - id: distinct
+        text: "`nums = [1, 5, 2, 4]`, `target = 6`"
+        explanation: Look at whether any value appears more than once.
+      - id: two-equal
+        text: "`nums = [3, 3]`, `target = 6`"
+        explanation: Count the pairs in the list, then trace `pairs_b`.
+      - id: shared-partner
+        text: "`nums = [6, 0, 0]`, `target = 6`"
+        explanation: Look at which earlier value each 0 finds in the set.
+    correct: three-equal
+    followUps:
+      distinct:
+        prompt: With no repeated values, how many times does `pairs_b` count the pair 1 and 5?
+        options:
+          - id: once
+            text: Once, when the 5 finds 1 in the set
+          - id: twice
+            text: Twice, once from each side
+          - id: never
+            text: Never, because 1 is added after its test
+        correct: once
+        explanation: >-
+          Each pair is counted when its later value arrives. With distinct values, every value has
+          at most one earlier partner, so both functions return 2.
+      two-equal:
+        prompt: "In `pairs_b([3, 3], 6)`, is 3 in `seen` when the second 3 arrives?"
+        options:
+          - id: yes-one
+            text: Yes, so it counts 1, the only pair
+          - id: not-seen
+            text: No, a set ignores repeated values
+          - id: yes-two
+            text: Yes, so it counts 2
+        correct: yes-one
+        explanation: >-
+          Two copies make one pair, and `pairs_b` counts it once. It loses count only when one
+          value has two or more earlier partners.
+      shared-partner:
+        prompt: For each 0, which earlier value completes the pair?
+        options:
+          - id: six
+            text: The 6, which is in the set both times
+          - id: other-zero
+            text: The other 0
+          - id: nothing
+            text: Nothing, since 0 adds no value
+        correct: six
+        explanation: >-
+          Each 0 has exactly one earlier partner, the single 6, so adding 1 per value is enough.
+          Both functions return 2.
+
+  - id: checkpoint-letter-counts
+    tags: [python, arrays-strings]
+    prompt: |-
+      ```python
+      # Return True if t uses exactly the same letters
+      # as s, each the same number of times.
+      def same_a(s, t):
+          return sorted(s) == sorted(t)
+
+      def same_b(s, t):
+          return set(s) == set(t)
+      ```
+
+      Which test gives different answers from the two?
+    options:
+      - id: counts-differ
+        text: "`s = 'aab'`, `t = 'abb'`"
+        explanation: >-
+          Both strings use only a and b, so the sets match and `same_b` returns `True`. The counts
+          differ, two a's against one, so the sorted lists differ and `same_a` returns `False`,
+          which is what the statement asks for.
+      - id: reordered
+        text: "`s = 'abc'`, `t = 'cab'`"
+        explanation: Look at whether any letter's count differs.
+      - id: extra-letter
+        text: "`s = 'ab'`, `t = 'abc'`"
+        explanation: Look at whether the two sets are equal.
+      - id: empty
+        text: "`s = ''`, `t = ''`"
+        explanation: Trace both functions on two empty strings.
+    correct: counts-differ
+    followUps:
+      reordered:
+        prompt: Do `'abc'` and `'cab'` use any letter a different number of times?
+        options:
+          - id: same-counts
+            text: No, so both functions return `True`
+          - id: order
+            text: Yes, the order differs, so `same_a` returns `False`
+          - id: moved
+            text: Yes, the c moved to the front
+        correct: same-counts
+        explanation: >-
+          `sorted` puts both strings in the same order before comparing, so order never matters
+          to `same_a`. Only a difference in counts can separate the two.
+      extra-letter:
+        prompt: Is `set('ab') == set('abc')`?
+        options:
+          - id: unequal
+            text: No, the c is missing from the first
+          - id: subset
+            text: Yes, every letter of `'ab'` is in `'abc'`
+          - id: length
+            text: Yes, sets ignore length
+        correct: unequal
+        explanation: >-
+          Set equality needs the same members on both sides, so both functions return `False`. A
+          separating test keeps the same letters and changes only how often one appears.
+      empty:
+        prompt: What do `sorted('')` and `set('')` give?
+        options:
+          - id: empties
+            text: An empty list and an empty set, so both return `True`
+          - id: errors
+            text: Errors, since there is nothing to sort
+          - id: none
+            text: "`None` for both"
+        correct: empties
+        explanation: >-
+          Two empty strings use the same letters the same number of times. Both functions agree,
+          so this test separates nothing.
+
+  - id: checkpoint-final-run
+    tags: [python, arrays-strings]
+    prompt: |-
+      ```python
+      # Return the length of the longest run of equal
+      # values in a row. One value alone is a run of 1.
+      # Return 0 for an empty list.
+      def run_a(nums):
+          best = run = 0
+          for i in range(len(nums)):
+              if i > 0 and nums[i] == nums[i - 1]:
+                  run += 1
+              else:
+                  run = 1
+              best = max(best, run)
+          return best
+
+      def run_b(nums):
+          best = run = 0
+          for i in range(len(nums)):
+              if i > 0 and nums[i] == nums[i - 1]:
+                  run += 1
+              else:
+                  best = max(best, run)
+                  run = 1
+          return best
+      ```
+
+      Which test gives different answers from the two?
+    options:
+      - id: ends-in-run
+        text: "`[1, 2, 2]`"
+        explanation: >-
+          The longest run, the two 2s, is still going when the loop ends. `run_a` updates `best` on
+          every pass and returns 2. `run_b` updates only when a new run starts, which never happens
+          after the last run, so it returns 1.
+      - id: run-first
+        text: "`[2, 2, 1]`"
+        explanation: Look at whether the longest run ends before the loop does.
+      - id: empty
+        text: "`[]`"
+        explanation: Look at how many times the loop runs.
+      - id: earlier-tie
+        text: "`[4, 4, 1, 1]`"
+        explanation: Compare the last run with the longest run that ended earlier.
+    correct: ends-in-run
+    followUps:
+      run-first:
+        prompt: In `[2, 2, 1]`, when does `run_b` record the run of 2s?
+        options:
+          - id: on-change
+            text: When the 1 starts a new run
+          - id: never
+            text: Never
+          - id: after
+            text: After the loop ends
+        correct: on-change
+        explanation: >-
+          `run_b` saves a run when the next one starts. The 2s end before the last item, so both
+          functions return 2.
+      empty:
+        prompt: What do both functions return for `[]`?
+        options:
+          - id: zero
+            text: 0, the starting `best`
+          - id: one
+            text: 1, a run of nothing
+          - id: error
+            text: An error from `nums[i - 1]`
+        correct: zero
+        explanation: >-
+          The loop never runs, so both return their starting value. Both meet the statement on an
+          empty list.
+      earlier-tie:
+        prompt: "`run_b` drops the final run of 1s. Does that change its answer here?"
+        options:
+          - id: no-change
+            text: No, the 4s already gave a run of the same length
+          - id: one
+            text: Yes, it returns 1
+          - id: zero
+            text: Yes, it returns 0
+        correct: no-change
+        explanation: >-
+          `run_b` records the two 4s when the first 1 arrives. The lost run is no longer than that,
+          so both return 2. A separating test needs the last run to be the longest.
