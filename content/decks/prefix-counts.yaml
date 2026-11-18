@@ -1,0 +1,511 @@
+id: prefix-counts
+title: Prefix counts
+description: Build a prefix list that starts with the empty prefix, subtract two prefixes, and count earlier matches. Each card opens with a worked example, then asks for one decision.
+heading: What happens next?
+
+questions:
+  - id: include-empty-prefix
+    heading: Which list is the prefix?
+    tags: [prefix-sum, python]
+    prompt: |-
+      **Worked example:** for `nums = [3, 1, 2]`, `prefix` is `[0, 3, 4, 6]`. `prefix[i]` is the
+      sum of the first `i` values, so `prefix[0]` is the sum of no values at all, the empty
+      prefix, and the list has one more entry than `nums`.
+
+      Now `nums = [5, -2, 4, 1]`. Which list is `prefix`?
+    options:
+      - id: right
+        text: '`[0, 5, 3, 7, 8]`'
+        explanation: >-
+          Start at 0 for the empty prefix, then add each value in turn: 0 + 5 is 5, 5 + -2 is 3,
+          3 + 4 is 7 and 7 + 1 is 8. Four values give five entries.
+      - id: no-empty
+        text: '`[5, 3, 7, 8]`'
+        explanation: >-
+          The running totals are right, but the list starts at the first value. Without the 0 in
+          front, `prefix[i]` no longer means "the first `i` values", and one kind of range has no
+          entry to subtract.
+      - id: copied
+        text: '`[0, 5, -2, 4, 1]`'
+        explanation: >-
+          After the 0 this copies `nums`. Each entry has to carry everything before it, so
+          `prefix[3]` is 5 + -2 + 4, not the 4 alone.
+      - id: dropped-sign
+        text: '`[0, 5, 7, 11, 12]`'
+        explanation: >-
+          That adds 2 where the list holds -2. A negative value lowers the running total, so after
+          5 comes 3.
+    correct: right
+    followUps:
+      no-empty:
+        prompt: >-
+          With `[5, 3, 7, 8]`, every range sum is one entry minus an earlier one. Which range has
+          no earlier entry to subtract?
+        options:
+          - id: from-start
+            text: A range that starts at index 0, such as `nums[0:2]`
+          - id: to-end
+            text: A range that ends at the last value, such as `nums[1:4]`
+          - id: middle
+            text: A single value in the middle, such as `nums[1:2]`
+        correct: from-start
+        explanation: >-
+          A range from index 0 has nothing before it, so the entry subtracted has to be the sum of
+          no values. That is the 0 at the front of the list, and leaving it out loses every range
+          that starts at the beginning.
+      copied:
+        prompt: What should `prefix[3]` hold for `nums = [5, -2, 4, 1]`?
+        options:
+          - id: sum
+            text: 5 + -2 + 4, which is 7
+          - id: value
+            text: '`nums[2]`, which is 4'
+          - id: next
+            text: '`nums[3]`, which is 1'
+        correct: sum
+        explanation: >-
+          `prefix[3]` is the total of the first three values. Each entry adds one more value to the
+          entry before it, so it keeps everything seen so far.
+      dropped-sign:
+        prompt: '`prefix[1]` is 5 and `nums[1]` is -2. What is `prefix[2]`?'
+        options:
+          - id: three
+            text: 3, since adding -2 lowers the total
+          - id: seven
+            text: 7, since the size of each value is added
+          - id: five
+            text: 5, since a negative value is skipped
+        correct: three
+        explanation: >-
+          Every value is added with its sign. Prefix totals can go down, and they can return to a
+          total seen earlier, which is what later cards rely on.
+
+  - id: trace-build-prefix
+    format: step-trace
+    heading: Predict each step
+    tags: [prefix-sum, python]
+    prompt: >-
+      **Worked example:** on `[2, 5]`, `prefix` starts as `[0]`. The first pass appends 0 + 2,
+      which is 2, and the second appends 2 + 5, which is 7, so the list ends as `[0, 2, 7]`.
+      Step through the loop below and predict each value before it is shown.
+    code: |
+      nums = [4, -1, -3, 2]
+      prefix = [0]
+      for i, x in enumerate(nums):
+          prefix.append(prefix[-1] + x)
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, -1, -3, 2]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: On the pass with `i` at 1, what value is appended?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              After the first pass `prefix` is `[0, 4]`, so `prefix[-1]` is 4. Adding -1 gives 3.
+          - id: value
+            text: '-1'
+            explanation: >-
+              That appends `x` alone. The line adds `x` to `prefix[-1]`, the total so far, which
+              is 4.
+          - id: minus
+            text: '5'
+            explanation: >-
+              That subtracts -1. The line adds `x`, and adding -1 to 4 gives 3.
+        correct: three
+        also:
+          - { name: i, at: 1 }
+      - line: 4
+        ask: On the pass with `i` at 2, what value is appended?
+        options:
+          - id: zero
+            text: '0'
+            explanation: >-
+              `prefix[-1]` is 3, and 3 + -3 is 0. The first three values cancel out, so this
+              entry equals the empty prefix.
+          - id: two-values
+            text: '-4'
+            explanation: >-
+              That adds the last two values of `nums`, -1 and -3. `prefix[-1]` is the running
+              total, 3, not the previous value.
+          - id: value
+            text: '-3'
+            explanation: >-
+              That appends `x` alone. The total so far is 3, and adding -3 brings it to 0.
+        correct: zero
+        also:
+          - { name: i, at: 2 }
+      - ask: What is `prefix` when the loop ends?
+        options:
+          - id: right
+            text: '`[0, 4, 3, 0, 2]`'
+            explanation: >-
+              One entry for the empty prefix and one after each of the four values. The last pass
+              adds 2 to 0.
+          - id: no-empty
+            text: '`[4, 3, 0, 2]`'
+            explanation: >-
+              The list started as `[0]`, and appending never removes that first entry. It stays as
+              the empty prefix.
+          - id: short
+            text: '`[0, 4, 3, 0]`'
+            explanation: >-
+              That stops one pass early. The loop also runs for the last value, 2, and appends
+              0 + 2.
+        correct: right
+        also:
+          - { name: i, at: 3 }
+
+  - id: tap-subtracted-prefix
+    format: tap-cell
+    heading: Tap the prefix to subtract
+    tags: [prefix-sum, python]
+    prompt: >-
+      **Worked example:** for `nums = [4, 1, 2]`, `prefix` is `[0, 4, 5, 7]`. `sum(nums[1:3])` is
+      `prefix[3] - prefix[1]`, 7 - 4, which is 3: `prefix[3]` holds all three values, and
+      `prefix[1]` holds the one before the range. Below, tap the entry to subtract from
+      `prefix[5]` to get `sum(nums[2:5])`.
+    code: |
+      nums = [3, -2, 5, 2, -1]
+      prefix = [0, 3, 1, 6, 8, 7]
+      # sum(nums[2:5]) == prefix[5] - prefix[?]
+    sequence:
+      kind: array
+      name: prefix
+      cells: [0, 3, 1, 6, 8, 7]
+    correct: 2
+    explanation: >-
+      `prefix[2]` is 1, the sum of the two values before the range, 3 and -2. 7 - 1 is 6, which is
+      5 + 2 + -1. The slice `nums[i:j]` always sums to `prefix[j] - prefix[i]`.
+    misses:
+      - index: 0
+        explanation: >-
+          That is the empty prefix. 7 - 0 is the sum of the whole list, including the 3 and -2
+          before the range.
+      - index: 1
+        explanation: >-
+          `prefix[1]` holds only the 3. Subtracting it leaves 4, which still counts `nums[1]`, the
+          -2, though the range starts at index 2.
+      - index: 3
+        explanation: >-
+          `prefix[3]` already includes `nums[2]`, the 5. Subtracting it leaves 1, which drops the
+          first value of the range.
+      - index: 4
+        explanation: >-
+          `prefix[4]` includes `nums[2]` and `nums[3]`. 7 - 8 is -1, the last value alone.
+      - index: 5
+        explanation: >-
+          A prefix minus itself is 0, the sum of an empty range. The entry to subtract sits where
+          the range starts.
+
+  - id: range-from-zero
+    heading: Which subtraction is right?
+    tags: [prefix-sum, python]
+    prompt: |-
+      **Worked example:** the values at indices 1 through 3 sum to `prefix[4] - prefix[1]`. The
+      larger index is one past the last value, and the smaller one is the first index of the
+      range.
+
+      Now:
+
+      ```python
+      nums = [6, -2, 5, 0, -4]
+      prefix = [0, 6, 4, 9, 9, 5]
+      ```
+
+      What is the sum of `nums[0]` through `nums[2]`?
+    options:
+      - id: right
+        text: '`prefix[3] - prefix[0]`, which is 9'
+        explanation: >-
+          The range starts at index 0, so the entry subtracted is the empty prefix. 9 - 0 is 9,
+          which is 6 + -2 + 5.
+      - id: wraps
+        text: '`prefix[3] - prefix[-1]`, which is 4'
+        explanation: >-
+          Subtracting the entry one before the start works for a list without the empty prefix.
+          Here the start is index 0, and one before it is -1, which Python does not reject.
+      - id: end-short
+        text: '`prefix[2] - prefix[0]`, which is 4'
+        explanation: >-
+          The range ends at `nums[2]`, but `prefix[2]` stops before it. The larger index has to
+          be one past the last value.
+      - id: skip-first
+        text: '`prefix[3] - prefix[1]`, which is 3'
+        explanation: >-
+          That subtracts one value too many. The range starts at `nums[0]`, and this leaves only
+          -2 + 5.
+    correct: right
+    followUps:
+      wraps:
+        prompt: What does `prefix[-1]` read when `prefix` is `[0, 6, 4, 9, 9, 5]`?
+        options:
+          - id: last
+            text: The last entry, 5
+          - id: empty
+            text: The empty prefix, 0
+          - id: error
+            text: Nothing, it raises `IndexError`
+        correct: last
+        explanation: >-
+          A negative index counts back from the end, so -1 quietly reads the total of the whole
+          list. With the empty prefix at the front, a range that starts at index 0 subtracts
+          `prefix[0]`, and no index ever has to go below 0.
+      end-short:
+        prompt: Which values does `prefix[2]` add up?
+        options:
+          - id: two
+            text: '`nums[0]` and `nums[1]`'
+          - id: three
+            text: '`nums[0]`, `nums[1]` and `nums[2]`'
+          - id: one
+            text: '`nums[2]` alone'
+        correct: two
+        explanation: >-
+          `prefix[i]` is the sum of the first `i` values, the ones before index `i`. To include
+          `nums[2]`, the range has to end at `prefix[3]`.
+      skip-first:
+        prompt: Taking `prefix[1]` away from `prefix[3]` removes which value?
+        options:
+          - id: first
+            text: '`nums[0]`, the 6'
+          - id: nothing
+            text: None, because 1 is just where the range starts
+          - id: second
+            text: '`nums[1]`, the -2'
+        correct: first
+        explanation: >-
+          `prefix[1]` is the total of the values before index 1, which is `nums[0]` alone. A range
+          that keeps `nums[0]` subtracts `prefix[0]`, the empty prefix.
+
+  - id: drag-equal-prefixes
+    format: drag-pointers
+    heading: Find the range that sums to 0
+    tags: [prefix-sum, python]
+    prompt: >-
+      **Worked example:** in `prefix = [0, 2, 5, 2]` the total 2 appears at indices 1 and 3, so
+      `nums[1:3]` sums to 2 - 2, which is 0. Two equal prefixes always mark a range that sums to 0.
+      Below, drag `i` and `j`, with `i < j`, so that `prefix[j] - prefix[i]` is 0.
+    code: |
+      nums = [2, 3, -1, -2, 4]
+      prefix = [0, 2, 5, 4, 2, 6]
+      # sum(nums[i:j]) == prefix[j] - prefix[i] == 0
+    sequence:
+      kind: array
+      name: prefix
+      cells: [0, 2, 5, 4, 2, 6]
+    pointers:
+      - name: i
+        start: 0
+        correct: 1
+        explanation: >-
+          `prefix[1]` and `prefix[4]` are both 2, so the values between them, 3, -1 and -2, sum
+          to 0.
+        misses:
+          - index: 0
+            explanation: >-
+              The empty prefix is 0, and no later prefix is 0. From here to `prefix[4]` the sum
+              is 2.
+          - index: 2
+            explanation: '5 appears only once. Look for a total that comes back later.'
+        elsewhere: The two equal totals in the list are the 2s, at indices 1 and 4.
+      - name: j
+        start: 5
+        correct: 4
+        explanation: >-
+          `prefix[4]` is 2 again, so `sum(nums[1:4])` is 2 - 2, which is 0.
+        misses:
+          - index: 5
+            explanation: '`prefix[5]` is 6, and 6 - 2 is 4. The 4 at the end lifts the total.'
+          - index: 1
+            explanation: '`j` on the same cell as `i` is an empty range. The range needs `i < j`.'
+          - index: 3
+            explanation: '`prefix[3]` is 4, and 4 - 2 is 2, the sum of 3 and -1.'
+        elsewhere: The total returns to 2 at index 4.
+
+  - id: count-ending-here
+    heading: How many ranges end here?
+    tags: [prefix-sum, hash-map]
+    prompt: |-
+      **Worked example:** with `k = 3` and the running total at 8, a range that ends here sums to
+      3 exactly when it starts after an earlier total of 8 - 3, which is 5. Each earlier 5 is
+      one such range.
+
+      Now `k = 5`. The earlier totals, starting with the empty prefix, were 0, 3, -1, 3, 6 and
+      1, and the running total is now 8. How many ranges ending at this value sum to 5?
+    options:
+      - id: two
+        text: '2'
+        explanation: >-
+          The total to look for is 8 - 5, which is 3. It appeared twice, after the first value
+          and after the third, so two different ranges end here with a sum of 5.
+      - id: one
+        text: '1'
+        explanation: >-
+          That checks whether 3 appeared, not how many times. Each copy of an earlier total is a
+          separate place for a range to start.
+      - id: zero
+        text: '0'
+        explanation: >-
+          None of 5, -3 or 13 appear earlier, but none of them is the total to look for. A range
+          ending here sums to the current total minus an earlier one.
+      - id: all
+        text: '6'
+        explanation: >-
+          Every earlier total starts some range that ends here, but most of those ranges do not
+          sum to 5.
+    correct: two
+    followUps:
+      one:
+        prompt: The total 3 appeared after index 0 and again after index 2. What does each copy stand for?
+        options:
+          - id: start
+            text: A different start, so a different range ending here
+          - id: same
+            text: The same range, counted twice
+          - id: mistake
+            text: A slip in the running total
+        correct: start
+        explanation: >-
+          The ranges `nums[1:6]` and `nums[3:6]` both sum to 5. Totals can repeat when values are
+          signed, so the count keeps how many times each total appeared, not just whether it did.
+      zero:
+        prompt: A range that ends here sums to `8 - q`, where `q` is an earlier total. Which `q` makes that 5?
+        options:
+          - id: three
+            text: '`q = 8 - 5`, which is 3'
+          - id: minus-three
+            text: '`q = 5 - 8`, which is -3'
+          - id: five
+            text: '`q = 5`, the target itself'
+        correct: three
+        explanation: >-
+          Solve `8 - q == 5` for `q`. The total to look for is the current total minus `k`, and
+          the count is how many earlier totals equal it.
+      all:
+        prompt: >-
+          The earlier total 1 came just before the current value, so it starts the range holding
+          that value alone. What does that range sum to?
+        options:
+          - id: seven
+            text: 8 - 1, which is 7, so it does not count
+          - id: five
+            text: 5, since every range ending here is counted
+          - id: one
+            text: 1, the earlier total
+        correct: seven
+        explanation: >-
+          Each earlier total marks the start of a range ending here, and the range sums to the
+          current total minus that one. Only the starts whose difference is exactly `k` count.
+
+  - id: trace-count-ranges
+    format: step-trace
+    heading: Predict each step
+    tags: [prefix-sum, hash-map, python]
+    prompt: >-
+      **Worked example:** with `k = 2` and `nums = [2]`, `p` becomes 2 and `seen.get(0, 0)` finds
+      the starting entry `0: 1`, so the range `[2]` counts. That entry is the empty prefix. Step
+      through the call below and predict each value before it is shown.
+    code: |
+      def count_ranges(nums, k):
+          seen = {0: 1}
+          p = 0
+          total = 0
+          for i, x in enumerate(nums):
+              p += x
+              total += seen.get(p - k, 0)
+              seen[p] = seen.get(p, 0) + 1
+          return total
+
+      count_ranges([1, 2, -2, 3], 3)
+    sequence:
+      kind: array
+      name: nums
+      cells: [1, 2, -2, 3]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 7
+        ask: On the pass with `i` at 1, `p` is 3. What does line 7 add to `total`?
+        options:
+          - id: one
+            text: '1'
+            explanation: >-
+              `p - k` is 0, and `seen[0]` is the starting 1. The range is `nums[0:2]`, 1 + 2,
+              which starts at index 0, so the empty prefix is what it subtracts.
+          - id: zero
+            text: '0'
+            explanation: >-
+              No pass has stored a 0, but `seen` started with `0: 1`. That entry stands for the
+              empty prefix, so ranges from index 0 are found.
+          - id: three
+            text: '3'
+            explanation: >-
+              3 is `p`, the total so far. Line 7 adds how many earlier totals equal `p - k`.
+        correct: one
+        also:
+          - { name: i, at: 1 }
+      - line: 8
+        ask: After the pass with `i` at 2, what is `seen[1]`?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              `p` was 1 after the first value and is 1 again after 1 + 2 + -2. Line 8 adds one to
+              the stored count each time.
+          - id: one
+            text: '1'
+            explanation: >-
+              That would be `seen[p] = 1`, which forgets the earlier 1. Line 8 reads the stored
+              count and adds one.
+          - id: three
+            text: '3'
+            explanation: >-
+              The starting entry belongs to the total 0, not 1. The total 1 has appeared twice.
+        correct: two
+        also:
+          - { name: i, at: 2 }
+      - line: 7
+        ask: On the last pass `p` is 4. What does line 7 add?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              `p - k` is 1, stored twice. The ranges are `nums[1:4]`, 2 + -2 + 3, and `nums[3:4]`,
+              the 3 alone.
+          - id: one
+            text: '1'
+            explanation: >-
+              The total 1 appeared twice, so two different ranges end here. Each copy is a
+              different start.
+          - id: zero
+            text: '0'
+            explanation: >-
+              That looks up `k - p`, which is -1. A range ending here sums to `p` minus an earlier
+              total, so the key is `p - k`.
+        correct: two
+        also:
+          - { name: i, at: 3 }
+      - line: 9
+        ask: What does the call return?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              One range from the pass with `i` at 1 and two from the last pass: `[1, 2]`,
+              `[2, -2, 3]` and `[3]`.
+          - id: two
+            text: '2'
+            explanation: >-
+              That drops one range. `[1, 2]` starts at index 0 and was counted through the
+              starting entry `0: 1`.
+          - id: four
+            text: '4'
+            explanation: >-
+              On the passes with `i` at 0 and 2, `p` is 1 and `p - k` is -2, which is never
+              stored, so they add nothing. The total is 1 + 2.
+        correct: three
