@@ -112,6 +112,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Foundations #10 | Arrays and strings: teaching levels | `arrays-and-strings` | in review |
 | Foundations #10 | Arrays and strings: review variants | `arrays-and-strings-review` | in review |
 | Foundations #10 | Arrays and strings: checkpoint | `arrays-and-strings-checkpoint` | in review |
+| Foundations #10 | Names and objects: teaching levels | `names-and-objects` | in review |
+| Foundations #10 | Names and objects: review variants | `names-and-objects-review` | in review |
+| Foundations #10 | Names and objects: checkpoint | `names-and-objects-checkpoint` | in review |
 | Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | in review |
 | Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | in review |
 | Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | in review |
