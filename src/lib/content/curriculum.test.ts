@@ -54,7 +54,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 6, rewrite: 2, exam: 4, retire: 0 },
-	'sequences-and-search': { keep: 3, rewrite: 9, exam: 11, retire: 1 },
+	'sequences-and-search': { keep: 3, rewrite: 8, exam: 11, retire: 2 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -197,9 +197,23 @@ describe('shipped curriculum', () => {
 		]);
 	});
 
-	it('keeps the retired drill mapped and does not drop it', () => {
+	it('keeps the retired drills mapped and does not drop them', () => {
 		const retired = curriculum.drills.find((drill) => drill.questionId === 'subarray-sum-k');
 		expect(retired).toMatchObject({ disposition: 'retire', pathId: 'prefix-counts' });
+		const keepDistinct = curriculum.drills.find((drill) => drill.questionId === 'slow-fast-keep-distinct');
+		expect(keepDistinct).toMatchObject({ disposition: 'retire', pathId: 'pointer-scans' });
+	});
+
+	it('lets Pointer scans start without Sort order, and keeps unique pairs and compaction in every exam', () => {
+		const pointerScans = paths.find((item) => item.id === 'pointer-scans')!;
+		expect(pointerScans.after).toEqual(['arrays-and-strings']);
+		expect(pointerScans.afterNote).toMatch(/sorted input/);
+		const [checkpoint] = pointerScans.checkpoints;
+		expect(checkpoint!.mix).toEqual(['unique-pairs', 'compaction']);
+		const exams = curriculum.drills.filter((drill) => drill.pathId === 'pointer-scans' && drill.disposition === 'exam');
+		for (const kind of checkpoint!.mix) {
+			expect(exams.some((drill) => drill.covers.includes(kind)), kind).toBe(true);
+		}
 	});
 });
 
@@ -240,6 +254,33 @@ describe('compileCurriculum', () => {
 		];
 		const asked: SourceQuestion[] = [{ deckId: 'deck', questionId: 'only', followUpIds: ['real'] }];
 		expect(() => compileCurriculum(files, asked)).toThrow(/not a follow-up/);
+	});
+
+	it('requires an exam drill to cover each kind in a checkpoint mix', () => {
+		const mixed = (covers?: string[], disposition: 'exam' | 'keep' = 'exam'): BranchFile[] => {
+			const alpha = path('alpha');
+			alpha.checkpoints = [{ id: 'alpha-exam', title: 'Exam', summary: 'Combine them.', mix: ['pairs', 'edits'] }];
+			return [
+				branch('foundations', 1, [alpha], [
+					{ questionId: 'one', disposition: 'exam', path: 'alpha', covers: ['pairs'], note: 'Pairs.' },
+					{ questionId: 'two', disposition, path: 'alpha', ...(covers ? { covers } : {}), note: 'Edits.' }
+				])
+			];
+		};
+		expect(() => compileCurriculum(mixed(), questions('one', 'two'))).toThrow(/no exam drill covers "edits"/);
+		expect(() => compileCurriculum(mixed(['edits'], 'keep'), questions('one', 'two'))).toThrow(/only an exam drill/);
+		const compiled = compileCurriculum(mixed(['edits']), questions('one', 'two'));
+		expect(compiled.branches[0]!.paths[0]!.checkpoints[0]!.mix).toEqual(['pairs', 'edits']);
+		expect(compiled.drills.map((item) => item.covers)).toEqual([['pairs'], ['edits']]);
+	});
+
+	it('rejects a mix on a path with two checkpoints', () => {
+		const alpha = path('alpha');
+		alpha.checkpoints = [
+			{ id: 'first', title: 'First', summary: 'One.', requires: ['alpha-a'], mix: ['pairs'] },
+			{ id: 'second', title: 'Second', summary: 'Two.', requires: ['alpha-b'] }
+		];
+		expect(() => compileCurriculum([branch('foundations', 1, [alpha])], [])).toThrow(/needs a path with one checkpoint/);
 	});
 
 	it('adds every skill from each converging path to the single checkpoint', () => {

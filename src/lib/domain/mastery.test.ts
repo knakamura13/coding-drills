@@ -97,7 +97,7 @@ describe('rollup', () => {
 });
 
 function drill(questionId: string, pathId: string, disposition: CurriculumDrill['disposition']): CurriculumDrill {
-	return { questionId, deckId: 'deck', disposition, pathId, note: 'Noted.' };
+	return { questionId, deckId: 'deck', disposition, pathId, covers: [], note: 'Noted.' };
 }
 
 function tree(): Curriculum {
@@ -128,7 +128,8 @@ function tree(): Curriculum {
 								summary: 'Both.',
 								pathId: 'alpha',
 								branchId: 'one',
-								requires: ['a1', 'a2']
+								requires: ['a1', 'a2'],
+								mix: []
 							}
 						]
 					}
@@ -168,7 +169,8 @@ function tree(): Curriculum {
 								summary: 'Waits on both branches.',
 								pathId: 'beta',
 								branchId: 'two',
-								requires: ['b1', 'b-fork', 'a1', 'a2']
+								requires: ['b1', 'b-fork', 'a1', 'a2'],
+								mix: []
 							}
 						]
 					}
