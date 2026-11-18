@@ -12,8 +12,8 @@ import { assets, immutable, prerendered } from '$app/manifest';
  * - The build output, static files, and prerendered pages are cached when this
  *   version installs. The decks are compiled into those scripts, so every
  *   lesson works offline.
- * - The pages that render only in the browser (a lesson, review, weak spots,
- *   practice) are cached too. Their HTML is the same shell for every visit.
+ * - The pages that render only in the browser (a lesson, an exam, review, weak
+ *   spots, practice) are cached too. Their HTML is the same shell for every visit.
  * - Page loads go to the network first and fall back to the cache, so a deploy
  *   shows up on the next load. Requests to /api are never touched: answers are
  *   saved on the device first and the sync engine retries them online.
@@ -44,10 +44,16 @@ sw.addEventListener('install', (event) => {
 			await cache.addAll(ASSETS);
 
 			// Best effort: a page that fails to cache here is cached the first time it is visited.
-			const deckIds: string[] = await fetch('/decks.json')
-				.then((response) => (response.ok ? response.json() : []))
-				.catch(() => []);
-			const pages = [...CLIENT_ROUTES, ...deckIds.map((id) => `/play/${id}`)];
+			const listed = (url: string): Promise<string[]> =>
+				fetch(url)
+					.then((response) => (response.ok ? response.json() : []))
+					.catch(() => []);
+			const [deckIds, checkpointIds] = await Promise.all([listed('/decks.json'), listed('/exams.json')]);
+			const pages = [
+				...CLIENT_ROUTES,
+				...deckIds.map((id) => `/play/${id}`),
+				...checkpointIds.map((id) => `/exam/${id}`)
+			];
 			await Promise.all(pages.map((page) => cache.add(page).catch(() => undefined)));
 
 			await sw.skipWaiting();

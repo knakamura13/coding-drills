@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { tick } from 'svelte';
+	import { PASS_RULE } from '$lib/domain/exam';
 	import { EXAM_RULE, MASTERY_RULE, type CheckpointView, type SkillView, type TreeView } from '$lib/domain/mastery';
 
 	let { tree, ready }: { tree: TreeView; ready: boolean } = $props();
@@ -218,9 +219,11 @@
 						{/each}
 					</ul>
 				{:else if checkpoint.state === 'available'}
-					<p>Every skill that leads here is mastered. The pass mark is not decided yet.</p>
+					<p>Every skill that leads here is mastered. {PASS_RULE}</p>
+					<a class="practice" href={resolve('/exam/[checkpointId]', { checkpointId: checkpoint.id })}>Start the exam</a>
 				{:else}
-					<p>Placeholder pass: the gate is open and a reserved drill was answered right on a first try.</p>
+					<p>Passed. A passed checkpoint stays passed.</p>
+					<a class="practice" href={resolve('/exam/[checkpointId]', { checkpointId: checkpoint.id })}>Sit it again</a>
 				{/if}
 				{#if checkpoint.drills.length > 0}
 					<p class="facts-label">Reserved exam drills</p>

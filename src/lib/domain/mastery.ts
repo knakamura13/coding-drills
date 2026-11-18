@@ -1,6 +1,7 @@
 import type { Curriculum, CurriculumDrill, CurriculumPath, Disposition } from '$lib/content/curriculum';
 import { compareAttempts } from '$lib/storage/guards';
 import type { Attempt } from '$lib/storage/types';
+import { PASS_RULE, examPassed } from './exam';
 import { cardKey, countedAttempts } from './srs';
 
 /**
@@ -34,13 +35,14 @@ export const MASTERY_RULE =
 	'Placeholder: a keep or rewrite drill counts toward the skill its mapping names, or toward a skill chosen by list order when it names none. A skill is mastered when every paired drill was answered right on the first try of some day. Exam and retired drills do not count, and a skill with no paired drill stays not started.';
 
 /**
- * PLACEHOLDER exam result. The lock itself is the real gate rule: every skill
- * in `requires` must be mastered, including skills from other paths. Passed is
- * not a decided pass mark. It only means the gate is open and a counted correct
- * attempt exists on an exam drill paired with that checkpoint.
+ * The lock is the gate rule: every skill in `requires` must be mastered,
+ * including skills from other paths. Passed is derived from the attempt log by
+ * `examPassed` (see `exam.ts`): a full sitting of exam drills on one day with
+ * at most one first-try miss, and every kind the checkpoint requires answered
+ * right. A passed checkpoint stays passed: the gate only locks an exam that
+ * has not been passed.
  */
-export const EXAM_RULE =
-	'An exam stays locked until every skill it lists is mastered, including skills from other paths that lead into it, and it unlocks as soon as the last one is mastered. Passed is a placeholder: the gate is open and an exam drill paired with that checkpoint was answered right on a first try.';
+export const EXAM_RULE = `An exam stays locked until every skill it lists is mastered, including skills from other paths that lead into it. ${PASS_RULE}`;
 
 export type SkillState = 'mastered' | 'practicing' | 'unexplored';
 export type ExamState = 'locked' | 'available' | 'passed';
@@ -52,16 +54,15 @@ export interface ExamGate {
 }
 
 /**
- * An exam is locked while any required skill is unmastered. It is available
- * once the last of those skills is mastered, and passed only when `passed` is
- * also true. A passed flag does not open a locked exam. The mastered set is
- * recomputed on each read, so a skill that leaves it (review decay, #19)
- * locks the exam again.
+ * A passed exam stays passed, whatever happens to its skills afterwards (review
+ * decay, #19), so work already done is never taken away. An exam not yet passed
+ * is locked while any required skill is unmastered, and available once the last
+ * of those skills is mastered. The mastered set is recomputed on each read.
  */
 export function examGate(requires: readonly string[], mastered: ReadonlySet<string>, passed: boolean): ExamGate {
+	if (passed) return { state: 'passed', remaining: [] };
 	const remaining = requires.filter((id) => !mastered.has(id));
 	if (remaining.length > 0) return { state: 'locked', remaining };
-	if (passed) return { state: 'passed', remaining: [] };
 	return { state: 'available', remaining: [] };
 }
 
@@ -131,11 +132,17 @@ export function skillState(drills: readonly DrillRef[], attempts: readonly Attem
 	return 'unexplored';
 }
 
-/** Placeholder exam result. See `EXAM_RULE`. True when any paired exam drill has a counted correct attempt. */
-export function examDrillPassed(drills: readonly DrillRef[], attempts: readonly Attempt[]): boolean {
-	if (drills.length === 0) return false;
-	const { correct } = attemptKeys(drills, attempts);
-	return drills.some((drill) => correct.has(cardKey(drill.deckId, drill.questionId)));
+/**
+ * The exam drills each of a path's checkpoints draws from. A path with one
+ * checkpoint gives it every exam drill. With two, drills are paired by list
+ * position, as skills are, until exam drills name their checkpoint.
+ */
+export function examDrills(path: CurriculumPath, drills: readonly CurriculumDrill[]): Map<string, CurriculumDrill[]> {
+	const exams = drills.filter((drill) => drill.pathId === path.id && drill.disposition === 'exam');
+	return pairInOrder(
+		path.checkpoints.map((checkpoint) => checkpoint.id),
+		exams
+	);
 }
 
 export interface DrillView {
@@ -291,11 +298,7 @@ export function projectCurriculum(
 	const branches: BranchView[] = curriculum.branches.map((branch) => {
 		const paths: PathView[] = branch.paths.map((path) => {
 			const paired = teachingBySkill(path, curriculum.drills);
-			const exams = curriculum.drills.filter((drill) => drill.pathId === path.id && drill.disposition === 'exam');
-			const examPaired = pairInOrder(
-				path.checkpoints.map((checkpoint) => checkpoint.id),
-				exams
-			);
+			const examPaired = examDrills(path, curriculum.drills);
 			const viewFor = (skill: (typeof path.skills)[number]): SkillView => {
 				const parentsMastered = skill.after.length > 0 && skill.after.every((id) => mastered.has(id));
 				const started = (stateOf.get(skill.id) ?? 'unexplored') !== 'unexplored';
@@ -303,7 +306,7 @@ export function projectCurriculum(
 			};
 			const checkpoints: CheckpointView[] = path.checkpoints.map((checkpoint) => {
 				const drillViews = (examPaired.get(checkpoint.id) ?? []).map((drill) => toDrillView(drill, deckTitles));
-				const passed = examDrillPassed(examPaired.get(checkpoint.id) ?? [], attempts);
+				const passed = examPassed(examPaired.get(checkpoint.id) ?? [], checkpoint.mix, attempts);
 				const gate = examGate(checkpoint.requires, mastered, passed);
 				return {
 					id: checkpoint.id,

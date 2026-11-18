@@ -19,7 +19,7 @@
 	let { children }: { children: Snippet } = $props();
 
 	// A lesson has no top bar or menu. Leaving one uses the lesson's own control, which asks first.
-	const LESSON_ROUTES = new Set(['/play/[deckId]', '/review', '/weak', '/practice']);
+	const LESSON_ROUTES = new Set(['/play/[deckId]', '/exam/[checkpointId]', '/review', '/weak', '/practice']);
 	const inLesson = $derived(LESSON_ROUTES.has(page.route.id ?? ''));
 	const wideBar = $derived(page.route.id === '/tree');
 
