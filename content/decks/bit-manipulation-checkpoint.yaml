@@ -1,0 +1,235 @@
+id: bit-manipulation-checkpoint
+title: "Bit manipulation: checkpoint"
+description: Trace bit operations on new inputs, and pick a bit method that meets a stated limit. Each item combines the Bit manipulation skills.
+heading: Which one is right?
+
+questions:
+  - id: bits-exam-sparse-count
+    heading: Which loop is best?
+    tags: [bit-manipulation, complexity, python]
+    prompt: >-
+      A settings mask `m` covers 60 features, with bit `j` on when feature `j` is on, and any of
+      the 60 can be on. A typical mask has only two or three bits set. Which loop leaves the number
+      of features that are on in `count` (starting from 0) in the fewest passes?
+    options:
+      - id: clear-lowest
+        text: "`while m: m &= m - 1; count += 1`"
+        explanation: >-
+          Each pass clears one set bit, so the loop runs once per feature that is on: two or three
+          passes on a typical mask, wherever the bits sit. No correct loop here can make fewer
+          passes than that.
+      - id: shift
+        text: "`while m: count += m & 1; m >>= 1`"
+        explanation: >-
+          This count is right, but the loop keeps going until every digit up to the top 1 has been
+          shifted out, zeros included. A mask with feature 59 on takes 60 passes.
+      - id: every-bit
+        text: "`for j in range(60): count += m >> j & 1`"
+        explanation: >-
+          This count is right, but the loop reads all 60 bits on every mask, however few are set.
+      - id: count-down
+        text: "`while m: m -= 1; count += 1`"
+        explanation: >-
+          Subtracting 1 visits every value from `m` down to 0, so `count` ends up equal to `m`, not
+          to the number of set bits, after as many as `2 ** 60` passes.
+    correct: clear-lowest
+    followUps:
+      shift:
+        prompt: "For `m = (1 << 59) | 8`, how many passes does the shift loop make?"
+        options:
+          - { id: digits, text: "60, one per binary digit up to the highest set bit" }
+          - { id: ones, text: "2, one per set bit" }
+          - { id: fifty-nine, text: "59, since bit 59 is the last one it reaches" }
+        correct: digits
+        explanation: >-
+          The shift loop stops only when `m` is 0, which takes `m.bit_length()` passes: 60 here.
+          The zeros between the two set bits each cost a pass, which the `m &= m - 1` loop skips.
+      every-bit:
+        prompt: How many passes does `for j in range(60)` make on a mask with two bits set?
+        options:
+          - { id: sixty, text: "60, however many bits are set" }
+          - { id: two, text: "2, since it skips the zero bits" }
+          - { id: highest, text: "As many as the position of the highest set bit" }
+        correct: sixty
+        explanation: >-
+          A `for` over `range(60)` always runs 60 times. Only a loop that jumps from one set bit
+          to the next, such as `m &= m - 1`, makes as few passes as there are bits set.
+      count-down:
+        prompt: "What does `while m: m -= 1; count += 1` leave in `count`?"
+        options:
+          - { id: value, text: "The starting value of `m`, after up to `2 ** 60` passes" }
+          - { id: ones, text: "The number of set bits, the same as the `m &= m - 1` loop" }
+          - { id: digits, text: "The number of binary digits in `m`" }
+        correct: value
+        explanation: >-
+          `m -= 1` steps through every value down to 0, so the loop runs `m` times and counts
+          them. `m &= m - 1` jumps straight past all those values to the next set bit.
+
+  - id: bits-exam-badge-log
+    heading: Which method fits?
+    tags: [bit-manipulation, hash-map, python]
+    prompt: >-
+      A door logs a badge id each time someone enters or leaves. Every id appears exactly twice,
+      except the id of the one visitor still inside, which appears once. The log is a read-only
+      list of `n` ints. Find the id still inside in O(n) time with O(1) extra space.
+    options:
+      - id: xor
+        text: Fold every id into one value with `^`
+        explanation: >-
+          Each pair of equal ids cancels, in any order, so one pass with one variable leaves only
+          the id seen once. That is O(n) time and O(1) extra space, and the log is never changed.
+      - id: or
+        text: Fold every id into one value with `|`
+        explanation: >-
+          `|` keeps every 1 bit it has seen, so a second copy of an id does not remove the first.
+          For `[31, 8, 52, 8, 31]` the result is 63, not 52.
+      - id: set
+        text: Toggle each id in a set, then report the id left
+        explanation: >-
+          The answer is right, but the set can hold one id for every visitor inside at once, up to
+          about `n / 2`, which is O(n) extra space.
+      - id: sort
+        text: Sort a copy, then find the id with no equal neighbor
+        explanation: >-
+          The answer is right, but a sorted copy is a second list of `n` ids, O(n) extra space,
+          and the sort takes O(n log n) time. Sorting the log in place is not allowed.
+    correct: xor
+    followUps:
+      or:
+        prompt: "With the log `[31, 8, 52, 8, 31]`, what does folding with `|` give?"
+        options:
+          - { id: sixty-three, text: "63, since `x | x` is `x`, so the pairs never cancel" }
+          - { id: fifty-two, text: "52, the id seen once" }
+          - { id: zero, text: "0, since every pair cancels" }
+        correct: sixty-three
+        explanation: >-
+          `31 | 8 | 52` is already 63, and the repeated 8 and 31 add nothing. Only `^` cancels a
+          value against its copy, which leaves 52.
+      set:
+        prompt: Which limit does the toggling set break?
+        options:
+          - { id: space, text: "Extra space, since the set can hold about n / 2 ids at once" }
+          - { id: time, text: "Time, since each toggle scans the whole set" }
+          - { id: neither, text: "Neither, since a set of ints counts as O(1) space" }
+        correct: space
+        explanation: >-
+          A set lookup takes O(1) expected time, so the pass is O(n). But if many visitors enter
+          before anyone leaves, the set holds all of them at once, which grows with `n`.
+      sort:
+        prompt: Setting time aside, which limit does sorting a copy break?
+        options:
+          - { id: space, text: "Extra space, since the copy holds all n ids" }
+          - { id: read-only, text: "Read-only, since sorting a copy changes the log" }
+          - { id: none, text: "None, since a sorted copy costs no extra space" }
+        correct: space
+        explanation: >-
+          `sorted(log)` builds a new list of `n` ids, so the log is untouched but the copy is O(n)
+          extra space. The `^` fold needs one int.
+
+  - id: bits-exam-tap-isolate
+    format: tap-cell
+    heading: Tap the only 1
+    tags: [bit-manipulation, python]
+    prompt: >-
+      The cells show `n` from line 1, highest bit first. Tap the only digit that is 1 in `m` after
+      line 3.
+    code: |
+      n = 0b01101100
+      m = n & (n - 1)
+      m ^= n
+    sequence:
+      kind: string
+      name: n
+      cells: ['0', '1', '1', '0', '1', '1', '0', '0']
+    correct: 5
+    explanation: >-
+      Line 2 clears the lowest 1 of `n`, at index 5, and keeps the rest: `01101000`. Line 3 XORs
+      that with `n`, so every 1 the two share cancels, and only the cleared one is left:
+      `00000100`, which is 4.
+    misses:
+      - index: 0
+        explanation: This digit is 0 in `n` and in `m`, and `0 ^ 0` is 0.
+      - index: 1
+        explanation: >-
+          This is the highest 1 of `n`. Line 2 keeps it, so `m` and `n` both have it, and line 3
+          cancels it to 0.
+      - index: 2
+        explanation: >-
+          Line 2 keeps this 1, since it clears only the lowest 1. Line 3 then cancels it against
+          the same 1 in `n`.
+      - index: 3
+        explanation: This digit is 0 in `n` and in `m`, and `0 ^ 0` is 0.
+      - index: 4
+        explanation: >-
+          This 1 sits just above the lowest 1, and line 2 keeps it. Both numbers have it, so the
+          XOR on line 3 turns it off.
+      - index: 6
+        explanation: >-
+          `n - 1` turns this 0 into a 1, but the `&` with `n` makes it 0 again. It is 0 in both
+          `m` and `n`, so the XOR leaves 0.
+      - index: 7
+        explanation: >-
+          `n - 1` sets this digit, but `n` has a 0 here, so line 2 gives 0. Line 3 XORs two 0s.
+
+  - id: bits-exam-negative-print
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      ```python
+      x = -7
+      print(x >> 1, x & 1, ~x)
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`-4 1 6`"
+        explanation: >-
+          `-7 >> 1` rounds -3.5 down to -4. -7 is odd, so its lowest bit is 1 and `-7 & 1` is 1.
+          `~(-7)` is one less than 7, which is 6.
+      - id: truncated
+        text: "`-3 1 6`"
+        explanation: >-
+          -3 cuts -3.5 toward zero. Python's `>>` rounds down, the same way `//` does, so `-7 >> 1`
+          is -4.
+      - id: negated
+        text: "`-4 1 7`"
+        explanation: >-
+          7 is `-x`. `~` is not negation: it lands one below `-x`, so `~(-7)` is 6.
+      - id: signed-and
+        text: "`-4 -1 6`"
+        explanation: >-
+          `&` with a positive mask cannot give a negative result, since the mask has no sign bits
+          to keep. `-7 & 1` is 1, unlike C's `-7 % 2`, which is -1.
+    correct: right
+    followUps:
+      truncated:
+        prompt: Which expression gives the same value as `-7 >> 1`?
+        options:
+          - { id: floor, text: "`-7 // 2`, which is -4" }
+          - { id: trunc, text: "`int(-7 / 2)`, which is -3" }
+          - { id: magnitude, text: "`-(7 >> 1)`, which is -3" }
+        correct: floor
+        explanation: >-
+          For any Python int, `x >> k` is `x // 2 ** k`, and floor division rounds toward negative
+          infinity. Truncating, or shifting the size and negating, rounds toward zero instead.
+      negated:
+        prompt: For a Python int `x`, what is `~x`?
+        options:
+          - { id: neg-minus-one, text: "`-x - 1`" }
+          - { id: neg, text: "`-x`" }
+          - { id: sign-flip, text: "`x` with only its sign bit flipped" }
+        correct: neg-minus-one
+        explanation: >-
+          Negation is flip and add 1, so flipping alone gives one less than `-x`. For -7 that is
+          7 - 1, which is 6.
+      signed-and:
+        prompt: What is `x & 1` for a negative odd Python int `x`?
+        options:
+          - { id: one, text: "1, since a negative odd int still ends in a 1 bit" }
+          - { id: minus-one, text: "-1, since `&` keeps the sign of `x`" }
+          - { id: zero, text: "0, since a negative number's low bit is cleared" }
+        correct: one
+        explanation: >-
+          A negative int is stored with endless 1s on top, and its lowest bit is 1 exactly when it
+          is odd. `1` has only bit 0, so the `&` keeps that bit and drops the sign: `-7 & 1` is 1.

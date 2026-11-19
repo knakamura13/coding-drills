@@ -13,6 +13,7 @@ const PATH_TITLES = [
 	'Growth rates',
 	'Operation costs',
 	'Hidden work',
+	'Bit manipulation',
 	'Exact search',
 	'Boundary search',
 	'Feasible limits',
@@ -111,7 +112,7 @@ describe('shipped curriculum', () => {
 	const paths = curriculum.branches.flatMap((item) => item.paths);
 	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
-	it('lists the 43 skill paths in plan order', () => {
+	it('lists the 44 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
@@ -155,7 +156,7 @@ describe('shipped curriculum', () => {
 
 	it('gives every checkpoint the skills that lead into it, including a converging path', () => {
 		const byId = new Map(paths.map((item) => [item.id, item]));
-		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(44);
+		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(45);
 		for (const item of paths) {
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			for (const skill of item.skills) expect(skillIds.has(skill.id)).toBe(true);

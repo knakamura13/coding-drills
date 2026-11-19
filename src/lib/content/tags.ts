@@ -9,6 +9,7 @@ export const TOPIC_TAGS = [
 	'backtracking',
 	'binary-search',
 	'bfs',
+	'bit-manipulation',
 	'complexity',
 	'dfs',
 	'dp',

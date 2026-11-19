@@ -61,9 +61,9 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 | 011 linked lists | Linked lists | `linked-lists` | done |
 | 011 trees | Trees | `trees-traversals-bst` | partial |
 | 012 recursion and backtracking | Recursion and backtracking | `recursion-backtracking` | done |
-| 013 bit manipulation | Bit manipulation | – | out of scope |
+| 013 bit manipulation | Bit manipulation | `bit-manipulation` | in review |
 
-Bit manipulation is out of scope because the curriculum drops it to a single cheat-sheet page, unless an interview needs it.
+Bit manipulation was out of scope (the source curriculum gives it one cheat-sheet page). It came into the mastery tree as the Bit manipulation path on #64.
 
 ## `fundamental_algorithms/` notebooks
 
@@ -127,6 +127,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Foundations #10 | Hidden work: teaching levels | `hidden-work` | in review |
 | Foundations #10 | Hidden work: review variants | `hidden-work-review` | in review |
 | Foundations #10 | Hidden work: checkpoint | `hidden-work-checkpoint` | in review |
+| Foundations #10 | Bit manipulation: teaching levels | `bit-manipulation` | in review |
+| Foundations #10 | Bit manipulation: review variants | `bit-manipulation-review` | in review |
+| Foundations #10 | Bit manipulation: checkpoint | `bit-manipulation-checkpoint` | in review |
 | Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | in review |
 | Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | in review |
 | Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | in review |
