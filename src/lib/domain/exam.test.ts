@@ -98,6 +98,23 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
 		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 3 }])).toBe(true);
 		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
+	it('carries forward a top-K-or-merge pass from the two-item pool and requires a full sitting now', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'bounded-heaps')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const original = { ...attempt('top-k-min-heap', true), deckId: 'heaps-top-k', examRulesVersion: 4 };
+		expect(drills).toHaveLength(6);
+		expect(checkpoint.mix).toEqual(['top-k', 'merge']);
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 1 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
 		const sitting = drills.map((drill) => ({
 			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
 		}));

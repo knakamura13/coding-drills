@@ -1,0 +1,622 @@
+id: bounded-heaps
+title: Bounded heaps
+description: Keep the k best items with a capped heap, and merge sorted runs with one entry per run. Each card opens with a worked example, then asks for one decision.
+heading: What does the capped heap do?
+
+questions:
+  - format: tap-cell
+    id: evict-root-tap
+    heading: Which score is evicted?
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** to keep the 3 largest of `3, 8, 1, 6`, keep a min-heap of at most 3
+      scores. After 3, 8 and 1 the root is 1, the weakest score kept. When 6 arrives it is pushed,
+      the heap holds 4, and `heappop` removes the root, 1. Below, `h` holds the 4 largest scores
+      so far and 9 arrives. Which kept score is evicted? Tap it.
+    code: |
+      from heapq import heappush, heappop
+
+      h = [5, 6, 12, 8]  # the 4 largest scores so far
+      heappush(h, 9)
+      heappop(h)
+      print(sorted(h))
+    sequence:
+      kind: array
+      name: h
+      cells: [5, 6, 12, 8]
+    correct: 0
+    explanation: >-
+      The root of a min-heap is its smallest score, 5, so it is the weakest of the kept scores and
+      the first to go. 9 is larger than 5, so it stays. The code prints `[6, 8, 9, 12]`.
+    misses:
+      - index: 1
+        explanation: >-
+          6 is the next smallest, and it becomes the new root once 5 leaves. The pop takes the
+          current root, which is still 5.
+      - index: 2
+        explanation: >-
+          12 is the largest kept score. Evicting it would leave the smallest scores. `heappop` on a
+          min-heap returns the root, the smallest.
+      - index: 3
+        explanation: >-
+          8 is the last cell of the list. `heappop` returns `h[0]`, not the end of the list.
+          `list.pop()` is what removes the last cell.
+
+  - format: step-trace
+    id: capped-stream-trace
+    heading: Follow the evictions
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** with `k = 2` and the stream `5, 3, 7`, the heap holds 5 and 3, then 7
+      is pushed and the root, 3, is popped. An arrival smaller than the root is pushed and popped
+      straight back out. Below, `out` marks the score most recently evicted, and it starts on
+      index 0 before anything is evicted. Predict each step.
+    code: |
+      from heapq import heappush, heappop
+
+      stream = [6, 2, 9, 4, 1, 8, 5]
+      k = 3
+      h = []
+      for x in stream:
+          heappush(h, x)
+          if len(h) > k:
+              heappop(h)
+      print(sorted(h))
+    sequence:
+      kind: array
+      name: stream
+      cells: [6, 2, 9, 4, 1, 8, 5]
+    start:
+      - { name: out, at: 0 }
+    steps:
+      - line: 7
+        ask: The first three scores fill the heap. When 4 arrives, which score is evicted? Move `out` to it.
+        pointer: out
+        correct: 1
+        explanation: >-
+          The heap holds 6, 2 and 9, so its root is 2. The 4 is pushed, the heap holds 4 scores,
+          and the pop removes the root, 2.
+        misses:
+          - index: 0
+            explanation: >-
+              6 arrived first, but the heap does not evict by age. It evicts its root, the
+              smallest kept score, which is 2.
+          - index: 2
+            explanation: '9 is the largest kept score. A min-heap pops its smallest, 2, so the largest scores stay.'
+          - index: 3
+            explanation: >-
+              4 is the arrival. It is pushed first, and it is larger than the root 2, so the 2
+              leaves instead.
+        elsewhere: The heap holds 6, 2, 9 and the new 4. The pop removes the smallest, 2.
+      - line: 7
+        ask: Next, 1 arrives. Which score is evicted?
+        pointer: out
+        correct: 4
+        explanation: >-
+          The heap holds 4, 6 and 9. The 1 is pushed and becomes the root, so the pop removes the
+          1 itself. An arrival smaller than every kept score never stays.
+        misses:
+          - index: 3
+            explanation: >-
+              4 was the root before the push. The 1 is pushed first and sifts above it, so the pop
+              takes the 1.
+          - index: 1
+            explanation: 2 was evicted in the step before. It is no longer in the heap.
+          - index: 0
+            explanation: '6 is in the middle of the kept scores. Only the smallest of the four leaves, and that is the 1.'
+        elsewhere: After the push the heap holds 1, 4, 6 and 9. The pop removes the 1 it just pushed.
+      - line: 7
+        ask: Next, 8 arrives. Which score is evicted?
+        pointer: out
+        correct: 3
+        explanation: The heap holds 4, 6 and 9 again. The 8 is pushed and the root, 4, is popped.
+        misses:
+          - index: 4
+            explanation: The 1 left in the step before. The heap holds 4, 6 and 9 when 8 arrives.
+          - index: 0
+            explanation: '6 is the second smallest. The pop removes only the root, 4.'
+          - index: 5
+            explanation: '8 is larger than the root, 4, so the 8 stays and the 4 leaves.'
+        elsewhere: The heap holds 4, 6, 8 and 9 after the push. The pop removes the 4.
+      - line: 10
+        ask: The last score, 5, is pushed and popped. What does `print(sorted(h))` show?
+        options:
+          - id: top-three
+            text: '`[6, 8, 9]`'
+            explanation: >-
+              5 is smaller than the root 6, so it leaves at once. The heap ends with the 3 largest
+              scores of the stream, 6, 8 and 9.
+          - id: kept-last
+            text: '`[5, 8, 9]`'
+            explanation: >-
+              This evicts the old root to make room for the 5. The push comes first, so the pop
+              compares 5 with the kept scores and removes the 5.
+          - id: smallest
+            text: '`[1, 2, 4]`'
+            explanation: >-
+              These are the 3 smallest. A capped max-heap would keep them. The min-heap evicts its
+              smallest each time, so the largest remain.
+        correct: top-three
+
+  - id: pop-condition-off-by-one
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      **Worked example:** to keep the `k` largest, push each score and pop only when the heap
+      holds `k + 1`. With `k = 2` and `4, 1, 7`, the heap holds 4 and 1, then 7 makes three and
+      the 1 is popped.
+
+      ```python
+      from heapq import heappush, heappop
+
+      def top3(stream):
+          h = []
+          for x in stream:
+              heappush(h, x)
+              if len(h) >= 3:
+                  heappop(h)
+          return sorted(h)
+
+      print(top3([7, 3, 10, 5, 12, 6]))
+      ```
+
+      The function is meant to keep the 3 largest. What does it print?
+    options:
+      - id: two-kept
+        text: '`[10, 12]`'
+        explanation: >-
+          `>= 3` is true on the push that brings the heap to 3, so every pop leaves 2 scores. The
+          heap never ends a pass holding 3, and it returns the 2 largest.
+      - id: three-kept
+        text: '`[7, 10, 12]`'
+        explanation: That is the intended answer. Check how many scores are left after each pop.
+      - id: four-kept
+        text: '`[6, 7, 10, 12]`'
+        explanation: Check when the pop runs. It runs on the push that brings the heap to 3.
+      - id: smallest-three
+        text: '`[3, 5, 6]`'
+        explanation: Check which score `heappop` removes from a min-heap.
+    correct: two-kept
+    followUps:
+      three-kept:
+        prompt: 'With `len(h) >= 3`, how many scores does `h` hold right after a pop?'
+        options:
+          - id: two
+            text: '2, since the pop runs as soon as there are 3'
+          - id: three
+            text: '3, since the pop runs only when there are 4'
+          - id: varies
+            text: It depends on whether the arrival was the smallest
+        correct: two
+        explanation: >-
+          The condition fires on the push that brings the heap to 3, so each pass ends with 2. To
+          end with `k`, pop only when the heap holds more than `k`: `len(h) > k`.
+      four-kept:
+        prompt: When does `heappop` run in this loop?
+        options:
+          - id: at-three
+            text: Whenever the push has brought the heap to 3 or more
+          - id: at-four
+            text: Only when the heap has grown to 4
+          - id: at-end
+            text: Once, after the whole stream has been pushed
+        correct: at-three
+        explanation: >-
+          The check runs after every push. `>= 3` is already true at 3, so the heap never reaches
+          4. With `> 3` it would hold 4 and keep 4 scores.
+      smallest-three:
+        prompt: Which score does `heappop` remove from `heapq`'s heap?
+        options:
+          - id: smallest
+            text: The smallest, so the larger scores stay
+          - id: largest
+            text: The largest, so the smaller scores stay
+          - id: newest
+            text: The one pushed most recently
+        correct: smallest
+        explanation: >-
+          `heapq` keeps a min-heap, so each pop throws away the smallest score held. The scores
+          that survive are the largest, here 10 and 12.
+
+  - id: replace-before-compare
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      **Worked example:** `heappushpop(h, x)` pushes `x` and then pops the smallest, so a small
+      `x` leaves at once. `heapreplace(h, x)` pops the root first and then pushes `x`, whatever
+      `x` is.
+
+      ```python
+      from heapq import heappush, heapreplace
+
+      def top3(stream):
+          h = []
+          for x in stream:
+              if len(h) < 3:
+                  heappush(h, x)
+              else:
+                  heapreplace(h, x)
+          return sorted(h)
+
+      print(top3([8, 15, 11, 20, 13, 4]))
+      ```
+
+      What does it print?
+    options:
+      - id: kept-four
+        text: '`[4, 15, 20]`'
+        explanation: >-
+          Every arrival after the third evicts the root, even a small one. 20 replaces 8, 13
+          replaces 11, and then 4 replaces 13, although 13 was larger. Using `heappushpop`, or
+          calling `heapreplace` only when `x > h[0]`, keeps `[13, 15, 20]`.
+      - id: true-top
+        text: '`[13, 15, 20]`'
+        explanation: That is the 3 largest. Check what `heapreplace` does with the last arrival, 4.
+      - id: first-three
+        text: '`[8, 11, 15]`'
+        explanation: Check whether the `else` branch changes the heap.
+      - id: replace-largest
+        text: '`[4, 8, 11]`'
+        explanation: Check which entry `heapreplace` pops.
+    correct: kept-four
+    followUps:
+      true-top:
+        prompt: The heap holds 13, 15 and 20, and 4 arrives. What does `heapreplace(h, 4)` do?
+        options:
+          - id: pops-root
+            text: It pops 13 and pushes 4, so 4 is kept
+          - id: compares
+            text: It sees that 4 is smaller than 13 and leaves the heap alone
+          - id: pushes-first
+            text: It pushes 4 and pops it straight back out
+        correct: pops-root
+        explanation: >-
+          `heapreplace` pops before it pushes, so it never compares the arrival with the root. The
+          root is evicted whatever arrives. `heappushpop` pushes first and returns the smaller of
+          the two.
+      first-three:
+        prompt: What does the `else` branch do once the heap holds 3 scores?
+        options:
+          - id: swaps
+            text: It removes the root and adds the arrival on every pass
+          - id: nothing
+            text: Nothing, since the heap is full
+          - id: grows
+            text: It adds the arrival, so the heap grows past 3
+        correct: swaps
+        explanation: >-
+          `heapreplace` is one pop and one push, so the size stays at 3 but the contents change on
+          every arrival. That is why the last arrival, 4, ends up kept.
+      replace-largest:
+        prompt: Which entry does `heapreplace` remove from a `heapq` heap?
+        options:
+          - id: root
+            text: The root, the smallest score held
+          - id: largest
+            text: The largest score held
+          - id: oldest
+            text: The score that was pushed first
+        correct: root
+        explanation: >-
+          `heapreplace` returns `h[0]`, the smallest, and puts the arrival in its place. 20 replaces
+          8, 13 replaces 11, and 4 replaces 13.
+
+  - id: initial-heads
+    heading: What does the heap start with?
+    tags: [heap, sorting]
+    prompt: |-
+      **Worked example:** the next value of a merge is always the front of some run, because every
+      value behind a front is at least as large. For the runs `[5, 8]` and `[2, 9]`, the 2 comes
+      out first, then the 5.
+
+      Three sorted runs are read lazily, one value at a time, and merged with a heap that holds
+      `O(k)` values for `k` runs:
+
+      `[2, 4, 9]`, `[1, 3]`, `[6, 7, 8]`
+
+      Which values does the heap hold before the first pop?
+    options:
+      - id: fronts
+        text: 2, 1 and 6
+        explanation: >-
+          One entry per run: its front. Any value behind a front cannot be next while that front is
+          waiting, so it can stay unread. The heap holds 3 values for 3 runs.
+      - id: three-smallest
+        text: 1, 2 and 3
+        explanation: Check whether the third run is represented.
+      - id: everything
+        text: All eight values
+        explanation: Check the memory limit.
+      - id: just-one
+        text: Only 1, the first value to come out
+        explanation: Check how the merge would know what comes after 1.
+    correct: fronts
+    followUps:
+      three-smallest:
+        prompt: Why does the heap hold the 6 but not the 3 before the first pop?
+        options:
+          - id: front-rule
+            text: The 6 is a run's front, while the 3 sits behind the 1 and is read when the 1 leaves
+          - id: size-rule
+            text: The heap keeps the 3 largest fronts
+          - id: order-rule
+            text: The 3 is skipped because runs are read from the last one
+        correct: front-rule
+        explanation: >-
+          Each run is represented by its front, so the third run needs its 6 even though 3 is
+          smaller. The 3 cannot come out before the 1 in its own run, so reading it can wait.
+      everything:
+        prompt: What do you lose by pushing every value into the heap before the first pop?
+        options:
+          - id: memory
+            text: The heap holds all `N` values, and every run must be read in full first
+          - id: order
+            text: The output comes out in the wrong order
+          - id: duplicates
+            text: Duplicate values are dropped
+        correct: memory
+        explanation: >-
+          The output is still sorted, but memory is `O(N)` and nothing can come out until every run
+          is read. Holding only the fronts keeps `k` values and lets the first output appear at
+          once.
+      just-one:
+        prompt: After the 1 comes out, which values can be next?
+        options:
+          - id: any-front
+            text: The 3 behind it, or the front of either other run
+          - id: same-run
+            text: Only the 3, the next value of the same run
+          - id: run-order
+            text: Only the front of the next run, the 6
+        correct: any-front
+        explanation: >-
+          The next value is the smallest of all the current fronts, here 2. The heap needs every
+          run's front to answer that without scanning, so it starts with one per run.
+
+  - id: head-entry-shape
+    heading: Which entry works?
+    tags: [heap, python]
+    prompt: |-
+      **Worked example:** a heap entry is a tuple, compared field by field. `(3, 0)` and `(3, 1)`
+      tie on the first field, so the second decides. Whatever sits in the second field must be
+      comparable, or unique so the comparison never gets past it.
+
+      ```python
+      its = [iter(run) for run in runs]  # stands in for open files
+      h = []
+      for i, it in enumerate(its):
+          first = next(it, None)
+          if first is not None:
+              heappush(h, ENTRY)
+      ```
+
+      Values can repeat across runs. After a pop, the merge reads the next value from the run it
+      came from. Which `ENTRY` works?
+    options:
+      - id: value-index
+        text: '`(first, i)`'
+        explanation: >-
+          The value comes first, so the smallest front pops. The run number is unique, so tied
+          values compare `i` and stop there, and `its[i]` is the run to read next.
+      - id: value-iterator
+        text: '`(first, it)`'
+        explanation: Check what happens when two fronts are equal.
+      - id: index-value
+        text: '`(i, first)`'
+        explanation: Check which field decides the order.
+      - id: value-only
+        text: '`first`'
+        explanation: Check what the merge needs after a pop.
+    correct: value-index
+    followUps:
+      value-iterator:
+        prompt: Two runs have the front 3. What happens when their entries `(3, it)` are compared?
+        options:
+          - id: type-error
+            text: Python compares the two iterators and raises `TypeError`
+          - id: first-wins
+            text: The entry pushed first wins the tie
+          - id: equal
+            text: They count as equal, so either one pops
+        correct: type-error
+        explanation: >-
+          A tie on the first field moves the comparison to the second. List iterators do not
+          support `<`, so the push or pop raises `TypeError`. A unique run number avoids it.
+      index-value:
+        prompt: What does a heap of `(i, first)` entries pop first?
+        options:
+          - id: run-zero
+            text: The front of run 0, whatever its value
+          - id: smallest
+            text: The smallest front, since values are compared too
+          - id: newest
+            text: The front pushed last
+        correct: run-zero
+        explanation: >-
+          Tuples compare their first fields first, and the run numbers differ, so the values are
+          never compared. Runs `[4, 7]` and `[2, 9]` would pop `(0, 4)` before the 2.
+      value-only:
+        prompt: The heap pops the value 5. What can the merge not do next?
+        options:
+          - id: which-run
+            text: Find which run the 5 came from, to read that run's next value
+          - id: sort-order
+            text: Keep the output sorted, since bare values have no order
+          - id: empty-check
+            text: Tell whether the heap is empty
+        correct: which-run
+        explanation: >-
+          The merge must replace the popped front with the next value from the same run. A bare
+          value does not say which run that is, so the entry carries the run number.
+
+  - format: step-trace
+    id: merge-heads-trace
+    heading: Follow the merge
+    tags: [heap, python]
+    prompt: >-
+      **Worked example:** a merge pops the smallest front, prints it, and pushes the next value of
+      the same run. The cells lay out `runs[0]`, `runs[1]` and `runs[2]` side by side (indices 0
+      to 2, 3 to 4, and 5 to 7). `a`, `b` and `c` mark the value each run has in the heap. The
+      first pop has printed 1 and pushed the 2, and `out` marks the value printed last. Predict
+      each step.
+    code: |
+      from heapq import heapify, heappop, heappush
+
+      runs = [[1, 2, 8], [4, 9], [3, 5, 6]]
+      h = [(r[0], i, 0) for i, r in enumerate(runs)]
+      heapify(h)
+      while h:
+          x, i, j = heappop(h)
+          print(x)
+          if j + 1 < len(runs[i]):
+              heappush(h, (runs[i][j + 1], i, j + 1))
+    sequence:
+      kind: array
+      cells: [1, 2, 8, 4, 9, 3, 5, 6]
+    start:
+      - { name: out, at: 0 }
+      - { name: a, at: 1 }
+      - { name: b, at: 3 }
+      - { name: c, at: 5 }
+    steps:
+      - line: 7
+        ask: Which value does the next pop print? Move `out` to it.
+        pointer: out
+        correct: 1
+        explanation: >-
+          The heap holds 2, 4 and 3, the values under `a`, `b` and `c`. The smallest is 2, pushed
+          when the 1 left. Run 0 then pushes its 8.
+        misses:
+          - index: 5
+            explanation: >-
+              3 is run 2's front, but the heap also holds the 2, pushed from run 0 when the 1 was
+              printed. 2 is smaller.
+          - index: 3
+            explanation: '4 is run 1''s front. The heap holds 2 and 3 as well, and both are smaller.'
+          - index: 2
+            explanation: 8 sits behind the 2 in run 0. It is not in the heap until the 2 leaves.
+        elsewhere: The heap holds the values under `a`, `b` and `c`. The smallest is the 2.
+        also:
+          - { name: a, at: 2 }
+      - line: 7
+        ask: Which value does the next pop print?
+        pointer: out
+        correct: 5
+        explanation: The heap holds 8, 4 and 3. The 3 is smallest, and run 2 pushes its next value, 5.
+        misses:
+          - index: 2
+            explanation: '8 is run 0''s front now, but 3 and 4 are smaller.'
+          - index: 3
+            explanation: '4 is run 1''s front, but run 2''s front, 3, is smaller.'
+          - index: 6
+            explanation: 5 sits behind the 3 in run 2. It is pushed only when the 3 leaves.
+        elsewhere: The heap holds 8, 4 and 3. The smallest is the 3.
+        also:
+          - { name: c, at: 6 }
+      - line: 7
+        ask: Which value does the next pop print?
+        pointer: out
+        correct: 3
+        explanation: The heap holds 8, 4 and 5. The 4 is smallest.
+        misses:
+          - index: 6
+            explanation: '5 is run 2''s new front, pushed when the 3 left. The 4 is smaller.'
+          - index: 4
+            explanation: 9 sits behind the 4 in run 1. It is not in the heap yet.
+          - index: 2
+            explanation: '8 is in the heap, but 4 and 5 are smaller.'
+        elsewhere: The heap holds 8, 4 and 5. The smallest is the 4.
+      - line: 9
+        ask: The 4 has been printed. Which entry is pushed next?
+        options:
+          - id: run-one
+            text: '`(9, 1, 1)`'
+            explanation: >-
+              The 4 came from run 1, so run 1 loses its entry and pushes its next value, 9. The
+              heap holds 8, 9 and 5, one per run.
+          - id: next-smallest
+            text: '`(5, 2, 1)`'
+            explanation: >-
+              5 is the next value to be printed, but it is already in the heap: run 2 pushed it
+              when the 3 left. The push refills the run that was just popped.
+          - id: nothing
+            text: Nothing is pushed
+            explanation: >-
+              Run 1 still has the 9, since `j + 1 = 1` is less than `len(runs[1]) = 2`. Only an
+              exhausted run pushes nothing.
+          - id: run-zero
+            text: '`(8, 0, 2)`'
+            explanation: 8 is already in the heap, pushed when the 2 left. Run 0 has no value after it.
+        correct: run-one
+        also:
+          - { name: b, at: 4 }
+
+  - id: replenish-which-run
+    heading: Which entry is pushed?
+    tags: [heap, sorting]
+    prompt: |-
+      **Worked example:** in a merge, each pop removes one run's front, and that run alone is now
+      missing from the heap. The merge pushes that run's next value.
+
+      Three sorted runs are being merged:
+
+      `runs[0] = [3, 10, 12]`, `runs[1] = [5, 6, 7]`, `runs[2] = [4, 11]`
+
+      The heap holds `(3, 0, 0)`, `(4, 2, 0)` and `(5, 1, 0)`, as `(value, run, position)`. The
+      next pop returns `(3, 0, 0)`. Which entry should be pushed?
+    options:
+      - id: same-run
+        text: '`(10, 0, 1)`, the next value of run 0'
+        explanation: >-
+          Run 0 lost its front, so its next value takes the place. The heap keeps one entry per
+          run, and the merge prints 3, 4, 5, 6, 7, 10, 11, 12.
+      - id: smallest-next
+        text: '`(6, 1, 1)`, the smallest value not yet in the heap'
+        explanation: Check what happens to run 0's values and to the 6 later on.
+      - id: both
+        text: '`(10, 0, 1)` and `(6, 1, 1)`'
+        explanation: Check what run 1 pushes when its 5 is popped.
+      - id: nothing
+        text: Nothing, since the heap still holds two fronts
+        explanation: Check whether the 10 and the 12 are ever read.
+    correct: same-run
+    followUps:
+      smallest-next:
+        prompt: 'If `(6, 1, 1)` is pushed instead of `(10, 0, 1)`, and the merge goes on normally, what goes wrong?'
+        options:
+          - id: lost-and-repeated
+            text: Run 0's 10 and 12 are never printed, and 6 and 7 are printed twice
+          - id: unsorted
+            text: The output is complete but no longer sorted
+          - id: nothing-wrong
+            text: Nothing, since 6 is the next value after 5 either way
+        correct: lost-and-repeated
+        explanation: >-
+          Run 0 has no entry, so its values are never read. When the 5 pops, run 1 pushes its
+          next value, the 6, again. Python prints 3, 4, 5, 6, 6, 7, 7, 11.
+      both:
+        prompt: Pushing both entries makes the heap hold two values from run 1. What follows?
+        options:
+          - id: duplicates
+            text: When the 5 pops, run 1 pushes 6 again, so 6 and 7 come out twice
+          - id: fine
+            text: Nothing goes wrong, the heap is just one entry larger
+          - id: crash
+            text: The next push raises `IndexError`
+        correct: duplicates
+        explanation: >-
+          Run 1 already had its 5 in the heap. Each run's entry is replaced only when it pops, so
+          an extra entry means values are read twice. Python prints 3, 4, 5, 6, 6, 7, 7, 10, 11, 12.
+      nothing:
+        prompt: If nothing is pushed for run 0 now, when is its 10 read?
+        options:
+          - id: never
+            text: Never, since only a popped entry triggers a read of its run
+          - id: later
+            text: When the heap runs empty, the merge reads the rest of run 0
+          - id: next-pop
+            text: On the next pop, which reads every run
+        correct: never
+        explanation: >-
+          A run is read again only when its own entry pops. With no entry, run 0 is forgotten, and
+          Python prints 3, 4, 5, 6, 7, 11 without the 10 and the 12.
