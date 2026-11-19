@@ -1,0 +1,540 @@
+id: greedy-choices-review
+title: "Greedy choices: review"
+description: Fresh inputs for the Greedy choices skills, for recall on later days. No worked examples this time.
+heading: Does the rule hold?
+
+questions:
+  - id: greedy-review-trace-budget
+    format: step-trace
+    heading: Predict each step
+    tags: [greedy, sorting, python]
+    prompt: >-
+      The board shows `prices` after line 2 has sorted it. `budget` starts at 20. Predict each
+      step before it is shown.
+    code: |
+      def most_gifts(prices, budget):
+          prices.sort()
+          count = 0
+          i = 0
+          while i < len(prices) and prices[i] <= budget:
+              budget -= prices[i]
+              count += 1
+              i += 1
+          return count
+
+      most_gifts([8, 2, 11, 5, 3, 6], 20)
+    sequence: { kind: array, name: prices, cells: [2, 3, 5, 6, 8, 11] }
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: What is `budget` after the first three passes?
+        options:
+          - id: ten
+            text: '10'
+            explanation: The first three passes spend 2, 3 and 5, the three cheapest prices. 20 - 10 is 10.
+          - id: fifteen
+            text: '15'
+            explanation: 15 is left after two passes. The third pass spends the 5 as well.
+          - id: twelve
+            text: '12'
+            explanation: >-
+              That spends the 8 first, as listed in the call. Line 2 sorts the list, so the loop
+              spends the cheapest prices first.
+        correct: ten
+        also:
+          - { name: i, at: 3 }
+      - line: 5
+        ask: Where is `i` when the loop stops?
+        pointer: i
+        correct: 4
+        explanation: >-
+          The 6 fits in the 10 left, so it is bought and 4 is left. The 8 is more than 4, so the
+          condition fails with `i` on the 8.
+        misses:
+          - index: 3
+            explanation: 10 is left when `i` reaches the 6, and 6 is not more than 10, so the loop buys it.
+          - index: 5
+            explanation: >-
+              The loop stops at the first price that does not fit. The 8 is more than the 4 left,
+              so `i` never moves past it.
+        elsewhere: The loop buys 2, 3, 5 and 6, then stops at the first price above the 4 left.
+      - line: 9
+        ask: What does the call return?
+        options:
+          - id: four
+            text: '4'
+            explanation: Four gifts were bought (2, 3, 5 and 6), for 16 of the 20.
+          - id: five
+            text: '5'
+            explanation: The fifth cheapest price is 8, and only 4 is left, so the loop stops before it.
+          - id: three
+            text: '3'
+            explanation: After 2, 3 and 5, 10 is left, and the 6 fits, so a fourth gift is bought.
+        correct: four
+
+  - id: greedy-review-rope-rule
+    heading: Which rule is it?
+    tags: [greedy, heap, python]
+    prompt: |-
+      Joining two ropes costs their total length, and the joined rope goes back on the pile.
+
+      ```python
+      import heapq
+
+      def join_cost(ropes):
+          heapq.heapify(ropes)
+          cost = 0
+          while len(ropes) > 1:
+              a = heapq.heappop(ropes)
+              b = heapq.heappop(ropes)
+              cost += a + b
+              heapq.heappush(ropes, a + b)
+          return cost
+      ```
+
+      Which local rule does the loop apply at each step?
+    options:
+      - id: two-shortest
+        text: Join the two shortest ropes on the pile
+        explanation: >-
+          `heapq` is a min-heap, so each `heappop` returns the shortest rope left. The loop joins
+          the two shortest, then pushes their sum back.
+      - id: two-longest
+        text: Join the two longest ropes on the pile
+        explanation: >-
+          `heappop` on a `heapq` heap returns the smallest item. Getting the longest would need
+          negated lengths.
+      - id: given-order
+        text: Join the ropes in the order they were given
+        explanation: >-
+          `heapify` reorders the list into a heap, and each pop takes the smallest rope left,
+          whatever its position in the input.
+      - id: short-to-long
+        text: Join the shortest rope to the longest one
+        explanation: >-
+          Both `a` and `b` come from `heappop`, so both are the smallest at the moment they are
+          popped. The longest rope is never chosen on purpose.
+    correct: two-shortest
+    followUps:
+      two-longest:
+        prompt: After `heapify([4, 3, 2, 6])`, what does the first `heappop` return?
+        options:
+          - { id: two, text: '2, the smallest length' }
+          - { id: six, text: '6, the largest length' }
+          - { id: four, text: '4, the first length in the input' }
+        correct: two
+        explanation: >-
+          Python's `heapq` keeps the smallest item at index 0, and `heappop` removes it. A
+          max-heap is usually built by pushing negated values.
+      given-order:
+        prompt: What does `heapq.heapify(ropes)` do to the list before the loop?
+        options:
+          - { id: heap, text: 'It rearranges it so the smallest length is at index 0' }
+          - { id: nothing, text: 'Nothing, it only checks that the list is a heap' }
+          - { id: copy, text: 'It returns a sorted copy and leaves the list alone' }
+        correct: heap
+        explanation: >-
+          `heapify` rearranges the list in place into a min-heap. From then on, every pop takes
+          the smallest rope left, not the next one listed.
+      short-to-long:
+        prompt: When `b` is popped, which rope does it hold?
+        options:
+          - { id: next-shortest, text: 'The shortest rope left after `a` was removed' }
+          - { id: longest, text: 'The longest rope on the pile' }
+          - { id: last, text: 'The rope pushed most recently' }
+        correct: next-shortest
+        explanation: >-
+          Every `heappop` takes the current minimum. With `a` gone, `b` is the second shortest of
+          the ropes at the start of the pass.
+
+  - id: greedy-review-tap-first-load
+    format: tap-cell
+    heading: Tap the load the rule takes first
+    tags: [greedy]
+    prompt: >-
+      Any part of a load can be taken, and the rule takes the load worth the most per kg first.
+      The cells show each load's value, and `weight` gives its kg. Tap the load the rule takes
+      from first.
+    code: |
+      weight = [4, 3, 5, 2, 6]
+      value  = [10, 12, 15, 5, 21]
+    sequence: { kind: array, name: value, cells: [10, 12, 15, 5, 21] }
+    correct: 1
+    explanation: >-
+      12 over 3 kg is 4 per kg, the best rate of the five. The others give 2.5, 3, 2.5 and 3.5
+      per kg.
+    misses:
+      - index: 0
+        explanation: 10 over 4 kg is 2.5 per kg, below the 4 per kg of the 12.
+      - index: 2
+        explanation: 15 is a large value, but over 5 kg it is 3 per kg. The 12 over 3 kg gives 4.
+      - index: 3
+        explanation: This is the lightest load, but 5 over 2 kg is only 2.5 per kg.
+      - index: 4
+        explanation: 21 is the largest value, but over 6 kg it is 3.5 per kg, below 4.
+
+  - id: greedy-review-tap-failing-amount
+    format: tap-cell
+    heading: Tap the amount that breaks the rule
+    tags: [greedy]
+    prompt: >-
+      The coins are 1, 7 and 10, and the rule takes the largest coin that fits until nothing is
+      owed. Each cell is an amount owed. Tap the amount the rule pays with more coins than it
+      needs.
+    code: |
+      coins = [10, 7, 1]   # largest first
+    sequence: { kind: array, name: amount, cells: [8, 9, 10, 11, 12, 13, 14] }
+    correct: 6
+    explanation: >-
+      The rule pays 14 as 10 + 1 + 1 + 1 + 1, five coins, while two 7s pay it with two. Once the
+      10 is taken, only 1s fit in the 4 left.
+    misses:
+      - index: 0
+        explanation: The rule pays 7 + 1, two coins. No coin is 8, so two is the best.
+      - index: 1
+        explanation: >-
+          The rule pays 7 + 1 + 1, three coins. No two coins add up to 9 (the pairs give 2, 8,
+          11, 14, 17 and 20), so three is the best.
+      - index: 2
+        explanation: One 10 pays it.
+      - index: 3
+        explanation: The rule pays 10 + 1, two coins, which is the best for 11.
+      - index: 4
+        explanation: >-
+          The rule pays 10 + 1 + 1, three coins. No two coins add up to 12, so three is the best.
+      - index: 5
+        explanation: >-
+          The rule pays 10 + 1 + 1 + 1, four coins. Using a 7 instead leaves 6, which takes six
+          1s, so four is the best.
+
+  - id: greedy-review-value-first
+    heading: Which input breaks the rule?
+    tags: [greedy]
+    prompt: >-
+      A bag holds 10 kg, and each item is taken whole or not at all. The rule takes the most
+      valuable item that still fits, then the next, skipping any that do not fit. Each item is
+      written as (weight, value). Which list makes the rule end with less value than the best?
+    options:
+      - id: eight-heavy
+        text: (8 kg, 20), (5 kg, 14), (5 kg, 14)
+        explanation: >-
+          The rule takes the item worth 20, and then neither 5 kg item fits in the 2 kg left. The
+          two 5 kg items fill the bag and are worth 28.
+      - id: six-four
+        text: (6 kg, 20), (4 kg, 14), (5 kg, 9)
+        explanation: >-
+          The rule takes 20 and then 14, which fill the bag for 34. No other pair that fits is
+          worth more.
+      - id: nine-heavy
+        text: (9 kg, 30), (5 kg, 12), (5 kg, 12)
+        explanation: >-
+          The rule takes the item worth 30. The two 5 kg items fit together but are worth only 24,
+          so the rule's choice is the best.
+      - id: all-fit
+        text: (3 kg, 20), (3 kg, 14), (3 kg, 9)
+        explanation: >-
+          All three weigh 9 kg together, so the rule takes every item, and nothing can beat that.
+    correct: eight-heavy
+    followUps:
+      six-four:
+        prompt: The rule takes the 6 kg item, then the 4 kg item. How much room is left, and is 34 the best?
+        options:
+          - { id: full, text: 'None is left, and no other choice beats 34' }
+          - { id: room, text: '1 kg is left, so the 5 kg item can still be added' }
+          - { id: swap, text: 'None is left, but 4 kg and 5 kg together are worth more' }
+        correct: full
+        explanation: >-
+          6 + 4 is 10. The only other pair that fits, 4 kg and 5 kg, is worth 23, and no single
+          item beats 34. A counterexample needs a better choice that the rule misses.
+      nine-heavy:
+        prompt: Which is worth more, the 9 kg item alone or both 5 kg items?
+        options:
+          - { id: nine, text: 'The 9 kg item, worth 30 against 24' }
+          - { id: fives, text: 'The two 5 kg items, since they fill the bag' }
+          - { id: equal, text: 'They are worth the same' }
+        correct: nine
+        explanation: >-
+          Filling the bag is not the goal. Here the rule leaves 1 kg empty and still wins, so this
+          list does not break it.
+      all-fit:
+        prompt: What do the three items weigh together, and what does that mean for the rule?
+        options:
+          - { id: fits, text: '9 kg, so every item fits and no choice is needed' }
+          - { id: over, text: '12 kg, so the rule must leave one item out' }
+          - { id: first, text: '9 kg, but the rule takes only the most valuable one' }
+        correct: fits
+        explanation: >-
+          When everything fits, every sensible rule takes everything. A counterexample needs a
+          choice where taking one item crowds out a better set.
+
+  - id: greedy-review-tap-packed-item
+    format: tap-cell
+    heading: Tap the item the rule should have left out
+    tags: [greedy, sorting]
+    prompt: >-
+      A box holds 13 kg, and the goal is to pack as much weight as possible. The rule packs the
+      heaviest item that still fits, then the next, skipping any that do not fit. It packs 12 kg,
+      while one packing fills all 13. Tap the item the rule packs that the full packing leaves
+      out.
+    code: |
+      items = [4, 7, 4, 5]   # kg
+      # rule: 7, then 5, then neither 4 fits in the 1 kg left
+    sequence: { kind: array, name: items, cells: [4, 7, 4, 5] }
+    correct: 1
+    explanation: >-
+      The only full packing is 4 + 4 + 5. The rule commits to the 7 first, and after the 5 only
+      1 kg is left, so both 4s are lost.
+    misses:
+      - index: 0
+        explanation: >-
+          The full packing, 4 + 4 + 5, uses this 4. The rule skips it because only 1 kg is left
+          after the 7 and the 5.
+      - index: 2
+        explanation: >-
+          The full packing, 4 + 4 + 5, uses this 4 as well. The rule skips it for lack of room.
+      - index: 3
+        explanation: The 5 is in both packings, the rule's 7 + 5 and the full 4 + 4 + 5.
+
+  - id: greedy-review-coin-set
+    heading: Which input keeps it safe?
+    tags: [greedy]
+    prompt: >-
+      The rule takes the largest coin that fits until nothing is owed. For which coin set does it
+      use the fewest coins for every amount, and why?
+    options:
+      - id: multiples
+        text: '`[1, 5, 10, 20]`, as each coin is a multiple of the one below'
+        explanation: >-
+          When each coin is a multiple of the one below, any group of smaller coins that adds up
+          to a larger coin can be swapped for it, so taking the largest first never costs coins.
+          The condition is enough but not required; 1, 5, 10 and 25 are also safe.
+      - id: has-one
+        text: '`[1, 4, 6]`, since any amount at all can be paid with 1s'
+        explanation: >-
+          A 1 coin means every amount can be paid, not that the count is lowest. For 8, the rule
+          takes the 6 and pays the 2 left in 1s, though two 4s would do.
+      - id: spread
+        text: '`[1, 5, 8]`, since no two coins are close in value'
+        explanation: >-
+          The rule pays 10 as 8 + 1 + 1, three coins, while 5 + 5 is two. Spacing alone does not
+          make a set safe.
+      - id: common-factor
+        text: '`[1, 6, 9]`, since both 6 and 9 are multiples of 3'
+        explanation: >-
+          The rule pays 12 as 9 + 1 + 1 + 1, four coins, while 6 + 6 is two. 9 is not a multiple
+          of 6, so two 6s cannot be swapped for a 9.
+    correct: multiples
+    followUps:
+      has-one:
+        prompt: With coins 1, 4 and 6, how does the rule pay 8, and what is the fewest coins?
+        options:
+          - { id: loses, text: '6 + 1 + 1, three coins, while 4 + 4 is two' }
+          - { id: same, text: '4 + 4, two coins, which is the fewest' }
+          - { id: ones, text: 'Eight 1s, since 6 does not divide 8' }
+        correct: loses
+        explanation: >-
+          The rule takes the 6 because it fits, and only 1s fit in the 2 left. A 1 coin
+          guarantees that the rule finishes, not that it finishes with the fewest coins.
+      spread:
+        prompt: With coins 1, 5 and 8, how many coins does the rule use for 10?
+        options:
+          - { id: three, text: 'Three, 8 + 1 + 1, while 5 + 5 is two' }
+          - { id: two, text: 'Two, 5 + 5' }
+          - { id: one, text: 'One, since 10 is close to 8' }
+        correct: three
+        explanation: >-
+          The 8 fits in 10, so the rule takes it, and the 2 left needs two 1s. A coin that fits
+          can still be the wrong first pick.
+      common-factor:
+        prompt: Why can the rule not swap two 6s for one 9?
+        options:
+          - { id: values, text: 'Two 6s make 12, not 9, so the swap changes the amount' }
+          - { id: allowed, text: 'It can, which is why the set is safe' }
+          - { id: order, text: 'The rule never looks at the 6 once it has taken a 9' }
+        correct: values
+        explanation: >-
+          The swap argument needs groups of smaller coins that add up to exactly one larger coin.
+          A shared factor of 3 does not give that.
+
+  - id: greedy-review-count-assumption
+    heading: Which fact makes it safe?
+    tags: [greedy, sorting]
+    prompt: >-
+      "Buy the cheapest gift left while it fits" buys the most gifts within a budget. Which fact
+      does the argument for that rule rely on?
+    options:
+      - id: same-worth
+        text: Each gift adds the same 1 to what is counted
+        explanation: >-
+          Because every gift is worth 1, swapping any bought gift for a cheaper one never lowers
+          the count and never leaves less money. If gifts had different worths, cheap could mean
+          worthless.
+      - id: whole-prices
+        text: Every price is a whole number of dollars
+        explanation: >-
+          Prices of 2.50 and 3.75 work just as well. The argument compares prices, and it never
+          needs them to be whole.
+      - id: distinct
+        text: No two gifts have the same price
+        explanation: >-
+          With two gifts at 4, either one can be bought first, and the count is the same. Ties do
+          not change the argument.
+      - id: affordable
+        text: The cheapest gift costs less than the budget
+        explanation: >-
+          If no gift fits, the rule buys none, and that is also the best. The argument does not
+          need any gift to be affordable.
+    correct: same-worth
+    followUps:
+      whole-prices:
+        prompt: Prices are 2.50, 3.75 and 6.00 and the budget is 7. What does cheapest first buy?
+        options:
+          - { id: two, text: '2.50 and 3.75, two gifts, which is the most' }
+          - { id: one, text: 'Only the 6.00, since prices must be whole' }
+          - { id: none, text: 'Nothing, since the rule cannot compare these prices' }
+        correct: two
+        explanation: >-
+          2.50 + 3.75 is 6.25, and adding 6.00 would pass 7. Comparing and adding prices works
+          for any numbers, so whole prices are not part of the argument.
+      distinct:
+        prompt: Two gifts cost 4 each. Does it matter which one the rule buys first?
+        options:
+          - { id: no, text: 'No, either one leaves the same budget' }
+          - { id: first, text: 'Yes, the one listed first is the safe pick' }
+          - { id: both, text: 'Yes, the rule must try both and keep the better' }
+        correct: no
+        explanation: >-
+          Equal prices leave equal budgets and add the same 1, so the two orders reach the same
+          count.
+      affordable:
+        prompt: Every gift costs more than the budget. What does the rule buy, and is that the best?
+        options:
+          - { id: none, text: 'Nothing, which is the best possible' }
+          - { id: cheapest, text: 'The cheapest gift, going over the budget' }
+          - { id: fails, text: 'Nothing, which shows the rule is unsafe' }
+        correct: none
+        explanation: >-
+          When nothing fits, zero gifts is the only answer. The rule is still right, so this case
+          is not what the argument rests on.
+
+  - id: greedy-review-which-change-breaks
+    heading: Which change breaks the rule?
+    tags: [greedy]
+    prompt: >-
+      A sack holds 9 kg. Grain A is 3 kg worth 12 (4 per kg), grain B is 5 kg worth 17 (3.4 per
+      kg), and grain C is 4 kg worth 14 (3.5 per kg). Any part of a grain can be taken, and taking
+      the best rate first gives all of A, all of C and 2 kg of B, worth 32.8, the best. Which one
+      change makes the rule unsafe?
+    options:
+      - id: whole
+        text: Each grain is sold only as a whole sack
+        explanation: >-
+          The rule then takes A and C (7 kg, worth 26), and B no longer fits in the 2 kg left. B
+          and C together fill 9 kg and are worth 31.
+      - id: bigger
+        text: The sack holds 18 kg instead of 9 kg
+        explanation: >-
+          The grains weigh 12 kg in all, so every grain fits and the rule takes all three, worth
+          43. Nothing can beat that.
+      - id: tie
+        text: C's value drops so that it ties B at 3.4 per kg
+        explanation: >-
+          Equal rates add the same value per kg in either order, so the rule still fills the sack
+          as well as any plan can.
+      - id: new-best
+        text: A fourth grain with the best rate of all is added
+        explanation: >-
+          The rule takes it first, and leftover room is still filled at the next best rate. The
+          argument does not depend on which grains exist.
+    correct: whole
+    followUps:
+      bigger:
+        prompt: With an 18 kg sack, what does the rule take?
+        options:
+          - { id: all, text: 'All three grains, since they weigh 12 kg together' }
+          - { id: best, text: 'Only A, since it has the best rate' }
+          - { id: half, text: 'Half of each grain, to leave room' }
+        correct: all
+        explanation: >-
+          More room never breaks the rate argument. Here it removes the choice altogether, since
+          everything fits.
+      tie:
+        prompt: If B and C both give 3.4 per kg, does the order the rule takes them in change the total?
+        options:
+          - { id: same, text: 'No, each kg of either adds 3.4' }
+          - { id: changes, text: 'Yes, the rule must take the heavier grain first' }
+          - { id: stops, text: 'Yes, the rule stops at a tie' }
+        correct: same
+        explanation: >-
+          With divisible grain, the total depends only on how many kg are taken at each rate. A tie
+          gives two orders with the same total.
+      new-best:
+        prompt: What does the rule do with a new grain D of 2 kg worth 10 (5 per kg)?
+        options:
+          - { id: first, text: 'Takes all of D first, then fills the rest by rate as before' }
+          - { id: skip, text: 'Skips D, since the sack was already planned' }
+          - { id: last, text: 'Takes D last, after A, C and B' }
+        correct: first
+        explanation: >-
+          D has the best rate, so it goes first. The rest of the sack is filled at the best rates
+          left, and the result is still the best possible.
+
+  - id: greedy-review-stamps
+    heading: Which fact makes it safe?
+    tags: [greedy, sorting]
+    prompt: >-
+      Stamps worth 20, 5, 15, 10 and 25 cents can each be used once. A letter needs at least 50
+      cents, on as few stamps as possible. Taking the largest stamp left gives 25, 20 and 15, three
+      stamps worth 60. Is three the fewest, and why?
+    options:
+      - id: top-two
+        text: Yes, since the two largest stamps total only 45
+        explanation: >-
+          If the two largest stamps fall short, every pair falls short, so no letter can go with
+          two stamps. Three is the fewest.
+      - id: exact-fit
+        text: No, since 25 + 20 + 5 makes exactly 50, wasting less
+        explanation: >-
+          That is still three stamps. The goal is the fewest stamps for at least 50, so going over
+          by 10 costs nothing.
+      - id: two-25s
+        text: No, since 25 + 25 makes 50 with only two stamps
+        explanation: There is only one 25-cent stamp, and each stamp can be used once.
+      - id: sorted-order
+        text: Yes, since the stamps were taken in sorted order
+        explanation: >-
+          The order is how the rule works, not a reason it is right. A proof has to rule out every
+          pair of stamps.
+    correct: top-two
+    followUps:
+      exact-fit:
+        prompt: How many stamps does 25 + 20 + 5 use, compared with the rule's choice?
+        options:
+          - { id: same, text: 'Three, the same as the rule' }
+          - { id: fewer, text: 'Two, since 5 is too small to count' }
+          - { id: more, text: 'Four, since exact sums need more stamps' }
+        correct: same
+        explanation: >-
+          Both plans use three stamps. For an "at least" goal, landing exactly on 50 is worth
+          nothing extra.
+      two-25s:
+        prompt: Which two stamps add up to the most?
+        options:
+          - { id: top, text: '25 and 20, for 45' }
+          - { id: double, text: '25 and 25, for 50' }
+          - { id: mixed, text: '25 and 15, for 40' }
+        correct: top
+        explanation: >-
+          Each stamp can be used once, so the best pair is the two largest, 45. That is under 50,
+          so two stamps never work.
+      sorted-order:
+        prompt: Which fact rules out every plan with two stamps?
+        options:
+          - { id: top, text: 'The two largest stamps total 45, under 50' }
+          - { id: sorted, text: 'The rule went through the stamps in sorted order' }
+          - { id: count, text: 'There are five stamps in all' }
+        correct: top
+        explanation: >-
+          No pair beats the two largest stamps, so if they fall short, every pair does. That is
+          the fact that makes "largest first" safe for an "at least" goal.
