@@ -69,16 +69,34 @@ export function examPassed(drills: readonly CurriculumDrill[], mix: readonly str
 	const byKey = new Map(drills.map((drill) => [cardKey(drill.deckId, drill.questionId), drill]));
 	const allowedMisses = Math.min(EXAM_MAX_MISSES, needed - 1);
 
+	// The drills that share a legacyPassBefore version are the checkpoint's pool
+	// before that version. An older sitting of that pool passes under the rule it
+	// was taken under: a full sitting of the old pool on one day, with few enough misses.
+	const legacyPools = new Map<number, number>();
+	for (const drill of drills) {
+		if (drill.legacyPassBefore) legacyPools.set(drill.legacyPassBefore, (legacyPools.get(drill.legacyPassBefore) ?? 0) + 1);
+	}
+	const legacyDays = new Map<string, { version: number; attempts: Attempt[] }>();
+
 	const days = new Map<string, Attempt[]>();
 	for (const attempt of countedAttempts([...attempts].sort(compareAttempts))) {
 		const drill = byKey.get(cardKey(attempt.deckId, attempt.questionId));
 		if (!drill) continue;
-		if (attempt.correct && drill.legacyPassBefore && (attempt.examRulesVersion ?? 1) < drill.legacyPassBefore) {
-			return true;
+		if (drill.legacyPassBefore && (attempt.examRulesVersion ?? 1) < drill.legacyPassBefore) {
+			const key = `${drill.legacyPassBefore}|${attempt.day}`;
+			const old = legacyDays.get(key) ?? { version: drill.legacyPassBefore, attempts: [] };
+			old.attempts.push(attempt);
+			legacyDays.set(key, old);
 		}
 		const sitting = days.get(attempt.day) ?? [];
 		sitting.push(attempt);
 		days.set(attempt.day, sitting);
+	}
+
+	for (const { version, attempts: sitting } of legacyDays.values()) {
+		const oldNeeded = Math.min(EXAM_SIZE, legacyPools.get(version)!);
+		const oldMisses = Math.min(EXAM_MAX_MISSES, oldNeeded - 1);
+		if (sitting.length >= oldNeeded && sitting.filter((attempt) => !attempt.correct).length <= oldMisses) return true;
 	}
 
 	for (const sitting of days.values()) {
