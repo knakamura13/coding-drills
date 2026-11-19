@@ -30,11 +30,13 @@ export function firstWrongId(question: Question): string {
 export async function currentQuestion(page: Page): Promise<ChoiceQuestion> {
 	await page.getByRole('radio').first().waitFor();
 	const shown = (await page.locator('fieldset label').allInnerTexts()).map((label) => label.trim()).sort();
-	const match = deck.questions.find((candidate) => {
+	const matches = (candidate: Question) => {
 		if (!isChoiceQuestion(candidate)) return false;
 		const expected = candidate.options.map((option) => text(option.text)).sort();
 		return JSON.stringify(expected) === JSON.stringify(shown);
-	});
+	};
+	// Review can swap a due card for a fresh variant of the same skill from another deck (#41).
+	const match = deck.questions.find(matches) ?? allDecks.flatMap((other) => other.questions).find(matches);
 	if (!match || !isChoiceQuestion(match)) throw new Error(`no deck question has these options: ${shown.join(' | ')}`);
 	return match;
 }
