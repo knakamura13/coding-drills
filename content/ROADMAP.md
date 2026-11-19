@@ -177,6 +177,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | in review |
 | Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | in review |
 | Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | in review |
+| Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | in review |
+| Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | in review |
+| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | in review |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
