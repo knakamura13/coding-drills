@@ -17,14 +17,14 @@ button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
 button[aria-pressed=true] { background: #225c45; color: white; }
 nav { display: flex; gap: 8px; flex-wrap: wrap; }
 article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; padding: 19px; margin: 17px 0; }
-pre { white-space: pre-wrap; background: #edf3ed; padding: 10px 12px; border-radius: 5px; font-size: .92rem; }
 table { border-collapse: collapse; margin: 14px 0; }
 caption { text-align: left; font-size: .88rem; color: #41564a; padding-bottom: 6px; }
-th, td { border: 1px solid #9fb3a4; min-width: 44px; height: 36px; padding: 5px 8px; text-align: center; }
+th, td { border: 1px solid #9fb3a4; width: 45px; height: 45px; padding: 0; text-align: center; }
 th { background: #f4f4ed; }
-td.marked { background: #e4f0df; font-weight: 650; }
-td.active, td.answer { background: #d2e9ce; outline: 2px solid #28775c; outline-offset: -2px; }
-td.active, td.selectable { padding: 0; }
+th.axis { background: #e4f0df; }
+td.marked { background: #f4f7f0; font-weight: 650; }
+td.active, td.answer, td.target { background: #d2e9ce; outline: 2px solid #28775c; outline-offset: -2px; }
+td.selectable button[aria-pressed=true] { background: #fff0e7; color: #1a4937; box-shadow: inset 0 0 0 2px #a24d2d; }
 td input, td button { width: 44px; height: 44px; text-align: center; color: #1a4937; font: inherit; padding: 0; border: 0; border-radius: 0; background: transparent; }
 td input:focus-visible { outline: 2px solid #246f9c; outline-offset: -2px; }
 td input[aria-invalid=true] { background: #fff0e7; }
@@ -72,14 +72,17 @@ const combined = {
 };
 
 const cellMeaning = {
-  title: "Read what one cell represents",
-  context: 'Start the table for “cat” and “cac.” Look at the cell where the two a’s meet.',
-  grid: ["ca", "ca", ["1", "0", "0", "2"]],
-  question: 'What is this cell designed to measure?',
-  options: ['The longest run anywhere in the words', 'The run “ca” ending at that pair of letters'],
+  title: "What does the highlighted cell measure?",
+  grid: [...board, openingCells],
+  highlightIndex: longestCell,
+  options: ['The longest shared stretch anywhere in the words', 'The length of the shared stretch ending at this pair'],
   right: 1,
-  feedback: 'A cell describes only the run ending at its pair of letters. An earlier run can have a different length.',
-  retry: {example:'Compare “planet” and “plants.” At the pair n / n, the cell is 4.',question:'What does the 4 count?',options:['The run “plan” ending at that pair of letters','The longest run anywhere in the words'],right:0}
+  feedback: 'The 2 counts the two matching letters that end at the highlighted pair. A different pair can have a different length.',
+  retry: {
+   grid: ["pen", "pet", openingCells],
+   options: ['The length of the shared stretch ending at this pair', 'The longest shared stretch anywhere in the words'],
+   right: 0
+  }
 };
 
 const card = document.getElementById("card");
@@ -104,16 +107,24 @@ function heading(text){
  h.tabIndex=-1;
  return h;
 }
-function showGrid([across, down, values], label, {parent=card, activeIndex, onChoose, answerIndex}={}){
+function boardCaption([across, down]){
+ return "“"+across+"” across, “"+down+"” down";
+}
+function showGrid([across, down, values], label, {parent=card, activeIndex, onChoose, answerIndex, highlightIndex}={}){
+ const pointedIndex = activeIndex ?? answerIndex ?? highlightIndex ?? -1;
  const table = add("table", "", parent);
  add("caption", label, table);
  const header = add("tr", "", add("thead", "", table));
  add("td", "", header);
- for(const letter of across)add("th", letter, header).scope = "col";
+ for(const [column, letter] of [...across].entries()){
+  const columnHeader = add("th", letter, header, column === pointedIndex%across.length ? "axis" : "");
+  columnHeader.scope = "col";
+ }
  const rows = add("tbody", "", table);
  for(const [row, letter] of [...down].entries()){
   const line = add("tr", "", rows);
-  add("th", letter, line).scope = "row";
+  const rowHeader = add("th", letter, line, row === Math.floor(pointedIndex/across.length) ? "axis" : "");
+  rowHeader.scope = "row";
   for(let column=0;column<across.length;column++){
    const index = row*across.length+column;
    const value = values[index];
@@ -129,11 +140,17 @@ function showGrid([across, down, values], label, {parent=card, activeIndex, onCh
     input.setAttribute("aria-label",coordinate);
    }else if(onChoose){
     cell.classList.add("selectable");
-   control(value,()=>onChoose(index),cell).setAttribute("aria-label",coordinate+", value "+value);
+    const button = control(value,()=>onChoose(index, button),cell);
+    button.setAttribute("aria-label",coordinate+", value "+value);
+    button.setAttribute("aria-pressed","false");
    }else{
     cell.textContent = value || "-";
     if(!value)cell.setAttribute("aria-label","Not filled in yet");
     if(value==="?")cell.setAttribute("aria-label","Cell to predict");
+   }
+   if(index===highlightIndex){
+    cell.classList.add("target");
+    cell.setAttribute("aria-label","Highlighted cell at index ("+row+", "+column+"), value "+value);
    }
    if(index===answerIndex)cell.classList.add("answer");
   }
@@ -166,23 +183,25 @@ function showSetup(focus=true){
  }
  if(focus)h.focus();
 }
-function completeBoard(label){
- return showGrid([...board, solution], label, {answerIndex:longestCell});
+function completeBoard(){
+ return showGrid([...board, solution], boardCaption(board), {answerIndex:longestCell});
 }
 function chooseResult(){
  const h=heading(solved ? "Longest shared stretch" : "Find the result");
  if(solved){
-  completeBoard("Completed table");
+  completeBoard();
   add("p", 'The largest value is 2 at a / a. It records the shared stretch “ca.”');
   control("Compare the combined card",()=>start("combined"),card);
  }else{
-  add("p","Select the cell that holds the length of the longest stretch shared by both words.");
+  add("p","Select the cell that holds the longest shared stretch.");
   const feedback=add("p","");
   feedback.id="result-feedback";
   feedback.setAttribute("role","status");
-  const table=showGrid([...board,cells],"“cat” across, “cac” down",{
-   onChoose:index=>{
+  const table=showGrid([...board,cells],boardCaption(board),{
+   onChoose:(index, picked)=>{
     if(index===longestCell){solved=true;render();return}
+    table.querySelector('[aria-pressed="true"]')?.setAttribute("aria-pressed","false");
+    picked.setAttribute("aria-pressed","true");
     feedback.textContent="That cell only measures the stretch ending at its pair. Compare its value with the rest of the table.";
    }
   });
@@ -202,7 +221,7 @@ function fillTable(){
   : "Enter the length of the shared stretch ending at "+column+" / "+row+" in the highlighted cell.");
  if(!boardRetry)add("p",filled+" of "+fillOrder.length+" cells filled",card,"small");
  const form=add("form","");
- const table=showGrid([across,down,values],"“"+across+"” across, “"+down+"” down", {parent:form,activeIndex});
+ const table=showGrid([across,down,values],boardCaption([across,down]), {parent:form,activeIndex});
  const input=table.querySelector("input");
  const check=add("button","Check cell",form);
  check.type="submit";
@@ -247,10 +266,9 @@ function render(){
  const step = mode==="guided" ? cellMeaning : combined;
  const prompt = retry ? step.retry : step;
  const h=heading(step.title);
- if(!retry)add("p",step.context);
- const table=prompt.grid ? showGrid(prompt.grid, "“cat” across, “cac” down") : null;
- if(prompt.example)add("pre",prompt.example);
- add("p",prompt.question);
+ if(step.context)add("p",step.context);
+ const table=showGrid(prompt.grid,boardCaption(prompt.grid),{highlightIndex:step.highlightIndex});
+ if(prompt.question)add("p",prompt.question);
  const choices=add("div","",card,"choices");
  prompt.options.forEach((option,index)=>control(option,()=>{
   for (const button of choices.children)button.disabled=true;
@@ -261,7 +279,7 @@ function render(){
   add("p",mode==="guided"?step.feedback:step.feedback[index],result);
   if(mode==="combined"){
    if(correct){
-    table.replaceWith(completeBoard("Completed table with the longest stretch marked"));
+    table.replaceWith(completeBoard());
     add("p", 'The highlighted 2 represents “ca.”',result);
    }else{
     control("Try again",render,result);
