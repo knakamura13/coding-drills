@@ -1,0 +1,570 @@
+id: repeated-states
+title: Repeated states
+description: Say what a recursive call solves, spot the calls that repeat it, and answer a repeat from a cache. Each card opens with a worked example, then asks for one decision.
+heading: What does the call solve?
+
+questions:
+  - id: suffix-subproblem
+    heading: What does the call answer?
+    tags: [dp, recursion]
+    prompt: |-
+      **Worked example:** `climb(n)` counts the ways to climb `n` steps, one or two at a time.
+      Its subproblem is "the ways to climb the `n` steps still left". `climb(total)` answers
+      the whole question, and `climb(0)` is the stopping case.
+
+      Now a string is split into dictionary words:
+
+      ```python
+      def can_split(i):
+          if i == len(s):
+              return True
+          for w in words:
+              if s.startswith(w, i) and can_split(i + len(w)):
+                  return True
+          return False
+      ```
+
+      Which sentence names the subproblem `can_split(i)` solves?
+    options:
+      - id: suffix
+        text: Whether `s[i:]`, the part from index `i` on, splits into words
+        explanation: >-
+          The call is only reached once `s[:i]` has been split, and it looks only at what is
+          left. It succeeds when a word starts at `i` and the call after that word succeeds, down
+          to `i == len(s)`, where nothing is left. So `can_split(0)` answers the whole question.
+      - id: prefix
+        text: Whether `s[:i]`, the first `i` letters, splits into words
+        explanation: >-
+          The first `i` letters were handled by the calls above this one. This call only reads
+          from index `i` on, so its answer is about the rest of the string.
+      - id: word-at-i
+        text: Whether one of the words in `words` starts at index `i`
+        explanation: >-
+          A word at `i` is not enough. The `and` also needs `can_split(i + len(w))` to succeed, so
+          the whole rest of the string has to split.
+      - id: count-splits
+        text: How many ways `s[i:]`, the part from index `i` on, splits into words
+        explanation: >-
+          The call returns `True` or `False` and stops at the first split that works. A count
+          would add up the results of every word instead of returning early.
+    correct: suffix
+    followUps:
+      prefix:
+        prompt: When `can_split(3)` starts, which part of `s` is still undecided?
+        options:
+          - id: from-three
+            text: "`s[3:]`, because the calls above it already split the first three letters"
+          - id: first-three
+            text: "`s[:3]`, because the argument counts the letters to split"
+          - id: whole-string
+            text: All of `s`, because every call checks the string from the start
+        correct: from-three
+        explanation: >-
+          A recursive call is handed what is left to do. Here the argument is where the rest of
+          the string begins, so the subproblem is the suffix from that index.
+      word-at-i:
+        prompt: >-
+          With `words = ["ice", "cone"]` and `s = "icecold"`, a word starts at index 0. What does
+          `can_split(0)` return?
+        options:
+          - id: rest-fails
+            text: "`False`, because after `ice` the rest, `cold`, does not split"
+          - id: word-found
+            text: "`True`, because `ice` starts at index 0"
+          - id: error
+            text: It raises an error, because `cold` is not in `words`
+        correct: rest-fails
+        explanation: >-
+          The subproblem includes everything after index `i`. A word at `i` only moves the
+          question on to `can_split(i + len(w))`, and that call has to succeed too.
+      count-splits:
+        prompt: What does `can_split(i)` do when the first word it tries leads to a full split?
+        options:
+          - id: returns-true
+            text: It returns `True` at once and tries no other word
+          - id: adds-one
+            text: It adds one to a running count and tries the next word
+          - id: returns-count
+            text: It returns the number of words it has tried so far
+        correct: returns-true
+        explanation: >-
+          The return type is part of the subproblem's name. This one answers yes or no, so the
+          first success settles it. A counting version would sum over every word.
+
+  - id: key-misses-total
+    heading: What does the cache return?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      **Worked example:** `climb(n)` depends only on `n`, so `memo[n]` can hold its answer.
+
+      This counts the ways to put `+` or `-` before each number so the total is `target`.
+      With `nums = [1, 2, 1, 2]` and `target = 2` there are 3 ways.
+
+      ```python
+      memo = {}
+      def count(i, total):
+          if i == len(nums):
+              return 1 if total == target else 0
+          if i in memo:
+              return memo[i]
+          memo[i] = (count(i + 1, total + nums[i])
+                     + count(i + 1, total - nums[i]))
+          return memo[i]
+      ```
+
+      What does `count(0, 0)` return?
+    options:
+      - id: eight
+        text: "8, because the answer stored for an index is reused for any total"
+        explanation: >-
+          The first call to reach `i = 3` has `total = 4`, and its answer, 1, goes into
+          `memo[3]`. Every later call at `i = 3` gets that 1, whatever its total. The wrong
+          values add up to 8 (Python 3.12). The subproblem is "the ways to finish from index `i`
+          with this running total", so the key must be `(i, total)`.
+      - id: three
+        text: "3, because the cache only skips work and never changes a result"
+        explanation: >-
+          That holds only when the key names every input the answer depends on. Two calls with the
+          same `i` and different totals have different answers, yet they share one slot here.
+      - id: sixteen
+        text: "16, because every one of the 16 sign choices is counted"
+        explanation: >-
+          The reused values are wrong, but not that wrong. Calls at the last index return 0 or 1,
+          so the stored values are 1, 2, 4 and 8, not a count of all 16 sign patterns.
+      - id: key-error
+        text: "It raises `KeyError`, because `memo[i]` is read before it is stored"
+        explanation: >-
+          The `if i in memo` check guards the read, so `memo[i]` is only read once it exists.
+          No error is raised. The result is wrong instead.
+    correct: eight
+    followUps:
+      three:
+        prompt: >-
+          `count(3, 4)` and `count(3, 2)` both reach the last number, 2. What does each return?
+        options:
+          - id: one-and-one
+            text: Both return 1, so they can share a slot safely
+          - id: zero-and-zero
+            text: Both return 0, because one number cannot bring either total to 2
+          - id: differ
+            text: "`count(3, 4)` returns 1 and `count(3, 2)` returns 0, so one key cannot hold both"
+        correct: differ
+        explanation: >-
+          From total 4, only `- 2` reaches 2. From total 2, `+ 2` gives 4 and `- 2` gives 0, so
+          neither works. Different answers for the same `i` mean the total belongs in the key.
+      sixteen:
+        prompt: What does `memo[3]` hold after the first call at `i = 3` returns?
+        options:
+          - id: one
+            text: 1, the number of ways to finish from total 4
+          - id: two
+            text: 2, one for each sign of the last number
+          - id: sixteen-ways
+            text: 16, the number of sign patterns in all
+        correct: one
+        explanation: >-
+          A slot holds the answer of the call that filled it, not a count of every pattern. Here
+          `memo[3]` gets 1, and `memo[2]`, `memo[1]` and `memo[0]` get 2, 4 and 8, each built
+          from reused values.
+      key-error:
+        prompt: When can `return memo[i]` run?
+        options:
+          - id: after-store
+            text: Only after some call has stored `memo[i]`, because the `in` check comes first
+          - id: first-call
+            text: On the first call at each index, before anything is stored
+          - id: never
+            text: Never, because the store line always runs before it
+        correct: after-store
+        explanation: >-
+          `i in memo` is `False` until a value is stored, so the read is safe. The bug is not a
+          missing key but a key that leaves out the running total.
+
+  - id: first-repeat-tap
+    format: tap-cell
+    heading: Which call repeats?
+    tags: [dp, recursion]
+    prompt: >-
+      **Worked example:** plain `f(n) = f(n - 1) + f(n - 2)` calls, in order, `f(4)`, `f(3)`,
+      `f(2)`, `f(1)`, `f(0)`, then `f(1)` again. That sixth call repeats an earlier argument.
+      Now the cells list the arguments of `h(7)`'s calls in the order they start. Tap the first
+      call whose argument already appeared.
+    code: |
+      def h(n):
+          if n < 3:
+              return 1
+          return h(n - 2) + h(n - 3)
+
+      h(7)
+    sequence:
+      kind: array
+      name: calls
+      cells: [7, 5, 3, 1, 0, 2, 4, 2, 1]
+    correct: 7
+    explanation: >-
+      `h(7)` runs `h(5)` first, which runs `h(3)` and then `h(2)`. Back in `h(7)`, the second
+      call is `h(4)`, which calls `h(2)` again. That `h(2)` is the first argument seen twice.
+      Spotting the repeat comes before any cache: it is what a cache would save.
+    misses:
+      - index: 0
+        explanation: '`h(7)` is the first call, so nothing came before it to repeat.'
+      - index: 1
+        explanation: '`h(5)` is the first call made by `h(7)`, and no earlier call had 5.'
+      - index: 2
+        explanation: '`h(3)` comes from `h(5)`. 3 has not appeared before it.'
+      - index: 3
+        explanation: '`h(1)` comes from `h(3)` and is a stopping case, but no earlier call had 1.'
+      - index: 4
+        explanation: '`h(0)` is the second call from `h(3)`, and 0 is new.'
+      - index: 5
+        explanation: >-
+          This is the first `h(2)`, made by `h(5)` after `h(3)` returns. The later `h(2)` repeats
+          it, not the other way round.
+      - index: 6
+        explanation: >-
+          `h(4)` is `h(7)`'s second call. 4 is new: `h(7)` called `h(5)` and `h(4)`, and nothing
+          else had produced a 4.
+      - index: 8
+        explanation: >-
+          This `h(1)` repeats too, but it comes after the second `h(2)`, so it is not the first
+          repeat.
+
+  - id: count-repeated-calls
+    heading: How often is it called?
+    tags: [dp, recursion]
+    prompt: |-
+      **Worked example:** in plain `f(4)` with `f(n) = f(n - 1) + f(n - 2)`, circle the
+      arguments that repeat. `f(2)` is called twice, once under `f(3)` and once straight from
+      `f(4)`, and the stopping cases under it repeat with it.
+
+      ```text
+      f(4)
+      ├─ f(3)
+      │  ├─ (f(2)) ─ f(1), f(0)
+      │  └─ f(1)
+      └─ (f(2)) ─ f(1), f(0)
+      ```
+
+      Now `h(n) = h(n - 2) + h(n - 3)` with `h(n) = 1` for `n < 3`, and no cache. How many
+      times is `h(5)` called during `h(12)`?
+    options:
+      - id: three
+        text: "3, one for each call path from 12 down to 5"
+        explanation: >-
+          Every way to drop 7 using steps of 2 and 3 is one call path, and 7 = 2 + 2 + 3 in three
+          orders: 12, 10, 8, 5 and 12, 10, 7, 5 and 12, 9, 7, 5. Counting the calls in Python 3.12
+          confirms 3. Each of those calls redoes all of `h(5)`'s work.
+      - id: one
+        text: "1, because each argument is computed once"
+        explanation: >-
+          That is true only with a cache. Plain recursion starts a new `h(5)` every time a call
+          path reaches 5, and three paths do.
+      - id: two
+        text: "2, one under `h(10)` and one under `h(9)`"
+        explanation: >-
+          `h(10)` reaches 5 along two paths, through 8 and through 7. Together with the path
+          through 9 that makes three calls.
+      - id: seven
+        text: "7, because 12 - 5 = 7 levels separate them"
+        explanation: >-
+          7 is the gap, not a count of calls. Each call path covers the gap with steps of 2 and 3,
+          and only three orders of steps add up to 7.
+    correct: three
+    followUps:
+      one:
+        prompt: Without a cache, what happens each time a call path reaches 5?
+        options:
+          - id: new-call
+            text: A new `h(5)` starts and runs its whole body again
+          - id: returns-stored
+            text: Python returns the value from the earlier `h(5)`
+          - id: skipped
+            text: The call is skipped, because 5 was already reached
+        correct: new-call
+        explanation: >-
+          Python does not remember results on its own. A repeated argument is only answered from
+          storage when the code keeps a cache, which is what the next cards add.
+      two:
+        prompt: Along how many paths does `h(10)` reach 5?
+        options:
+          - id: two-paths
+            text: Two, 10, 8, 5 and 10, 7, 5
+          - id: one-path
+            text: One, 10, 7, 5
+          - id: three-paths
+            text: Three, because every path from 12 goes through 10
+        correct: two-paths
+        explanation: >-
+          From 10 the gap is 5, which is 2 + 3 or 3 + 2. Add the path through 9 (12, 9, 7, 5) and
+          there are three calls in all.
+      seven:
+        prompt: Which list counts the calls to `h(5)`?
+        options:
+          - id: orders
+            text: The orders of steps of 2 and 3 that add up to 12 - 5 = 7
+          - id: gap
+            text: The numbers from 6 to 12, one per level
+          - id: distinct
+            text: The distinct arguments between 5 and 12
+        correct: orders
+        explanation: >-
+          Each call of `h(5)` sits at the end of one path of steps. Counting orders of steps, not
+          the size of the gap, counts the calls.
+
+  - id: trace-memo-hits
+    format: step-trace
+    heading: Which calls hit the cache?
+    tags: [dp, hash-map, recursion]
+    prompt: >-
+      **Worked example:** a cache answers a call from storage only if an earlier call with the same
+      argument has already finished and stored it. The cells are the arguments 0 to 5, and `call`
+      marks one call. Predict each step of `f(5)`.
+    code: |
+      memo = {}
+      def f(n):
+          if n <= 1:
+              return n
+          if n in memo:
+              return memo[n]
+          memo[n] = f(n - 1) + f(n - 2)
+          return memo[n]
+
+      print(f(5))
+    sequence:
+      kind: array
+      name: n
+      cells: [0, 1, 2, 3, 4, 5]
+    start:
+      - { name: call, at: 5 }
+    steps:
+      - line: 7
+        ask: Which call is the first to return from `memo`? Move `call` to its argument.
+        pointer: call
+        correct: 2
+        explanation: >-
+          `f(5)` runs down to `f(2)`, which stores 1. Then `f(3)` stores 2, and `f(4)` makes its
+          second call, `f(2)`. 2 is in `memo` now, so that call returns at once.
+        misses:
+          - index: 1
+            explanation: >-
+              `f(1)` is called twice before any hit, but `n <= 1` returns before the `memo` check,
+              and 1 is never stored.
+          - index: 3
+            explanation: '`f(3)` hits later, when `f(5)` makes its second call. `f(2)` hits first, inside `f(4)`.'
+          - index: 4
+            explanation: '`f(4)` is called once, from `f(5)`, so it never finds itself in `memo`.'
+        elsewhere: The first repeated argument above 1 is 2, called again by `f(4)` after `f(2)` stored 1.
+      - line: 7
+        ask: "`f(4)` stores 3. Then `f(5)` calls `f(3)`. What happens?"
+        options:
+          - id: hit
+            text: It finds 3 in `memo` and returns 2
+            explanation: "`f(3)` finished inside `f(4)` and stored 2, so this call skips its body."
+          - id: miss
+            text: It runs its body again
+            explanation: The first `f(3)` has already finished and stored its answer, so the check catches this one.
+          - id: hit-three
+            text: It finds 3 in `memo` and returns 3
+            explanation: 3 is the key. The stored value is `f(3)`, which is 2.
+        correct: hit
+      - line: 10
+        ask: How many calls of `f` run in all, counting `f(5)`?
+        options:
+          - id: nine
+            text: "9"
+            explanation: "`f(5)`, `f(4)`, `f(3)`, `f(2)`, `f(1)`, `f(0)`, `f(1)`, then the two hits, `f(2)` and `f(3)`. Plain recursion makes 15."
+          - id: fifteen
+            text: "15"
+            explanation: 15 is the plain recursion. Each hit cuts off a whole subtree of calls.
+          - id: six
+            text: "6"
+            explanation: There are 6 distinct arguments, but a repeat still makes a call. It just returns early.
+          - id: four
+            text: "4"
+            explanation: 4 is the number of keys stored, 2 to 5. The other calls stop at `n <= 1` or hit.
+        correct: nine
+      - line: 10
+        ask: What does `print(f(5))` show?
+        options:
+          - id: five
+            text: "5"
+            explanation: "`memo` ends as `{2: 1, 3: 2, 4: 3, 5: 5}`, so `f(5)` is 5, the same as without a cache."
+          - id: eight
+            text: "8"
+            explanation: 8 would be `f(6)`. The cache changes how many calls run, not the values.
+          - id: three-val
+            text: "3"
+            explanation: 3 is `f(4)`. `f(5)` adds `f(4)` and `f(3)`, which is 3 + 2.
+        correct: five
+
+  - id: lookup-after-work
+    heading: What does the cache save?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      **Worked example:** with the `memo` check before the recursive calls, `ways(25)` makes 49
+      calls. Plain recursion makes 242,785.
+
+      This version moves the check:
+
+      ```python
+      memo = {}
+      def ways(n):
+          if n <= 1:
+              return 1
+          result = ways(n - 1) + ways(n - 2)
+          if n in memo:
+              return memo[n]
+          memo[n] = result
+          return result
+      ```
+
+      What does `ways(25)` do?
+    options:
+      - id: same-calls
+        text: Returns 121,393 after 242,785 calls, since the check runs after the work
+        explanation: >-
+          The answer is right, but both recursive calls run before the check, so a repeat does the
+          full work and only then finds its value. In Python 3.12 the call count matches the plain
+          recursion exactly. A cache saves work only when it is read before the work starts.
+      - id: forty-nine
+        text: Returns 121,393 after 49 calls, since every repeat is in `memo`
+        explanation: >-
+          Repeats are in `memo`, but they are found too late. By the time a call reaches the
+          check, it has already made both of its recursive calls.
+      - id: wrong-value
+        text: Returns a wrong value, since it returns `memo[n]` instead of `result`
+        explanation: >-
+          `memo[n]` was stored from the same calculation, so it equals `result`. The value is
+          right at 121,393. Only the savings are lost.
+      - id: recursion-error
+        text: Raises `RecursionError`, since nothing stops a repeat from recursing
+        explanation: >-
+          `n <= 1` stops every chain, and the deepest chain is only about 25 calls. Repeats
+          recurse in full, which costs time, not depth.
+    correct: same-calls
+    followUps:
+      forty-nine:
+        prompt: When the second `ways(3)` starts, what does it do before it reaches `if n in memo`?
+        options:
+          - id: both-calls
+            text: It calls `ways(2)` and `ways(1)`, the work the check was meant to skip
+          - id: nothing
+            text: Nothing, because the check is the first line after the stopping case
+          - id: one-call
+            text: It calls only `ways(2)`, since `ways(1)` is a stopping case
+        correct: both-calls
+        explanation: >-
+          Lines run top to bottom. The `result =` line comes before the check, so every call
+          recurses in full whether or not its answer is stored.
+      wrong-value:
+        prompt: When a repeat returns `memo[n]`, how does that value compare with its own `result`?
+        options:
+          - id: equal
+            text: They are equal, since both come from the same arguments and the same body
+          - id: stale
+            text: "`memo[n]` is stale, since it was stored by an earlier call"
+          - id: doubled
+            text: "`memo[n]` is twice `result`, since both calls added to it"
+        correct: equal
+        explanation: >-
+          `ways(n)` depends only on `n`, so every call with the same `n` computes the same value.
+          The bug costs time, not correctness.
+      recursion-error:
+        prompt: How deep does the stack get for `ways(25)`?
+        options:
+          - id: about-25
+            text: About 25 frames, along the chain `ways(25)`, `ways(24)`, down to `ways(1)`
+          - id: about-49
+            text: About 49 frames, one for each call the cached version makes
+          - id: unbounded
+            text: Without limit, because repeats keep recursing
+        correct: about-25
+        explanation: >-
+          Depth is the longest chain of calls waiting at once, and each step lowers `n`. Repeated
+          work makes the run slow, but it never makes a chain longer.
+
+  - id: memo-reset-each-call
+    heading: Does the cache ever hit?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      **Worked example:** a `memo` built once, outside `ways`, lets `ways(25)` finish in 49
+      calls. Plain recursion makes 242,785.
+
+      Here the dict is built inside the function:
+
+      ```python
+      def ways(n):
+          memo = {}
+          if n <= 1:
+              return 1
+          if n in memo:
+              return memo[n]
+          memo[n] = ways(n - 1) + ways(n - 2)
+          return memo[n]
+      ```
+
+      How many calls does `ways(25)` make?
+    options:
+      - id: all-calls
+        text: 242,785, since every call starts with a new, empty `memo`
+        explanation: >-
+          `memo = {}` runs at the start of every call, so each call has its own empty dict, and
+          the check never finds anything. Stored values are thrown away when their call returns.
+          In Python 3.12 it makes 242,785 calls, the same as no cache. The cache has to outlive
+          the calls that read it.
+      - id: forty-nine
+        text: 49, since repeated arguments are still keyed by `n`
+        explanation: >-
+          The key is right, but each lookup goes to a dict that this call created a moment ago.
+          The value from an earlier call sits in that call's dict, which is gone.
+      - id: name-error
+        text: None, since `memo` is local and inner calls raise `NameError`
+        explanation: >-
+          Each inner call runs `memo = {}` itself, so the name always exists. No error is raised,
+          and `ways(25)` returns 121,393.
+      - id: half
+        text: About half, since each call reuses what its own child stored
+        explanation: >-
+          A child's dict is its own local variable, and it disappears when the child returns. The
+          parent never sees it, so nothing is reused.
+    correct: all-calls
+    followUps:
+      forty-nine:
+        prompt: When the second `ways(3)` checks `if n in memo`, which dict does it look in?
+        options:
+          - id: own-new
+            text: The empty dict it built on its first line
+          - id: first-ways3
+            text: The dict of the first `ways(3)`, which stored 3
+          - id: shared
+            text: One dict shared by every call
+        correct: own-new
+        explanation: >-
+          A name assigned inside a function belongs to that call. To share one cache, build it
+          outside the function (or pass it in), or use `functools.cache`.
+      name-error:
+        prompt: An inner call runs `memo = {}`. What does that line do?
+        options:
+          - id: binds-local
+            text: It makes a new empty dict, local to that inner call
+          - id: reads-outer
+            text: It reads the caller's `memo`
+          - id: raises
+            text: It raises an error, because `memo` already exists in the caller
+        correct: binds-local
+        explanation: >-
+          Every call has its own local names. Assigning one never fails and never touches the
+          caller's variable of the same name.
+      half:
+        prompt: What happens to a call's `memo` when that call returns?
+        options:
+          - id: discarded
+            text: It is discarded, since nothing outside the call refers to it
+          - id: passed-up
+            text: It is passed up to the caller with the return value
+          - id: merged
+            text: It is merged into the caller's `memo`
+        correct: discarded
+        explanation: >-
+          Only the return value goes back to the caller. A local dict lives as long as its call
+          does, so values stored in it cannot help any later call.

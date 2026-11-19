@@ -1,0 +1,743 @@
+id: repeated-states-review
+title: "Repeated states: review"
+description: Fresh recursions for the Repeated states skills, for recall on later days. No worked examples this time.
+heading: What does the call solve?
+
+questions:
+  - id: fewest-hops-ends-review
+    format: drag-pointers
+    heading: Which calls are the ends?
+    tags: [dp, recursion]
+    prompt: >-
+      `fewest(i)` returns the fewest hops from stone `i` to the last stone, where `reach[i]` is the
+      longest hop allowed from stone `i`. Drag `whole` to the call that answers the question for
+      the whole row, and `stop` to the call that returns 0 without looping.
+    code: |
+      def fewest(i):
+          if i == len(reach) - 1:
+              return 0
+          best = float("inf")
+          last = min(i + reach[i], len(reach) - 1)
+          for j in range(i + 1, last + 1):
+              best = min(best, 1 + fewest(j))
+          return best
+    sequence:
+      kind: array
+      name: reach
+      cells: [2, 1, 3, 1, 1, 2, 1]
+    pointers:
+      - name: whole
+        start: 3
+        correct: 0
+        explanation: >-
+          The subproblem is "from stone `i` to the end", so the whole row is the suffix that starts
+          at stone 0. `fewest(0)` returns 3 here.
+        misses:
+          - index: 6
+            explanation: >-
+              `fewest(6)` starts on the last stone, so nothing is left to do. Reading the call as
+              "from the start up to stone `i`" turns the ends around.
+          - index: 3
+            explanation: '`fewest(3)` covers only stones 3 to 6. The whole row starts at stone 0.'
+        elsewhere: The whole row is the suffix from stone 0, so the call is `fewest(0)`.
+      - name: stop
+        start: 3
+        correct: 6
+        explanation: >-
+          From the last stone no hops are left, so `fewest(6)` returns 0 at once. It is the
+          smallest subproblem, the empty rest of the row.
+        misses:
+          - index: 0
+            explanation: >-
+              Stone 0 is where the whole question starts, not where it ends. Its call loops over
+              stones 1 and 2.
+          - index: 5
+            explanation: >-
+              From stone 5 one hop is still needed, so `fewest(5)` loops and returns 1.
+        elsewhere: Only the last stone, index 6, has nothing left to do.
+
+  - id: walk-key-review
+    heading: Which key is safe?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      `walks(pos, steps)` counts the ways to make `steps` moves of -1 or +1 from `pos` and end
+      at 0. Without a cache, `walks(0, 4)` is 6.
+
+      ```python
+      memo = {}
+      def walks(pos, steps):
+          if steps == 0:
+              return 1 if pos == 0 else 0
+          key = KEY
+          if key in memo:
+              return memo[key]
+          memo[key] = walks(pos - 1, steps - 1) + walks(pos + 1, steps - 1)
+          return memo[key]
+      ```
+
+      Which `KEY` keeps `walks(0, 4)` at 6?
+    options:
+      - id: both
+        text: "`(pos, steps)`"
+        explanation: >-
+          The count depends on where the walk is and how many moves are left, so both belong in
+          the key. Each distinct pair is computed once, and the answer stays 6 (Python 3.12).
+      - id: pos-only
+        text: "`pos`"
+        explanation: >-
+          `walks(1, 1)` is 1 but `walks(1, 3)` is 3, so one slot per position mixes them up. With
+          this key the call returns 4.
+      - id: steps-only
+        text: "`steps`"
+        explanation: >-
+          The first call with 1 move left is `walks(-3, 1)`, which is 0. That value is reused for
+          each call that has one move remaining, wherever it stands, so the answer comes out 0.
+      - id: sum
+        text: "`pos + steps`"
+        explanation: >-
+          `walks(0, 2)` and `walks(1, 1)` both have a sum of 2, but they return 2 and 1. Merging
+          different states makes the answer 9.
+    correct: both
+    followUps:
+      pos-only:
+        prompt: "`walks(1, 1)` is 1 and `walks(1, 3)` is 3. What does that say about the key?"
+        options:
+          - id: needs-steps
+            text: Moves left change the answer, so the key needs `steps` too
+          - id: pos-enough
+            text: The position decides the answer, so the difference is a bug elsewhere
+          - id: cache-off
+            text: No cache can work here, so it should be removed
+        correct: needs-steps
+        explanation: >-
+          A key is safe when equal keys always mean equal answers. Two calls at position 1 with
+          different moves left break that, so `steps` has to be part of the state.
+      steps-only:
+        prompt: Why does a 0 stored for `walks(-3, 1)` spread to the final answer?
+        options:
+          - id: shared-slot
+            text: Every later call with 1 move left reads that slot, even at position 1 or -1
+          - id: zero-sticky
+            text: Python caches 0 more eagerly than other values
+          - id: base-wrong
+            text: The stopping case returns 0 for every position
+        correct: shared-slot
+        explanation: >-
+          With `steps` as the key, all calls with the same moves left share one value. From -3
+          one move cannot reach 0, but from 1 or -1 it can, so the shared 0 is wrong for them.
+      sum:
+        prompt: "`walks(0, 2)` and `walks(1, 1)` share the key 2. Are they the same subproblem?"
+        options:
+          - id: different
+            text: No, they start at different places with different moves left, and return 2 and 1
+          - id: same
+            text: Yes, because the sum measures how far the walk still is from 0
+          - id: same-answer
+            text: Yes, because both can reach 0
+        correct: different
+        explanation: >-
+          A key may only combine inputs when every combination with the same key has the same
+          answer. Adding the two numbers loses which is which.
+
+  - id: outside-state-review
+    heading: What does the cache return?
+    tags: [dp, backtracking, recursion]
+    prompt: |-
+      `count(i)` counts the rising selections from `nums[i:]` that can follow `path`. Without a
+      cache, `count(0)` returns 8. Someone adds `@cache` above `def count(i)`.
+
+      ```python
+      nums = [3, 1, 4, 2]
+      path = []
+      def count(i):
+          if i == len(nums):
+              return 1
+          total = count(i + 1)              # skip nums[i]
+          if not path or nums[i] > path[-1]:
+              path.append(nums[i])
+              total += count(i + 1)         # take nums[i]
+              path.pop()
+          return total
+      ```
+
+      What does the cached `count(0)` return?
+    options:
+      - id: sixteen
+        text: "16, since each stored count was found while `path` was empty"
+        explanation: >-
+          The skip branch runs first, so every `count(i)` is first computed with nothing taken.
+          Those counts ignore the rising rule and count every subset, and later calls reuse them.
+          The result is 16 in Python 3.12. The answer depends on `path[-1]`, which the key leaves
+          out, so the state should be `(i, last)`.
+      - id: eight
+        text: "8, since a cache only skips work and never changes a result"
+        explanation: >-
+          That holds only when the arguments name everything the answer depends on. `count(i)`
+          also reads `path`, which is not an argument.
+      - id: type-error
+        text: "It raises `TypeError`, since `path` is a list and cannot be a key"
+        explanation: >-
+          `path` is not an argument, so the cache never hashes it. The key is just `i`, an int.
+      - id: five
+        text: "5, since only selections of one item or none are stored"
+        explanation: >-
+          The cache stores whole counts, not selections of a given size. The stored counts are too
+          large, not too small.
+    correct: sixteen
+    followUps:
+      eight:
+        prompt: >-
+          Without a cache, `count(2)` returns 3 when `path` is `[]` and 2 when `path` is `[3]`. What
+          follows?
+        options:
+          - id: depends-on-path
+            text: The answer depends on `path`, so a key of `i` alone mixes up two states
+          - id: path-irrelevant
+            text: The two answers must be equal, so one run has a bug
+          - id: cache-fixes
+            text: The cache stores both answers under the same key
+        correct: depends-on-path
+        explanation: >-
+          A cache keyed on `i` keeps one value per `i`. When something outside the arguments
+          changes the answer, it has to become an argument before the result can be reused.
+      type-error:
+        prompt: What does `@cache` use as the key for `count(2)`?
+        options:
+          - id: args
+            text: Only the arguments, here the int 2
+          - id: args-and-globals
+            text: The arguments and every global the function reads
+          - id: result
+            text: The value the call returns
+        correct: args
+        explanation: >-
+          `functools.cache` hashes the arguments and nothing else. Globals such as `path` are
+          invisible to it, which is why they make caching unsafe.
+      five:
+        prompt: Where does the first value stored for `count(3)` come from?
+        options:
+          - id: all-skips
+            text: The call reached by skipping 3, 1 and 4, while `path` is empty
+          - id: after-take
+            text: The call reached after taking 3, with `path == [3]`
+          - id: last-item
+            text: A call that takes only the last item, 2
+        correct: all-skips
+        explanation: >-
+          The skip call comes first on every level, so the first `count(3)` sees an empty `path`
+          and returns 2 (take 2 or not). That 2 is then reused under paths where 2 is not allowed.
+
+  - id: list-argument-review
+    heading: What happens?
+    tags: [hash-map, python, recursion]
+    prompt: |-
+      ```python
+      from functools import cache
+
+      @cache
+      def total(nums):
+          if not nums:
+              return 0
+          return nums[0] + total(nums[1:])
+
+      print(total([4, 1, 3]))
+      ```
+
+      What does this do?
+    options:
+      - id: type-error
+        text: "It raises `TypeError`, since a list cannot be a cache key"
+        explanation: >-
+          `@cache` stores results in a dict keyed by the arguments, and a list is unhashable. The
+          first call raises `TypeError: unhashable type: 'list'` (Python 3.12). Passing a tuple, or
+          an index into a fixed list, gives the cache a key it can hash.
+      - id: equal-share
+        text: "It prints 8, and equal lists share one cache entry"
+        explanation: >-
+          Lists compare by value, but a list is mutable, so Python refuses to hash lists at all.
+      - id: never-hits
+        text: "It prints 8, and no call hits, since each slice is a new list"
+        explanation: >-
+          The run never gets that far. The cache tries to hash the list before the body runs.
+      - id: skipped
+        text: "It prints 8, since the cache is skipped for list arguments"
+        explanation: >-
+          `@cache` does not check the type of its arguments first. It hashes them, and hashing a
+          list raises.
+    correct: type-error
+    followUps:
+      equal-share:
+        prompt: Why can a list not be a dict key?
+        options:
+          - id: mutable
+            text: It can change after it is stored, which would leave it in the wrong slot
+          - id: too-long
+            text: It can hold too many items to hash quickly
+          - id: ordered
+            text: Its items have an order, and keys must be unordered
+        correct: mutable
+        explanation: >-
+          A key's hash has to stay the same while it is in the dict. Tuples of hashable items
+          cannot change, so they can be keys.
+      never-hits:
+        prompt: When does `@cache` hash the arguments?
+        options:
+          - id: before-body
+            text: Before the body runs, to look the call up
+          - id: after-body
+            text: After the body returns, to store the result
+          - id: only-on-hit
+            text: Only when an earlier call had the same arguments
+        correct: before-body
+        explanation: >-
+          Every call is looked up first, so an unhashable argument fails at once. With a tuple,
+          `total((4, 1, 3))` prints 8.
+      skipped:
+        prompt: Which change lets `@cache` work here?
+        options:
+          - id: tuple
+            text: Call `total((4, 1, 3))`, so every slice is a tuple
+          - id: copy
+            text: Call `total(list(nums))`, so each call gets a fresh copy
+          - id: sorted
+            text: Call `total(sorted(nums))`, so equal lists look the same
+        correct: tuple
+        explanation: >-
+          Slicing a tuple gives a tuple, so every call gets a hashable key. A copied or sorted
+          list is still a list and still unhashable.
+
+  - id: first-repeat-split-review
+    format: tap-cell
+    heading: Which call repeats?
+    tags: [dp, recursion]
+    prompt: >-
+      The cells list the arguments of `t(12)`'s calls in the order they start, with no cache. Tap
+      the first call whose argument already appeared.
+    code: |
+      def t(n):
+          if n < 3:
+              return 1
+          return t(n // 2) + t(n // 3)
+
+      t(12)
+    sequence:
+      kind: array
+      name: calls
+      cells: [12, 6, 3, 1, 1, 2, 4, 2, 1]
+    correct: 4
+    explanation: >-
+      `t(3)` calls `t(3 // 2)` and `t(3 // 3)`, and both are `t(1)`. One parent can make the same
+      call twice. Identical inputs do not need different call paths.
+    misses:
+      - index: 0
+        explanation: '`t(12)` is the first call, so nothing came before it.'
+      - index: 1
+        explanation: '`t(6)` is `t(12 // 2)`, and 6 has not appeared before.'
+      - index: 2
+        explanation: '`t(3)` is `t(6 // 2)`. 3 is new.'
+      - index: 3
+        explanation: >-
+          This is the first `t(1)`, from `3 // 2`. The very next call, `3 // 3`, repeats it.
+      - index: 5
+        explanation: >-
+          `t(2)` is `t(6 // 3)`, the first 2. A 1 was already repeated by then.
+      - index: 6
+        explanation: '`t(4)` is `t(12 // 3)`, and 4 is new.'
+      - index: 7
+        explanation: >-
+          This `t(2)`, from `4 // 2`, does repeat, but a `t(1)` repeated earlier, inside `t(3)`.
+      - index: 8
+        explanation: 'This `t(1)` repeats as well, but it is the last call, not the first repeat.'
+
+  - id: shared-grandchild-review
+    format: drag-pointers
+    heading: Which call is shared?
+    tags: [dp, recursion]
+    prompt: >-
+      `diff(i, j)` is the best lead the player to move can get from `v[i..j]`, taking from either
+      end. `diff(1, 6)` calls `diff(2, 6)` and `diff(1, 5)`. Drag `i` and `j` to the one call that
+      both of those make.
+    code: |
+      def diff(i, j):
+          if i > j:
+              return 0
+          return max(v[i] - diff(i + 1, j),
+                     v[j] - diff(i, j - 1))
+    sequence:
+      kind: array
+      name: v
+      cells: [4, 7, 2, 9, 5, 1, 8, 3]
+    markers:
+      - { name: lo, at: 1 }
+      - { name: hi, at: 6 }
+    pointers:
+      - name: i
+        start: 1
+        correct: 2
+        explanation: >-
+          `diff(2, 6)` calls `diff(2, 5)` by taking the right end, and `diff(1, 5)` calls
+          `diff(2, 5)` by taking the left end. One take from each end, in either order, gives
+          `i = 2`.
+        misses:
+          - index: 1
+            explanation: >-
+              `i` stays at 1 only if the left end is never taken. `diff(2, 6)` has already taken
+              it, so neither of its calls has `i = 1`.
+          - index: 3
+            explanation: >-
+              `i = 3` needs two takes from the left. `diff(1, 5)` makes one take before each of
+              its calls, so neither of them has `i = 3`.
+        elsewhere: One take from the left end moves `i` from 1 to 2.
+      - name: j
+        start: 6
+        correct: 5
+        explanation: >-
+          The shared call takes one item from the right end as well, so `j` moves from 6 to 5.
+          Python 3.12 counts two calls of `diff(2, 5)` under `diff(1, 6)`.
+        misses:
+          - index: 6
+            explanation: >-
+              `j = 6` means the right end was never taken. `diff(1, 5)` already took it, so its
+              calls have `j` of 5 or 4.
+          - index: 4
+            explanation: >-
+              `j = 4` needs two takes from the right. `diff(2, 6)` makes one take before each of
+              its calls, so neither of them has `j = 4`.
+        elsewhere: One take from the right end moves `j` from 6 to 5.
+
+  - id: trace-hits-offset-review
+    format: step-trace
+    heading: Which calls hit the cache?
+    tags: [dp, hash-map, recursion]
+    prompt: >-
+      The cells are the arguments 0 to 7, and `call` marks one call. Predict each step of `t(7)`.
+    code: |
+      memo = {}
+      def t(n):
+          if n < 3:
+              return 1
+          if n in memo:
+              return memo[n]
+          memo[n] = t(n - 1) + t(n - 3)
+          return memo[n]
+
+      print(t(7))
+    sequence:
+      kind: array
+      name: n
+      cells: [0, 1, 2, 3, 4, 5, 6, 7]
+    start:
+      - { name: call, at: 7 }
+    steps:
+      - line: 7
+        ask: Which call is the first to return from `memo`? Move `call` to its argument.
+        pointer: call
+        correct: 3
+        explanation: >-
+          The chain runs `t(7)` down to `t(3)`, which stores 2. `t(4)`, `t(5)` and `t(6)` then
+          finish in turn. `t(6)`'s second call is `t(3)`, and 3 is in `memo`.
+        misses:
+          - index: 2
+            explanation: >-
+              `t(2)` is called twice first, by `t(3)` and by `t(5)`, but `n < 3` returns before the
+              `memo` check, and 2 is never stored.
+          - index: 4
+            explanation: '`t(4)` hits too, but later, when `t(7)` makes its second call.'
+          - index: 6
+            explanation: '`t(6)` is called once, by `t(7)`, so it never finds itself in `memo`.'
+        elsewhere: The first repeated argument of 3 or more is 3, called again by `t(6)`.
+      - line: 7
+        ask: "`t(6)` stores 6. Then `t(7)` calls `t(4)`. What happens?"
+        options:
+          - id: hit
+            text: It finds 4 in `memo` and returns 3
+            explanation: "`t(4)` stored `t(3) + t(1)`, which is 2 + 1, so this call skips its body."
+          - id: miss
+            text: It runs its body again and returns 3
+            explanation: The first `t(4)` finished and stored 3 inside `t(5)`, so the check catches this one.
+          - id: hit-four
+            text: It finds 4 in `memo` and returns 4
+            explanation: 4 is the key. The stored value is `t(4)`, which is 3.
+        correct: hit
+      - line: 10
+        ask: How many calls of `t` run in all, counting `t(7)`?
+        options:
+          - id: eleven
+            text: "11"
+            explanation: "Seven calls down the chain and to the stopping cases (7, 6, 5, 4, 3, 2, 0), then `t(1)` and `t(2)`, then the hits on 3 and 4. Plain recursion makes 17."
+          - id: seventeen
+            text: "17"
+            explanation: 17 is the plain recursion. The two hits each skip a subtree.
+          - id: eight
+            text: "8"
+            explanation: Each argument from 0 to 7 is called at least once, and 2, 3 and 4 are called twice.
+          - id: five
+            text: "5"
+            explanation: 5 is the number of keys stored, 3 to 7. The other calls stop at `n < 3` or hit.
+        correct: eleven
+      - line: 10
+        ask: What does `print(t(7))` show?
+        options:
+          - id: nine
+            text: "9"
+            explanation: "`memo` ends as `{3: 2, 4: 3, 5: 4, 6: 6, 7: 9}`, so `t(7)` is `t(6) + t(4)`, which is 6 + 3."
+          - id: six
+            text: "6"
+            explanation: 6 is `t(6)`. `t(7)` adds `t(4)` to it.
+          - id: twelve
+            text: "12"
+            explanation: The hits return stored values, the same as the plain recursion would, so the total stays 9.
+        correct: nine
+
+  - id: falsy-false-review
+    heading: What does the cache save?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      `s` is 18 `a`s and then a `b`, and `words` is `["a", "aa", "aaa"]`. With `if i in memo`,
+      `can_split(0)` makes 52 calls. This version checks with `get`:
+
+      ```python
+      memo = {}
+      def can_split(i):
+          if i == len(s):
+              return True
+          if memo.get(i):
+              return memo[i]
+          ok = False
+          for w in words:
+              if s.startswith(w, i) and can_split(i + len(w)):
+                  ok = True
+                  break
+          memo[i] = ok
+          return ok
+      ```
+
+      What does `can_split(0)` do?
+    options:
+      - id: slow-false
+        text: Returns `False` after 78,652 calls, since a stored `False` reads as missing
+        explanation: >-
+          `memo.get(i)` returns the stored value, and a stored `False` fails the `if`, so every
+          index is solved again on every visit. Here every index stores `False`, and the count in
+          Python 3.12 is 78,652. Test membership with `in`, not with the stored value.
+      - id: fast-false
+        text: Returns `False` after 52 calls, since every index is stored once
+        explanation: >-
+          Every index is stored, but storing is not the problem. The check never accepts a
+          `False`, so the stored values are never used.
+      - id: key-error
+        text: Raises `KeyError`, since `get` reads indexes that are not stored
+        explanation: >-
+          `get` hands back a default for a missing key instead of raising. That default fails the
+          `if` just as a stored `False` does.
+      - id: wrong-true
+        text: Returns `True`, since `get` returns `None`, which the loop counts as success
+        explanation: >-
+          `None` only makes the `if memo.get(i)` check fail. The loop still needs a real split,
+          and the `b` at the end blocks every one.
+    correct: slow-false
+    followUps:
+      fast-false:
+        prompt: A later call reaches an index that stored `False`. What does `if memo.get(i)` do?
+        options:
+          - id: fails
+            text: It fails, so the call loops over the words again
+          - id: returns
+            text: It returns the stored `False` at once
+          - id: raises
+            text: It raises, because `False` is not a valid value
+        correct: fails
+        explanation: >-
+          `if` tests whether the value is truthy, and `False`, `0`, `None` and empty values all
+          fail. `if i in memo` tests whether the key is stored, whatever its value.
+      key-error:
+        prompt: What does `memo.get(5)` return when 5 is not stored?
+        options:
+          - id: none
+            text: "`None`"
+          - id: raises
+            text: It raises `KeyError`
+          - id: zero
+            text: "`0`"
+        correct: none
+        explanation: >-
+          `get` gives a default, `None` unless another is passed. `memo[5]` with square brackets
+          is the read that raises `KeyError`.
+      wrong-true:
+        prompt: When does this `can_split` return `True`?
+        options:
+          - id: real-split
+            text: Only when some word fits at `i` and the rest after it splits
+          - id: none-found
+            text: Whenever `memo.get(i)` returns `None`
+          - id: any-word
+            text: Whenever any word fits at `i`
+        correct: real-split
+        explanation: >-
+          The cache check only decides whether to redo the work. It never makes up a result, so
+          the answer is right and only the call count suffers.
+
+  - id: stale-memo-review
+    heading: What do the prints show?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      ```python
+      words = ["ab", "abc", "cd"]
+      memo = {}
+      def can_split(i):
+          if i == len(s):
+              return True
+          if i in memo:
+              return memo[i]
+          memo[i] = any(s.startswith(w, i) and can_split(i + len(w))
+                        for w in words)
+          return memo[i]
+
+      s = "abcd"
+      print(can_split(0))
+      s = "abca"
+      print(can_split(0))
+      ```
+
+      What do the two prints show?
+    options:
+      - id: true-true
+        text: "`True`, then `True`, since `memo[0]` from `abcd` is reused"
+        explanation: >-
+          `memo` is keyed by index alone, and that is only safe while `s` stays the same. The
+          second call finds `memo[0]` from the first string and returns it. With a fresh `memo`,
+          `abca` cannot be split, since `ab` leaves `ca` and `abc` leaves `a` (Python 3.12).
+      - id: true-false
+        text: "`True`, then `False`, since `abca` cannot be split"
+        explanation: >-
+          `False` is the right answer for `abca`, but the second call never computes it. It
+          reads `memo[0]`, stored while `s` was `abcd`.
+      - id: false-false
+        text: "`False`, then `False`, since `abc` uses up the `c`"
+        explanation: >-
+          `any` tries every word, so `ab` then `cd` splits `abcd`. The first print is `True`.
+      - id: index-error
+        text: "`True`, then an `IndexError`, since `s` changed length"
+        explanation: >-
+          Both strings have length 4, and `startswith` never raises for an index past the end.
+          No error occurs.
+    correct: true-true
+    followUps:
+      true-false:
+        prompt: When the second `can_split(0)` starts, what does `if i in memo` find?
+        options:
+          - id: stored-true
+            text: "`memo[0]` is `True`, stored during the run on `abcd`"
+          - id: empty
+            text: Nothing, because changing `s` empties `memo`
+          - id: stored-false
+            text: "`memo[0]` is `False`, because `s` changed"
+        correct: stored-true
+        explanation: >-
+          A cache keyed only by `i` holds results for one fixed string. Clear it, or rebuild it,
+          whenever an input that is not in the key changes.
+      false-false:
+        prompt: Which words split `abcd`?
+        options:
+          - id: ab-cd
+            text: "`ab` and then `cd`"
+          - id: abc-d
+            text: "`abc` and then `d`"
+          - id: none
+            text: None, because `abc` must come first
+        correct: ab-cd
+        explanation: >-
+          `ab` comes first in `words` and leaves `cd`, which is a word, so the split succeeds.
+          `abc` would leave `d`, which fails, but `any` stops at the first success.
+      index-error:
+        prompt: What does `"ab".startswith("cd", 5)` return?
+        options:
+          - id: returns-false
+            text: "`False`"
+          - id: raises-index
+            text: It raises `IndexError`
+          - id: returns-true
+            text: "`True`"
+        correct: returns-false
+        explanation: >-
+          `startswith` checks a slice, and slicing past the end gives an empty string. So a start
+          past the end just returns `False`.
+
+  - id: cache-info-review
+    heading: How often does the body run?
+    tags: [dp, python, recursion]
+    prompt: |-
+      ```python
+      from functools import cache
+
+      @cache
+      def fib(n):
+          return n if n < 2 else fib(n - 1) + fib(n - 2)
+
+      print(fib(30))
+      print(fib.cache_info())
+      ```
+
+      Plain recursion makes 2,692,537 calls for `fib(30)`. How many times does the body of the
+      cached `fib` run?
+    options:
+      - id: thirty-one
+        text: 31, once for each argument from 0 to 30
+        explanation: >-
+          Every call is looked up first, and only a miss runs the body. Python 3.12 prints
+          `CacheInfo(hits=28, misses=31, maxsize=None, currsize=31)`. Each of the 31 arguments
+          misses once, and the other 28 calls are hits.
+      - id: fifty-nine
+        text: 59, one for every call, since a hit still runs the body
+        explanation: >-
+          There are 59 calls, 28 hits and 31 misses, but a hit returns the stored value without
+          running the body.
+      - id: twenty-eight
+        text: 28, one for each hit reported by `cache_info`
+        explanation: >-
+          A hit is a call that did not run the body. The body runs on misses, and there are 31.
+      - id: plain-count
+        text: 2,692,537, since the cache only makes each call cheaper
+        explanation: >-
+          A cache removes calls rather than speeding them up. Once a value is stored, the call
+          that would have recomputed it never runs the body.
+    correct: thirty-one
+    followUps:
+      fifty-nine:
+        prompt: What does a cache hit do?
+        options:
+          - id: returns-stored
+            text: It returns the stored value and skips the body
+          - id: runs-checks
+            text: It runs the body and checks the result against the stored one
+          - id: refreshes
+            text: It runs the body and replaces the stored value
+        correct: returns-stored
+        explanation: >-
+          The point of a hit is that no work happens. Only the lookup costs anything.
+      twenty-eight:
+        prompt: In `cache_info()`, which number counts the times the body ran?
+        options:
+          - id: misses
+            text: "`misses`, since a miss is a call that had to compute"
+          - id: hits
+            text: "`hits`, since a hit is a call that was answered"
+          - id: currsize
+            text: "`currsize`, but only when it is larger than `misses`"
+        correct: misses
+        explanation: >-
+          A miss runs the body and stores the result, so with no size limit `currsize` equals
+          `misses`. Hits are calls answered from storage.
+      plain-count:
+        prompt: Why does the cached `fib(30)` make so few calls?
+        options:
+          - id: subtree-skipped
+            text: A hit returns at once, so the calls below it never start
+          - id: smaller-calls
+            text: Each call does less arithmetic, so more fit in the same time
+          - id: depth
+            text: The cache lowers the recursion depth, so fewer frames are made
+        correct: subtree-skipped
+        explanation: >-
+          Without the cache, the repeated `fib(28)` alone would make 1,028,457 calls. With the
+          cache, it is one lookup.

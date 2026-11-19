@@ -1,0 +1,319 @@
+id: repeated-states-checkpoint
+title: "Repeated states: checkpoint"
+description: Tell calls that meet the same state again from calls that split the work into disjoint parts, on recursions you have not seen.
+heading: Does a cache help?
+
+questions:
+  - id: checkpoint-halves-no-hits
+    heading: How many hits?
+    tags: [dp, recursion]
+    prompt: |-
+      A cache keyed on `(lo, hi)` is added to this split-in-half search for the largest value.
+
+      ```python
+      from functools import cache
+
+      v = [5, 9, 2, 7, 1, 8, 3, 6]
+
+      @cache
+      def largest(lo, hi):            # largest of v[lo:hi]
+          if hi - lo == 1:
+              return v[lo]
+          mid = (lo + hi) // 2
+          return max(largest(lo, mid), largest(mid, hi))
+
+      print(largest(0, 8))
+      ```
+
+      How many calls does the cache answer without running the body?
+    options:
+      - id: zero
+        text: 0, because no range is ever requested twice
+        explanation: >-
+          The halves of a range do not overlap, and each range has exactly one parent, so every
+          `(lo, hi)` comes up once. `largest.cache_info()` reports `hits=0, misses=15` in Python
+          3.12. Disjoint calls give a cache nothing to reuse.
+      - id: seven
+        text: 7, one for each call that combines two halves
+        explanation: >-
+          Combining two results is the body's own work, not a lookup. Check whether any range
+          is asked for a second time.
+      - id: eight
+        text: 8, one for each single-value range
+        explanation: >-
+          Each single-value range belongs to one parent only. Check which call asks for
+          `largest(3, 4)`, and whether any other call does.
+      - id: fifteen
+        text: 15, because every call is stored and then read back
+        explanation: >-
+          Storing a result is not the same as reading it. A value is read back only when the same
+          range is requested again.
+    correct: zero
+    followUps:
+      seven:
+        prompt: When `largest(0, 4)` takes the larger of its halves' results, where do they come from?
+        options:
+          - id: own-calls
+            text: From its own two calls, `largest(0, 2)` and `largest(2, 4)`, which just returned
+          - id: from-cache
+            text: From the cache, since `largest(0, 8)` already stored them
+          - id: from-sibling
+            text: From `largest(4, 8)`, which covers the same values
+        correct: own-calls
+        explanation: >-
+          A parent uses its children's return values directly. A cache only matters when a
+          second, separate call asks for a range that was already solved.
+      eight:
+        prompt: How many calls ask for `largest(3, 4)`?
+        options:
+          - id: one
+            text: One, `largest(2, 4)`, since only its range contains index 3 at that level
+          - id: two
+            text: Two, `largest(2, 4)` and `largest(3, 5)`
+          - id: four
+            text: Four, one from each call on the level above
+        correct: one
+        explanation: >-
+          The splits are fixed by `mid`, so ranges such as `(3, 5)` never occur. Each range sits
+          in exactly one parent, which is what makes the calls disjoint.
+      fifteen:
+        prompt: When does `@cache` read a stored value back?
+        options:
+          - id: same-args-again
+            text: Only when a later call has the same arguments as an earlier one
+          - id: every-call
+            text: On every call, right after storing it
+          - id: on-return
+            text: Whenever a parent combines its children's results
+        correct: same-args-again
+        explanation: >-
+          Every call is a miss the first time its arguments appear. With 15 distinct ranges and
+          15 calls, there are no hits.
+
+  - id: checkpoint-split-or-trim
+    heading: Which one gains from a cache?
+    tags: [dp, recursion]
+    prompt: |-
+      Both functions make two recursive calls on a list `w` of 16 numbers.
+
+      ```python
+      def split(lo, hi):            # sum of w[lo:hi]
+          if hi - lo == 1:
+              return w[lo]
+          mid = (lo + hi) // 2
+          return split(lo, mid) + split(mid, hi)
+
+      def trim(lo, hi):             # best lead, taking from either end
+          if lo == hi:
+              return 0
+          return max(w[lo] - trim(lo + 1, hi),
+                     w[hi - 1] - trim(lo, hi - 1))
+      ```
+
+      A cache keyed on `(lo, hi)` is added to each. For which of them does the cache cut the
+      number of times the body runs on `(0, 16)`?
+    options:
+      - id: only-trim
+        text: Only `trim`, since its two calls both reach `(lo + 1, hi - 1)`
+        explanation: >-
+          `trim`'s two calls take from opposite ends, and each of them then reaches the same
+          `(lo + 1, hi - 1)`. In Python 3.12, `trim(0, 16)` runs its body 131,071 times without a
+          cache and 153 times with one. `split` hands out disjoint halves, so it runs 31 times
+          either way.
+      - id: only-split
+        text: Only `split`, since its halves repeat on every level
+        explanation: >-
+          Each half belongs to one parent only. Look for a range that two different calls of
+          `split` would both ask for.
+      - id: both
+        text: Both, since each one makes two recursive calls
+        explanation: >-
+          Two calls per level is not what a cache feeds on. It feeds on the same arguments coming
+          up more than once.
+      - id: neither
+        text: Neither, since each call changes `lo` or `hi`
+        explanation: >-
+          Every call changes the range, but different paths can still arrive at the same range.
+          Try two orders of taking one item from each end.
+    correct: only-trim
+    followUps:
+      only-split:
+        prompt: Which calls ask for `split(4, 8)`?
+        options:
+          - id: one-parent
+            text: Only `split(0, 8)`, since `mid` fixes every split
+          - id: two-parents
+            text: "`split(0, 8)` and `split(4, 12)`"
+          - id: every-level
+            text: One call on every level above it
+        correct: one-parent
+        explanation: >-
+          `split` only cuts at midpoints, so each range has one parent and is solved once. A
+          cache stores 31 ranges and never reads one back.
+      both:
+        prompt: What makes the plain `trim(0, 16)` run its body 131,071 times?
+        options:
+          - id: same-ranges
+            text: The same ranges come up along many different orders of takes
+          - id: two-calls
+            text: Any function with two calls per level runs that many times
+          - id: long-list
+            text: Sixteen numbers are too many for any recursion
+        correct: same-ranges
+        explanation: >-
+          With 16 items, `trim` has only 153 different ranges, but plain recursion visits each one
+          once per path that reaches it. `split` also makes two calls per level and runs only 31
+          times, because its ranges never repeat.
+      neither:
+        prompt: >-
+          From `trim(0, 16)`, take the left end and then the right, or the right end and then
+          the left. Which call does each order reach?
+        options:
+          - id: same-range
+            text: Both reach `trim(1, 15)`
+          - id: different
+            text: "`trim(1, 16)` and `trim(0, 15)`, which differ"
+          - id: no-range
+            text: Neither, since two takes end the recursion
+        correct: same-range
+        explanation: >-
+          Two different paths that arrive at the same arguments are exactly what a cache saves.
+          `trim(1, 16)` and `trim(0, 15)` are the steps in between, not where the paths end.
+
+  - id: checkpoint-first-hit-steps
+    format: tap-cell
+    heading: Which call hits first?
+    tags: [dp, hash-map, recursion]
+    prompt: >-
+      `steps(n)` is the fewest moves from `n` down to 1, where a move subtracts 1 or halves
+      (rounding down). The cells are the arguments 1 to 8. Running `steps(8)`, tap the argument
+      of the first call that returns from `memo`.
+    code: |
+      memo = {}
+      def steps(n):
+          if n <= 1:
+              return 0
+          if n in memo:
+              return memo[n]
+          memo[n] = 1 + min(steps(n - 1), steps(n // 2))
+          return memo[n]
+
+      print(steps(8))
+    sequence:
+      kind: array
+      name: n
+      cells: [1, 2, 3, 4, 5, 6, 7, 8]
+    correct: 1
+    explanation: >-
+      The first calls run `steps(8)` down to `steps(2)`. `steps(2)` and then `steps(3)` store
+      their answers. `steps(4)` then makes its second call, `steps(4 // 2)`, and 2 is in `memo`.
+      Python 3.12 prints 3, after 15 calls instead of 35 without the cache.
+    misses:
+      - index: 0
+        explanation: >-
+          `steps(1)` repeats first, three times in a row, but `n <= 1` returns before the `memo`
+          check, so 1 is never stored or found.
+      - index: 2
+        explanation: >-
+          `steps(3)` is found in `memo` later, when `steps(6)` halves to 3. A hit on 2 comes
+          before it.
+      - index: 3
+        explanation: >-
+          `steps(4)` is found only at the very end, when `steps(8)` halves to 4.
+      - index: 4
+        explanation: '`steps(5)` is called once, by `steps(6)`, so it never finds itself in `memo`.'
+      - index: 5
+        explanation: '`steps(6)` is called once, by `steps(7)`. 7 is odd, and 7 // 2 is 3.'
+      - index: 6
+        explanation: '`steps(7)` is called once, by `steps(8)`. No other call reaches 7.'
+      - index: 7
+        explanation: '`steps(8)` is the first call, so nothing is stored for it yet.'
+
+  - id: checkpoint-prefix-key
+    heading: Which change makes the cache pay off?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      `count(i, prefix)` counts the strings of 0s and 1s of length `n` that never have two 1s in
+      a row and start with `prefix`.
+
+      ```python
+      from functools import cache
+
+      n = 10
+
+      @cache
+      def count(i, prefix):
+          if i == n:
+              return 1
+          total = count(i + 1, prefix + "0")
+          if not prefix.endswith("1"):
+              total += count(i + 1, prefix + "1")
+          return total
+      ```
+
+      `count(0, "")` returns 144, and `count.cache_info()` reports `hits=0, misses=375`. Which
+      change makes the cache save calls and keeps the answer 144?
+    options:
+      - id: last-bit
+        text: Pass only the last digit, as `count(i, last)`, so equal states meet
+        explanation: >-
+          The rest of the string depends only on how many digits are left and whether the last
+          one is a 1. With `count(i, last)` the answer stays 144, and Python 3.12 reports
+          `hits=9, misses=21`. Keeping the whole prefix made every call a different state.
+      - id: i-only
+        text: Key the cache on `i` alone, and keep passing the prefix
+        explanation: >-
+          The count from position `i` changes with the last digit: after a 1, only a 0 may follow.
+          A key of `i` alone mixes those cases and returns 1024.
+      - id: tuple
+        text: Pass the prefix as a tuple of digits instead of a string
+        explanation: >-
+          A tuple is hashable, but so is a string. Each call still carries a different prefix,
+          so the key never repeats.
+      - id: no-cache
+        text: Nothing, since every call has its own prefix and no cache can help
+        explanation: >-
+          The calls as written are disjoint, but the problem is not. Ask which part of the prefix
+          the rest of the string actually depends on.
+    correct: last-bit
+    followUps:
+      i-only:
+        prompt: >-
+          With 2 digits left, how many endings are there after a 0, and how many after a 1?
+        options:
+          - id: three-two
+            text: 3 after a 0 (00, 01, 10) and 2 after a 1 (00, 01)
+          - id: three-three
+            text: 3 after either, since the ending does not see the digit before it
+          - id: four-two
+            text: 4 after a 0 and 2 after a 1
+        correct: three-two
+        explanation: >-
+          After a 1, an ending cannot start with 1, so `10` drops out. The last digit changes
+          the answer, so it has to be part of the state.
+      tuple:
+        prompt: Why does `count(i, prefix)` never hit, whatever type the prefix has?
+        options:
+          - id: unique-prefixes
+            text: Each call is reached by one path, and its prefix records that whole path
+          - id: strings-unhashable
+            text: Strings cannot be hashed, so every lookup fails
+          - id: too-many
+            text: The cache is too small to hold 375 entries
+        correct: unique-prefixes
+        explanation: >-
+          Two calls share a prefix only if they followed the same choices, and that never
+          happens twice. A state that remembers the whole past is a disjoint call.
+      no-cache:
+        prompt: Which smaller state gives the same answer as `(i, prefix)`?
+        options:
+          - id: i-last
+            text: "`(i, last)`, since only the last digit limits what comes next"
+          - id: i-ones
+            text: "`(i, ones)`, the number of 1s used so far"
+          - id: prefix-len
+            text: "`len(prefix)`, since that equals `i`"
+        correct: i-last
+        explanation: >-
+          Renaming the state to what the rest truly depends on turns disjoint calls into
+          overlapping ones: Python 3.12 stores 21 states instead of 375 prefixes.
