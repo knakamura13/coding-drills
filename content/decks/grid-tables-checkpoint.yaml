@@ -1,0 +1,259 @@
+id: grid-tables-checkpoint
+title: "Grid tables: checkpoint"
+description: Count paths on new blocked grids, from the cells each entry reads to the edges and blocks. Each item combines the Grid tables skills.
+heading: Which one is right?
+
+questions:
+  - id: grid-exam-count-goal
+    heading: How many paths?
+    tags: [dp, grid]
+    prompt: |-
+      A walker starts at `(0, 0)` and must reach the bottom-right cell `(3, 4)`, moving one cell right
+      or one cell down. Cells marked `#` are blocked.
+
+      ```
+      . . . . .
+      # . # . .
+      . . . . #
+      . # . . .
+      ```
+
+      How many paths reach the goal?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          Off-grid and blocked neighbors read as 0. Column 0 is cut off below the block at `(1, 0)`,
+          and the block at `(2, 4)` leaves the goal only its left neighbor. The rows are
+          `[1, 1, 1, 1, 1]`, `[0, 1, 0, 1, 2]`, `[0, 1, 1, 2, 0]` and `[0, 0, 1, 3, 3]`, so 3 paths.
+      - id: five
+        text: '5'
+        explanation: >-
+          5 comes from filling column 0 with 1s. The block at `(1, 0)` cuts off `(2, 0)` and `(3, 0)`,
+          since a first-column cell is entered only from above. Both hold 0, not 1.
+      - id: seven
+        text: '7'
+        explanation: >-
+          7 adds the 4 paths that would end at `(2, 4)` if it were open. It is blocked, so the goal
+          is entered only from its left, where 3 paths end.
+      - id: twenty-two
+        text: '22'
+        explanation: >-
+          22 also counts diagonal moves from the cell up and to the left. The walker only moves right
+          or down, so each cell adds just two neighbors.
+    correct: three
+    followUps:
+      five:
+        prompt: "`(1, 0)` is blocked. How many paths reach `(2, 0)` directly below it?"
+        options:
+          - { id: zero, text: "0, since its only way in is down from the blocked `(1, 0)`" }
+          - { id: one, text: "1, since every first-column cell has one path straight down" }
+          - { id: right, text: "1, entering from `(2, 1)` on its right" }
+        correct: zero
+        explanation: >-
+          A walker moving right or down never enters column 0 from the side. Once a block cuts the
+          column, every cell below it holds 0.
+      seven:
+        prompt: "`(2, 4)`, directly above the goal, is blocked. What does it give the goal?"
+        options:
+          - { id: nothing, text: "0, so the goal adds only its left neighbor's count" }
+          - { id: count, text: "The paths that end next to it, since a block only stops entry" }
+          - { id: one, text: "1, since a blocked cell still counts as one way in" }
+        correct: nothing
+        explanation: >-
+          No path can stand on a blocked cell, so it holds 0 and adds nothing to the cells it would
+          feed.
+      twenty-two:
+        prompt: Which cells feed `(r, c)` when the walker moves right or down?
+        options:
+          - { id: two, text: "Only `(r-1, c)` and `(r, c-1)`" }
+          - { id: three, text: "`(r-1, c)`, `(r, c-1)` and `(r-1, c-1)`" }
+          - { id: four, text: "All four cells next to `(r, c)`" }
+        correct: two
+        explanation: >-
+          Undo each allowed move. Right and down give the cells to the left and above, and nothing
+          else lands on `(r, c)` in one move.
+
+  - id: grid-exam-tap-first-reached
+    format: tap-cell
+    heading: Which cell is reached?
+    tags: [dp, grid]
+    prompt: >-
+      A walker starts at `(0, 0)` and moves one cell right or one cell down. Cells marked `#` are
+      blocked. The board is the bottom row of the grid. Tap the leftmost cell of the bottom row that
+      at least one path reaches.
+    code: |
+      . . # . . .
+      . . . # . .
+      # # . . . #
+      . . . # . .
+    sequence:
+      kind: string
+      name: row3
+      cells: [".", ".", ".", "#", ".", "."]
+    correct: 2
+    explanation: >-
+      Two paths reach `(1, 2)`, and `(2, 2)` below it is open, so they continue down to `(3, 2)`.
+      The bottom row's counts are `0, 0, 2, 0, 2, 2`, so `(3, 2)` is the first cell with a path.
+    misses:
+      - index: 0
+        explanation: >-
+          A first-column cell is entered only from above, and `(2, 0)` is blocked. So `(3, 0)` has no
+          path, even though it is open.
+      - index: 1
+        explanation: >-
+          `(3, 1)` is entered from `(2, 1)`, which is blocked, or from `(3, 0)`, which no path
+          reaches. Both give 0.
+      - index: 3
+        explanation: >-
+          `(3, 3)` is blocked, so no path can stand on it.
+      - index: 4
+        explanation: >-
+          `(3, 4)` is reached, by 2 paths, but a cell to its left is reached as well.
+      - index: 5
+        explanation: >-
+          The goal is reached, by 2 paths, but it is not the leftmost reached cell of the row.
+
+  - id: grid-exam-diagonal-count
+    heading: How many paths?
+    tags: [dp, grid]
+    prompt: |-
+      Each move goes one cell right, one cell down, or one cell diagonally down and to the right.
+      Cells marked `#` are blocked. How many paths lead from `(0, 0)` to `(2, 3)`?
+
+      ```
+      . # . .
+      . . . #
+      . . . .
+      ```
+    options:
+      - id: ten
+        text: '10'
+        explanation: >-
+          Each open cell adds above, left and up-left, with blocked and off-grid cells read as 0. The
+          rows are `[1, 0, 0, 0]`, `[1, 2, 2, 0]` and `[1, 4, 8, 10]`, so 10 paths.
+      - id: three
+        text: '3'
+        explanation: >-
+          3 is the count with only right and down moves. Each cell also adds the cell up and to its
+          left, since a diagonal move lands there.
+      - id: twelve
+        text: '12'
+        explanation: >-
+          12 comes from setting every row 0 cell to 1. The block at `(0, 1)` cuts off `(0, 2)` and
+          `(0, 3)`, which can only be entered from the left.
+      - id: five
+        text: '5'
+        explanation: >-
+          5 reads the cell up and to the *right* in place of the one up and to the left. A diagonal
+          move goes down and right, so it arrives from up and to the left.
+    correct: ten
+    followUps:
+      three:
+        prompt: A path's last move into `(r, c)` is the diagonal. Where was it before?
+        options:
+          - { id: up-left, text: "`(r-1, c-1)`, which the table has to add" }
+          - { id: counted, text: "`(r-1, c)`, so the diagonal is already counted" }
+          - { id: none, text: "Nowhere new, since a diagonal is one right plus one down" }
+        correct: up-left
+        explanation: >-
+          A diagonal is one move, so it brings a third group of paths that the cells above and to the
+          left do not include.
+      twelve:
+        prompt: "`(0, 1)` is blocked. How many paths reach `(0, 2)`?"
+        options:
+          - { id: zero, text: "0, since `(0, 1)` is its only possible way in" }
+          - { id: one, text: "1, since every first-row cell has one path" }
+          - { id: diagonal, text: "1, by a diagonal move from the row above" }
+        correct: zero
+        explanation: >-
+          Row 0 has no row above, so its cells are entered only from the left. A block cuts off every
+          cell after it.
+      five:
+        prompt: Which cell can step into `(r, c)` with a diagonal move?
+        options:
+          - { id: up-left, text: "`(r-1, c-1)`, since the move goes down and right" }
+          - { id: up-right, text: "`(r-1, c+1)`, the other cell diagonal to it in the row above" }
+          - { id: both, text: "Both cells diagonal to it in the row above" }
+        correct: up-left
+        explanation: >-
+          Undo the move: up one row and left one column. `(r-1, c+1)` would need a move down and to the
+          left.
+
+  - id: grid-exam-fix-edges
+    heading: Which change fixes it?
+    tags: [dp, grid, python]
+    prompt: |-
+      The walker moves right or down. On this grid the code returns 14, but only 12 paths exist.
+
+      ```python
+      def count_paths(grid):
+          rows, cols = len(grid), len(grid[0])
+          ways = [[0] * cols for _ in range(rows)]
+          for r in range(rows):
+              for c in range(cols):
+                  if grid[r][c] == '#':
+                      ways[r][c] = 0
+                  elif r == 0 or c == 0:
+                      ways[r][c] = 1
+                  else:
+                      ways[r][c] = ways[r - 1][c] + ways[r][c - 1]
+          return ways[-1][-1]
+
+      count_paths(["..#.", "....", "#...", "...."])
+      ```
+
+      Which change makes it return 12?
+    options:
+      - id: seed-start
+        text: Seed only `(0, 0)`, and let edge cells add their one real neighbor
+        explanation: >-
+          The edge rule gave 1 to `(0, 3)` and `(3, 0)`, which sit past blocks. With only the start
+          seeded and off-grid reads as 0, they hold 0, and the goal comes out as 12.
+      - id: block-after
+        text: Set blocked cells to 0 after the loop instead of during it
+        explanation: >-
+          The interior would then build on the blocks as if they were open, and zeroing them later
+          does not undo that. The goal comes out as 20.
+      - id: add-diagonal
+        text: Add `ways[r - 1][c - 1]` to every cell inside the edges
+        explanation: >-
+          The walker never moves diagonally, so this counts routes it cannot take. The goal comes out
+          as 51.
+      - id: swap-loops
+        text: Loop over columns on the outside and rows on the inside
+        explanation: >-
+          Each cell still reads cells filled before it, so the order is fine and changes nothing. The
+          edge 1s are still wrong, and the goal stays 14.
+    correct: seed-start
+    followUps:
+      block-after:
+        prompt: When `(1, 2)` is filled, what does it read from the block at `(0, 2)` if blocks are zeroed after the loop?
+        options:
+          - { id: one, text: "1, the edge value, so routes through the block are counted" }
+          - { id: zero, text: "0, since the block will be zeroed later anyway" }
+          - { id: skip, text: "Nothing, since blocked cells are skipped when they are read" }
+        correct: one
+        explanation: >-
+          A table entry is final once it is written, and later cells copy it. Blocks have to hold 0
+          before anything reads them.
+      add-diagonal:
+        prompt: Can a right-or-down walker reach `(r, c)` straight from `(r-1, c-1)`?
+        options:
+          - { id: no, text: "No, it has to pass through `(r-1, c)` or `(r, c-1)` first" }
+          - { id: yes, text: "Yes, a right move and a down move together count as one" }
+          - { id: edges, text: "Only on the edges, where one neighbor is missing" }
+        correct: no
+        explanation: >-
+          With moves right and down, a path through `(r-1, c-1)` reaches `(r, c)` by way of one of the
+          two neighbors, and is already counted there.
+      swap-loops:
+        prompt: What do `(0, 3)` and `(3, 0)` hold after the loops are swapped?
+        options:
+          - { id: still-one, text: "Still 1, since the edge rule does not depend on loop order" }
+          - { id: zero, text: "0, since the block is now filled before them" }
+          - { id: two, text: "2, since columns are now added up first" }
+        correct: still-one
+        explanation: >-
+          The bug is the rule, not the order. `r == 0 or c == 0` sets an edge cell to 1 whatever comes
+          before it, even past a block.

@@ -1,0 +1,672 @@
+id: grid-tables-review
+title: "Grid tables: review"
+description: Fresh grids for the Grid tables skills, for recall on later days. No worked examples this time.
+heading: Which one is right?
+
+questions:
+  - id: grid-review-jump-down
+    heading: Which cells feed this one?
+    tags: [dp, grid]
+    prompt: >-
+      Each move goes one cell to the right, or jumps two cells straight down. Which cells does the
+      entry for `(r, c)` read?
+    options:
+      - id: left-and-two-up
+        text: "`(r, c-1)` and `(r-2, c)`"
+        explanation: >-
+          Undo each move from `(r, c)`. Undoing a step right gives `(r, c-1)`, and undoing a jump of
+          two down gives `(r-2, c)`. No other cell can land on `(r, c)` in one move.
+      - id: left-and-up
+        text: "`(r, c-1)` and `(r-1, c)`, as on a right-and-down grid"
+        explanation: >-
+          A move down here covers two rows. From `(r-1, c)` the jump lands on `(r+1, c)`, so that
+          cell never steps into `(r, c)`.
+      - id: right-and-two-down
+        text: "`(r, c+1)` and `(r+2, c)`"
+        explanation: >-
+          Those are the cells the walker can move *to* from `(r, c)`. The entry reads the cells it
+          comes *from*, so each move is undone, not applied.
+      - id: three-cells
+        text: "`(r, c-1)`, `(r-1, c)` and `(r-2, c)`"
+        explanation: >-
+          `(r-2, c)` and `(r, c-1)` are right, but `(r-1, c)` is not. A jump always covers two rows,
+          so a walker one row up passes over `(r, c)`.
+    correct: left-and-two-up
+    followUps:
+      left-and-up:
+        prompt: A walker stands on `(r-1, c)` and jumps down. Where does it land?
+        options:
+          - { id: two-down, text: "`(r+1, c)`, two rows below where it started" }
+          - { id: one-down, text: "`(r, c)`, since it is the cell just below" }
+          - { id: either, text: "Either `(r, c)` or `(r+1, c)`, whichever the walker picks" }
+        correct: two-down
+        explanation: >-
+          The move is fixed at two rows. Only a walker two rows up lands on `(r, c)`, so the entry reads
+          `(r-2, c)`.
+      right-and-two-down:
+        prompt: >-
+          The entry for `(r, c)` counts paths that end at `(r, c)`. Where did such a path stand one
+          move earlier?
+        options:
+          - { id: undo, text: "On a cell that one allowed move carries onto `(r, c)`" }
+          - { id: next, text: "On a cell `(r, c)` can move to, since the path goes on from there" }
+          - { id: start, text: "On the start, since every path begins there" }
+        correct: undo
+        explanation: >-
+          Run each move backward from `(r, c)` to find where the last move began. Running it forward
+          gives cells after `(r, c)`, whose entries are filled later.
+      three-cells:
+        prompt: How many rows does every move down cover?
+        options:
+          - { id: two, text: "Two, so only `(r-2, c)` lands on `(r, c)` from above" }
+          - { id: one-or-two, text: "One or two, so both cells above can land on `(r, c)`" }
+          - { id: one, text: "One, so the jump only matters near the bottom edge" }
+        correct: two
+        explanation: >-
+          The jump has no shorter form. A table reads only the cells an allowed move starts from, so
+          `(r-1, c)` is left out.
+
+  - id: grid-review-tap-long-diagonal
+    format: tap-cell
+    heading: Which cell steps in?
+    tags: [dp, grid]
+    prompt: >-
+      The walker moves one cell down, or one row down and two columns to the right, from `(r, c)` to
+      `(r+1, c+2)`. The board is row 2 of the grid. Besides `(2, 4)` directly above, which cell of
+      row 2 can step into `(3, 4)`?
+    code: |
+      # moves: (r, c) -> (r + 1, c)  or  (r + 1, c + 2)
+      ways[3][4] = ways[2][4] + ways[2][?]
+    sequence:
+      kind: array
+      name: row2
+      cells: [5, 2, 8, 1, 4, 7, 3]
+    correct: 2
+    explanation: >-
+      Undo the long move from `(3, 4)`: up one row and left two columns gives `(2, 2)`. From there,
+      one row down and two columns right lands on `(3, 4)`.
+    misses:
+      - index: 0
+        explanation: >-
+          `(2, 0)` is four columns away. The long move shifts the column by exactly two.
+      - index: 1
+        explanation: >-
+          From `(2, 1)` the long move lands on `(3, 3)`, one column short.
+      - index: 3
+        explanation: >-
+          `(2, 3)` is one column to the left. No move shifts the column by one; the long move from
+          there lands on `(3, 5)`.
+      - index: 4
+        explanation: >-
+          `(2, 4)` is directly above and feeds `(3, 4)` with a move down. The question asks for the
+          other source.
+      - index: 5
+        explanation: >-
+          `(2, 5)` is to the right. Every move keeps the column or raises it, so no cell to the right
+          can reach `(3, 4)`.
+      - index: 6
+        explanation: >-
+          Reaching `(3, 4)` from `(2, 6)` would need a move two columns to the *left*. The move goes
+          right, so undoing it goes left from `(3, 4)`.
+
+  - id: grid-review-fill-order-up
+    heading: Which loop order works?
+    tags: [dp, grid]
+    prompt: >-
+      The walker starts at the bottom-left corner and moves one cell up or one cell right, so
+      `ways[r][c]` reads `ways[r+1][c]` and `ways[r][c-1]`. Which loop order computes every cell after
+      the cells it reads?
+    options:
+      - id: bottom-up-left-right
+        text: Rows bottom to top, each row left to right
+        explanation: >-
+          Row `r+1` is finished before row `r` starts, and going left to right fills `(r, c-1)` before
+          `(r, c)`. Both cells it reads are ready. Columns left to right, each bottom to top, also
+          works.
+      - id: top-down-left-right
+        text: Rows top to bottom, each row left to right
+        explanation: >-
+          Starting at the top reaches row `r` before row `r+1`. The cell below, which `(r, c)` reads,
+          would still be empty.
+      - id: bottom-up-right-left
+        text: Rows bottom to top, each row right to left
+        explanation: >-
+          The rows are in the right order, but going right to left reaches `(r, c)` before its left
+          neighbor `(r, c-1)`.
+      - id: columns-right-left
+        text: Columns right to left, each column bottom to top
+        explanation: >-
+          Column `c-1` comes after column `c` in this order, so `(r, c-1)` is empty when `(r, c)`
+          reads it.
+    correct: bottom-up-left-right
+    followUps:
+      top-down-left-right:
+        prompt: "`ways[r][c]` reads `ways[r+1][c]`. Where is that cell?"
+        options:
+          - { id: below, text: "One row below, so lower rows must be filled first" }
+          - { id: above, text: "One row above, since a larger row index is higher up" }
+          - { id: same, text: "In the same row, one column over" }
+        correct: below
+        explanation: >-
+          Row indexes grow downward, so `r+1` is the row below. A walker moving up arrives from below,
+          and the fill has to run from the bottom row upward.
+      bottom-up-right-left:
+        prompt: Which cell in the same row does `ways[r][c]` read?
+        options:
+          - { id: left, text: "`(r, c-1)`, since a move right from it lands on `(r, c)`" }
+          - { id: right, text: "`(r, c+1)`, since the walker ends at the right edge" }
+          - { id: none, text: "None, since an up move changes the row" }
+        correct: left
+        explanation: >-
+          Undoing a move right goes one column left. That cell has to be filled first, so each row runs
+          left to right.
+      columns-right-left:
+        prompt: In a right-to-left column fill, when is column `c-1` filled?
+        options:
+          - { id: after, text: "After column `c`, so the left neighbor is still empty at that point" }
+          - { id: before, text: "Before column `c`, since lower indexes always come first" }
+          - { id: same, text: "With column `c`, since both are in row `r`" }
+        correct: after
+        explanation: >-
+          Right to left visits higher columns first. A table that reads its left neighbor needs columns
+          filled left to right.
+
+  - id: grid-review-tap-free-cells
+    format: tap-cell
+    heading: Which total is wrong?
+    tags: [dp, grid, python]
+    prompt: >-
+      The walker moves right or down and pays each cell's cost, and some cells are free. The code
+      reads a neighbor off the grid as 0. The board is row 0 of the grid. Tap the first cell of row 0
+      whose total comes out wrong.
+    code: |
+      grid = [[0, 0, 5, 2, 1],
+              [3, 1, 4, 2, 6]]
+      OFF = 0      # what an off-grid neighbor reads as
+      for r in range(2):
+          for c in range(5):
+              top = cost[r - 1][c] if r > 0 else OFF
+              left = cost[r][c - 1] if c > 0 else OFF
+              cost[r][c] = grid[r][c] + min(top, left)
+    sequence:
+      kind: array
+      name: grid0
+      cells: [0, 0, 5, 2, 1]
+    correct: 3
+    explanation: >-
+      The true row 0 totals are running sums: `0, 0, 5, 7, 8`. At `(0, 3)` the left total is 5, and
+      the off-grid 0 above wins the `min`, so the cell gets 2 instead of 7. Before that, every left
+      total was 0, so the wrong 0 matched the right one.
+    misses:
+      - index: 0
+        explanation: >-
+          The start has no neighbors, and its true total is its own cost, 0. The code also gives 0.
+      - index: 1
+        explanation: >-
+          The left total is 0, so `min(0, 0)` is 0 either way. The cell gets 0 + 0, which is right.
+      - index: 2
+        explanation: >-
+          The left total is still 0, so the off-grid 0 does no harm. The cell gets 5, its true total.
+      - index: 4
+        explanation: >-
+          `(0, 4)` is wrong too: it gets 1 instead of 8. But `(0, 3)` goes wrong first.
+
+  - id: grid-review-blocked-start
+    heading: What does it return?
+    tags: [dp, grid, python]
+    prompt: |-
+      ```python
+      def count_paths(grid):
+          rows, cols = len(grid), len(grid[0])
+          ways = [[0] * cols for _ in range(rows)]
+          for r in range(rows):
+              for c in range(cols):
+                  if r == 0 and c == 0:
+                      ways[r][c] = 1
+                  elif grid[r][c] == '#':
+                      ways[r][c] = 0
+                  else:
+                      top = ways[r - 1][c] if r > 0 else 0
+                      left = ways[r][c - 1] if c > 0 else 0
+                      ways[r][c] = top + left
+          return ways[-1][-1]
+
+      count_paths(["#..", "..#", "..."])
+      ```
+
+      The walker moves right or down. What does the call return?
+    options:
+      - id: three
+        text: 3, the same as if the start were open
+        explanation: >-
+          The start check runs before the block check, so `(0, 0)` gets 1 although it is blocked.
+          The rest of the table is the open-start count, 3. The true answer is 0, and checking the
+          block first fixes it.
+      - id: zero
+        text: 0, since no path can leave a blocked start
+        explanation: >-
+          0 is the right answer for this grid, but not what this code returns. The `if` for the start
+          comes first, so the blocked start is seeded with 1 and never reset.
+      - id: six
+        text: 6, every right-or-down route on a 3 x 3 grid
+        explanation: >-
+          The block at `(1, 2)` is checked, since it is not the start. It cuts off the routes that
+          pass through it, leaving 3.
+    correct: three
+    followUps:
+      zero:
+        prompt: For `(0, 0)`, which branch of the `if` runs?
+        options:
+          - { id: first, text: "The first, so it is seeded with 1 and the block is never checked" }
+          - { id: second, text: "The second, since the cell holds `#`" }
+          - { id: both, text: "Both, so it is seeded with 1 and then reset to 0" }
+        correct: first
+        explanation: >-
+          An `if`/`elif` chain runs only the first branch whose test passes. Put the block test before
+          the start test so a blocked start holds 0.
+      six:
+        prompt: Is the block at `(1, 2)` stored as 0?
+        options:
+          - { id: yes, text: "Yes, it is not the start, so the block branch runs for it" }
+          - { id: no, text: "No, the start check skips the block test for the whole table" }
+          - { id: late, text: "Only after the loop ends, once every count is final" }
+        correct: yes
+        explanation: >-
+          Only `(0, 0)` skips the block test. Every other blocked cell holds 0, so the table drops the
+          routes through `(1, 2)`.
+
+  - id: grid-review-max-walled-in
+    heading: Which change fixes it?
+    tags: [dp, grid, python]
+    prompt: |-
+      The walker moves right or down and collects the coins on every cell it stands on. `None` marks
+      a blocked cell. The start is walled in, so no route reaches the goal, yet this code returns 12.
+
+      ```python
+      coins = [[3, None, 1],
+               [None, 4, 2],
+               [5, 1, 6]]
+      for r in range(3):
+          for c in range(3):
+              if coins[r][c] is None:
+                  best[r][c] = 0
+                  continue
+              top = best[r - 1][c] if r > 0 else 0
+              left = best[r][c - 1] if c > 0 else 0
+              best[r][c] = coins[r][c] + max(top, left)
+      ```
+
+      Which change makes every cell that no route reaches come out as unreachable?
+    options:
+      - id: neg-inf-both
+        text: "`-math.inf` for blocked and off-grid cells, plus a seed for the start"
+        explanation: >-
+          A value below every real total loses every `max`, so a cell with no reachable neighbor
+          stays at `-inf`. The start has no neighbors, so it needs its own seed of 3. The goal then
+          comes out as `-inf`.
+      - id: pos-inf
+        text: "`math.inf` for blocked cells, so the walker cannot pass them"
+        explanation: >-
+          Infinity keeps a block out of a `min`, but this table takes a `max`. Every neighbor of a
+          block picks it, and the goal comes out as `inf`.
+      - id: neg-inf-blocks
+        text: "`-math.inf` for blocked cells, with off-grid reads left at 0"
+        explanation: >-
+          The blocks now lose, but an off-grid 0 still wins. `(2, 0)` reads 0 from the left and looks
+          like a start, so the goal still comes out as 12.
+      - id: minus-one
+        text: -1 for blocked cells, which is below every real coin total
+        explanation: >-
+          `(1, 1)` then gets 4 + `max(-1, -1)`, which is 3, so a walled-in cell still looks reached.
+          The off-grid 0 is untouched too, and the goal still comes out as 12.
+    correct: neg-inf-both
+    followUps:
+      pos-inf:
+        prompt: In a table that takes a `max`, which neighbor wins against `math.inf`?
+        options:
+          - { id: inf-wins, text: "`math.inf` itself, so the route runs through the block" }
+          - { id: real-wins, text: "The real neighbor, since infinity is not a real total" }
+          - { id: error, text: "Neither; Python raises an error on infinity" }
+        correct: inf-wins
+        explanation: >-
+          The stand-in for a block must lose the combine step. A `min` table uses `math.inf`, and a
+          `max` table uses `-math.inf`.
+      neg-inf-blocks:
+        prompt: "`(2, 0)` is open, its only real neighbor is blocked, and the left read is off the grid. What does it get?"
+        options:
+          - { id: five, text: "5, its coins plus the off-grid 0, so it looks reachable" }
+          - { id: neg, text: "`-inf`, since its only real neighbor is blocked" }
+          - { id: zero, text: "0, since it is on the edge of the grid" }
+        correct: five
+        explanation: >-
+          A missing neighbor is not a route either. Read it as `-math.inf` too, and give only the start
+          its own coins as a seed.
+      minus-one:
+        prompt: What does `4 + max(-1, -1)` give for `(1, 1)`?
+        options:
+          - { id: three, text: "3, a real-looking total for a cell no route reaches" }
+          - { id: neg, text: "-1, since both neighbors are blocked" }
+          - { id: four, text: "4, since -1 is ignored by `max`" }
+        correct: three
+        explanation: >-
+          Any finite stand-in is added like a real total. Only `-math.inf` stays unreachable after
+          coins are added to it.
+
+  - id: grid-review-padded-seed
+    heading: Which seed works?
+    tags: [dp, grid, python]
+    prompt: |-
+      This table has an extra row 0 and column 0 of zeros, so cell `(r, c)` of the grid lives at
+      `ways[r + 1][c + 1]` and every cell can read top + left with no edge check.
+
+      ```python
+      grid = ["...", ".#.", "..."]
+      ways = [[0] * 4 for _ in range(4)]
+      # seed goes here
+      for r in range(1, 4):
+          for c in range(1, 4):
+              if grid[r - 1][c - 1] == '#':
+                  ways[r][c] = 0
+              else:
+                  ways[r][c] = ways[r - 1][c] + ways[r][c - 1]
+      ```
+
+      The walker moves right or down, and the true count is 2. Which seed makes `ways[3][3]` come out
+      as 2?
+    options:
+      - id: zero-one
+        text: "`ways[0][1] = 1`, a padding cell above the start"
+        explanation: >-
+          The start `ways[1][1]` reads `ways[0][1] + ways[1][0]`, which is 1 + 0. Every later cell
+          builds on that, and the corner comes out as 2.
+      - id: one-one
+        text: "`ways[1][1] = 1`, the start cell itself"
+        explanation: >-
+          The loop starts at `ways[1][1]` and overwrites it with `ways[0][1] + ways[1][0]`, which is
+          0. The whole table, corner included, comes out as 0.
+      - id: zero-zero
+        text: "`ways[0][0] = 1`, the padding corner"
+        explanation: >-
+          The start reads the cells above and to its left, not the corner diagonal to it. Nothing
+          reads `ways[0][0]`, so every count stays 0.
+      - id: all-padding
+        text: Every padding cell set to 1
+        explanation: >-
+          Then each first-row and first-column cell gets an extra 1 from the padding, as if paths
+          started all along the edges. The corner comes out as 8.
+    correct: zero-one
+    followUps:
+      one-one:
+        prompt: What happens to a seed placed in `ways[1][1]` before the loop?
+        options:
+          - { id: overwritten, text: "The loop's first pass overwrites it with the sum of two padding zeros" }
+          - { id: kept, text: "It is kept, since the loop only writes cells it has not seen" }
+          - { id: doubled, text: "It is doubled, since the loop adds to the value already there" }
+        correct: overwritten
+        explanation: >-
+          The loop assigns every grid cell, the start included. A seed must sit in a cell the loop
+          reads but never writes, which is a padding cell.
+      zero-zero:
+        prompt: Which cells does `ways[1][1]` read?
+        options:
+          - { id: two, text: "`ways[0][1]` and `ways[1][0]`, above and to the left" }
+          - { id: three, text: "`ways[0][1]`, `ways[1][0]` and `ways[0][0]`" }
+          - { id: corner, text: "Only `ways[0][0]`, the cell before it" }
+        correct: two
+        explanation: >-
+          Right-and-down moves arrive from above or from the left, so the padding corner is never read.
+          The seed has to go in one of the two cells the start reads.
+      all-padding:
+        prompt: With every padding cell at 1, what does `ways[1][2]` get?
+        options:
+          - { id: two, text: "2, from the padding 1 above it plus the start's count" }
+          - { id: one, text: "1, since one path walks right from the start" }
+          - { id: zero, text: "0, since padding cells are never read" }
+        correct: two
+        explanation: >-
+          The padding above a first-row cell is read like a real neighbor. Only one padding cell should
+          hold 1, so that the count enters the grid at the start alone.
+
+  - id: grid-review-interior-max
+    heading: What goes in the cell?
+    tags: [dp, grid]
+    prompt: |-
+      The walker moves right or down and collects the coins on every cell it stands on. The table of
+      largest totals is filled up to `?`.
+
+      ```
+      coins     best so far
+      4 6 3      4 10 13
+      1 5 8      5 15 23
+      6 9 2     11  ?
+      3 6 9
+      ```
+
+      What is `best[2][1]`?
+    options:
+      - id: larger-total
+        text: 24, the cell's 9 plus the larger total, 15
+        explanation: >-
+          The last move comes from above (total 15) or from the left (total 11). One route is used,
+          and the larger total gives more coins, so the cell holds 9 + 15 = 24.
+      - id: both-totals
+        text: 35, the cell's 9 plus both totals, 15 and 11
+        explanation: >-
+          The walker arrives from one side. Adding both totals counts the coins of two routes, which
+          no single walk collects.
+      - id: richer-cell
+        text: 20, the cell's 9 plus the left total, 11
+        explanation: >-
+          The left cell holds 6 coins against 5 above, but the totals behind them are 11 and 15. The
+          total is what the route has collected.
+      - id: no-own-coins
+        text: 15, the larger of the two totals
+        explanation: >-
+          The walker also collects the 9 on `(2, 1)` itself. It has to be added to the larger total.
+    correct: larger-total
+    followUps:
+      both-totals:
+        prompt: Why does this entry keep only one neighbor's total?
+        options:
+          - { id: one-route, text: "One walk arrives from one side, so its coins come from one route" }
+          - { id: overlap, text: "Both routes share every cell, so adding them counts nothing new" }
+          - { id: max-sum, text: "It keeps both; `max` of a sum is the same as the sum of the maxes" }
+        correct: one-route
+        explanation: >-
+          Path counts add because they count alternatives. A best total describes one walk, so it keeps
+          the better alternative.
+      richer-cell:
+        prompt: "The left cell has more coins, 6 against 5. Why is it still the wrong one to build on?"
+        options:
+          - { id: totals, text: "The total behind it is 11, against 15 above, and totals are compared" }
+          - { id: ties, text: "The two cells hold nearly the same coins, so either is allowed" }
+          - { id: left-first, text: "A cell always builds on the one above when the row is filled" }
+        correct: totals
+        explanation: >-
+          A rich last cell can end a poor route. The entry compares the full totals of the two
+          neighbors.
+      no-own-coins:
+        prompt: What does `best[2][1]` include?
+        options:
+          - { id: includes, text: "The 9 coins on `(2, 1)` added to the larger neighbor total" }
+          - { id: excludes, text: "Only the larger neighbor total; the 9 is added at the goal" }
+          - { id: both, text: "Both neighbor totals; the 9 is added once the row ends" }
+        correct: includes
+        explanation: >-
+          Every entry is the full total for reaching its cell, the cell's own coins included. Later
+          cells build on it as it is.
+
+  - id: grid-review-trace-row
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, grid, python]
+    prompt: >-
+      The walker moves right or down on the grid in the snippet. Row 1 is filled, and the board shows
+      it. The passes for `c` at 0 and 1 have run, so `row` starts `1, 3`. Predict each entry before it
+      is shown.
+    code: |
+      # grid:  . . . . . .
+      #        . . # . . .
+      #        . . . . # .
+      above = [1, 2, 0, 1, 2, 3]      # ways for row 1
+      blocked = [False, False, False, False, True, False]   # row 2
+      row = [0] * 6
+      for c in range(6):
+          if blocked[c]:
+              row[c] = 0
+          else:
+              left = row[c - 1] if c > 0 else 0
+              row[c] = above[c] + left
+      print(row)
+    sequence: { kind: array, name: above, cells: [1, 2, 0, 1, 2, 3] }
+    start:
+      - { name: c, at: 1 }
+    steps:
+      - line: 7
+        ask: What is `row[2]`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The cell above is the block, which holds 0, and the cell to the left holds 3. So the
+              count is 0 + 3.
+          - id: zero
+            text: '0'
+            explanation: >-
+              The block is above `(2, 2)`, not on it. The cell is open and is entered from the left.
+          - id: five
+            text: '5'
+            explanation: >-
+              5 adds `above[1]`, the 2 diagonally up and to the left. The cell above is `above[2]`,
+              which is 0.
+        correct: three
+        also:
+          - { name: c, at: 2 }
+      - line: 7
+        ask: What is `row[3]`?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              The cell above holds 1 and the cell to the left holds 3, so the count is 1 + 3.
+          - id: one
+            text: '1'
+            explanation: >-
+              1 is only the count from above. `(2, 3)` is also entered from the left, where 3 paths
+              end.
+          - id: seven
+            text: '7'
+            explanation: >-
+              7 adds `row[1]` as well. Only the cell directly to the left, `row[2]`, feeds `(2, 3)`.
+        correct: four
+        also:
+          - { name: c, at: 3 }
+      - line: 7
+        ask: What is `row[4]`?
+        options:
+          - id: zero
+            text: '0'
+            explanation: >-
+              `(2, 4)` is blocked, so no path ends there and the loop stores 0.
+          - id: six
+            text: '6'
+            explanation: >-
+              That is `above[4] + row[3]`, the rule for an open cell. `(2, 4)` is blocked, so the
+              first branch runs.
+          - id: two
+            text: '2'
+            explanation: >-
+              2 is the count above. A blocked cell does not inherit it, since no path can stand on it.
+        correct: zero
+        also:
+          - { name: c, at: 4 }
+      - line: 13
+        ask: The pass with `c` at 5 runs. What does `print(row)` show?
+        options:
+          - id: three
+            text: '[1, 3, 3, 4, 0, 3]'
+            explanation: >-
+              `row[5]` is `above[5] + row[4]`, which is 3 + 0. All 3 paths to the corner come from
+              above.
+          - id: seven
+            text: '[1, 3, 3, 4, 0, 7]'
+            explanation: >-
+              7 reaches past the block to add `row[3]`. A move right comes only from `row[4]`, the
+              block's 0.
+          - id: zero
+            text: '[1, 3, 3, 4, 0, 0]'
+            explanation: >-
+              A block to the left cuts off only the move from the left. `(2, 5)` is still entered from
+              above, where 3 paths end.
+        correct: three
+        also:
+          - { name: c, at: 5 }
+
+  - id: grid-review-diagonal-cell
+    heading: What goes in the cell?
+    tags: [dp, grid]
+    prompt: |-
+      Each move goes one cell right, one cell down, or one cell diagonally down and to the right.
+      `#` is blocked. The path counts are filled up to `?`.
+
+      ```
+      grid         ways so far
+      . . # . .     1 1 0 0 0
+      . . . . .     1 3 4 4 4
+      . . . . .     1 5 ?
+      ```
+
+      What is `ways[2][2]`?
+    options:
+      - id: three-sum
+        text: 12, the sum of above, left and up-left (4 + 5 + 3)
+        explanation: >-
+          A path's last move into `(2, 2)` is down, right or diagonal, so it comes from `(1, 2)`,
+          `(2, 1)` or `(1, 1)`. The groups add: 4 + 5 + 3 = 12.
+      - id: two-sum
+        text: 9, the sum of above and left (4 + 5)
+        explanation: >-
+          That leaves out the paths whose last move is the diagonal from `(1, 1)`. Those 3 paths
+          reach `(2, 2)` too.
+      - id: four-sum
+        text: 16, the sum of above, left, up-left and up-right
+        explanation: >-
+          The up-right cell `(1, 3)` would need a move down and to the left, which is not allowed.
+          Only three cells feed `(2, 2)`.
+      - id: product
+        text: 60, the product of above, left and up-left (4 x 5 x 3)
+        explanation: >-
+          Each path arrives by exactly one last move, so the three groups do not combine with each
+          other. They add.
+    correct: three-sum
+    followUps:
+      two-sum:
+        prompt: A path's last move into `(2, 2)` is the diagonal. Where did it start that move?
+        options:
+          - { id: up-left, text: "`(1, 1)`, one row up and one column left" }
+          - { id: counted, text: "`(1, 2)`, so it is already in the 4 above" }
+          - { id: nowhere, text: "Nowhere new, since a diagonal is a right plus a down" }
+        correct: up-left
+        explanation: >-
+          A diagonal is one move, so the path never visits `(1, 2)` or `(2, 1)` on the way. Its count
+          comes from `(1, 1)` and has to be added.
+      four-sum:
+        prompt: Can a walker on `(1, 3)` reach `(2, 2)` in one move?
+        options:
+          - { id: no, text: "No, from there the column would have to drop by one" }
+          - { id: yes, text: "Yes, a diagonal move from the row above" }
+          - { id: above, text: "Yes, since it sits in the row directly above" }
+        correct: no
+        explanation: >-
+          From `(1, 3)` to `(2, 2)` the column goes down, so the move points left. The allowed moves,
+          undone, give exactly three cells.
+      product:
+        prompt: Why do the three counts add rather than multiply?
+        options:
+          - { id: alternatives, text: "Each path ends with exactly one of the three moves, so the groups are separate" }
+          - { id: independent, text: "The three moves are independent choices made one after another" }
+          - { id: same, text: "They multiply on larger grids and add only on small ones" }
+        correct: alternatives
+        explanation: >-
+          Counts of separate groups add. Multiplying counts the ways to pick one item from each group,
+          which is not what a last move is.
