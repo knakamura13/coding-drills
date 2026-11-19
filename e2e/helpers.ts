@@ -56,7 +56,14 @@ export async function currentQuestionAny(page: Page): Promise<{ question: Questi
 				.filter((candidate) => isTapCellQuestion(candidate) || isDragPointersQuestion(candidate) || isStepTraceQuestion(candidate))
 				// The whole prompt and every line of the snippet must be on screen. A prefix is not enough:
 				// questions in different decks share their opening words.
-				.filter((candidate) => pageText.includes(norm(text(candidate.prompt))))
+				// Fenced blocks (ASCII trees, grids) render between the prose, so match each prose part on its own.
+				.filter((candidate) =>
+					candidate.prompt
+						.split(/```[\s\S]*?```/)
+						.map((part) => norm(text(part)))
+						.filter(Boolean)
+						.every((part) => pageText.includes(part))
+				)
 				.filter((candidate) =>
 					candidate.code
 						.split('\n')
