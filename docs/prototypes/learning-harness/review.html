@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Learning harness · Coding Drills</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f4ed;color:#1a312b;font:16px/1.55 "DM Sans",system-ui,sans-serif}main{max-width:760px;margin:auto;padding:36px 22px 64px}header{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;border-bottom:1px solid #b8c4b9;padding-bottom:15px}header b{font-size:17px}select,button,textarea{font:inherit}select{max-width:100%;padding:8px;background:white;color:inherit;border:1px solid #748a7b;border-radius:6px}h1{font:normal clamp(32px,5vw,46px)/1.1 Georgia,serif;margin:26px 0 10px;letter-spacing:-.035em}p{margin:10px 0 16px}#question{color:#43594c}article{background:white;border:1px solid #9fb3a4;border-top:4px solid #28775c;border-radius:8px;padding:clamp(17px,4vw,30px);margin:20px 0 15px}h2{font-size:23px;line-height:1.28;margin:0 0 15px}h3{font-size:17px;margin:16px 0 5px}pre{font:15px/1.55 "IBM Plex Mono",ui-monospace,monospace;background:#edf3ec;border-radius:5px;padding:13px;overflow:auto;white-space:pre-wrap;margin:0 0 18px}label{display:block;margin-bottom:6px}.choices{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}button{border-radius:6px;border:1px solid #567464;background:#f0f6ee;color:#1a4937;padding:9px 14px;min-height:44px;text-align:left;cursor:pointer}button:hover{background:#ddebdc}button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #246f9c;outline-offset:2px}textarea{resize:vertical;width:100%;padding:10px}input[type=range]{vertical-align:middle;width:65%;accent-color:#28775c}output{margin-left:12px}blockquote{margin:12px 0;padding:12px 17px;border-left:3px solid #789983;background:#f3f5ef;overflow-wrap:anywhere}.minor,aside{font-size:14px;color:#41564a}aside{display:flex;align-items:flex-start;gap:18px}aside p{flex:1;margin:3px 0}aside button{background:transparent;white-space:nowrap}footer{margin-top:25px;color:#526457;font-size:13px}
+.path{list-style:none;display:flex;flex-wrap:wrap;gap:8px 14px;padding:0;margin:0 0 20px}.path li{font-size:13px;color:#4d6258}.path li::before{content:"○";margin-right:5px}.path [aria-current]{font-weight:700;color:#174c37}.path [aria-current]::before{content:"●"}
+</style><main><header><b>Coding Drills · Prototype review</b><select id="scenario" aria-label="Choose an idea"></select></header>
+<h1 id="title"></h1><p id="question"></p><article id="card"></article><aside><p><b>Solo walkthrough</b><br><span id="guide"></span></p><button id="restart">Start over</button></aside><footer>Review prototype · local session only</footer></main><script>(function demo(){
+const scenarios={
+ steps:{title:"One new reasoning step",question:"Can the learner make each move using something they already understand?",guide:"Compare the combined prompt with a lesson that starts by checking what a table cell means."},
+ trace:{title:"Review a missed trace step",question:"Does the next review exercise address the exact move that caused trouble?",guide:"Try a correct choice of half followed by the wrong bound. Restart and miss the first move instead."},
+ correct:{title:"Check a correct prediction",question:"Did a rule or a visible target lead to the correct cell?",guide:"Choose index 5 first. On the second screen, see what changes when the target moves."},
+ transfer:{title:"Recognize a rule in a new setting",question:"Does the learner recognize when the midpoint rule matters in a search log?",guide:"Try the log cold. Then compare it with a directly cued review prompt."},
+ confidence:{title:"Confidence before feedback",question:"Is it worth recording how certain the answer felt?",guide:"Compare a confident miss, a tentative correct answer and skipping the confidence question."},
+ notes:{title:"A place to explain a move",question:"Does writing one sentence make feedback more useful to you?",guide:"Try explaining your prediction in your own words. Restart and try leaving the field empty."},
+ interpret:{title:"Interpret a learner’s explanation",question:"Would a tentative reading of your words help choose the next exercise?",guide:"This post-redesign storyboard uses fixed examples. Try correcting a suggestion and try the ambiguous note."}
+};
+const $=id=>document.getElementById(id);
+let mode,answers=[],note="",certainty=null, actions=[];
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function button(label, action){const i=actions.push(action)-1;return `<button type="button" data-act="${i}">${esc(label)}</button>`}
+function choices(labels){return `<div class="choices">${labels.map((label,i)=>button(label,()=>{answers.push(i); render(true)})).join("")}</div>`}
+function code(t){return `<pre><code>${esc(t)}</code></pre>`}
+function heading(t){return `<h2 tabindex="-1">${esc(t)}</h2>`}
+function q(title,context,options){return context+heading(title)+choices(options)}
+function end(title,body){return heading(title)+`<p>${esc(body)}</p>`}
+function splitRoute(half,bound){if(half!==1)return ["Read the sorted half","In a sorted range, the probed value is 12 and the target is 19. Which side can still contain it?",["Left","Right"],1,"Every value to the left is at most 12."];if(bound!==1)return ["Exclude the probed index","Index 4 was checked and was too small. What is the first possible index now?",["4","5"],1,"Index 4 is settled. The next candidate is 5."];return ["Try a fresh range","With bounds 1 and 6, what index does (lo + hi) // 2 read?",["3","4"],0,"Seven divided by two rounds down to 3."]}
+function draw(){
+ const [a,b,c,d]=answers;
+ switch(mode){
+ case "steps":
+   if(a===undefined)return q("Which lesson do you want to try?","<p>One draft teaching card asks for two properties of a longest-common-substring table in one answer.</p>",["Try the combined prompt","Walk one step at a time"]);
+   if(a===0){
+     if(b===undefined)return q("When the letters differ, what goes in the cell, and where is the final answer?",code("Each cell counts the shared run ending at this pair of letters."),["Zero · largest cell anywhere","Zero · last cell","Best neighboring cell · last cell"]);
+     return end(b===0?"Both rules are right":"The two rules can come apart","A mismatch ends this run, giving zero. A longer run may have ended earlier, so take the largest cell anywhere. Restart to try these as separate moves.");
+   }
+   if(b===undefined)return q("What does the 2 describe?",code("…ca and …ca end in a shared run of length 2."),["A run ending at these letters","The best run anywhere so far"]);
+   if(b!==0)return end("Start with the meaning of one cell","A cell describes only the run ending at that pair. The words cat and cab shared ca before the final pair, even though t and b differ. Restart and try the ending-at-this-pair example.");
+   if(c===undefined)return q("Now the next letters differ. How long is the run ending here?",code("ca → cat\nca → cab"),["0","2"]);
+   if(c!==0)return end("Stay with this move","To end a shared run at t and b, the last letters would have to match. This pair contributes a run of length zero.");
+   if(d===undefined)return q("Where can you recover the longest run that occurred?",code("Earlier cell for a and a: 2\nFinal cell for t and b:   0"),["Only the final cell","The largest cell anywhere"]);
+   return end(d===1?"You connected the two rules":"Look back at the earlier run","The earlier pair ended a run of length two. A later mismatch cannot erase that earlier result. A checkpoint can now ask for both rules together.");
+ case "trace":{
+   if(a===undefined)return q("Which side can still contain 19?",code("sorted = [3, 8, 12, 16, 19]\nindex 2 holds 12"),["Left of index 2","Right of index 2"]);
+   if(b===undefined)return q("What is the new lower bound?",code("12 is too small. Continue on the right.\nThe checked index was 2."),["2","3"]);
+   const [skill,prompt,opts,right,reason]=splitRoute(a,b);
+   if(c===undefined)return heading("Next review · "+skill)+`<p>${esc(a===1&&b===1?"Both original moves were correct.":"The original trace counts as one miss. The next exercise targets its first missed move.")}</p><h3>${esc(prompt)}</h3>`+choices(opts);
+   return end(c===right?"Review answered correctly":"Try the rule again",reason+" The original trace keeps its first result.");
+ }
+ case "correct":{
+   const board=code("index   4   5   6   7\nvalue  21  26  33  40\nmid = (4 + 7) // 2");
+   if(a===undefined)return q("Target 26. Which index is read next?",board,["4","5","6","7"]);
+   if(a!==1)return end("The next read is index 5","The bounds give (4 + 7) // 2 = 5. Restart and try an initially correct tap to see the proposed follow-up.");
+   if(b===undefined)return q("Now search for 40. With the same bounds, which index is read next?",board,["4","5","6","7"]);
+   return end(b===1?"Both predictions agree with the midpoint rule":"Revisit what controls the read",b===1?"The target changed while the limits stayed fixed. Both reads are at index 5.":b===3?"Your second answer moved to the target. Cover the values and calculate the read from the bounds alone.":"With these bounds the code reads index 5 for either target. Try a fresh pair of bounds. The original answer retains its credit.");
+ }
+ case "transfer":
+   if(a===undefined)return q("Which prompt do you want to try?", "<p>The two prompts exercise the same rule on different inputs.</p>",["Review a search log","Review with the rule named"]);
+   if(b===undefined&&a===0)return q("The instrument reports these reads in order. Which is the first impossible entry?",code("values = [4, 9, 12, 15, 21, 26, 33]\ntarget = 26    lo = 0    hi = 6\n\ni = (lo + hi) // 2\nif values[i] < target: lo = i + 1\n\nREAD LOG\n1   index 3 → 15\n2   index 4 → 21\n3   index 5 → 26"),["Entry 1","Entry 2","Entry 3"]);
+   if(b===undefined)return q("Which index is the lower midpoint?",code("lo = 2\nhi = 7"),["3","4","5"]);
+   return end(b===1?"Correct":"Check the active range",a===0?"After the first read, only indices 4 through 6 remain. The next midpoint is 5, so entry 2 is the first impossible read.":"(2 + 7) // 2 = 4.");
+ case "confidence":
+   if(a===undefined)return q("Which index will this read?",code("lo, hi = 2, 5\nmid = (lo + hi) // 2"),["3","4"]);
+   if(b===undefined)return heading("How sure are you?")+`<label for="certainty">Chance your answer is correct</label><input id="certainty" type="range" min="0" max="100" step="10" value="50"><output id="pct">50%</output><div class="choices">${button("Use this estimate",()=>{certainty=$("certainty").value;answers.push(0);render(true)})}${button("Skip and see feedback",()=>{answers.push(1);render(true)})}</div>`;
+   return end(a===0?"Correct · index 3":"The code reads index 3",`(2 + 5) // 2 rounds down to 3. ${certainty===null?"You skipped the estimate.":`You estimated ${certainty}% before feedback.`} Your first answer determines the grade.`);
+ case "notes":
+   if(a===undefined)return q("What will print?",code("a = [5, 6]\nb = a\nb[0] = 9\nprint(a[0])"),["5","9"]);
+   if(b===undefined)return heading("What led you there?")+`<label for="note">Your reasoning (optional)</label><textarea id="note" rows="3" placeholder="One sentence, if it helps"></textarea><div class="choices">${button("See explanation",()=>{note=$("note").value;answers.push(0);render(true)})}</div>`;
+   return heading(a===1?"Correct · 9":"The program prints 9")+(note?`<h3>Your reasoning</h3><blockquote>${esc(note)}</blockquote>`:"")+`<h3>Worked explanation</h3><p>Assignment gives the same list a second name. Writing through b changes the list that a reads.</p><p class="minor">Only the answer is scored. Your note disappears when you restart or close the file.</p>`;
+ case "interpret":
+   if(a===undefined)return q("Choose a sample learner note.","<p>Post-redesign concept. All suggestions here are scripted.</p>",["“I picked 6 because that’s where 33 is.”","“I got 6 somehow.”"]);
+   if(b===undefined)return a===0?q("Was the target’s location what guided you?","<blockquote>I picked 6 because that’s where 33 is.</blockquote>",["Yes, show me a bounds-only example","No, I rounded the midpoint up","Continue without a suggestion"]):q("What would you like to practice?","<blockquote>I got 6 somehow.</blockquote><p>There isn’t enough detail to infer a reason.</p>",["Finding a probe from bounds","Rounding an index","Continue without a suggestion"]);
+   return end(["Practice using only bounds","Practice rounding the midpoint","Continue the lesson"][b],["Cover the values. With lo = 2 and hi = 6, which position will the code read?","On integer indices, 5.5 lies between two cells. Evaluate 11 // 2 and place the probe.","The learner can move on. The sample note produces no mastery change."][b]);
+ }
+}
+function render(focus=false){
+ actions=[];$("scenario").value=mode;$("title").textContent=scenarios[mode].title;$("question").textContent=scenarios[mode].question;$("guide").textContent=scenarios[mode].guide;
+ const content=draw();
+ const steps=["Read one cell","Predict a mismatch","Find the result"];
+ const current=answers.length-1;
+ const path=mode==="steps"&&answers[0]===1?'<ol aria-label="Lesson path" class="path">'+steps.map((s,i)=>'<li'+(i===current?' aria-current="step"':'')+'>'+esc(s)+'</li>').join("")+'</ol>':"";
+ $("card").innerHTML=path+content;
+ $("card").querySelectorAll("button").forEach(el=>el.onclick=actions[Number(el.dataset.act)]);
+ if($("certainty"))$("certainty").oninput=e=>$("pct").textContent=e.target.value+"%";
+ if(focus)$("card").querySelector("h2")?.focus();
+}
+function start(){mode=Object.hasOwn(scenarios,location.hash.slice(1))?location.hash.slice(1):"steps";answers=[];note="";certainty=null;render()}
+for(const [id,s] of Object.entries(scenarios))$("scenario").add(new Option(s.title,id));
+$("scenario").onchange=e=>location.hash=e.target.value;$("restart").onclick=()=>{start();$("card").querySelector("h2")?.focus()};window.addEventListener("hashchange",start);start();
+})()</script></html>
