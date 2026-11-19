@@ -59,6 +59,29 @@ export interface GlyphOptions {
 	total?: number;
 }
 
+const NODE_LABEL: Record<NodeState, string> = {
+	open: 'Not started',
+	practicing: 'Started',
+	mastered: 'Done',
+	missed: 'Missed',
+	failed: 'Needs attention',
+	locked: 'Locked',
+	planned: 'Planned'
+};
+
+const CHECKPOINT_LABEL: Record<CheckpointState, string> = {
+	available: 'Ready',
+	passed: 'Passed',
+	failed: 'Failed',
+	sealed: 'Locked',
+	locked: 'Locked'
+};
+
+/** The words a screen reader hears for a glyph, since the shape alone carries the status. */
+export function statusLabel(kind: GlyphKind, state: NodeState | CheckpointState): string {
+	return kind === 'checkpoint' ? CHECKPOINT_LABEL[state as CheckpointState] : NODE_LABEL[state as NodeState];
+}
+
 const LOCK_TONE = 'rgba(148,163,184,.7)';
 const SEALED_TONE = 'rgba(148,163,184,.5)';
 const ON_FILL = '#0a1220';
