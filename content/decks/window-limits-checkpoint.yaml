@@ -1,0 +1,233 @@
+id: window-limits-checkpoint
+title: "Window limits: checkpoint"
+description: Explain a stretch a sum window loses on signed values, and pick a method that fits the task. Each item combines the Window limits skills.
+heading: Which one is right?
+
+questions:
+  - id: limit-exam-lost-shortest
+    heading: What does it return?
+    tags: [sliding-window, python]
+    prompt: |-
+      ```python
+      def shortest(nums, T):
+          best = None
+          total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total >= T:
+                  size = right - left + 1
+                  if best is None or size < best:
+                      best = size
+                  total -= nums[left]
+                  left += 1
+          return best
+
+      shortest([3, 3, -6, 3, 8], 10)
+      ```
+
+      What does the call return, and which valid stretch does it never check?
+    options:
+      - id: right
+        text: 5, and it never checks `3, 8`, which totals 11
+        explanation: >-
+          The total first reaches 10 when the 8 arrives: 11 for the whole list, so the loop
+          records 5. Without the first 3 the total is 8, under 10, and the -6 is never removed.
+          `3, 8` at the end is valid but never examined.
+      - id: finds-it
+        text: 2, since the loop reaches `3, 8` on the last pass
+        explanation: Where is `left` when the loop stops on the last pass?
+      - id: one-more
+        text: 4, since the loop records the window after the first 3 leaves
+        explanation: After the first 3 leaves, is the total still at least 10?
+      - id: wrong-stretch
+        text: 5, and it never checks `3, -6, 3, 8`, which totals 8
+        explanation: Does that stretch reach `T`?
+    correct: right
+    followUps:
+      finds-it:
+        prompt: >-
+          On the last pass the loop records 5 and drops the first 3. The window is
+          `3, -6, 3, 8`. What is its total, and does the loop run again?
+        options:
+          - { id: stops, text: '8, so the loop stops with the -6 still inside' }
+          - { id: runs, text: '11, so the loop keeps dropping until `3, 8` is left' }
+          - { id: zero, text: '2, so the loop stops at once' }
+        correct: stops
+        explanation: >-
+          3 - 6 + 3 + 8 is 8, below 10. The -6 drags the total down, so the loop never drops it,
+          and the stretch `3, 8` that starts after it is never recorded.
+      one-more:
+        prompt: The loop records a size only while the total is at least `T`. Is `3, -6, 3, 8` ever recorded?
+        options:
+          - { id: no, text: 'No, it totals 8, below 10' }
+          - { id: yes, text: 'Yes, it is recorded before the loop checks the total' }
+          - { id: last, text: 'Yes, the loop always records one last window' }
+        correct: no
+        explanation: >-
+          The loop condition is checked before each record. A window that totals 8 never reaches
+          the record line when `T` is 10.
+      wrong-stretch:
+        prompt: Which of these stretches totals at least 10?
+        options:
+          - { id: end, text: '`3, 8`, which totals 11' }
+          - { id: middle, text: '`3, -6, 3, 8`, which totals 8' }
+          - { id: start, text: '`3, 3`, which totals 6' }
+        correct: end
+        explanation: >-
+          A missed stretch has to be valid to matter. `3, 8` is valid and shorter than the 5 the
+          template returns.
+
+  - id: limit-exam-tap-lost-longest
+    format: tap-cell
+    heading: Tap where the longest stretch starts
+    tags: [sliding-window]
+    prompt: >-
+      The longest-stretch template returns 3 on this list with `S = 9`. Tap the first cell of
+      the longest stretch whose total is at most 9.
+    code: |
+      def longest(nums, S):
+          best = total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total > S:
+                  total -= nums[left]
+                  left += 1
+              best = max(best, right - left + 1)
+          return best
+
+      longest([5, 3, 2, 7, 1, -6], 9)   # returns 3
+    sequence: { kind: array, name: nums, cells: [5, 3, 2, 7, 1, -6] }
+    correct: 1
+    explanation: >-
+      `3, 2, 7, 1, -6` totals 7, so 5 values fit. The template dropped the 3 when the 7 came in
+      (total 12) and the 2 when the 1 came in (total 10). The -6 that would have offset them
+      arrived after both had gone.
+    misses:
+      - index: 0
+        explanation: >-
+          The whole list totals 12, over 9, and `5, 3, 2, 7, 1` totals 18. No stretch that starts
+          here and holds 5 or more values fits.
+      - index: 2
+        explanation: >-
+          `2, 7, 1, -6` totals 4 and fits, but it has only 4 values. A stretch one value longer
+          also fits.
+      - index: 3
+        explanation: >-
+          The template's last window starts here, `7, 1, -6`, 3 values. A longer stretch starts
+          further left.
+      - index: 4
+        explanation: Only 2 values start here. A stretch of 5 values fits further left.
+      - index: 5
+        explanation: Only 1 value starts here. A stretch of 5 values fits further left.
+
+  - id: limit-exam-signed-exists
+    heading: Which method fits?
+    tags: [sliding-window, prefix-sum, hash-map]
+    prompt: >-
+      A list of `n` daily balance changes holds positive, zero and negative values. You need to
+      know whether any stretch of consecutive days totals exactly `k`. Which method answers in
+      O(n) expected time?
+    options:
+      - id: right
+        text: Keep each running total in a set, starting with 0, and look for `total - k`
+        explanation: >-
+          A stretch that ends here totals `k` exactly when an earlier running total equals
+          `total - k`. The starting 0 stands for the empty prefix, so a stretch from the first
+          day counts. Each lookup is O(1) expected, whatever the signs.
+      - id: window
+        text: Grow a window on the right and drop from the left while its total exceeds `k`
+        explanation: Can dropping a day from the left raise the total here?
+      - id: shift
+        text: Add the size of the smallest value to every change, then use the window
+        explanation: How much does that add to a stretch of 4 days, and to one of 1 day?
+      - id: every
+        text: Compute every stretch's total from running totals and compare it with `k`
+        explanation: How many stretches does a list of `n` days have?
+    correct: right
+    followUps:
+      window:
+        prompt: The window `6, -4` totals 2 with `k = 5`. A 4 arrives and the total is 6, so the 6 is dropped. Next a -1 arrives. What is lost?
+        options:
+          - { id: lost, text: '`6, -4, 4, -1`, which totals 5, since the 6 has already gone' }
+          - { id: none, text: 'Nothing, since `-4, 4, -1` totals 5' }
+          - { id: fine, text: 'Nothing, since the window can move `left` back' }
+        correct: lost
+        explanation: >-
+          With negative values, a window total that is too large now can come back down later.
+          The drop rule throws the 6 away for good, so a valid stretch that needs it is lost.
+      shift:
+        prompt: Every change gains 4. How much do a 4-day stretch and a 1-day stretch gain?
+        options:
+          - { id: diff, text: '16 and 4, so they no longer compare with `k` the same way' }
+          - { id: same, text: '4 each, so the target just becomes `k + 4`' }
+          - { id: none, text: 'Nothing, since the shift is undone at the end' }
+        correct: diff
+        explanation: >-
+          A shift adds the constant once per day. The target would need to depend on each
+          stretch's length, which no single `k` can do.
+      every:
+        prompt: How many stretches does a list of `n` days have?
+        options:
+          - { id: quad, text: '`n * (n + 1) / 2`, which is O(n²)' }
+          - { id: lin, text: '`n`, one for each day' }
+          - { id: twice, text: '`2n`, one starting and one ending at each day' }
+        correct: quad
+        explanation: >-
+          Every pair of a start and an end at or after it is a stretch. Checking them all is
+          correct but quadratic, not O(n).
+
+  - id: limit-exam-nonneg-longest
+    heading: Which method fits?
+    tags: [sliding-window, two-pointers]
+    prompt: >-
+      A list of `n` daily screen-time readings, in minutes, is never negative. You need the
+      longest stretch of consecutive days whose total is at most `S`. Which method gives the
+      right length in O(n) time and O(1) extra space?
+    options:
+      - id: right
+        text: Grow a window on the right and drop from the left while its total exceeds `S`
+        explanation: >-
+          With no negative value, dropping from the left never raises the total, so once the
+          window fits, no longer stretch ending here fits either. Each index enters and leaves
+          once, and the window needs only a total and two indices.
+      - id: dict
+        text: Count earlier running totals equal to `total - S` in a dictionary
+        explanation: Which stretches does that lookup find, at most `S` or exactly `S`?
+      - id: sort
+        text: Sort the readings and take the smallest until the total exceeds `S`
+        explanation: Are the smallest readings consecutive days?
+      - id: every
+        text: Try every start, and extend each stretch until its total exceeds `S`
+        explanation: How many steps can that take when every reading is 0?
+    correct: right
+    followUps:
+      dict:
+        prompt: An earlier running total equal to `total - S` marks a stretch with which total?
+        options:
+          - { id: exact, text: 'Exactly `S`, so totals below `S` are missed' }
+          - { id: atmost, text: 'At most `S`' }
+          - { id: atleast, text: 'At least `S`' }
+        correct: exact
+        explanation: >-
+          A dictionary lookup matches one value. The task allows any total up to `S`, and the
+          dictionary also costs O(n) space.
+      sort:
+        prompt: What does sorting the readings lose?
+        options:
+          - { id: order, text: 'Which days are next to each other' }
+          - { id: totals, text: 'The total of the whole list' }
+          - { id: nothing, text: 'Nothing, since the readings are not negative' }
+        correct: order
+        explanation: >-
+          A stretch is a run of neighbouring days. The smallest readings can come from days far
+          apart.
+      every:
+        prompt: With every reading 0 and any `S`, how far does each start extend?
+        options:
+          - { id: end, text: 'To the end of the list, so the total work is O(n²)' }
+          - { id: one, text: 'One day, so the total work is O(n)' }
+          - { id: none, text: 'Nowhere, since 0 never exceeds `S`' }
+        correct: end
+        explanation: >-
+          The total never exceeds `S`, so each start runs to the end. That is correct but
+          quadratic.

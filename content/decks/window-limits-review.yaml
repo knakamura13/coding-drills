@@ -1,0 +1,674 @@
+id: window-limits-review
+title: "Window limits: review"
+description: Fresh inputs for the Window limits skills, for recall on later days. No worked examples this time.
+heading: What happens next?
+
+questions:
+  - id: limit-review-trace-longest
+    format: step-trace
+    heading: Predict each step
+    tags: [sliding-window, python]
+    prompt: >-
+      Every value is 0 or more and `S = 6`. The passes with `right` at 0 to 2 have run, so
+      `total` is 5 and `best` is 3. Predict each step before it is shown.
+    code: |
+      def longest(nums, S):
+          best = total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total > S:
+                  total -= nums[left]
+                  left += 1
+              best = max(best, right - left + 1)
+          return best
+
+      longest([2, 0, 3, 4, 1, 1, 5], 6)
+    sequence: { kind: array, name: nums, cells: [2, 0, 3, 4, 1, 1, 5] }
+    start:
+      - { name: left, at: 0 }
+      - { name: right, at: 2 }
+    steps:
+      - line: 4
+        ask: After the pass with `right` at 3, where is `left`?
+        pointer: left
+        correct: 3
+        explanation: >-
+          The 4 makes the total 9. Dropping the 2 leaves 7, dropping the 0 still leaves 7, and
+          dropping the 3 leaves 4, which is not above 6. The window is just `4`.
+        misses:
+          - index: 1
+            explanation: After the 2 leaves, the total is 7, still above 6, so the loop runs again.
+          - index: 2
+            explanation: >-
+              Dropping the 0 changes nothing, so the total is still 7, above 6. The 3 has to go as
+              well.
+          - index: 4
+            explanation: >-
+              After the 3 leaves, the total is 4, which is not above 6. The loop stops before the 4
+              leaves.
+        elsewhere: The loop drops values while the total is above 6, and stops at a total of 4.
+        also:
+          - { name: right, at: 3 }
+      - line: 8
+        ask: What is `best` after the pass with `right` at 3?
+        options:
+          - id: three
+            text: '3'
+            explanation: This window has 1 value, and `max` keeps the 3 recorded for `2, 0, 3`.
+          - id: one
+            text: '1'
+            explanation: >-
+              1 is this window's length. `best` keeps the largest length seen so far, which is
+              still 3.
+          - id: four
+            text: '4'
+            explanation: >-
+              `2, 0, 3, 4` totals 9, which is above 6, so it is never a valid window. The length is
+              recorded after the loop, not before it.
+        correct: three
+      - line: 4
+        ask: The passes with `right` at 4 and 5 run next. What is `total` after them?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              4 + 1 + 1 is 6. That is not above `S`, so the loop never runs and the window grows to
+              `4, 1, 1`.
+          - id: two
+            text: '2'
+            explanation: >-
+              That drops the 4. The loop runs only while the total is above 6, and a total of
+              exactly 6 is allowed.
+          - id: seven
+            text: '7'
+            explanation: That adds one value too many. The window is `4, 1, 1`, which totals 6.
+        correct: six
+        also:
+          - { name: right, at: 5 }
+      - line: 4
+        ask: After the pass with `right` at 6, where is `left`?
+        pointer: left
+        correct: 5
+        explanation: >-
+          The 5 makes the total 11. Dropping the 4 leaves 7, still above 6, and dropping the 1
+          leaves 6, which is allowed. The window is `1, 5`.
+        misses:
+          - index: 4
+            explanation: After the 4 leaves, the total is 7, still above 6. One more value has to go.
+          - index: 6
+            explanation: >-
+              After the 4 and one 1 leave, the total is 6. That is not above `S`, so the second 1
+              stays.
+          - index: 3
+            explanation: The 5 makes the total 11, above 6, so the loop has to drop values.
+        elsewhere: The loop drops two values and stops at a total of 6.
+        also:
+          - { name: right, at: 6 }
+      - line: 9
+        ask: What does the call return?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The lengths recorded are 1, 2, 3, 1, 2, 3 and 2. Two windows tie at 3, `2, 0, 3` and
+              `4, 1, 1`.
+          - id: four
+            text: '4'
+            explanation: >-
+              No valid window ever holds 4 values. The closest, `2, 0, 3, 4` and `4, 1, 1, 5`, both
+              total more than 6.
+          - id: two
+            text: '2'
+            explanation: 2 is the last window's length. `best` keeps the largest length, which is 3.
+        correct: three
+
+  - id: limit-review-drag-shortest
+    format: drag-pointers
+    heading: Where does the left edge stop?
+    tags: [sliding-window, two-pointers]
+    prompt: >-
+      Every value is 0 or more and `T = 10`. The window `1, 1, 2, 1` totals 5, and the 9 at
+      index 4 has just come in. Drag `left` to where the loop stops.
+    code: |
+      total += nums[right]     # right is 4, total is 14
+      while total >= T:        # T is 10
+          best = min(best, right - left + 1)
+          total -= nums[left]
+          left += 1
+    sequence: { kind: array, name: nums, cells: [1, 1, 2, 1, 9, 2, 1] }
+    markers:
+      - { name: right, at: 4 }
+    pointers:
+      - name: left
+        start: 0
+        correct: 4
+        explanation: >-
+          The totals after each drop are 13, 12, 10 and 9. The loop records lengths 5, 4, 3 and 2,
+          and the fourth drop takes the total below 10. The window ends as just `9`.
+        misses:
+          - index: 3
+            explanation: >-
+              The total there is 10, which meets `T`. The loop records length 2 for `1, 9` and
+              then drops the 1 too.
+          - index: 2
+            explanation: >-
+              The total there is 12, still at least 10, so the loop keeps recording and dropping.
+          - index: 1
+            explanation: The total there is 13. The loop runs until the total is below 10.
+          - index: 5
+            explanation: >-
+              After the 1 at index 3 leaves, the total is 9, below 10, so the loop stops. The 9
+              stays.
+        elsewhere: The loop drops values while the total is at least 10, and stops at a total of 9.
+
+  - id: limit-review-zeros-return
+    heading: What does it return?
+    tags: [sliding-window, python]
+    prompt: |-
+      Every value is 0 or more.
+
+      ```python
+      def shortest(nums, T):
+          best = None
+          total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total >= T:
+                  size = right - left + 1
+                  if best is None or size < best:
+                      best = size
+                  total -= nums[left]
+                  left += 1
+          return best
+
+      shortest([0, 3, 0, 0, 4, 0, 2], 6)
+      ```
+
+      What does the call return?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          The 4 makes the total 7, and the loop records 5 and then 4 before the 3 leaves. On the
+          last pass the total is 6 again, and the loop records 5, 4 and then 3 for `4, 0, 2`.
+      - id: four
+        text: '4'
+        explanation: >-
+          4 is `best` after the pass with `right` at 4. The 2 on the last pass brings the total
+          back to 6, and the loop drops the zeros until it records 3.
+      - id: two
+        text: '2'
+        explanation: >-
+          No two values next to each other reach 6. The largest pair, `0, 4` or `4, 0`, totals
+          4.
+      - id: none
+        text: '`None`'
+        explanation: >-
+          The total reaches 7 on the pass with `right` at 4, so the loop records a length then.
+    correct: three
+    followUps:
+      four:
+        prompt: On the last pass the window is `0, 0, 4, 0, 2`, total 6. What does the loop do with the 0 at its left edge?
+        options:
+          - { id: drop, text: 'Records 5, drops the 0, and keeps going, since the total is still 6' }
+          - { id: stop, text: 'Stops, since dropping a 0 cannot shorten the answer' }
+          - { id: skip, text: 'Skips it without recording anything' }
+        correct: drop
+        explanation: >-
+          The loop runs while the total is at least `T`. Dropping a 0 keeps the total at 6, so it
+          records a shorter length on every lap until the 4 leaves.
+      two:
+        prompt: Which stretch of two values totals the most?
+        options:
+          - { id: four, text: '`0, 4` or `4, 0`, which total 4' }
+          - { id: six, text: '`4, 2`, which totals 6' }
+          - { id: three, text: '`3, 0`, which totals 3' }
+        correct: four
+        explanation: >-
+          `4` and `2` are not next to each other: a 0 sits between them. A stretch is made of
+          neighbouring values only.
+      none:
+        prompt: When does the total first reach 6?
+        options:
+          - { id: four, text: 'When the 4 at index 4 is added, making 7' }
+          - { id: never, text: 'Never, since the zeros keep it low' }
+          - { id: last, text: 'Only on the last pass' }
+        correct: four
+        explanation: '0 + 3 + 0 + 0 + 4 is 7. Zeros add nothing, but they take nothing away either.'
+
+  - id: limit-review-tap-missed
+    format: tap-cell
+    heading: Tap where the missed stretch starts
+    tags: [sliding-window]
+    prompt: >-
+      The shortest-stretch template runs on this list with `T = 10` and returns 4. A stretch of
+      2 values also reaches 10. Tap its first cell.
+    code: |
+      while total >= T:
+          size = right - left + 1
+          if best is None or size < best:
+              best = size
+          total -= nums[left]
+          left += 1
+    sequence: { kind: array, name: nums, cells: [8, -5, 3, 7, 0, 1] }
+    correct: 2
+    explanation: >-
+      `3, 7` totals 10. On the pass with `right` at 3 the window `8, -5, 3, 7` totals 13, so the
+      loop records 4 and drops the 8. The total falls to 5 with the -5 at the left edge, and it
+      never reaches 10 again, so the -5 is never dropped.
+    misses:
+      - index: 0
+        explanation: '`8, -5` totals 3, well short of 10.'
+      - index: 1
+        explanation: >-
+          The template's window is stuck here after the 8 leaves, but `-5, 3` totals -2. Its
+          first value is what keeps the window below 10.
+      - index: 3
+        explanation: '`7, 0` totals 7, short of 10.'
+      - index: 4
+        explanation: '`0, 1` totals 1, short of 10.'
+      - index: 5
+        explanation: Only one value starts here. The missed stretch has 2 values.
+
+  - id: limit-review-drop-negative
+    heading: What would dropping it do?
+    tags: [sliding-window]
+    prompt: >-
+      The shortest-stretch template runs on `[5, -5, 4, 3]` with `T = 6`. After the last pass the
+      window is `-5, 4, 3`, total 2, so the loop has stopped. What would the total be without
+      the -5, and what does it show?
+    options:
+      - id: right
+        text: 7, so `4, 3` is a valid stretch of 2 that the loop never checks
+        explanation: >-
+          Removing -5 adds 5: 2 + 5 is 7, which meets `T`. The template returns 4, for
+          `5, -5, 4, 3`, though `4, 3` has length 2.
+      - id: lower
+        text: -3, so dropping more values would only make the total worse
+        explanation: >-
+          That subtracts 5 instead of removing -5. Taking a negative value out of a total raises
+          it.
+      - id: same-rule
+        text: At most 2, since dropping a value from the left never raises the total
+        explanation: >-
+          That rule holds only when no value is negative. Here the dropped value is -5, so the
+          total rises.
+      - id: next-pass
+        text: 7, and the loop records `4, 3` on the next pass
+        explanation: >-
+          This was the last pass, so there is no next one. Even with more values, the loop drops
+          the -5 only once the whole window totals 6 or more.
+    correct: right
+    followUps:
+      lower:
+        prompt: A window totals 2 and holds a -5. What is the total once the -5 is removed?
+        options:
+          - { id: seven, text: '7, since 2 - (-5) is 7' }
+          - { id: neg, text: '-3, since 2 - 5 is -3' }
+          - { id: two, text: '2, since removing a value does not change the total' }
+        correct: seven
+        explanation: Removing a value subtracts it. Subtracting -5 adds 5.
+      same-rule:
+        prompt: When does dropping the leftmost value never raise the total?
+        options:
+          - { id: nonneg, text: 'When that value is 0 or more' }
+          - { id: always, text: 'Always, whatever the value' }
+          - { id: small, text: 'When the window total is already below `T`' }
+        correct: nonneg
+        explanation: >-
+          Dropping `x` changes the total by `-x`. That is never an increase only when `x` is 0 or
+          more, which is the condition the template relies on.
+      next-pass:
+        prompt: Suppose a 1 came next, making the window `-5, 4, 3, 1`, total 3. Does the loop drop the -5?
+        options:
+          - { id: no, text: 'No, the total is 3, below 6, so the loop does not run' }
+          - { id: yes, text: 'Yes, the loop always drops a negative value at the left edge' }
+          - { id: later, text: 'Yes, once the window holds 4 values' }
+        correct: no
+        explanation: >-
+          The loop runs only while the whole window totals at least `T`. A negative value at the
+          left edge keeps the total down, so it can block every shrink after it.
+
+  - id: limit-review-trace-early-drop
+    format: step-trace
+    heading: Predict each step
+    tags: [sliding-window, python]
+    prompt: >-
+      The longest-stretch template runs on a list with one negative value and `S = 8`. The pass
+      with `right` at 0 has run, so `total` is 4. Predict each step before it is shown.
+    code: |
+      def longest(nums, S):
+          best = total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total > S:
+                  total -= nums[left]
+                  left += 1
+              best = max(best, right - left + 1)
+          return best
+
+      longest([4, 6, -4, 2, 0], 8)
+    sequence: { kind: array, name: nums, cells: [4, 6, -4, 2, 0] }
+    start:
+      - { name: left, at: 0 }
+      - { name: right, at: 0 }
+    steps:
+      - line: 4
+        ask: After the pass with `right` at 1, where is `left`?
+        pointer: left
+        correct: 1
+        explanation: The 6 makes the total 10, above 8, so the 4 leaves and the total falls to 6.
+        misses:
+          - index: 0
+            explanation: The total is 10, which is above 8, so the loop has to drop a value.
+          - index: 2
+            explanation: After the 4 leaves, the total is 6, which is not above 8. The 6 stays.
+        elsewhere: The loop drops the 4 and stops at a total of 6.
+        also:
+          - { name: right, at: 1 }
+      - line: 4
+        ask: After the pass with `right` at 2, what is `total`?
+        options:
+          - id: two
+            text: '2'
+            explanation: 6 + (-4) is 2. Adding a negative value lowers the total.
+          - id: ten
+            text: '10'
+            explanation: That subtracts the -4. Line 4 adds `nums[right]`, and adding -4 takes 4 away.
+          - id: six
+            text: '6'
+            explanation: Line 4 runs on every pass, so the -4 is added to the total.
+        correct: two
+        also:
+          - { name: right, at: 2 }
+      - line: 9
+        ask: The passes with `right` at 3 and 4 run next. What does the call return?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              The total stays at 4 on both passes, so nothing leaves. The last window is
+              `6, -4, 2, 0`, length 4.
+          - id: five
+            text: '5'
+            explanation: >-
+              The whole list totals 8, which is allowed, but the 4 left on the pass with `right`
+              at 1. `left` never moves back, so no window holds 5 values.
+          - id: three
+            text: '3'
+            explanation: >-
+              Neither pass drops a value, since the total stays at 4. The window grows to 4
+              values.
+        correct: four
+        also:
+          - { name: right, at: 4 }
+      - line: 9
+        ask: The whole list totals 8, so 5 is the true answer. Why is it never recorded?
+        options:
+          - id: early
+            text: The 4 left before the -4 arrived to offset the 6
+            explanation: >-
+              When the 6 came in, the total 10 was over the limit, so the 4 had to go. The -4 a
+              pass later would have brought it back to 6, but a dropped value never returns.
+          - id: exact
+            text: The loop only records windows that total less than 8
+            explanation: >-
+              The loop drops values only while the total is above 8. A window that totals exactly
+              8 is recorded.
+          - id: shape
+            text: A window can never hold both the first and the last value
+            explanation: >-
+              On a list of values 0 or more, the whole list is recorded whenever it fits. Here the
+              4 left too early.
+        correct: early
+
+  - id: limit-review-which-task
+    heading: Which task is safe?
+    tags: [sliding-window]
+    prompt: >-
+      Each task asks about stretches of consecutive days. For which one does a window that
+      shrinks by its total always give the right answer?
+    options:
+      - id: right
+        text: Longest run of days whose total rainfall is at most 30 mm
+        explanation: >-
+          Rainfall is never negative. Adding a day never lowers the total and dropping one never
+          raises it, which is all the window needs.
+      - id: temps
+        text: Shortest run of days whose temperature changes total at least 5 degrees
+        explanation: >-
+          A temperature change can be negative. A cold day at the left edge can hold the window
+          total under 5 while a shorter run to its right reaches it.
+      - id: trades
+        text: Longest run of trades whose profit or loss totals at most 0
+        explanation: >-
+          A loss is a negative value. The window can drop a trade too early, before a later loss
+          would have brought the total back down.
+      - id: climb
+        text: Shortest stretch of a hike, up and down, that gains at least 200 m
+        explanation: >-
+          Going down is a negative change. A descent at the left edge can keep the window short of
+          200 m while a steeper climb to its right reaches it.
+    correct: right
+    followUps:
+      temps:
+        prompt: What makes the temperature task unsafe for the window?
+        options:
+          - { id: signed, text: 'A change can be negative, so dropping a day can raise the total' }
+          - { id: shortest, text: 'It asks for the shortest run, which the window cannot find' }
+          - { id: units, text: 'Degrees are not whole numbers' }
+        correct: signed
+        explanation: >-
+          The window finds shortest runs fine on values that are 0 or more. The sign of the
+          values is what decides it.
+      trades:
+        prompt: What makes the trades task unsafe for the window?
+        options:
+          - { id: signed, text: 'A loss is negative, so a later trade can lower the total again' }
+          - { id: zero, text: 'A limit of 0 is too small for any window' }
+          - { id: longest, text: 'It asks for the longest run, which the window cannot find' }
+        correct: signed
+        explanation: >-
+          The window drops a value for good when the total is too high. A later negative value
+          could have brought it back under the limit.
+      climb:
+        prompt: What makes the hike task unsafe for the window?
+        options:
+          - { id: signed, text: 'A descent counts as negative, so removing it lifts the total' }
+          - { id: distance, text: 'Distances on a hike are not measured per day' }
+          - { id: target, text: '200 m is too large a target' }
+        correct: signed
+        explanation: >-
+          A descent at the left edge drags the total down. Dropping it would help, but the window
+          shrinks only when the total already meets the target.
+
+  - id: limit-review-shift-trap
+    heading: What went wrong?
+    tags: [sliding-window]
+    prompt: >-
+      To avoid the negative value in `[4, -3, 5]`, a teammate adds 3 to every value, getting
+      `[7, 0, 8]`, and runs the shortest-stretch template with `T = 6`. It returns 1. On the
+      original list the only stretch that reaches 6 is the whole list, length 3. What went wrong?
+    options:
+      - id: right
+        text: Each value gained 3, so a stretch's total grew by 3 times its length
+        explanation: >-
+          The 4 alone became 7, which reaches 6, while the whole list gained 9. Totals of
+          different lengths moved by different amounts, so the shifted list answers a different
+          question.
+      - id: zero
+        text: The -3 became a 0, and the template cannot handle zeros
+        explanation: >-
+          The template is right on lists with zeros. Dropping a 0 never raises the total, and on
+          `[7, 0, 8]` it correctly finds `7`.
+      - id: bigger
+        text: The shift was too small, and adding 5 to every value would have worked
+        explanation: >-
+          Adding 5 gives `[9, 2, 10]`, where the 9 alone reaches 6, so it still returns 1. Any
+          shift adds more to a long stretch than to a short one.
+      - id: sorted
+        text: The shifted list is not sorted, and the template needs sorted values
+        explanation: >-
+          The template never needs sorted values. It needs values that are 0 or more, and the
+          shifted list has those. The problem is that it is a different list.
+    correct: right
+    followUps:
+      zero:
+        prompt: On `[7, 0, 8]` with `T = 6`, is the template's answer of 1 right for that list?
+        options:
+          - { id: yes, text: 'Yes, `7` alone reaches 6' }
+          - { id: no, text: 'No, the 0 hides a shorter stretch' }
+          - { id: none, text: 'No, the answer for that list is 3' }
+        correct: yes
+        explanation: >-
+          The template answered the shifted list correctly. The mistake was treating the shifted
+          list as the same problem.
+      bigger:
+        prompt: You add `c` to every value. How much does a stretch of `L` values gain?
+        options:
+          - { id: cl, text: '`c * L`' }
+          - { id: c, text: '`c`' }
+          - { id: zero, text: 'Nothing, if `c` is large enough' }
+        correct: cl
+        explanation: >-
+          Each value gains `c`, so longer stretches gain more. No single `c` keeps every stretch's
+          comparison with `T` the same.
+      sorted:
+        prompt: Which property does the template need from the values?
+        options:
+          - { id: nonneg, text: 'Every value is 0 or more' }
+          - { id: sorted, text: 'The values are sorted' }
+          - { id: distinct, text: 'No two values are equal' }
+        correct: nonneg
+        explanation: >-
+          With values 0 or more, dropping from the left never raises a total. Order and
+          repeated values do not matter.
+
+  - id: limit-review-value-over-limit
+    heading: Is it still right?
+    tags: [sliding-window]
+    prompt: |-
+      Every value is 0 or more, but one value can be larger than `S` on its own, as in
+      `[2, 9, 1, 1]` with `S = 5`.
+
+      ```python
+      while total > S:
+          total -= nums[left]
+          left += 1
+      best = max(best, right - left + 1)
+      ```
+
+      Does the longest-stretch template still return the right length?
+    options:
+      - id: right
+        text: Yes, the window empties past the 9, and no stretch that holds the 9 can fit
+        explanation: >-
+          On the pass with the 9, the loop drops the 2 and the 9, so `left` is one past `right`
+          and the length is 0. The run returns 2, the length of `1, 1`, which is right.
+      - id: negative
+        text: No, `left` passes `right`, so a negative length is recorded
+        explanation: >-
+          When `left` is `right + 1`, the length `right - left + 1` is 0, not negative, and `max`
+          ignores it.
+      - id: skip
+        text: Only if each value larger than `S` is removed from the list first
+        explanation: >-
+          The loop already drops such a value as soon as it arrives. Removing it from the list
+          would be worse: `[2, 1, 1]` joins the 2 to `1, 1`, a stretch the real list never has.
+      - id: limit
+        text: Only if `S` is at least the largest value in the list
+        explanation: >-
+          The template does not need that. The run on `[2, 9, 1, 1]` returns 2, the true longest
+          length.
+    correct: right
+    followUps:
+      negative:
+        prompt: With `right` at 1 and `left` at 2, what is `right - left + 1`?
+        options:
+          - { id: zero, text: 'Zero, for an empty window' }
+          - { id: neg, text: '-1' }
+          - { id: two, text: '2' }
+        correct: zero
+        explanation: >-
+          1 - 2 + 1 is 0. An empty window has length 0, so `best` is unaffected.
+      skip:
+        prompt: When the 9 arrives with `S = 5`, what does the loop do?
+        options:
+          - { id: drop, text: 'Drops values until the 9 itself has left' }
+          - { id: stop, text: 'Stops with an error, since the 9 cannot fit' }
+          - { id: keep, text: 'Keeps the 9 and drops only the 2' }
+        correct: drop
+        explanation: >-
+          The total stays above 5 until the 9 leaves too. The window is then empty, and the next
+          value starts it again.
+      limit:
+        prompt: What does the template return on `[2, 9, 1, 1]` with `S = 5`?
+        options:
+          - { id: two, text: '2, for `1, 1`' }
+          - { id: one, text: '1, for `2`' }
+          - { id: zero, text: '0, since the 9 breaks it' }
+        correct: two
+        explanation: >-
+          The 9 empties the window, and then `1, 1` grows to a total of 2. The template needs
+          values that are 0 or more, not values below `S`.
+
+  - id: limit-review-count-condition
+    heading: Which question is safe?
+    tags: [sliding-window]
+    prompt: >-
+      A log of daily balance changes has positive, zero and negative values. For which question
+      does a window that grows on the right and shrinks on the left always give the right
+      answer?
+    options:
+      - id: right
+        text: Longest stretch with at most 2 days that lost money
+        explanation: >-
+          The window tracks a count of loss days, not the sum. Adding a day never lowers that
+          count and dropping one never raises it, whatever the amounts are.
+      - id: gain
+        text: Shortest stretch whose net change is at least 50
+        explanation: >-
+          The net change can drop when a day is added. A loss at the left edge can keep the
+          window below 50 while a shorter stretch to its right reaches it.
+      - id: flat
+        text: Longest stretch whose net change is at most 0
+        explanation: >-
+          A positive day can push the total over 0 and force a drop that a later loss would
+          have undone.
+      - id: count
+        text: Number of stretches whose net change is exactly 0
+        explanation: >-
+          Totals move both ways, so the window cannot decide which edge to move. Counting earlier
+          running totals in a dictionary handles this.
+    correct: right
+    followUps:
+      gain:
+        prompt: What is the window tracking in the net-change question?
+        options:
+          - { id: sum, text: 'A sum of signed values, which can fall when a day is added' }
+          - { id: count, text: 'A count of days, which never falls when a day is added' }
+          - { id: max, text: 'The largest change in the window' }
+        correct: sum
+        explanation: >-
+          The window is safe only when its measure never falls as it grows. A count of loss days
+          has that property, a sum of signed changes does not.
+      flat:
+        prompt: Why is "at most 0" no safer than "at least 50" here?
+        options:
+          - { id: signed, text: 'Both measure a signed sum, which moves both ways' }
+          - { id: zero, text: 'A limit of 0 makes every window invalid' }
+          - { id: longest, text: 'The window only handles shortest stretches' }
+        correct: signed
+        explanation: >-
+          The limit and the direction do not matter. What matters is whether the measured
+          quantity can fall as the window grows.
+      count:
+        prompt: Which method counts stretches with a net change of exactly 0?
+        options:
+          - { id: prefix, text: 'Count earlier running totals equal to the current one in a dictionary' }
+          - { id: window, text: 'Shrink the window while its total is above 0' }
+          - { id: sort, text: 'Sort the changes and pair them from both ends' }
+        correct: prefix
+        explanation: >-
+          A stretch nets 0 exactly when the running totals before it and at its end are equal.
+          A dictionary counts the earlier ones in O(1) expected time.
