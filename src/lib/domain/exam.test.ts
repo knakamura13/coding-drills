@@ -200,6 +200,27 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('carries forward prior greedy-rule-survives passes, including versions 3 and 6', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'greedy-choices')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const original = { ...attempt('greedy-loading-rule', true), deckId: 'two-dimensional-dp-greedy' };
+		expect(drills).toHaveLength(5);
+		expect(checkpoint.mix).toEqual(['survives', 'breaks']);
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 3 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 6 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		// A new item alone, from before the change, was never part of the old pool.
+		const fresh = { ...attempt('greedy-exam-gift-values', true), deckId: 'greedy-choices-checkpoint', examRulesVersion: 6 };
+		expect(examPassed(drills, checkpoint.mix, [fresh])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
 		const sitting = [attempt('a', true), attempt('b', true), attempt('c', false), attempt('d', true), attempt('e', true)];
 		expect(examPassed(pool, mix, sitting)).toBe(true);
