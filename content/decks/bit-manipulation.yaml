@@ -1,0 +1,520 @@
+id: bit-manipulation
+title: Bit manipulation
+description: Apply the bit operators to Python ints, clear the lowest set bit, and use an int as a set of flags. Each card opens with a worked example.
+heading: What does this produce?
+
+questions:
+  - id: bits-xor-or
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      **Worked example:** `6 & 3` lines both numbers up in binary, `110` and `011`, and keeps a 1
+      only where both have one: `010`, which is 2. `|` keeps a 1 where either number has one, and
+      `^` keeps a 1 where the two disagree.
+
+      ```python
+      print(12 ^ 10, 12 | 10)
+      ```
+
+      What does this print?
+    options:
+      - id: six-fourteen
+        text: "`6 14`"
+        explanation: >-
+          `12` is `1100` and `10` is `1010`. Only the 4 bit and the 2 bit are set in one number
+          but not the other, so `^` gives `0110`, which is 6. Every place that is set in either
+          number survives `|`, which gives `1110`, or 14.
+      - id: eight-fourteen
+        text: "`8 14`"
+        explanation: >-
+          8 is `12 & 10`: the 8 bit is the only place set in both. `^` looks for the opposite,
+          the places where the two numbers disagree.
+      - id: six-twenty-two
+        text: "`6 22`"
+        explanation: >-
+          22 is `12 + 10`. Both numbers have the 8 bit set, and `|` keeps that 1 once instead of
+          carrying it into the 16 place, so `12 | 10` is 14.
+      - id: two-fourteen
+        text: "`2 14`"
+        explanation: >-
+          2 is `12 - 10`. `^` compares the two numbers place by place and never borrows, so it is
+          not subtraction. Here the places that disagree are worth 4 and 2.
+    correct: six-fourteen
+    followUps:
+      eight-fourteen:
+        prompt: Where does `a ^ b` have a 1?
+        options:
+          - { id: differ, text: "Where exactly one of `a` and `b` has a 1" }
+          - { id: both, text: "Where both `a` and `b` have a 1" }
+          - { id: either, text: "Where at least one of `a` and `b` has a 1" }
+        correct: differ
+        explanation: >-
+          XOR is 1 where the bits differ. A 1 in both places is `&`, and a 1 in at least one is
+          `|`. For 12 and 10 the bits differ in the 4 and 2 places, so `12 ^ 10` is 6.
+      six-twenty-two:
+        prompt: When does `a | b` equal `a + b`?
+        options:
+          - { id: disjoint, text: "When `a` and `b` share no 1 bit, so no place is counted twice" }
+          - { id: always, text: "Always, since `|` is the bitwise way to add two ints" }
+          - { id: powers, text: "Only when `a` and `b` are both powers of two" }
+        correct: disjoint
+        explanation: >-
+          Addition carries when both numbers have a 1 in the same place, and `|` does not. With no
+          shared 1 bit there is nothing to carry, so the two agree: `3 | 4` and `3 + 4` are both 7.
+          `4 | 4` is 4, so two powers of two are not enough.
+      two-fourteen:
+        prompt: Which statement about `^` is true?
+        options:
+          - { id: per-bit, text: "It works on each bit separately, so `12 ^ 10` and `10 ^ 12` are both 6" }
+          - { id: subtract, text: "It subtracts the smaller number from the larger, so `12 ^ 10` is 2" }
+          - { id: ordered, text: "It depends on the order, so `12 ^ 10` is 2 and `10 ^ 12` is -2" }
+        correct: per-bit
+        explanation: >-
+          `^` compares each place on its own and has no borrows, so the order of the two numbers
+          does not matter. The places where 12 and 10 disagree are worth 4 and 2, which gives 6.
+
+  - id: bits-invert
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      **Worked example:** `~0` is `-1` and `~(-1)` is `0`. A Python int has no fixed width, so
+      `~` cannot flip some fixed number of digits. It treats a positive number as having endless
+      0s above its top digit and turns them into endless 1s, which is how a negative number is
+      written.
+
+      ```python
+      print(~9, ~9 & 0xFF)
+      ```
+
+      What does this print?
+    options:
+      - id: minus-ten
+        text: "`-10 246`"
+        explanation: >-
+          `~9` is one less than `-9`, so it is -10. `0xFF` is eight 1 bits, and `& 0xFF` keeps
+          only the low eight bits of -10. Those read `11110110`, which is 246, the eight-bit
+          picture of `~9`.
+      - id: minus-nine
+        text: "`-9 247`"
+        explanation: >-
+          `~` is not unary minus. Flipping every bit of 9 lands one below `-9`, at -10, and
+          `-9 & 0xFF` would be 247, not the value printed here.
+      - id: six-six
+        text: "`6 6`"
+        explanation: >-
+          6 is `0110`, which flips only the four digits of `1001`. Python flips the 0s above them
+          too, so `~9` is negative, and its low eight bits are `11110110`.
+      - id: byte-both
+        text: "`246 246`"
+        explanation: >-
+          246 is the eight-bit answer, and it appears only once the mask is applied. Without
+          `& 0xFF`, `~9` is a negative int, since nothing limits it to eight bits.
+    correct: minus-ten
+    followUps:
+      minus-nine:
+        prompt: For a Python int `x`, which expression always equals `~x`?
+        options:
+          - { id: neg-minus-one, text: "`-x - 1`" }
+          - { id: neg, text: "`-x`" }
+          - { id: neg-plus-one, text: "`-x + 1`" }
+        correct: neg-minus-one
+        explanation: >-
+          In two's complement, `-x` is `~x + 1`, so `~x` is `-x - 1`. That is why `~9` is -10,
+          `~0` is -1 and `~(-1)` is 0.
+      six-six:
+        prompt: Why is `~9` not 6 in Python?
+        options:
+          - { id: endless, text: "An int has no fixed width, so `~` also flips the 0s above the top digit" }
+          - { id: sign-only, text: "`~` flips only the sign bit, so it cannot reach the four low digits" }
+          - { id: byte, text: "Python stores 9 in eight bits, so `~` flips exactly eight digits" }
+        correct: endless
+        explanation: >-
+          Flipping only `1001` would give `0110`, which is 6. Python flips the leading 0s as well,
+          and a number with endless leading 1s is negative, so `~9` is -10. A fixed width appears
+          only once you mask, as in `~9 & 0xFF`.
+      byte-both:
+        prompt: What does `& 0xFF` do to `~9`?
+        options:
+          - { id: keep-low, text: "It keeps the low eight bits, which turns -10 into a value from 0 to 255" }
+          - { id: nothing, text: "Nothing, since `~9` is already a value from 0 to 255" }
+          - { id: flip-again, text: "It flips the low eight bits back, which turns -10 into 9" }
+        correct: keep-low
+        explanation: >-
+          `0xFF` is `11111111`, so `&` with it keeps the low eight bits and drops the rest,
+          including the endless 1s that make the number negative. Plain `~9` is -10.
+
+  - id: bits-negative-shift
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      **Worked example:** `13 >> 2` drops the two lowest digits of `1101` and leaves `11`, which
+      is 3, the same as `13 // 4`. A right shift by `k` divides by `2 ** k` and rounds the same
+      way `//` does.
+
+      ```python
+      print(-13 >> 2)
+      ```
+
+      What does this print?
+    options:
+      - id: minus-four
+        text: "`-4`"
+        explanation: >-
+          `-13 >> 2` matches `-13 // 4`. The exact quotient is -3.25, and `//` rounds down, which
+          for a negative number means away from zero, so the result is -4.
+      - id: minus-three
+        text: "`-3`"
+        explanation: >-
+          -3 cuts -3.25 toward zero, which is what `int(-13 / 4)` does. A shift rounds the way
+          `//` does, and for a negative number that lands one step further from zero.
+      - id: fraction
+        text: "`-3.25`"
+        explanation: >-
+          -3.25 is `-13 / 4`, true division. A shift takes ints and returns an int, so it never
+          produces a fraction.
+      - id: unsigned
+        text: "`1073741820`"
+        explanation: >-
+          1073741820 is what a 32-bit shift that fills with 0s gives, such as JavaScript's
+          `-13 >>> 2`. Python has no such operator: a right shift of a negative int stays
+          negative.
+    correct: minus-four
+    followUps:
+      minus-three:
+        prompt: Which way does `x >> k` round when `x` is a negative Python int?
+        options:
+          - { id: floor, text: "Down, toward negative infinity, the same as `x // 2 ** k`" }
+          - { id: toward-zero, text: "Toward zero, the same as `int(x / 2 ** k)`" }
+          - { id: none, text: "It does not round, since a shift never changes a negative value" }
+        correct: floor
+        explanation: >-
+          For any int `x` and `k` of 0 or more, `x >> k` equals `x // 2 ** k`. Floor division
+          rounds toward negative infinity, so -3.25 becomes -4, not -3.
+      fraction:
+        prompt: What type does `-13 >> 2` return?
+        options:
+          - { id: int, text: "An int, since `>>` works on ints and returns an int" }
+          - { id: float-remainder, text: "A float, whenever the shift drops a 1 bit" }
+          - { id: like-division, text: "The same type as `-13 / 4`, which is a float" }
+        correct: int
+        explanation: >-
+          Shifts are int operations. The dropped bits are simply lost, the way `//` drops a
+          remainder, so the result is the int -4.
+      unsigned:
+        prompt: Why can Python's `>>` never turn -13 into a large positive number?
+        options:
+          - { id: keeps-sign, text: "Python's `>>` keeps the sign, and Python has no shift that fills with 0s" }
+          - { id: sixty-four, text: "Python ints are 64 bits wide, so the result would be larger still" }
+          - { id: same, text: "It can: `-13 >> 2` is 1073741820 in Python as well" }
+        correct: keeps-sign
+        explanation: >-
+          A negative Python int behaves as if it had endless 1s on top, and `>>` keeps them, so the
+          result stays negative. A zero-filling shift such as JavaScript's `>>>` needs a fixed width,
+          which Python ints do not have.
+
+  - id: bits-shift-drag
+    format: drag-pointers
+    heading: Where does each 1 land?
+    tags: [bit-manipulation, python]
+    prompt: >-
+      **Worked example:** `3 << 1` is 6. `011` becomes `110`: every digit moves one place toward
+      the high end, a 0 fills the lowest place, and the value doubles. Below, the cells show
+      `x = 0b00010110` (22) with the highest bit first. `top` marks its highest 1 and `low` its
+      lowest 1. Drag each pointer to where that 1 sits after line 2.
+    code: |
+      x = 0b00010110
+      x = x << 2
+    sequence: { kind: string, name: x, cells: ['0', '0', '0', '1', '0', '1', '1', '0'] }
+    pointers:
+      - name: top
+        start: 3
+        correct: 1
+        explanation: >-
+          `<< 2` moves every digit two places toward the high end, which is left in this drawing.
+          The 1 at index 3 moves to index 1, and `x` becomes `01011000`, which is 88, four times 22.
+        misses:
+          - index: 5
+            explanation: >-
+              That is two places toward the low end, which `>> 2` does. `<<` moves digits toward
+              the high end and multiplies the value.
+          - index: 2
+            explanation: >-
+              Every digit moves by the shift count. The count here is 2, so the 1 moves two places,
+              not one.
+        elsewhere: Every digit moves exactly two places toward the high end, on the left.
+      - name: low
+        start: 6
+        correct: 4
+        explanation: >-
+          The lowest 1 moves two places left as well, from index 6 to index 4. Two 0s fill the
+          places it and the digit below it left behind.
+        misses:
+          - index: 6
+            explanation: >-
+              A shift moves every digit, not only the top one. The new lowest places are filled
+              with 0s, so the 1 cannot stay at index 6.
+          - index: 7
+            explanation: >-
+              Moving toward the right is what `>>` does. `<<` moves this 1 two places left.
+        elsewhere: The lowest 1 moves two places left, the same as every other digit.
+
+  - id: bits-tap-lowest
+    format: tap-cell
+    heading: Tap the digit that changes
+    tags: [bit-manipulation, python]
+    prompt: >-
+      **Worked example:** `12` is `1100` and `11` is `1011`. Subtracting 1 turns the lowest 1 into
+      a 0 and every 0 below it into a 1, so `12 & 11` is `1000`: the lowest 1 is gone and nothing
+      else changed. The cells show `n` from line 1, highest bit first. Tap the digit that line 2
+      turns from 1 to 0.
+    code: |
+      n = 0b10110100
+      n = n & (n - 1)
+    sequence:
+      kind: string
+      name: n
+      cells: ['1', '0', '1', '1', '0', '1', '0', '0']
+    correct: 5
+    explanation: >-
+      `n - 1` is `10110011`: the 1 at index 5 becomes 0 and the two 0s below it become 1. `&`
+      keeps a 1 only where both numbers have one, so the result is `10110000`. Only index 5
+      changed.
+    misses:
+      - index: 0
+        explanation: >-
+          This is the highest 1. Subtracting 1 changes only the low end: the lowest 1 and the 0s
+          below it. Index 0 is 1 in both `n` and `n - 1`, so it stays.
+      - index: 1
+        explanation: This digit is already 0, so nothing can turn it from 1 to 0.
+      - index: 2
+        explanation: >-
+          This 1 sits above the lowest 1. `n - 1` leaves it alone, so it is 1 in both numbers and
+          the `&` keeps it.
+      - index: 3
+        explanation: >-
+          This 1 is just above the lowest 1, but the borrow from subtracting 1 stops at the
+          lowest 1, at index 5. This digit is the same in `n - 1`, so it stays.
+      - index: 4
+        explanation: This digit is already 0, so nothing can turn it from 1 to 0.
+      - index: 6
+        explanation: >-
+          `n - 1` turns this 0 into a 1, but `n` has a 0 here, so the `&` gives 0. It was 0
+          before line 2 and is 0 after it.
+      - index: 7
+        explanation: >-
+          Subtracting 1 flips more than the last digit when that digit is 0: the borrow runs up
+          to the lowest 1. This digit is 0 in `n`, so the `&` leaves it 0.
+
+  - id: bits-trace-popcount
+    format: step-trace
+    heading: Predict each step
+    tags: [bit-manipulation, complexity, python]
+    prompt: >-
+      **Worked example:** for `n = 0b1010`, the first pass clears the 2 bit and leaves `0b1000`,
+      the second clears that bit and leaves 0, and the call returns 2: one pass per 1 digit.
+      Below, the cells show the starting `n`, highest bit first, and they do not change as `n`
+      does. `low` marks the lowest 1 still in `n`. Predict each step before it is shown.
+    code: |
+      def count_ones(n):
+          count = 0
+          while n:
+              n &= n - 1
+              count += 1
+          return count
+
+      count_ones(0b01101000)
+    sequence: { kind: string, name: n, cells: ['0', '1', '1', '0', '1', '0', '0', '0'] }
+    start:
+      - { name: low, at: 4 }
+    steps:
+      - line: 3
+        ask: After the first pass, which digit is the lowest 1 of `n`?
+        pointer: low
+        correct: 2
+        explanation: >-
+          Line 4 clears the lowest 1, at index 4, and leaves `01100000`, which is 96. The lowest 1
+          left is the one at index 2.
+        misses:
+          - index: 4
+            explanation: >-
+              That is the 1 line 4 clears. `n & (n - 1)` always removes the lowest 1, so it is 0
+              after the first pass.
+          - index: 5
+            explanation: >-
+              `n - 1` turns the 0s below the lowest 1 into 1s, but `n` has 0s there, so the `&`
+              keeps them 0.
+          - index: 1
+            explanation: >-
+              One pass clears only one 1. The 1 at index 2 is still set, and it is lower than
+              index 1.
+        elsewhere: Each pass clears only the lowest 1, so the next 1 up becomes the lowest.
+      - line: 3
+        ask: After the second pass, which digit is the lowest 1 of `n`?
+        pointer: low
+        correct: 1
+        explanation: >-
+          The second pass clears the 1 at index 2 and leaves `01000000`, which is 64. Only the 1
+          at index 1 is left.
+        misses:
+          - index: 2
+            explanation: That 1 was the lowest at the start of this pass, so this pass cleared it.
+          - index: 0
+            explanation: >-
+              Index 0 was 0 from the start, and clearing bits never sets one. The 1 at index 1 is
+              still there.
+        elsewhere: The second pass clears the 1 at index 2, which leaves only index 1.
+      - line: 6
+        ask: The loop runs until `n` is 0. What does the call return?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The third pass clears the 1 at index 1, `n` becomes 0 and the `while` test fails.
+              Three passes ran, one per 1 digit, so `count` is 3.
+          - id: seven
+            text: '7'
+            explanation: >-
+              7 is `(104).bit_length()`, the number of digits from the highest 1 down. The loop
+              never visits the 0 digits; each pass jumps to the next 1.
+          - id: eight
+            text: '8'
+            explanation: >-
+              8 is the number of cells drawn. The leading 0 and the 0s between the 1s add no pass,
+              because each pass clears a 1.
+        correct: three
+
+  - id: bits-mask-subsets
+    heading: Which loop visits every subset?
+    tags: [bit-manipulation, backtracking, python]
+    prompt: |-
+      **Worked example:** for two items `['x', 'y']`, mask 0 picks nothing, mask 1 (`01`) picks
+      `['x']`, mask 2 (`10`) picks `['y']` and mask 3 (`11`) picks both. Bit `j` of a mask says
+      whether item `j` is in.
+
+      Which loop visits each subset of `n` items exactly once, the empty set and the full set
+      included?
+    options:
+      - id: full-range
+        text: "`for mask in range(1 << n):`"
+        explanation: >-
+          `1 << n` is `2 ** n`, so the masks run from 0 up to `2 ** n - 1`. Each item has its own
+          bit, so every pattern of picks is one mask, and there are `2 ** n` of them. For three
+          items that is 8 masks, from 0 (nothing) to 7 (`111`, everything).
+      - id: skip-empty
+        text: "`for mask in range(1, 1 << n):`"
+        explanation: >-
+          Starting at 1 skips mask 0, the mask that picks nothing. For three items this loop
+          visits 7 of the 8 subsets.
+      - id: skip-full
+        text: "`for mask in range((1 << n) - 1):`"
+        explanation: >-
+          `range` stops before its end, so this loop stops at `2 ** n - 2`. The mask with every
+          bit set is never visited. For three items it visits 0 to 6, which is 7 of the 8 subsets.
+      - id: n-masks
+        text: "`for mask in range(n):`"
+        explanation: >-
+          This visits only `n` masks. For three items it visits 0, 1 and 2, which pick nothing,
+          the first item alone and the second item alone. Pairs and the full set are never
+          reached.
+    correct: full-range
+    followUps:
+      skip-empty:
+        prompt: Which subset does mask 0 stand for?
+        options:
+          - { id: empty, text: "The empty set, which is one of the subsets too" }
+          - { id: none, text: "No subset, since a mask of 0 selects nothing to visit" }
+          - { id: full, text: "The full set, since every bit is the same" }
+        correct: empty
+        explanation: >-
+          With no bit set, no item is picked, and that empty pick is one of the `2 ** n` subsets.
+          A loop that must include it starts at 0.
+      skip-full:
+        prompt: For three items, which mask stands for the full set?
+        options:
+          - { id: seven, text: "7, which is `111` in binary" }
+          - { id: eight, text: "8, which is `1000` in binary" }
+          - { id: six, text: "6, which is `110` in binary" }
+        correct: seven
+        explanation: >-
+          The full set has every one of the three bits set, `111`, which is `2 ** 3 - 1`. 8 is
+          `1 << 3`, the stop value of `range(1 << 3)`, so it is never a mask.
+      n-masks:
+        prompt: How many subsets does a set of `n` distinct items have?
+        options:
+          - { id: power, text: "`2 ** n`, since each item is in or out on its own" }
+          - { id: linear, text: "`n`, one for each item" }
+          - { id: factorial, text: "`n!`, one for each order of the items" }
+        correct: power
+        explanation: >-
+          Each item doubles the count: every subset without it has a twin with it. So three items
+          give 8 subsets. Order does not matter in a subset, so `n!` counts something else.
+
+  - id: bits-xor-pairs
+    heading: What does this print?
+    tags: [bit-manipulation, python]
+    prompt: |-
+      **Worked example:** `5 ^ 3 ^ 5`: `5 ^ 3` is 6, and `6 ^ 5` is 3. The two 5s cancel,
+      because `x ^ x` is 0, `0 ^ y` is `y`, and the order of the `^` steps does not matter.
+
+      ```python
+      acc = 0
+      for v in [5, 9, 5, 2, 9]:
+          acc ^= v
+      print(acc)
+      ```
+
+      What does this print?
+    options:
+      - id: two
+        text: "`2`"
+        explanation: >-
+          The running values are 5, 12, 9, 11 and 2. Order does not matter, so the two 5s cancel
+          and the two 9s cancel, which leaves the 2. This is why one `^` pass with one variable
+          finds the value that has no partner.
+      - id: zero
+        text: "`0`"
+        explanation: >-
+          A value cancels only when it meets a copy of itself. The 2 appears once, so it has no
+          partner and is what is left.
+      - id: fifteen
+        text: "`15`"
+        explanation: >-
+          15 is `5 | 9 | 2`. With `|`, a second copy of a value changes nothing, so nothing
+          cancels. `^` flips the bits back the second time.
+      - id: thirty
+        text: "`30`"
+        explanation: >-
+          30 is the sum of the list. `^` does not add: it has no carries, and a value combined
+          with a copy of itself disappears.
+    correct: two
+    followUps:
+      zero:
+        prompt: In a run of `^`, which values cancel out?
+        options:
+          - { id: even-count, text: "Values that occur an even number of times" }
+          - { id: all, text: "All of them, so a full XOR of a list is always 0" }
+          - { id: adjacent, text: "Only copies that sit next to each other in the list" }
+        correct: even-count
+        explanation: >-
+          Each pair of equal values gives 0, in any order, so a value seen twice (or four times)
+          leaves nothing. A value seen once survives, which is why the result is 2.
+      fifteen:
+        prompt: Why does folding with `|` not cancel pairs?
+        options:
+          - { id: idempotent, text: "`x | x` is `x`, so a second copy adds no change" }
+          - { id: even-only, text: "`|` cancels pairs too, but only for even values" }
+          - { id: sorted, text: "`|` cancels pairs only when the list is sorted" }
+        correct: idempotent
+        explanation: >-
+          `|` can turn bits on but never off. A repeated value turns on bits that are already on,
+          so every value ever seen leaves its 1s behind: `5 | 9 | 2` is 15.
+      thirty:
+        prompt: How does `^` differ from `+`?
+        options:
+          - { id: no-carry, text: "`^` never carries, and `x ^ x` is 0 for every int" }
+          - { id: small, text: "`^` matches `+` for small numbers and differs only above 255" }
+          - { id: parity, text: "`^` is `+` followed by `% 2` on the whole result" }
+        correct: no-carry
+        explanation: >-
+          `^` works on each bit separately, with no carry into the next place. So a value cancels
+          its own copy, which `+` never does: `9 + 9` is 18, while `9 ^ 9` is 0.
