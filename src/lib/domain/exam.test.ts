@@ -128,6 +128,29 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('carries forward a compare-storage pass from the two-item pool and requires a full sitting now', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'dp-storage')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const memo = { ...attempt('memoization-complexity', true), deckId: 'one-dimensional-dp', examRulesVersion: 6 };
+		const row = { ...attempt('row-space-order', true), deckId: 'two-dimensional-dp-greedy', examRulesVersion: 6 };
+		expect(drills).toHaveLength(6);
+		expect(checkpoint.mix).toEqual(['memo-or-table', 'rolling-row']);
+		// One item alone was never a pass of the two-item pool.
+		expect(examPassed(drills, checkpoint.mix, [memo])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [memo, { ...row, day: '2026-02-02' }])).toBe(false);
+		// Both items on one day, with at most one miss, was a pass.
+		expect(examPassed(drills, checkpoint.mix, [memo, row])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [memo, { ...row, correct: false }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...memo, correct: false }, { ...row, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...memo, examRulesVersion: 1 }, { ...row, examRulesVersion: 1 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...memo, examRulesVersion: EXAM_RULES_VERSION }, { ...row, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('carries forward prior connectivity passes, including version 3', () => {
 		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'connectivity')!;
 		const checkpoint = path.checkpoints[0];

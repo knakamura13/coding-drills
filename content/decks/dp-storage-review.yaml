@@ -1,0 +1,771 @@
+id: dp-storage-review
+title: "DP storage: review"
+description: Fresh inputs for the DP storage skills, for recall on later days. No worked examples this time.
+heading: Which one is right?
+
+questions:
+  - id: storage-review-tap-oldest
+    format: tap-cell
+    heading: Which entry is still needed?
+    tags: [dp, python]
+    prompt: >-
+      A climber takes 1 or 4 stairs at a time, and `ways[9]` has just been written. Tap the
+      **oldest** entry that some later step still reads.
+    code: |
+      ways = [1, 1, 1, 1]
+      for i in range(4, n + 1):
+          ways.append(ways[i - 1] + ways[i - 4])
+    sequence: { kind: array, name: ways, cells: [1, 1, 1, 1, 2, 3, 4, 5, 7, 10] }
+    correct: 6
+    explanation: >-
+      The next step computes `ways[10]` from `ways[9]` and `ways[6]`. Later steps reach back from
+      higher indexes, so nothing below 6 is read again. Four values, `ways[6]` to `ways[9]`, carry
+      the rest of the loop.
+    misses:
+      - index: 0
+        explanation: >-
+          `ways[0]` was last read by `ways[4]`. A look-back of 4 from 10 or later never reaches it.
+      - index: 1
+        explanation: >-
+          `ways[1]` fed `ways[5]` and is never read again.
+      - index: 2
+        explanation: >-
+          `ways[2]` fed `ways[6]`. From `ways[10]` on, the oldest read is index 6 or higher.
+      - index: 3
+        explanation: >-
+          `ways[3]` was last read by `ways[7]`. It is four cells behind 7, and every later step
+          starts further right.
+      - index: 4
+        explanation: >-
+          `ways[4]` was last read by `ways[8]`, two steps ago.
+      - index: 5
+        explanation: >-
+          `ways[5]` was read to compute `ways[9]`, the step that just ran. The next step looks
+          back four cells from 10, which is index 6.
+      - index: 7
+        explanation: >-
+          `ways[7]` is still needed, by `ways[11]`, but `ways[10]` reads `ways[6]`, one cell older.
+      - index: 8
+        explanation: >-
+          `ways[8]` is still needed, but it is not the oldest. `ways[10]` reaches back to index 6.
+      - index: 9
+        explanation: >-
+          `ways[9]` is the newest entry. The next step also reads `ways[6]`, four cells back from
+          10.
+
+  - id: storage-review-which-task
+    heading: Which task needs the table?
+    tags: [dp, complexity]
+    prompt: |-
+      A walker pays the cost of each stair it stands on and climbs 1 or 2 stairs at a time. The
+      cheapest total is computed with this table.
+
+      ```python
+      best = [cost[0], cost[1]]
+      for i in range(2, len(cost)):
+          best.append(cost[i] + min(best[i - 1], best[i - 2]))
+      return best[-1]
+      ```
+
+      Which task **cannot** drop to a fixed number of variables and still be done in one pass?
+    options:
+      - id: list-stairs
+        text: Return the list of stairs a cheapest walk stands on
+        explanation: >-
+          To walk back from the last stair you need, for each stair, which of the two it was
+          reached from. That record grows with the input, so O(n) storage stays, either as the
+          table or as one choice per stair.
+      - id: total
+        text: Return the cheapest total to stand on the last stair
+        explanation: >-
+          Each entry reads only the two before it, so two variables do the job in O(1) extra
+          space.
+      - id: three-steps
+        text: Return the cheapest total when a move can climb 1, 2 or 3 stairs
+        explanation: >-
+          The farthest look-back becomes 3, so three variables are enough. The window grows with
+          the look-back, not with the input.
+      - id: negative
+        text: Return the cheapest total when some stairs pay you, with negative costs
+        explanation: >-
+          The recurrence and its reads are unchanged. Negative costs change the values, not how
+          far back the loop reads.
+    correct: list-stairs
+    followUps:
+      total:
+        prompt: Why can the stair walk keep only two numbers but not the list of stairs?
+        options:
+          - id: choices-lost
+            text: Dropped entries are never read again, but the route needs a past choice at every stair
+          - id: values-change
+            text: Dropped entries would change later, so they must be kept
+          - id: same
+            text: Both tasks need the same storage, since they come from the same table
+        correct: choices-lost
+        explanation: >-
+          A total only needs the values a later step reads. A route needs to walk back through
+          every stair, so some record per stair must stay.
+      three-steps:
+        prompt: >-
+          `best[i]` reads `best[i-1]`, `best[i-2]` and `best[i-3]`. How many past values must a
+          rolling version hold?
+        options:
+          - id: three
+            text: Three, the farthest look-back
+          - id: all
+            text: All of them, since there are more than two reads
+          - id: two
+            text: Two, since one of the three is always the smallest
+        correct: three
+        explanation: >-
+          The window is as wide as the farthest read. Three reads back means three variables, and
+          the space stays O(1).
+      negative:
+        prompt: What decides how many past entries the loop must keep?
+        options:
+          - id: reach
+            text: How far back the recurrence reads
+          - id: signs
+            text: Whether the values can be negative
+          - id: size
+            text: How large the values grow
+        correct: reach
+        explanation: >-
+          Storage follows the reads. A value can be dropped once no later step reaches back to it,
+          whatever its sign.
+
+  - id: storage-review-two-rows
+    heading: Which rows must stay?
+    tags: [dp, grid]
+    prompt: |-
+      A piece moves down one row and right one column, or down two rows in the same column. The
+      table counts the ways to reach each cell.
+
+      ```python
+      for r in range(2, R):
+          for c in range(1, C):
+              ways[r][c] = ways[r - 1][c - 1] + ways[r - 2][c]
+      ```
+
+      While row `r` is being filled, which earlier rows must still be in memory?
+    options:
+      - id: one-row
+        text: Only row `r - 1`, since a grid table keeps one previous row
+        explanation: >-
+          One previous row is enough only when every read is one row up. Here the second read,
+          `ways[r - 2][c]`, goes back two rows, so row `r - 2` must stay too.
+      - id: two-rows
+        text: Rows `r - 1` and `r - 2`; nothing older is read again
+        explanation: >-
+          Row `r` reads row `r - 1` and row `r - 2`. The next row reads rows `r` and `r - 1`, so
+          row `r - 2` can go once row `r` is done. The farthest read is two rows up, so the space
+          is O(C).
+      - id: all-rows
+        text: Every earlier row, since the two-row move skips over one
+        explanation: >-
+          A move that skips a row still reads a fixed distance back. Rows `r - 3` and older are
+          never read while row `r` or any later row is filled.
+      - id: two-cells
+        text: Only columns `c - 1` and `c` of earlier rows
+        explanation: >-
+          Those are the cells read for one `c`, but the loop goes on to every column, and each
+          reads its own pair. Whole rows must stay.
+    correct: two-rows
+    followUps:
+      one-row:
+        prompt: Which read decides how many rows a rolling version must hold?
+        options:
+          - id: farthest-row
+            text: The one that reaches furthest up, here `ways[r - 2][c]`
+          - id: diagonal
+            text: The diagonal read, since it moves in both directions
+          - id: first-read
+            text: The first read in the line
+        correct: farthest-row
+        explanation: >-
+          As with a one-dimensional table, the farthest look-back sets the window. Two rows up
+          means two earlier rows stay.
+      all-rows:
+        prompt: When row `r` is filled, which row is the oldest that any later row reads?
+        options:
+          - id: r-minus-one
+            text: Row `r - 1`, which row `r + 1` reads two rows up
+          - id: zero
+            text: Row 0, since every path starts there
+          - id: r-minus-three
+            text: Row `r - 3`, since the moves add up across rows
+        correct: r-minus-one
+        explanation: >-
+          Row `r + 1` reads rows `r` and `r - 1`. Row `r - 2` is used only by row `r`, so it can go
+          once row `r` is done.
+      two-cells:
+        prompt: >-
+          After `ways[r][1]` is written, which entry of row `r - 2` does the next column read?
+        options:
+          - id: col-two
+            text: "`ways[r - 2][2]`, a cell the first column did not read"
+          - id: col-one
+            text: "`ways[r - 2][1]` again"
+          - id: none
+            text: None, since row `r - 2` was read once already
+        correct: col-two
+        explanation: >-
+          Each column reads its own cell two rows up and the cell up and to the left. Over the row,
+          every column of the two earlier rows is read.
+
+  - id: storage-review-trace-two-lines
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      A climber takes 1 or 2 stairs at a time and cannot stand on a broken stair (`1` in the
+      list). `a` and `b` should count the ways to reach the two stairs before `i`. This version
+      splits the update into two lines. Predict each step.
+    code: |
+      def count(broken):
+          a, b = 1, 1
+          for i in range(2, len(broken)):
+              a = b
+              b = 0 if broken[i] else a + b
+          return b
+
+      count([0, 0, 1, 0, 0, 0, 1, 0])
+    sequence: { kind: array, name: broken, cells: [0, 0, 1, 0, 0, 0, 1, 0] }
+    start:
+      - { name: i, at: 2 }
+    steps:
+      - line: 4
+        ask: After the pass with `i` at 2, what are `a` and `b`?
+        options:
+          - id: one-zero
+            text: a = 1, b = 0
+            explanation: >-
+              `a` takes 1, and stair 2 is broken, so `b` is 0. This pass is still right, because a
+              broken stair ignores both values.
+          - id: one-two
+            text: a = 1, b = 2
+            explanation: >-
+              Stair 2 is broken, so line 5 sets `b` to 0 without adding.
+          - id: one-one
+            text: a = 1, b = 1
+            explanation: >-
+              Line 5 runs on every pass. It writes 0 for the broken stair.
+        correct: one-zero
+      - line: 4
+        ask: After the pass with `i` at 3, what are `a` and `b`?
+        options:
+          - id: zero-zero
+            text: a = 0, b = 0
+            explanation: >-
+              Line 4 sets `a` to 0, and line 5 then adds the new `a` to `b`: 0 + 0. The old `a`, 1,
+              the ways to reach stair 1, is gone before it is used.
+          - id: zero-one
+            text: a = 0, b = 1
+            explanation: >-
+              That is what the tuple form computes, from the old `a` of 1. Here line 4 has already
+              set `a` to 0 when line 5 adds.
+          - id: one-one
+            text: a = 1, b = 1
+            explanation: >-
+              `a` takes the old `b`, which was 0 after the broken stair.
+        correct: zero-zero
+        also:
+          - { name: i, at: 3 }
+      - line: 6
+        ask: The passes with `i` from 4 to 7 run. What does the call return?
+        options:
+          - id: zero
+            text: '0'
+            explanation: >-
+              Once `a` and `b` are both 0, every sum is 0, so the count never recovers.
+          - id: two
+            text: '2'
+            explanation: >-
+              2 is the true count, but this version lost the 1 for stair 1 at `i = 3`. From there
+              both values stay 0.
+          - id: one
+            text: '1'
+            explanation: >-
+              No pass after `i = 3` adds anything but zeros, so the count stays 0.
+        correct: zero
+        also:
+          - { name: i, at: 7 }
+      - ask: With lines 4 and 5 replaced by `a, b = b, (0 if broken[i] else a + b)`, what is returned?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              The tuple reads the old `a` and `b` before assigning, so stair 3 gets 1, and the run
+              ends at 2: through stairs 1, 3, 5 or 1, 3, 4, 5 before the last stair.
+          - id: zero
+            text: '0'
+            explanation: >-
+              The tuple form keeps the old `a` for the sum, so stair 3 gets 1 rather than 0, and
+              the count does not collapse.
+          - id: four
+            text: '4'
+            explanation: >-
+              Broken stairs 2 and 6 cut out most routes. Only the two that pass through stairs 1, 3
+              and 5 survive.
+        correct: two
+
+  - id: storage-review-tap-reused-item
+    format: tap-cell
+    heading: Where does the row go wrong?
+    tags: [dp, python]
+    prompt: >-
+      Each item may be packed once. The row holds the best value per capacity after an item of
+      weight 2 worth 2. A pass now adds an item of weight 3 worth 5, going **left to right**. Tap
+      the first capacity that ends with a wrong value.
+    code: |
+      wt, val = 3, 5
+      for w in range(wt, len(dp)):
+          dp[w] = max(dp[w], dp[w - wt] + val)
+    sequence: { kind: array, name: dp, cells: [0, 0, 2, 2, 2, 2, 2, 2] }
+    correct: 6
+    explanation: >-
+      At `w = 6` the loop reads `dp[3]`, which this pass already set to 5, the new item alone. It
+      stores 10, the new item packed twice, where the right value is 7, both items. Right to left
+      gives `[0, 0, 2, 5, 5, 7, 7, 7]`.
+    misses:
+      - index: 0
+        explanation: >-
+          The loop starts at `w = 3`, so `dp[0]` is never written. 0 is right.
+      - index: 1
+        explanation: >-
+          `dp[1]` is never written, and nothing fits in 1. 0 is right.
+      - index: 2
+        explanation: >-
+          `dp[2]` is below the new item's weight, so it keeps 2, the first item. That is right.
+      - index: 3
+        explanation: >-
+          `dp[3]` reads `dp[0]`, which this pass never writes, so it stores 5, the new item alone.
+          That is right.
+      - index: 4
+        explanation: >-
+          `dp[4]` reads `dp[1]`, still 0, and stores 5. Both items weigh 5 together, so 5 is the
+          best for 4.
+      - index: 5
+        explanation: >-
+          `dp[5]` reads `dp[2]`, which this pass never writes, so it stores 2 + 5 = 7, both items.
+          That is right.
+      - index: 7
+        explanation: >-
+          `dp[7]` is wrong too, at 10, but the loop wrote a wrong value at `w = 6` first.
+
+  - id: storage-review-save-diagonal
+    heading: Which fix is right?
+    tags: [dp, grid, python]
+    prompt: |-
+      A piece moves right, down, or diagonally down-right. A one-row table counts the paths to
+      each cell, and a 3 x 3 grid should give 13. Each new entry needs the cell above (old
+      `row[c]`), the cell to the left (new `row[c - 1]`) and the cell above-left (`diag`).
+
+      ```python
+      row = [1] * C
+      for r in range(1, R):
+          diag = row[0]
+          for c in range(1, C):
+              row[c] = row[c] + row[c - 1] + diag
+              diag = row[c]
+      return row[C - 1]
+      ```
+
+      It returns 17. Which change makes it correct?
+    options:
+      - id: save-old
+        text: Keep `old = row[c]` before the write, then set `diag = old` after it
+        explanation: >-
+          The next column needs this column's value from the row above. That value is in `row[c]`
+          only until the write, so it has to be copied first. With the copy, the 3 x 3 grid gives
+          13 and every grid matches the full table.
+      - id: reverse
+        text: Run `c` from `C - 1` down to 1 so that `row[c - 1]` still holds the old row
+        explanation: >-
+          Right to left makes `row[c - 1]` the cell above-left, not the cell to the left, so the
+          left move is lost. The 3 x 3 grid then gives 9.
+      - id: left-cell
+        text: Set `diag = row[c - 1]` at the end of the body instead
+        explanation: >-
+          `row[c - 1]` was already rewritten for this row, so it is the cell to the left, not the
+          one above-left of the next column. The 3 x 3 grid gives 11.
+      - id: reset-inside
+        text: Move `diag = row[0]` inside the inner loop, before the write
+        explanation: >-
+          That makes every column use column 0 of the row above as its diagonal. The 3 x 3 grid
+          gives 11, since only column 1 gets the right value.
+    correct: save-old
+    followUps:
+      reverse:
+        prompt: Going right to left, what does `row[c - 1]` hold when `row[c]` is written?
+        options:
+          - id: old-row
+            text: The previous row's value, above-left of the current cell
+          - id: new-row
+            text: This row's value, to the left of the current cell
+          - id: saved
+            text: A copy saved before the loop
+        correct: old-row
+        explanation: >-
+          The loop has not reached `c - 1` yet, so it is still the old row. This recurrence needs
+          both the new left cell and the old above-left cell, and one direction can only give one
+          of them for free.
+      left-cell:
+        prompt: >-
+          Right after `row[c]` is written, which cell does `row[c - 1]` stand for?
+        options:
+          - id: left
+            text: The cell to the left in the current row, since it was written a step earlier
+          - id: above-left
+            text: The cell above and to the left, from the previous row
+          - id: above
+            text: The cell directly above
+        correct: left
+        explanation: >-
+          Everything left of `c` already belongs to the current row. The next column's diagonal is
+          the previous row's value at `c`, which only exists until `row[c]` is overwritten.
+      reset-inside:
+        prompt: For column 2, which cell's count should `diag` hold?
+        options:
+          - id: above-left
+            text: The previous row's count at column 1
+          - id: corner
+            text: The previous row's count at column 0
+          - id: current
+            text: The current row's count at column 1
+        correct: above-left
+        explanation: >-
+          The diagonal of column `c` is the previous row at `c - 1`, so it changes every column.
+          Resetting it to column 0 is right only for column 1.
+
+  - id: storage-review-coin-direction
+    heading: What does it return?
+    tags: [dp, python]
+    prompt: |-
+      `dp[a]` counts the ways to pay `a` when each coin value may be used any number of times and
+      order does not matter. A teammate runs the inner loop from high to low, as for items packed
+      once.
+
+      ```python
+      dp = [1] + [0] * A
+      for c in coins:
+          for a in range(A, c - 1, -1):
+              dp[a] += dp[a - c]
+      return dp[A]
+      ```
+
+      What does it return for `coins = [1, 2, 3]` and `A = 4`?
+    options:
+      - id: one
+        text: 1, since each coin value is now used at most once, which leaves only 1 + 3
+        explanation: >-
+          High to low reads `dp[a - c]` before this coin's pass touches it, so no coin repeats.
+          Among `{1, 2, 3}` only `1 + 3` pays 4. Low to high returns 4: `1+1+1+1`, `1+1+2`, `2+2`,
+          `1+3`.
+      - id: four
+        text: 4, the same count as low to high, since only the order of the additions changes
+        explanation: >-
+          The direction changes which version of `dp[a - c]` is read. High to low never sees a
+          value that already used coin `c`, so repeats such as `2 + 2` are lost.
+      - id: two
+        text: 2, counting `1 + 3` and `2 + 2` but no way that repeats the coin 1
+        explanation: >-
+          `2 + 2` repeats a coin too. High to low blocks every repeat, so only `1 + 3` is left.
+      - id: zero
+        text: 0, since reading high to low reaches amounts that have not been filled yet
+        explanation: >-
+          The entries read are filled by earlier coins' passes. `dp[1]` is 1 after coin 1, so
+          coin 3 finds `1 + 3`.
+    correct: one
+    followUps:
+      four:
+        prompt: When coin 2's pass updates `dp[4]` from high to low, what does `dp[2]` hold?
+        options:
+          - id: before
+            text: The count before coin 2's pass, so `2 + 2` cannot form
+          - id: after
+            text: The count after coin 2's pass, so `2 + 2` is counted
+          - id: zero
+            text: Zero, since `dp[2]` is cleared first
+        correct: before
+        explanation: >-
+          From high to low, `dp[4]` is updated before `dp[2]`. So `dp[4]` adds the ways to pay 2
+          without any 2, and the second 2 never appears.
+      two:
+        prompt: Which way to pay 4 needs a coin value used twice?
+        options:
+          - id: both
+            text: "`2 + 2`, as well as `1 + 1 + 2` and `1 + 1 + 1 + 1`"
+          - id: only-ones
+            text: Only `1 + 1 + 1 + 1`
+          - id: none
+            text: None, since 2 is a single value
+        correct: both
+        explanation: >-
+          Any way with the same value twice is a repeat, whichever value it is. The high-to-low
+          loop drops all of them.
+      zero:
+        prompt: When coin 3 is processed, what does `dp[1]` hold?
+        options:
+          - id: one
+            text: 1, since coin 1's pass already filled it
+          - id: zero
+            text: 0, since high to low has not reached it
+          - id: three
+            text: 3, the coin value
+        correct: one
+        explanation: >-
+          Each coin runs a full pass before the next coin starts. Coin 1's pass set `dp[1]` to 1,
+          so coin 3 reads it at `dp[4 - 3]`.
+
+  - id: storage-review-grid-memo
+    heading: What is the cost?
+    tags: [dp, recursion, complexity]
+    prompt: |-
+      ```python
+      from functools import cache
+
+      @cache
+      def paths(r, c):
+          if r == 0 or c == 0:
+              return 1
+          return paths(r - 1, c) + paths(r, c - 1)
+
+      paths(R - 1, C - 1)
+      ```
+
+      For an `R x C` grid, what are the time and the deepest stack?
+    options:
+      - id: rc-and-sum
+        text: O(R·C) time; the stack is O(R + C) deep, one frame per step of a chain
+        explanation: >-
+          Each `(r, c)` runs its body once with two calls, so the time is O(R·C). The first chain
+          lowers `r` to 0 before anything returns, and later chains lower `c`, so no chain is
+          longer than `R + C`. For 20 x 30 that is 599 bodies and 48 frames.
+      - id: rc-and-rc
+        text: O(R·C) time; the stack is O(R·C) deep, one frame per cell
+        explanation: >-
+          Frames are live only along the current chain of calls. Each call lowers `r` or `c` by
+          one, so a chain has at most `R + C` frames.
+      - id: exponential
+        text: O(2^(R+C)) time, since each call branches two ways
+        explanation: >-
+          That is the cost without `@cache`. With it, a repeated `(r, c)` is a lookup, so each
+          cell runs once.
+      - id: one-path
+        text: O(R + C) time, since a path from corner to corner crosses R + C - 1 cells
+        explanation: >-
+          The calls reach every cell, not one path. `paths(r - 1, c)` and `paths(r, c - 1)` fan out
+          over the whole grid before the answer is known.
+    correct: rc-and-sum
+    followUps:
+      rc-and-rc:
+        prompt: What happens to the stack when a call returns?
+        options:
+          - id: pops
+            text: Its frame is removed, so only the current chain of calls is live
+          - id: stays
+            text: Its frame stays, so the cache can find it later
+          - id: moves
+            text: Its frame moves into the cache
+        correct: pops
+        explanation: >-
+          The cache keeps return values, not frames. The deepest stack is the longest chain, and
+          each step of a chain lowers `r + c` by one.
+      exponential:
+        prompt: How many times does the body of `paths(2, 3)` run during one top-level call?
+        options:
+          - id: once
+            text: Once; every later call with `(2, 3)` is a lookup
+          - id: per-path
+            text: Once for every path that reaches it
+          - id: twice
+            text: Twice, once from each neighbor
+        correct: once
+        explanation: >-
+          The body runs once per distinct argument pair. The work is the number of cells times the
+          constant work in one body.
+      one-path:
+        prompt: Which cells does `paths(R - 1, C - 1)` end up evaluating?
+        options:
+          - id: all
+            text: Nearly every cell of the grid, one body each
+          - id: diagonal
+            text: Only the cells on the diagonal
+          - id: one
+            text: Only the cells of the cheapest path
+        correct: all
+        explanation: >-
+          Counting paths needs the count for every cell above and to the left, so the recursion
+          visits the whole grid once.
+
+  - id: storage-review-stock-states
+    heading: What is the time?
+    tags: [dp, recursion, complexity]
+    prompt: |-
+      The best profit from any number of buy-then-sell trades, holding at most one share at a time.
+
+      ```python
+      from functools import cache
+
+      def best_profit(prices):
+          @cache
+          def f(i, holding):
+              if i == len(prices):
+                  return 0
+              skip = f(i + 1, holding)
+              if holding:
+                  return max(skip, prices[i] + f(i + 1, False))
+              return max(skip, -prices[i] + f(i + 1, True))
+          return f(0, False)
+      ```
+
+      With `n` prices, what is the time?
+    options:
+      - id: linear
+        text: O(n), since there are about 2n states and each does constant work
+        explanation: >-
+          A state is a day and a yes-or-no for holding, so there are at most 2(n + 1). Each body
+          makes at most two calls and one `max`. For 200 prices, 401 bodies run.
+      - id: quadratic
+        text: O(n²), since each state tries every later day to sell
+        explanation: >-
+          Each state looks only at the next day, `i + 1`. Selling later is reached through a chain
+          of skips, not a loop over days.
+      - id: exponential
+        text: O(2ⁿ), since each day branches into two choices
+        explanation: >-
+          Without `@cache` it would. With it, each `(i, holding)` runs once, so the branching is
+          counted once per state.
+      - id: price-range
+        text: O(n·P), with P the largest price, since `holding` stands for the buy price
+        explanation: >-
+          `holding` is only `True` or `False`. The buy price is already subtracted from the total
+          when the share is bought, so it never has to be part of the state.
+    correct: linear
+    followUps:
+      quadratic:
+        prompt: How many calls does one body of `f` make?
+        options:
+          - id: two
+            text: At most two, both to day `i + 1`
+          - id: n
+            text: One for every later day
+          - id: one
+            text: Exactly one, to day `i + 1`
+        correct: two
+        explanation: >-
+          The work per state is the number of calls in the body, a constant here. Waiting to sell is
+          a chain of skip calls, each a separate state.
+      exponential:
+        prompt: How many distinct `(i, holding)` pairs exist for `n` prices?
+        options:
+          - id: two-n
+            text: About 2n, since `i` runs from 0 to `n` and `holding` has two values
+          - id: two-to-n
+            text: 2ⁿ, one for each pattern of choices
+          - id: n
+            text: "`n`, one per day"
+        correct: two-n
+        explanation: >-
+          With a cache, the time is the number of distinct states times the work in one body. The
+          many choice patterns all pass through the same small set of states.
+      price-range:
+        prompt: Where does the buy price go when `f(i + 1, True)` is called after a buy?
+        options:
+          - id: subtracted
+            text: It is subtracted from the running result with `-prices[i]`
+          - id: in-state
+            text: It is stored in the state, so each price needs its own state
+          - id: forgotten
+            text: It is forgotten, so the sale cannot be priced
+        correct: subtracted
+        explanation: >-
+          The cost is paid when the share is bought, so the later sale only adds its price. The
+          state needs to know whether a share is held, not what it cost.
+
+  - id: storage-review-memo-space
+    heading: What is the extra space?
+    tags: [dp, recursion, complexity]
+    prompt: |-
+      Two versions count the ways to climb `n` stairs taking 1 or 2 at a time.
+
+      ```python
+      from functools import cache
+
+      @cache
+      def ways(n):
+          if n <= 1:
+              return 1
+          return ways(n - 1) + ways(n - 2)
+
+      def ways_loop(n):
+          a, b = 1, 1
+          for _ in range(n - 1):
+              a, b = b, a + b
+          return b
+      ```
+
+      Which statement about their extra space is correct?
+    options:
+      - id: n-and-one
+        text: "`ways` uses O(n) for the cache and O(n) for the stack; `ways_loop` uses O(1)"
+        explanation: >-
+          The cache keeps every argument from 0 to `n`, and the first chain of calls is about `n`
+          frames deep before anything returns. The loop keeps two numbers. Both run in O(n) time.
+      - id: both-one
+        text: Both use O(1), since each step reads only two earlier values
+        explanation: >-
+          The reads are two, but `@cache` stores every value it computes, and the stack holds a
+          chain of about `n` calls. Only the loop drops what it no longer needs.
+      - id: cache-only
+        text: "`ways` uses O(n) for the cache but O(1) for the stack, since repeats are lookups"
+        explanation: >-
+          Lookups help only after values exist. The first chain, `ways(n)`, `ways(n - 1)`, and so
+          on, is about `n` frames deep before any value is stored.
+      - id: both-n
+        text: Both use O(n), since each computes `n` values
+        explanation: >-
+          Computing `n` values is time. The loop overwrites `a` and `b` each pass, so it holds two
+          values at any moment.
+    correct: n-and-one
+    followUps:
+      both-one:
+        prompt: After `ways(40)` returns, how many values does the cache hold?
+        options:
+          - id: forty-one
+            text: 41, one for each argument from 0 to 40
+          - id: two
+            text: 2, the last two computed
+          - id: one
+            text: 1, the answer
+        correct: forty-one
+        explanation: >-
+          `@cache` never drops an entry. Reading two values per step does not shrink what is
+          stored. A rolling loop is what drops entries.
+      cache-only:
+        prompt: When `ways(n)` first calls `ways(n - 1)`, which values are cached?
+        options:
+          - id: none
+            text: None, since a value is stored only when its call returns
+          - id: all
+            text: All smaller values, filled ahead of time
+          - id: half
+            text: Every second value
+        correct: none
+        explanation: >-
+          The cache fills from the bottom as calls return. The first chain reaches the base case
+          with nothing cached, so the stack is about `n` frames deep at that moment.
+      both-n:
+        prompt: How many numbers does `ways_loop` hold at the end of each pass?
+        options:
+          - id: two
+            text: Two, `a` and `b`
+          - id: n
+            text: "`n`, one per pass"
+          - id: pass
+            text: As many as passes so far
+        correct: two
+        explanation: >-
+          Each pass replaces both names. Time counts the passes, and space counts what is held at
+          once.
