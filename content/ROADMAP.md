@@ -186,3 +186,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | Traversal layers | `traversal-layers` | in review |
 | Trees and graphs #13 | Traversal layers: review | `traversal-layers-review` | in review |
 | Trees and graphs #13 | Traversal layers: checkpoint | `traversal-layers-checkpoint` | in review |
+| Trees and graphs #13 | Dependency order | `dependency-order` | in review |
+| Trees and graphs #13 | Dependency order: review | `dependency-order-review` | in review |
+| Trees and graphs #13 | Dependency order: checkpoint | `dependency-order-checkpoint` | in review |

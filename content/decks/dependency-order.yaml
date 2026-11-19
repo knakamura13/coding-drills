@@ -1,0 +1,385 @@
+id: dependency-order
+title: Dependency order
+description: Read which task waits for which, count prerequisites, and release a task when its last one finishes.
+questions:
+  - id: dep-ready-task
+    format: tap-cell
+    tags:
+      - graph
+    prompt: |-
+      **Example:** The pair `("wash", "chop")` means washing finishes before chopping starts. Chop waits, and wash can start at once.
+
+      Each pair below reads the same way. Tap the task that can start now.
+    code: |-
+      pairs = [("boil", "drain"), ("drain", "plate")]
+      # (a, b): a finishes before b starts
+    sequence:
+      kind: array
+      name: tasks
+      cells:
+        - plate
+        - boil
+        - drain
+    correct: 1
+    explanation: Boil is never the second item of a pair, so nothing has to finish before it. It can start now.
+    misses:
+      - index: 0
+        explanation: Plate is the second item of `("drain", "plate")`, so it waits for drain to finish.
+      - index: 2
+        explanation: Drain is the second item of `("boil", "drain")`, so it waits for boil to finish.
+
+  - id: dep-needs-to-pair
+    tags:
+      - graph
+    prompt: |-
+      **Example:** `needs = {"fry": ["heat"]}` lists what fry waits for. It encodes the pair `("heat", "fry")`: heat before fry.
+
+      Which pair `(a, b)`, meaning a finishes before b starts, is written directly in this `needs`?
+
+      ```python
+      needs = {"test": ["build"], "ship": ["test", "docs"]}
+      ```
+    options:
+      - id: build-test
+        text: '`("build", "test")`'
+        explanation: The key is the task that waits and each listed item is something it waits for. Test lists build, so build comes first.
+      - id: test-build
+        text: '`("test", "build")`'
+        explanation: This reverses the arrow. The key `"test"` is the waiting task, so build is the one that finishes first.
+      - id: build-ship
+        text: '`("build", "ship")`'
+        explanation: Build does come before ship, but only through test. The list under `"ship"` is `["test", "docs"]`, so no direct pair joins build and ship.
+      - id: docs-test
+        text: '`("docs", "test")`'
+        explanation: Docs sits in the list under `"ship"`, not under `"test"`. Test waits for build alone.
+    correct: build-test
+    followUps:
+      test-build:
+        prompt: 'In `needs = {"test": ["build"]}`, which task is the one waiting?'
+        options:
+          - id: key-waits
+            text: The key, test, waits until build is done
+          - id: item-waits
+            text: The listed item, build, waits until test is done
+          - id: none-waits
+            text: Neither, since the entry only says the two tasks are related
+        correct: key-waits
+        explanation: A `needs` entry maps a task to its prerequisites. The pair it encodes puts each listed prerequisite first and the key second.
+      build-ship:
+        prompt: Does `needs["ship"]` name build?
+        options:
+          - id: through-test
+            text: No. Build reaches ship only by way of test
+          - id: inherited
+            text: Yes. Ship inherits build from the list under test
+          - id: first-key
+            text: Yes. Build comes first in the dictionary, so every task needs it
+        correct: through-test
+        explanation: A pair is one direct edge. Build before ship is a consequence of two edges, `("build", "test")` and `("test", "ship")`, and is not an edge itself.
+      docs-test:
+        prompt: Which task's list contains docs?
+        options:
+          - id: ship-list
+            text: Ship's list, so docs comes before ship
+          - id: test-list
+            text: Test's list, so docs comes before test
+          - id: no-list
+            text: No list, so docs depends on nothing and nothing depends on it
+        correct: ship-list
+        explanation: Docs appears only under `"ship"`, which gives the pair `("docs", "ship")`. Test's list holds build alone.
+
+  - id: dep-two-task-cycle
+    tags:
+      - graph
+    prompt: |-
+      **Example:** With the single pair `(a, b)`, a starts first and b follows.
+
+      Now the pairs are `(a, b)` and `(b, a)`. Which task can start first?
+    options:
+      - id: neither
+        text: Neither. Each waits for the other to finish
+        explanation: The first pair makes b wait for a and the second makes a wait for b. A cycle has no task free to begin, so no order satisfies both pairs.
+      - id: listed-first
+        text: a, since its pair `(a, b)` is listed first
+        explanation: List order does not cancel a pair. Starting a ignores `(b, a)`, which says a waits for b.
+      - id: pick-one
+        text: Either one. Run a first, then run b
+        explanation: Whichever task goes first breaks the pair that makes it wait. Choosing a breaks `(b, a)`, and choosing b breaks `(a, b)`.
+      - id: together
+        text: Both, if they start at exactly the same moment
+        explanation: Each pair says one task must finish before the other starts. Running them side by side lets neither finish first.
+    correct: neither
+    followUps:
+      listed-first:
+        prompt: If the pairs are listed as `(b, a)` then `(a, b)`, what changes?
+        options:
+          - id: nothing
+            text: Nothing. The same two edges exist, so a still waits for b
+          - id: b-starts
+            text: b can now start, because its pair moved to the front
+          - id: a-still
+            text: a can still start, because it was named first last time
+        correct: nothing
+        explanation: Pairs are a set of rules, and every one applies. Reordering the list does not remove the edge that makes a wait.
+      pick-one:
+        prompt: If a runs first and b second, which pair is broken?
+        options:
+          - id: b-a
+            text: '`(b, a)`, which needed b finished before a began'
+          - id: a-b
+            text: '`(a, b)`, which needed a finished before b began'
+          - id: none
+            text: No pair. Both tasks did run
+        correct: b-a
+        explanation: Running a first satisfies `(a, b)` but violates `(b, a)`. A valid order must satisfy every pair, and with a cycle no order can.
+      together:
+        prompt: What does the pair `(a, b)` require?
+        options:
+          - id: finish-before
+            text: a finishes before b starts
+          - id: start-before
+            text: a starts no later than b starts
+          - id: both-run
+            text: Both a and b run at some point
+        correct: finish-before
+        explanation: A prerequisite has to be complete before its successor begins. Starting both together satisfies neither pair.
+
+  - id: dep-count-trace
+    format: step-trace
+    tags:
+      - graph
+    prompt: |-
+      **Example:** An edge `x→y` means x comes before y, so it adds one to `indeg[y]`, the number of prerequisites y has.
+
+      Predict each step as the loop counts incoming edges.
+    code: |-
+      indeg = [0, 0, 0, 0]
+      for a, b in edges:
+          indeg[b] += 1
+    sequence:
+      kind: array
+      name: edges
+      cells:
+        - 0→2
+        - 1→2
+        - 2→3
+        - 1→3
+    start:
+      - name: e
+        at: 0
+    steps:
+      - line: 3
+        ask: The loop reads `0→2`. Which count goes up?
+        options:
+          - id: target
+            text: '`indeg[2]`'
+            explanation: The edge ends at 2, so 2 gains a prerequisite. The count for 0 measures what 0 waits for, and this edge does not make 0 wait.
+          - id: source
+            text: '`indeg[0]`'
+            explanation: Node 0 is where the edge starts. An in-degree counts edges that end at a node, so `indeg[2]` goes up.
+          - id: both
+            text: '`indeg[0]` and `indeg[2]`'
+            explanation: Only the target gains a prerequisite. Raising the source too would make node 0 wait for something that never unlocks it.
+        correct: target
+      - line: 2
+        ask: Which edge is the first to raise `indeg[3]`?
+        pointer: e
+        correct: 2
+        explanation: '`2→3` is the first edge in the list whose target is 3.'
+        misses:
+          - index: 1
+            explanation: '`1→2` ends at 2. It raises `indeg[2]` to 2.'
+          - index: 3
+            explanation: '`1→3` also ends at 3, but the loop reaches `2→3` first.'
+        elsewhere: That edge ends at 2, not 3.
+      - line: 3
+        ask: After all four edges, what is `indeg`?
+        options:
+          - id: in-counts
+            text: '`[0, 0, 2, 2]`'
+            explanation: Two edges end at 2 and two end at 3. Nothing ends at 0 or 1.
+          - id: out-counts
+            text: '`[1, 2, 1, 0]`'
+            explanation: These are the edges leaving each node. The loop raises `indeg[b]`, the end of each edge.
+          - id: distinct
+            text: '`[0, 0, 1, 1]`'
+            explanation: Each edge adds one, even when another edge already ends at the same node. Node 2 waits for both 0 and 1.
+        correct: in-counts
+        also:
+          - name: e
+            at: 3
+      - ask: Which nodes have no prerequisite?
+        options:
+          - id: zero-in
+            text: Nodes 0 and 1
+            explanation: Their counts are 0, so no edge ends at either. Both can start at once.
+          - id: no-out
+            text: Node 3
+            explanation: Node 3 has no outgoing edge, so nothing waits for it. It still waits for 1 and 2.
+          - id: lowest
+            text: Node 0 only
+            explanation: Node 1 also has a count of 0. A label does not make a node wait.
+        correct: zero-in
+
+  - id: dep-count-direct-only
+    tags:
+      - graph
+    prompt: |-
+      **Example:** With pairs `(x, y)` and `(z, y)`, two edges end at y, so the in-degree of y is 2.
+
+      The pairs are `("build", "test")`, `("test", "ship")` and `("docs", "ship")`. What is the in-degree of ship?
+    options:
+      - id: two
+        text: '2'
+        explanation: Two edges end at ship, from test and from docs. Build comes earlier, but its edge ends at test.
+      - id: three
+        text: '3'
+        explanation: This counts every task that must happen earlier, including build. The in-degree counts only edges that end at ship.
+      - id: zero
+        text: '0'
+        explanation: Ship starts no edge, but in-degree counts the edges that end at a node. Two do.
+    correct: two
+    followUps:
+      three:
+        prompt: Is there an edge from build to ship?
+        options:
+          - id: no-edge
+            text: No. Build reaches ship only through test
+          - id: implied
+            text: Yes. It is implied by the other two pairs
+          - id: needed
+            text: Yes. Without it, ship could start before build
+        correct: no-edge
+        explanation: In-degree counts direct edges. Ship still waits for build indirectly, because test cannot finish until build does.
+      zero:
+        prompt: Which edges does an in-degree count?
+        options:
+          - id: ending
+            text: Edges that end at the node
+          - id: leaving
+            text: Edges that leave the node
+          - id: either
+            text: Edges that touch the node at either end
+        correct: ending
+        explanation: The in-degree is the number of prerequisites still unmet. An edge that leaves a node is a task waiting for it, not a task it waits for.
+
+  - id: dep-unlock-trace
+    format: step-trace
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      **Example:** Processing a node lowers the count of each node it points to. A node joins the queue when its count reaches 0.
+
+      Edges: `A→C`, `B→C`, `B→E`, `C→D`. `out` lists successors in that edge order. The queue starts as `A, B`. Predict each step.
+    code: |-
+      v = queue.popleft()
+      order.append(v)
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+    sequence:
+      kind: array
+      name: nodes
+      cells:
+        - A
+        - B
+        - C
+        - D
+        - E
+    start:
+      - name: v
+        at: 0
+    steps:
+      - line: 3
+        ask: A is processed. Which node joins the queue?
+        options:
+          - id: none
+            text: None yet
+            explanation: '`indeg[C]` drops from 2 to 1. C still waits for B.'
+          - id: c
+            text: C
+            explanation: C has two prerequisites, A and B. After A its count is 1, so it keeps waiting.
+          - id: c-d
+            text: C and D
+            explanation: D waits for C, and C has not been processed. A only lowers the count of C.
+        correct: none
+      - line: 1
+        ask: Which node is processed next?
+        pointer: v
+        correct: 1
+        explanation: B was queued at the start and is the only node waiting.
+        misses:
+          - index: 0
+            explanation: A was just processed and has left the queue.
+          - index: 2
+            explanation: C is not in the queue. Its count is still 1.
+        elsewhere: That node has not joined the queue. Only B is waiting.
+      - line: 3
+        ask: B is processed. Which nodes join the queue, in order?
+        options:
+          - id: c-e
+            text: C, then E
+            explanation: B lowers C from 1 to 0 and E from 1 to 0, in the order `out[B]` lists them.
+          - id: e
+            text: E only
+            explanation: C had one prerequisite left, and that was B. Its count reaches 0 here too.
+          - id: c-e-d
+            text: C, E, then D
+            explanation: D waits for C. Its count drops only when C itself is processed.
+        correct: c-e
+      - line: 1
+        ask: Which node is processed next?
+        pointer: v
+        correct: 2
+        explanation: C joined the queue before E, so it leaves first.
+        misses:
+          - index: 4
+            explanation: E joined right after C. The queue removes the earlier arrival first.
+          - index: 3
+            explanation: D is not queued yet. It joins after C is processed.
+        elsewhere: That node was processed earlier. C is at the front of the queue.
+
+  - id: dep-unlock-at-zero
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      **Example:** E has one prerequisite, B. When B is processed, `indeg[E]` drops from 1 to 0 and E joins the queue.
+
+      D has two prerequisites, B and C, so `indeg[D]` starts at 2. B is processed. What happens to D?
+    options:
+      - id: one-left
+        text: '`indeg[D]` becomes 1, and D keeps waiting for C'
+        explanation: Each processed prerequisite lowers the count by one. D joins the queue only when C is processed too.
+      - id: joins-now
+        text: D joins the queue, since one prerequisite is done
+        explanation: One of two prerequisites is done. Queuing D now would let it run before C has finished.
+      - id: stays-two
+        text: '`indeg[D]` stays 2 until B and C are both done'
+        explanation: The count drops by one for each processed prerequisite. Without that, the loop could not tell when the last one finishes.
+    correct: one-left
+    followUps:
+      joins-now:
+        prompt: What count must D reach before it joins the queue?
+        options:
+          - id: zero
+            text: 0, meaning no prerequisite is left
+          - id: less
+            text: Any count below its starting value
+          - id: one
+            text: 1, meaning the last prerequisite is running
+        correct: zero
+        explanation: The queue holds nodes with nothing left to wait for. A count of 1 means C has not finished.
+      stays-two:
+        prompt: Which line lowers the count?
+        options:
+          - id: per-edge
+            text: '`indeg[w] -= 1`, run once for each edge out of the processed node'
+          - id: at-end
+            text: A final pass that clears every count after the queue empties
+          - id: on-pop
+            text: '`queue.popleft()`, which lowers the count of the node it removes'
+        correct: per-edge
+        explanation: Processing B runs the inner loop over `out[B]`, so D loses one for the edge `B→D`. C will remove the last one.

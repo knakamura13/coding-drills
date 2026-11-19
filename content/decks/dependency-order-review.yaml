@@ -1,0 +1,439 @@
+id: dependency-order-review
+title: 'Dependency order: review'
+description: Recall prerequisite direction, incoming counts, and unlocking on fresh dependency lists.
+questions:
+  - id: dep-review-ready-course
+    format: tap-cell
+    tags:
+      - graph
+    prompt: Each pair `(a, b)` means course a must be passed before course b. Tap the course a new student can take first.
+    code: |-
+      pairs = [("algebra", "calc"), ("calc", "stats"), ("algebra", "proof")]
+    sequence:
+      kind: array
+      name: courses
+      cells:
+        - stats
+        - calc
+        - algebra
+        - proof
+    correct: 2
+    explanation: Algebra never appears second in a pair, so it has no prerequisite.
+    misses:
+      - index: 0
+        explanation: Stats is second in `("calc", "stats")`, so it waits for calc, which in turn waits for algebra.
+      - index: 1
+        explanation: Calc is second in `("algebra", "calc")`, so it waits for algebra.
+      - index: 3
+        explanation: Proof is second in `("algebra", "proof")`, so it waits for algebra.
+
+  - id: dep-review-unlocks-map
+    tags:
+      - graph
+    prompt: |-
+      This map lists, for each task, the tasks it allows to start once it is done.
+
+      ```python
+      unlocks = {"flour": ["dough"], "dough": ["bread", "rolls"]}
+      ```
+
+      Which task must be done before dough can start?
+    options:
+      - id: flour
+        text: Flour
+        explanation: Dough appears in the list under `"flour"`, so the edge is `flour→dough`. Flour comes first.
+      - id: bread
+        text: Bread
+        explanation: Bread is in the list under `"dough"`, so dough unlocks bread. That edge points away from dough.
+      - id: nothing
+        text: Nothing
+        explanation: Being a key only means dough unlocks something. Dough is also in the list under `"flour"`, so it waits for flour.
+    correct: flour
+    followUps:
+      bread:
+        prompt: 'In `unlocks = {"dough": ["bread"]}`, which task waits?'
+        options:
+          - id: listed-waits
+            text: Bread, the listed task, waits for dough
+          - id: key-waits
+            text: Dough, the key, waits for bread
+          - id: neither
+            text: Neither, as the map only groups related tasks
+        correct: listed-waits
+        explanation: This map stores outgoing edges, the reverse of a map of prerequisites. Each listed task is a successor of its key.
+      nothing:
+        prompt: Where do you look to find what dough waits for in an `unlocks` map?
+        options:
+          - id: other-lists
+            text: In the lists of other keys, for any entry that names dough
+          - id: own-list
+            text: In the list under the key `"dough"`
+          - id: key-order
+            text: At the keys written before `"dough"` in the map
+        correct: other-lists
+        explanation: An `unlocks` map stores each edge under the task it starts from. The prerequisites of dough are the keys whose lists contain it.
+
+  - id: dep-review-cycle-entry
+    tags:
+      - graph
+    prompt: |-
+      The pairs are `(a, b)`, `(b, c)`, `(c, a)` and `(d, a)`, where `(x, y)` means x finishes before y starts.
+
+      Which tasks can ever be finished?
+    options:
+      - id: only-d
+        text: d only
+        explanation: d waits for nothing. a waits for c, c waits for b, and b waits for a, so none of those three can be first among themselves.
+      - id: all-from-d
+        text: a, b, c and d
+        explanation: Finishing d meets one of the two prerequisites of a. The other, c, is stuck in the loop with a.
+      - id: none
+        text: None of them
+        explanation: The cycle blocks a, b and c. d has no prerequisite, so it can finish.
+    correct: only-d
+    followUps:
+      all-from-d:
+        prompt: After d finishes, what is a still waiting for?
+        options:
+          - id: c
+            text: c, which itself waits for b and then a
+          - id: nothing
+            text: Nothing, because d was its only prerequisite
+          - id: b
+            text: b, which comes right after a in the cycle
+        correct: c
+        explanation: '`(c, a)` is a second edge into a. c cannot finish before a, so a never starts.'
+      none:
+        prompt: Does any pair end at d?
+        options:
+          - id: 'no'
+            text: No, so d has no prerequisite and can finish
+          - id: yes-a
+            text: Yes, `(d, a)` makes d wait for a
+          - id: yes-cycle
+            text: Yes, d joins the cycle through a
+        correct: 'no'
+        explanation: '`(d, a)` starts at d and ends at a. A cycle blocks its own members and the tasks after them, not a task that leads into it.'
+
+  - id: dep-review-most-incoming
+    format: tap-cell
+    tags:
+      - graph
+    prompt: Each edge `(a, b)` means a comes before b. Tap the node whose in-degree is 2.
+    code: |-
+      edges = [(0, 1), (3, 1), (1, 2), (3, 4)]
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4]
+    correct: 1
+    explanation: '`(0, 1)` and `(3, 1)` both end at 1, so node 1 waits for two nodes.'
+    misses:
+      - index: 0
+        explanation: '`(0, 1)` starts at 0. No edge ends at 0, so its in-degree is 0.'
+      - index: 2
+        explanation: Only `(1, 2)` ends at 2, so its in-degree is 1.
+      - index: 3
+        explanation: Two edges leave 3, but none ends there. That is an out-degree of 2 and an in-degree of 0.
+      - index: 4
+        explanation: Only `(3, 4)` ends at 4, so its in-degree is 1.
+
+  - id: dep-review-isolated-start
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      The queue starts with every node whose in-degree is 0.
+
+      ```python
+      n = 5
+      edges = [(0, 1), (1, 2), (0, 3)]
+      ```
+
+      Which nodes start in the queue?
+    options:
+      - id: zero-and-four
+        text: 0 and 4
+        explanation: No edge ends at 0 or at 4. Node 4 has no edges at all, so its count is 0 and it must be seeded, or it never appears in the order.
+      - id: zero-only
+        text: 0 only
+        explanation: Node 4 is in the graph even though no edge mentions it. Its in-degree is 0, so it starts in the queue too.
+      - id: no-outgoing
+        text: 2, 3 and 4
+        explanation: These are the nodes with no outgoing edge, which nothing else waits for. Nodes 2 and 3 still wait for others.
+    correct: zero-and-four
+    followUps:
+      zero-only:
+        prompt: What is `indeg[4]` after the counting loop?
+        options:
+          - id: zero
+            text: 0, because no edge ends at it
+          - id: missing
+            text: It has no entry, because no edge mentions it
+          - id: one
+            text: 1, as a node with no edges counts itself
+        correct: zero
+        explanation: '`indeg` starts as `[0] * n`, so every node from 0 to 4 has a count. Node 4 keeps its 0, and a missing seed would drop it from the result.'
+      no-outgoing:
+        prompt: Does `(1, 2)` make 2 wait for 1, or 1 wait for 2?
+        options:
+          - id: two-waits
+            text: 2 waits for 1
+          - id: one-waits
+            text: 1 waits for 2
+          - id: neither
+            text: Neither until both are queued
+        correct: two-waits
+        explanation: The second node of a pair is the one with a prerequisite. A start node needs no incoming edge, and outgoing edges do not matter.
+
+  - id: dep-review-direct-count
+    tags:
+      - graph
+    prompt: |-
+      Pairs: `("intro", "data")`, `("data", "algo")`, `("algo", "ml")`, `("intro", "ml")`, `("ml", "thesis")`.
+
+      What is the in-degree of ml?
+    options:
+      - id: two
+        text: '2'
+        explanation: Two edges end at ml, from algo and from intro. Data comes earlier, but its edge ends at algo.
+      - id: three
+        text: '3'
+        explanation: This counts intro, data and algo, every course taken before ml. Only edges that end at ml count, and data has none.
+      - id: one
+        text: '1'
+        explanation: '`("intro", "ml")` is redundant for ordering, since intro reaches ml through data and algo anyway, but it is still an edge. Kahn''s algorithm lowers the count once for each edge, so it must count each one.'
+    correct: two
+    followUps:
+      three:
+        prompt: Which edge would have to exist for data to count toward the in-degree of ml?
+        options:
+          - id: data-ml
+            text: '`("data", "ml")`'
+          - id: data-algo
+            text: '`("data", "algo")`, which is already in the list'
+          - id: ml-data
+            text: '`("ml", "data")`'
+        correct: data-ml
+        explanation: In-degree counts direct edges into a node. Data is an indirect prerequisite of ml through algo.
+      one:
+        prompt: When intro is processed, what happens to the count of ml?
+        options:
+          - id: drops
+            text: It drops by one for the edge from intro
+          - id: unchanged
+            text: Nothing, as the edge from intro is redundant
+          - id: zero
+            text: It drops to 0, since intro is the first course
+        correct: drops
+        explanation: Every edge out of a processed node lowers its target's count. If the count skipped that edge, ml would reach 0 early, before algo is processed.
+
+  - id: dep-review-last-release
+    tags:
+      - graph
+      - queue
+    prompt: X has three prerequisites, so `indeg[X]` starts at 3. Two of them have been processed. When does X join the queue?
+    options:
+      - id: third
+        text: When its third prerequisite is processed
+        explanation: Two processed prerequisites leave the count at 1. The third one lowers it to 0, and X is queued at that moment.
+      - id: already
+        text: It already did, when the second one finished
+        explanation: Most of its prerequisites being done is not enough. A count of 1 still means one is unfinished.
+      - id: label-order
+        text: When the loop reaches X while scanning the nodes
+        explanation: Kahn's algorithm does not scan nodes by label after the start. A node is queued only by the edge that drops its count to 0.
+    correct: third
+    followUps:
+      already:
+        prompt: What is `indeg[X]` after two of its three prerequisites are processed?
+        options:
+          - id: one
+            text: 1, with one prerequisite still unmet
+          - id: zero
+            text: 0, with every prerequisite done
+          - id: two
+            text: 2, until the third one finishes too
+        correct: one
+        explanation: Each processed prerequisite takes one off the count. Three minus two leaves one prerequisite unmet.
+      label-order:
+        prompt: Which line can put X in the queue after the loop starts?
+        options:
+          - id: append
+            text: '`queue.append(w)` when `indeg[w]` reaches 0'
+          - id: seed
+            text: The line that seeds every node whose count is 0
+          - id: popleft
+            text: '`queue.popleft()` when X is next in label order'
+        correct: append
+        explanation: The seed runs once, before the loop. Afterward, a node joins only when one of its prerequisites lowers its count to 0.
+
+  - id: dep-review-kahn-trace
+    format: step-trace
+    tags:
+      - graph
+      - queue
+    prompt: 'Edges are `P→R`, `P→S`, `Q→S`, `R→T` and `S→T`, and `out` lists successors in that order. The queue starts as `P, Q`. Predict each step.'
+    code: |-
+      v = queue.popleft()
+      order.append(v)
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+    sequence:
+      kind: array
+      name: nodes
+      cells:
+        - P
+        - Q
+        - R
+        - S
+        - T
+    start:
+      - name: v
+        at: 0
+    steps:
+      - line: 3
+        ask: P is processed. What does the queue hold now?
+        options:
+          - id: q-r
+            text: Q, R
+            explanation: R had one prerequisite, P, so it joins behind Q. S drops to 1 and keeps waiting for Q.
+          - id: q-r-s
+            text: Q, R, S
+            explanation: S waits for both P and Q. After P its count is 1.
+          - id: r-s
+            text: R, S
+            explanation: Q was already waiting and is still in the queue. S also waits for Q.
+        correct: q-r
+      - line: 1
+        ask: Which node is processed next?
+        pointer: v
+        correct: 1
+        explanation: Q has been waiting since the start, ahead of R.
+        misses:
+          - index: 2
+            explanation: R joined behind Q, so it waits its turn.
+          - index: 0
+            explanation: P was just processed and has left the queue.
+        elsewhere: That node is not in the queue yet.
+      - line: 3
+        ask: Q is processed. What is `indeg[S]` now?
+        options:
+          - id: zero
+            text: '0'
+            explanation: S started at 2, lost one for P and one for Q. It joins the queue behind R.
+          - id: one
+            text: '1'
+            explanation: That was its count after P. Q lowers it again.
+          - id: two
+            text: '2'
+            explanation: The count was lowered once already, when P was processed.
+        correct: zero
+      - line: 1
+        ask: Which node is processed next?
+        pointer: v
+        correct: 2
+        explanation: The queue holds R, then S. R joined first.
+        misses:
+          - index: 3
+            explanation: S joined after R, so it leaves after R.
+          - index: 4
+            explanation: T is not queued. Its count is still 2.
+        elsewhere: That node was processed earlier.
+      - line: 3
+        ask: R is processed. Does T join the queue?
+        options:
+          - id: not-yet
+            text: No. Its count drops to 1
+            explanation: T waits for R and S. S is queued but not yet processed, so one prerequisite is unmet.
+          - id: both-queued
+            text: Yes. Both of its prerequisites have been queued
+            explanation: Queued is not done. S has joined the queue but has not been processed, so it has not lowered the count of T.
+          - id: r-last
+            text: Yes. R was its last prerequisite to join the queue
+            explanation: Joining the queue does not lower any count. Only processing S removes its edge into T.
+        correct: not-yet
+
+  - id: dep-review-wrong-index
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      One line of this loop uses the wrong variable.
+
+      ```python
+      while queue:
+          v = queue.popleft()
+          order.append(v)
+          for w in out[v]:
+              indeg[v] -= 1
+              if indeg[w] == 0:
+                  queue.append(w)
+      ```
+
+      With `n = 5` and edges `(0, 2), (1, 2), (2, 3), (3, 4)`, the queue starts as `0, 1`. What is `order` when the loop stops?
+    options:
+      - id: sources
+        text: '`[0, 1]`'
+        explanation: The bug lowers the count of the node being processed instead of its successor. Node 2 keeps its count of 2, so nothing after the start nodes is queued.
+      - id: full
+        text: '`[0, 1, 2, 3, 4]`'
+        explanation: That is what the fixed loop returns, but here no successor's count is lowered here. `indeg[2]` stays 2, so node 2 never joins the queue.
+      - id: forever
+        text: The loop never stops
+        explanation: The queue only grows when a count reaches 0, and none does. After 0 and 1 are popped, the queue is empty and the loop ends.
+    correct: sources
+    followUps:
+      full:
+        prompt: Which count does `indeg[v] -= 1` lower when node 0 is processed?
+        options:
+          - id: own
+            text: The count of node 0, the node just processed
+          - id: successor
+            text: The count of node 2, its successor
+          - id: both
+            text: Both, the node and its successor
+        correct: own
+        explanation: The line must be `indeg[w] -= 1`. Lowering the processed node's count changes nothing useful, because that node is already in the order.
+      forever:
+        prompt: What makes the queue grow during the loop?
+        options:
+          - id: append
+            text: An append when some count reaches exactly 0
+          - id: pop
+            text: Each pop, which puts the node back at the end
+          - id: negative
+            text: A count that drops below 0
+        correct: append
+        explanation: The only append inside the loop needs `indeg[w] == 0`. Here the counts of 0 and 1 go negative, but neither is a successor that is tested.
+
+  - id: dep-review-which-unlocks
+    format: tap-cell
+    tags:
+      - graph
+      - queue
+    prompt: The array shows each node's count just before node `v` is processed. Its edges go to nodes 2 and 3. Tap the node that joins the queue.
+    code: |-
+      # out[1] == [2, 3]
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+    sequence:
+      kind: array
+      name: indeg
+      cells: [0, 0, 2, 1]
+    markers:
+      - name: v
+        at: 1
+    correct: 3
+    explanation: Node 3 had one prerequisite left, node 1. Its count drops from 1 to 0, so it joins the queue.
+    misses:
+      - index: 0
+        explanation: Node 1 has no edge to node 0, so its count is untouched.
+      - index: 1
+        explanation: This is the node being processed. The loop lowers the counts of its successors, not its own.
+      - index: 2
+        explanation: The count of node 2 drops from 2 to 1. It still waits for one more prerequisite.
