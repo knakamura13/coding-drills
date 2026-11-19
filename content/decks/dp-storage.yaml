@@ -84,13 +84,13 @@ questions:
         text: The last five entries, `ways[i-5]` up to `ways[i-1]`, read now or later
         explanation: >-
           Every index from `i-5` to `i-1` is read either now or on a later step, and nothing older
-          is ever read again. The window is as wide as the farthest look-back, 5, so the extra
-          space is O(1) and the time stays O(n).
+          is ever read again. Keeping those five entries takes O(1) slots, and the loop still
+          takes O(n) steps under unit-cost arithmetic.
       - id: last-three
         text: The last three entries, because the two reads are 5 - 2 = 3 cells apart
         explanation: >-
-          The gap between the two reads does not set the window. The farthest read does. Step `i`
-          reaches back to `ways[i-5]`, which a three-entry window would already have dropped.
+          Step `i` needs `ways[i-5]`. A three-entry window holds `ways[i-3]` through
+          `ways[i-1]`, so it would have dropped that value too soon.
       - id: whole-table
         text: The whole table, because the two reads are not next to each other
         explanation: >-
@@ -100,27 +100,26 @@ questions:
     followUps:
       two-reads:
         prompt: >-
-          `ways[i]` reads `ways[i-2]` and `ways[i-5]`. When does the loop read today's
-          `ways[i-1]`?
+          At step `i >= 5`, the loop reads `ways[i-2]` and `ways[i-5]`. If at least four
+          more steps remain, which future steps read `ways[i-1]`?
         options:
           - id: next-step
-            text: On the next step, as that step's `i - 2`, and again four steps later as `i - 5`
+            text: Steps `i + 1` and `i + 4`
           - id: never
-            text: Never, because no step reads one cell back
+            text: Steps `i + 2` and `i + 5`
           - id: only-at-end
-            text: Only at the end, when `ways[n]` is returned
+            text: Steps `i + 1` and `i + 3`
         correct: next-step
         explanation: >-
-          An entry that is not read now can be read later. A value stays needed until the
-          farthest look-back has passed it, so the window covers every index from `i-5` to
-          `i-1`.
+          Step `i + 1` reads back two entries to `i - 1`. Step `i + 4` reads back five to
+          the same index. The window keeps that value until its last read.
       last-three:
         prompt: What sets how many past entries a rolling version must keep?
         options:
           - id: gap
             text: The gap between the two look-backs
           - id: farthest
-            text: The farthest look-back, since every index up to it is read now or later
+            text: The farthest look-back
           - id: count-of-reads
             text: The number of reads in the recurrence
         correct: farthest
@@ -325,8 +324,8 @@ questions:
       - id: two-rows
         text: Neither works with one row; unlimited coins need a row per coin
         explanation: >-
-          One row is enough. Low to high reads entries this coin's pass already updated, which is
-          what lets a coin repeat.
+          One row is enough. Low to high can read entries already updated on this coin's pass,
+          which lets the coin repeat.
     correct: low-to-high
     followUps:
       high-to-low:
@@ -349,30 +348,29 @@ questions:
         prompt: For `coins = [1, 2, 5]` and `A = 6`, what does the loop return when it runs high to low?
         options:
           - id: one
-            text: 1, since only `1 + 5` uses each coin value at most once
+            text: 1 way
           - id: five
-            text: 5, the same as low to high
+            text: 5 ways
           - id: zero
-            text: 0, since no amount can be paid
+            text: 0 ways
         correct: one
         explanation: >-
           High to low reads last-pass values, so each coin value appears at most once in a way.
           Among `{1, 2, 5}` only `1 + 5` makes 6. The direction changes what is counted.
       two-rows:
         prompt: >-
-          Going low to high in one row, what does `dp[a - c]` hold when `dp[a]` is updated?
+          On the low-to-high pass for coin 2, what does `dp[2]` hold when `dp[4]` is updated?
         options:
           - id: includes-c
-            text: The count for `a - c` that already allows coin `c`, since it was updated this pass
+            text: The count for amount 2 after the pass updated that entry
           - id: excludes-c
-            text: The count for `a - c` before coin `c`, since one row cannot hold both
+            text: The count for amount 2 before the pass updated that entry
           - id: undefined
-            text: A partial value that mixes two coins, so the result is unreliable
+            text: The count for amount 2 using only coin 2
         correct: includes-c
         explanation: >-
-          Low to high rewrites smaller amounts first, so the read sees ways that may already use
-          coin `c`. Adding `c` once more on top of them is how unlimited use is counted. A second
-          row would also work but is not needed.
+          The pass already updated `dp[2]`, so it counts `1 + 1` and `2`. Adding a coin 2
+          to each gives the ways `1 + 1 + 2` and `2 + 2` for amount 4.
 
   - id: storage-count-lis
     heading: What is the time?
@@ -450,11 +448,11 @@ questions:
         prompt: How many values does the table store?
         options:
           - id: n
-            text: "`n`, one best length for each position where a run can end"
+            text: "`n` values"
           - id: two-to-n
-            text: 2ⁿ, one for each set of picks
+            text: 2ⁿ values
           - id: n-squared
-            text: n², one for each pair of positions
+            text: n² values
         correct: n
         explanation: >-
           Many sets of picks end at the same position, and the table keeps only the best length
