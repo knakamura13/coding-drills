@@ -1,0 +1,221 @@
+id: connectivity-checkpoint
+title: 'Connectivity: checkpoint'
+description: Count static components and answer a stream of link events on fresh graphs.
+questions:
+  - id: connectivity-exam-last-start
+    format: tap-cell
+    tags:
+      - graph
+      - dfs
+    prompt: >-
+      The loop starts a search at each unseen node, in order from 0 to 7, and each search marks its
+      whole component. Tap the node where the last search starts.
+    code: |-
+      adj = {0: [5, 2], 1: [], 2: [0, 5], 3: [6],
+             4: [], 5: [0, 2], 6: [3, 7], 7: [6]}
+      for start in range(8):
+          if start not in seen:
+              explore(start)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4, 5, 6, 7]
+    correct: 4
+    explanation: >-
+      Searches start at 0 (marking 0, 2, 5), at 1 (no neighbors), at 3 (marking 3, 6, 7) and at 4 (no
+      neighbors). Nodes 5, 6 and 7 are already seen, so 4 is the last start and the graph has 4
+      components.
+    misses:
+      - index: 0
+        explanation: Node 0 is where the first search starts.
+      - index: 1
+        explanation: >-
+          Node 1 has an empty list, so it is a component by itself. It is the second start, and later
+          nodes still need searches.
+      - index: 2
+        explanation: Node 2 is in `adj[0]`, so the search from 0 marks it.
+      - index: 3
+        explanation: >-
+          Node 3 starts the third search, which marks 3, 6 and 7. Node 4 is still unseen after it.
+      - index: 5
+        explanation: Node 5 is in `adj[0]`, so the first search marks it.
+      - index: 6
+        explanation: Node 6 is in `adj[3]`, so the search from 3 marks it.
+      - index: 7
+        explanation: >-
+          Node 7 is reached through 6, which is in `adj[3]`. The search from 3 marks it, so the loop
+          skips it.
+
+  - id: connectivity-exam-one-way-build
+    tags:
+      - graph
+      - dfs
+    prompt: |-
+      The graph is undirected with `n = 5` nodes and the edges `(0, 1), (2, 1), (3, 4)`. This count stores each edge in one list only. What does it return?
+
+      ```python
+      adj = [[] for _ in range(5)]
+      for a, b in edges:
+          adj[a].append(b)
+      count = 0
+      for start in range(5):
+          if start not in seen:
+              count += 1
+              explore(start)   # marks what it can reach through adj
+      ```
+    options:
+      - id: three
+        text: 3, because node 2 starts a search of its own
+        explanation: >-
+          The search from 0 follows `adj[0] == [1]` and stops, since `adj[1]` is empty. Node 2 was not
+          reached, so it starts a second search, and 3 starts a third. The true count is 2:
+          {0, 1, 2} and {3, 4}. Appending `adj[b].append(a)` as well fixes it.
+      - id: two
+        text: 2, one for each component
+        explanation: >-
+          There are two components, but the search from 0 cannot reach 2. The edge `(2, 1)` is stored
+          only in `adj[2]`, so nothing leads from 0 or 1 to 2.
+      - id: four
+        text: 4, because node 1 starts a search of its own
+        explanation: >-
+          Node 1 is reached from 0, since `adj[0]` holds 1. The searches start at 0, 2 and 3.
+    correct: three
+    followUps:
+      two:
+        prompt: After the build loop, what is `adj[1]`?
+        options:
+          - id: empty
+            text: An empty list, since 1 is never the first node of an edge
+          - id: zero-two
+            text: '`[0, 2]`, one entry for each edge at node 1'
+          - id: zero
+            text: '`[0]`, from the edge `(0, 1)`'
+        correct: empty
+        explanation: >-
+          The loop writes only `adj[a]`. Node 1 is always the second element, so its list stays empty
+          and no search can leave node 1. That is why 2 is never reached from 0.
+      four:
+        prompt: When the search from 0 runs, which nodes does it mark?
+        options:
+          - id: zero-one
+            text: 0 and 1, through `adj[0]`
+          - id: zero-only
+            text: Only 0, since 1 is listed under node 2
+          - id: zero-one-two
+            text: 0, 1 and 2, since 1 is joined to 2
+        correct: zero-one
+        explanation: >-
+          `adj[0]` holds 1, so the search reaches 1. It stops there because `adj[1]` is empty, which
+          leaves 2 for a later start.
+
+  - id: connectivity-exam-stream-answers
+    tags:
+      - graph
+    prompt: |-
+      Union-find answers each `same` when it arrives. Nodes 0 to 3 start in separate sets. What are the three answers?
+
+      ```text
+      link(0, 1)
+      link(2, 3)
+      same(1, 2)
+      link(3, 0)
+      same(1, 2)
+      link(1, 2)
+      same(0, 3)
+      ```
+    options:
+      - id: false-true-true
+        text: False, True, True
+        explanation: >-
+          At the first question, {0, 1} and {2, 3} are separate. `link(3, 0)` merges them, so 1 and 2
+          share a root from then on. `link(1, 2)` finds both ends in one set and changes nothing, and
+          `same(0, 3)` is True.
+      - id: false-false-true
+        text: False, False, True
+        explanation: >-
+          The second question comes after `link(3, 0)`. The chain 1, 0, 3, 2 already joins 1 and 2,
+          even before `link(1, 2)` arrives.
+      - id: true-true-true
+        text: True, True, True
+        explanation: >-
+          That answers the first question with the final graph. When `same(1, 2)` first arrives, only
+          `link(0, 1)` and `link(2, 3)` have happened.
+    correct: false-true-true
+    followUps:
+      false-false-true:
+        prompt: After `link(3, 0)`, which nodes share a root with 1?
+        options:
+          - id: all
+            text: 0, 2 and 3, since the union merged both whole sets
+          - id: zero-three
+            text: Only 0 and 3, the nodes named in links with 1 or 0
+          - id: zero
+            text: Only 0, its direct link
+        correct: all
+        explanation: >-
+          A union joins the roots of two sets, so every member of {0, 1} and {2, 3} ends up under one
+          root. 1 and 2 are connected through 0 and 3.
+      true-true-true:
+        prompt: Can a link that arrives later change an earlier `same` answer?
+        options:
+          - id: no-later
+            text: No, each answer uses the links that came before it
+          - id: yes-later
+            text: Yes, answers are revised when the stream ends
+          - id: only-cycles
+            text: Only when the later link closes a cycle
+        correct: no-later
+        explanation: >-
+          The stream is answered online. Each `same` reflects the sets at that moment, and later links
+          only affect later questions.
+
+  - id: connectivity-exam-count-roots
+    tags:
+      - graph
+    prompt: >-
+      Union-find holds `parent = [2, 0, 2, 4, 4, 3, 6]` for nodes 0 to 6, where a root is its own
+      parent. How many separate sets are there?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          Only cells 2, 4 and 6 hold their own index, so there are three roots. The sets are
+          {0, 1, 2}, {3, 4, 5} and {6}. Every other node walks up to one of them.
+      - id: five
+        text: '5'
+        explanation: >-
+          That counts the different values in the array: 0, 2, 3, 4 and 6. Nodes 0 and 3 are parents
+          but not roots, since `parent[0]` is 2 and `parent[3]` is 4.
+      - id: two
+        text: '2'
+        explanation: >-
+          Node 6 has never been linked to anything, but it is still a set. Its cell holds 6, so it is
+          its own root.
+    correct: three
+    followUps:
+      five:
+        prompt: Is node 0 a root, given `parent[0] == 2`?
+        options:
+          - id: not-root
+            text: No, a root's cell holds its own index
+          - id: is-root
+            text: Yes, because other nodes point at it
+          - id: depends
+            text: Only if no node points at node 2
+        correct: not-root
+        explanation: >-
+          Having children does not make a node a root. Node 1 points at 0, but 0 points at 2, so all
+          three share root 2.
+      two:
+        prompt: Which set does node 6 belong to?
+        options:
+          - id: own
+            text: Its own, with root 6
+          - id: last
+            text: The set of 5, its neighbor in the array
+          - id: none
+            text: None, until a link touches it
+        correct: own
+        explanation: >-
+          Every node starts as its own set. A node that no union has touched stays a set of one, and
+          it counts.
