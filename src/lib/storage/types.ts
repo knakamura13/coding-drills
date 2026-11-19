@@ -9,8 +9,9 @@
  * Version 11 grows the Grid tables checkpoint pool.
  * Version 12 grows the Greedy scheduling checkpoint pool.
  * Version 13 grows the Weighted paths checkpoint pool.
+ * Version 14 grows the One-dimensional tables checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 13;
+export const EXAM_RULES_VERSION = 14;
 
 export interface QuestionRef {
 	deckId: string;

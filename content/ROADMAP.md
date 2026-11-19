@@ -195,6 +195,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Greedy scheduling: teaching levels | `greedy-scheduling` | in review |
 | Problem-solving patterns #14 | Greedy scheduling: review variants | `greedy-scheduling-review` | in review |
 | Problem-solving patterns #14 | Greedy scheduling: checkpoint | `greedy-scheduling-checkpoint` | in review |
+| Problem-solving patterns #14 | One-dimensional tables: teaching levels | `one-dimensional-tables` | in review |
+| Problem-solving patterns #14 | One-dimensional tables: review variants | `one-dimensional-tables-review` | in review |
+| Problem-solving patterns #14 | One-dimensional tables: checkpoint | `one-dimensional-tables-checkpoint` | in review |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
