@@ -7,8 +7,9 @@
  * Version 9 grows the Tree summaries checkpoint pool.
  * Version 10 grows the DP storage checkpoint pool.
  * Version 11 grows the Grid tables checkpoint pool.
+ * Version 12 grows the Greedy scheduling checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 11;
+export const EXAM_RULES_VERSION = 12;
 
 export interface QuestionRef {
 	deckId: string;

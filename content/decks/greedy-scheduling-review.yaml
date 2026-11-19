@@ -1,0 +1,612 @@
+id: greedy-scheduling-review
+title: "Greedy scheduling: review"
+description: Fresh inputs for the Greedy scheduling skills, for recall on later days. No worked examples this time.
+heading: Which interval is kept?
+
+questions:
+  - id: sched-review-tap-inclusive
+    format: tap-cell
+    heading: Tap the next booking kept
+    tags: [intervals, greedy]
+    prompt: >-
+      Each booking `[a, b]` holds the room on days `a` through `b`, both included, so the loop
+      uses `s > last_end`. `days` is sorted by end, and the loop has kept `[1, 3]` and `[4, 6]`.
+      Tap the booking it keeps next.
+    code: |
+      # days is sorted by end; last_end is 6
+      for s, e in days[2:]:
+          if s > last_end:
+              kept.append([s, e])
+              last_end = e
+    sequence:
+      kind: array
+      name: days
+      cells: ['[1,3]', '[4,6]', '[5,7]', '[6,8]', '[7,9]', '[8,10]', '[9,12]']
+    correct: 4
+    explanation: >-
+      The last booking kept holds day 6. `[5, 7]` and `[6, 8]` both need day 6. `[7, 9]` starts on
+      day 7, and `7 > 6` holds, so it is kept next.
+    misses:
+      - index: 0
+        explanation: "`[1, 3]` is already kept. The loop reads from index 2 onward."
+      - index: 1
+        explanation: "`[4, 6]` is the booking just kept. It holds days 4 to 6."
+      - index: 2
+        explanation: "`[5, 7]` starts on day 5, which `[4, 6]` still holds."
+      - index: 3
+        explanation: >-
+          `[6, 8]` only touches `[4, 6]`, but both include day 6. `6 > 6` is False, so it is
+          skipped.
+      - index: 5
+        explanation: >-
+          `[8, 10]` starts after day 6, but `[7, 9]` ends sooner and is read first. Then `[8, 10]`
+          needs days 8 and 9, which `[7, 9]` holds.
+      - index: 6
+        explanation: >-
+          `[9, 12]` is read after `[7, 9]` is kept, and it starts on day 9, which `[7, 9]` holds.
+          `9 > 9` is False, so it is never kept.
+
+  - id: sched-review-wrong-end
+    heading: Which change fixes it?
+    tags: [intervals, greedy, python]
+    prompt: |-
+      Touching intervals may both be kept. This function returns 4, but at most 3 of these
+      intervals fit together.
+
+      ```python
+      def keep_most(spans):
+          kept = []
+          for s, e in sorted(spans, key=lambda iv: iv[1]):
+              if not kept or s >= kept[-1][0]:
+                  kept.append([s, e])
+          return len(kept)
+
+      keep_most([[3, 6], [1, 4], [5, 8], [2, 9], [8, 10], [6, 11]])
+      ```
+
+      Which change makes it return 3?
+    options:
+      - id: compare-end
+        text: Test `s >= kept[-1][1]`, the end of the last kept interval
+        explanation: >-
+          The new start has to clear the last kept end. As written, `[3, 6]` passes because 3 is
+          after the start of `[1, 4]`, though it overlaps it. With `kept[-1][1]` the loop keeps
+          `[1, 4]`, `[5, 8]` and `[8, 10]`, and returns 3.
+      - id: strict
+        text: Test `s > kept[-1][0]`, so equal values no longer pass
+        explanation: >-
+          The problem is which end is compared, not equality. `3 > 1` still keeps `[3, 6]`, and
+          the function still returns 4.
+      - id: sort-start
+        text: Sort by start, `sorted(spans)`, and keep the same test
+        explanation: >-
+          Sorted by start, every start is at least the start before it, so the test passes for
+          all six and the function returns 6.
+      - id: new-end
+        text: Test `e >= kept[-1][1]`, the new end against the last kept end
+        explanation: >-
+          In end order every end is at least the end before it, so this test always passes. It
+          returns 6.
+    correct: compare-end
+    followUps:
+      strict:
+        prompt: "`[1, 4]` is kept and `[3, 6]` is read. What does `3 > 1` give, and do the two overlap?"
+        options:
+          - { id: true-overlap, text: "True, and they overlap from 3 to 4" }
+          - { id: false-skip, text: "False, so `[3, 6]` is skipped" }
+          - { id: true-apart, text: "True, and they do not overlap" }
+        correct: true-overlap
+        explanation: >-
+          Comparing with the kept start lets almost anything through. The clash is decided by
+          the new start against the kept end.
+      sort-start:
+        prompt: In start order, what does `s >= kept[-1][0]` check?
+        options:
+          - { id: always, text: "Nothing useful. Starts only grow, so it always passes" }
+          - { id: overlap, text: "Whether the new interval overlaps the last kept one" }
+          - { id: end-order, text: "Whether the intervals are in end order" }
+        correct: always
+        explanation: >-
+          A test against the kept start is never a clash test. The fix is the kept end, and
+          the order for the most intervals is by end.
+      new-end:
+        prompt: Which part of the new interval decides whether it clashes with the last one kept?
+        options:
+          - { id: start, text: "Its start, against the last kept end" }
+          - { id: end, text: "Its end, against the last kept end" }
+          - { id: length, text: "Its length, against the last kept length" }
+        correct: start
+        explanation: >-
+          The new interval clashes when it starts before the kept one ends. Its own end only
+          matters for the intervals after it.
+
+  - id: sched-review-drag-fourth
+    format: drag-pointers
+    heading: Place the kept intervals
+    tags: [intervals, greedy]
+    prompt: >-
+      `spans` is sorted by end, touching intervals may both be kept, and `[0, 3]` is kept. Drag
+      `second` to the second interval the loop keeps and `fourth` to the fourth.
+    code: |
+      # spans is sorted by end; [0, 3] is kept, last_end is 3
+      for s, e in spans[1:]:
+          if s >= last_end:
+              kept.append([s, e])
+              last_end = e
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[0,3]', '[1,4]', '[3,5]', '[2,6]', '[5,7]', '[4,8]', '[6,9]', '[7,10]']
+    markers:
+      - { name: kept, at: 0 }
+    pointers:
+      - name: second
+        start: 1
+        correct: 2
+        explanation: >-
+          `[1, 4]` starts at 1, before 3. `[3, 5]` starts at 3, touching the kept end, so it is
+          kept second.
+        misses:
+          - index: 1
+            explanation: "`[1, 4]` starts at 1, before `[0, 3]` ends, so it is skipped."
+          - index: 3
+            explanation: >-
+              `[2, 6]` starts at 2, before 3, and `[3, 5]` comes before it in end order anyway.
+          - index: 4
+            explanation: >-
+              `[5, 7]` is kept, but third. `[3, 5]` ends sooner and touches the kept end, so it
+              is kept first.
+        elsewhere: The second interval kept is the first in end order that starts at 3 or later.
+      - name: fourth
+        start: 3
+        correct: 7
+        explanation: >-
+          After `[3, 5]` and `[5, 7]` the kept end is 7. `[4, 8]` and `[6, 9]` start before 7,
+          and `[7, 10]` starts at 7, so it is the fourth.
+        misses:
+          - index: 4
+            explanation: "`[5, 7]` is the third interval kept. The fourth comes after it ends at 7."
+          - index: 5
+            explanation: "`[4, 8]` starts at 4, before the kept end 7, so it overlaps `[5, 7]`."
+          - index: 6
+            explanation: "`[6, 9]` starts at 6, before 7, so it overlaps `[5, 7]`."
+        elsewhere: The fourth interval kept is the first in end order that starts at 7 or later.
+
+  - id: sched-review-swap-count
+    heading: How does the count change?
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching intervals may both be kept. A schedule keeps `[1, 3]`, `[3, 11]` and `[11, 14]`.
+      The list also holds `[5, 7]`, `[7, 9]` and `[9, 12]`. Swap `[5, 7]` in for `[3, 11]` and
+      then keep as many later intervals as fit. How does the count change?
+    options:
+      - id: grows-four
+        text: It grows from 3 to 4, since `[7, 9]` and `[9, 12]` fit after 7
+        explanation: >-
+          After 11 only `[11, 14]` fits. After 7, `[7, 9]` and `[9, 12]` fit, for
+          `[1, 3]`, `[5, 7]`, `[7, 9]`, `[9, 12]`. A brute force over every subset agrees that 4
+          is the most.
+      - id: stays
+        text: It stays at 3, since one interval is swapped for one interval
+        explanation: >-
+          The swap itself keeps the count, but `[5, 7]` ends at 7 instead of 11, and that frees
+          room for two intervals where one fit before.
+      - id: drops
+        text: It drops to 2, since nothing fills the gap from 3 to 5
+        explanation: >-
+          An empty gap costs nothing. The count only depends on which intervals fit, and moving
+          the end from 11 to 7 lets more of them in.
+      - id: grows-five
+        text: It grows to 5, since all three later intervals fit after 7
+        explanation: >-
+          Each starts at 7 or later, but `[9, 12]` and `[11, 14]` overlap from 11 to 12. Only two
+          of the three fit together.
+    correct: grows-four
+    followUps:
+      stays:
+        prompt: After the swap, the last kept end moves from 11 to 7. What does that change?
+        options:
+          - { id: more-fit, text: "Every interval starting at 7 or later may now follow" }
+          - { id: nothing, text: "Nothing. The same intervals follow either way" }
+          - { id: fewer, text: "Fewer intervals fit, since the schedule now has a gap" }
+        correct: more-fit
+        explanation: >-
+          A sooner end lets in everything that fit before, plus any interval that starts between
+          the new end and the old one.
+      drops:
+        prompt: "`[1, 3]` and `[5, 7]` leave the time from 3 to 5 empty. Does that lower the count?"
+        options:
+          - { id: no-gap, text: "No. Only the intervals kept are counted" }
+          - { id: yes-gap, text: "Yes. A gap is a slot that was not used" }
+          - { id: yes-two, text: "Yes. It costs one interval for each unit of time" }
+        correct: no-gap
+        explanation: >-
+          The goal counts intervals, not covered time. Ending soon matters, and leaving a gap
+          before a choice does not.
+      grows-five:
+        prompt: Do `[9, 12]` and `[11, 14]` fit together?
+        options:
+          - { id: overlap, text: "No. They overlap from 11 to 12" }
+          - { id: both-after, text: "Yes. Both start after 7" }
+          - { id: yes-touch, text: "Yes. They only touch" }
+        correct: overlap
+        explanation: >-
+          Starting after the kept end makes each one fit on its own. Every pair among the later
+          intervals still has to fit too.
+
+  - id: sched-review-partial
+    heading: Which partial schedule is better?
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching intervals may both be kept. Two partial schedules from the same list each hold 2
+      intervals. P's last interval ends at 6, and Q's ends at 9. Whatever else the list holds,
+      which one can grow to at least the other's final size?
+    options:
+      - id: p-at-least
+        text: P, since anything that can follow Q can also follow P
+        explanation: >-
+          Q's extension uses intervals that begin no earlier than 9. Every one of them clears
+          P's end of 6, so P can copy the whole extension and end at least as large.
+      - id: q-covers
+        text: Q, since it already covers more of the timeline
+        explanation: >-
+          Covering more time is a cost, not a gain. Q's later end shuts out anything that starts
+          between 6 and 9.
+      - id: need-list
+        text: Neither can be judged without the rest of the list
+        explanation: >-
+          The comparison holds for any list. Whatever follows Q also follows P, so P never ends
+          smaller, though it may tie.
+      - id: tie
+        text: Both end the same size, since each holds 2 now
+        explanation: >-
+          They can differ. With `[7, 8]` left in the list, only P can take it.
+    correct: p-at-least
+    followUps:
+      q-covers:
+        prompt: An interval `[7, 8]` remains. Which schedule can take it?
+        options:
+          - { id: p, text: "Only P, since 7 is after 6 but before 9" }
+          - { id: q, text: "Only Q, since Q covers more time" }
+          - { id: both, text: "Both, since it is short" }
+        correct: p
+        explanation: >-
+          The later end shuts out every start before it. Covering more time only moves the
+          next allowed start later.
+      need-list:
+        prompt: Q can be extended by intervals that start at 9 or later. Can P use the same intervals?
+        options:
+          - { id: reuse, text: "Yes. Each starts at 9 or later, so after 6 too" }
+          - { id: depends, text: "Only if P's intervals are shorter" }
+          - { id: chosen-for-q, text: "No. They were chosen for Q" }
+        correct: reuse
+        explanation: >-
+          This is why the comparison needs no list: whatever extension Q has, P has it as well.
+      tie:
+        prompt: P ends at 6 and Q at 9. Which intervals can follow P but not Q?
+        options:
+          - { id: between, text: "Those that start at 6, 7 or 8" }
+          - { id: none, text: "None. They hold the same number of intervals" }
+          - { id: after, text: "Those that start at 9 or later" }
+        correct: between
+        explanation: >-
+          Starts between the two ends fit after P only. When the list holds one, P can grow past
+          Q.
+
+  - id: sched-review-tap-first-pick
+    format: tap-cell
+    heading: Tap the best first pick
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching intervals may both be kept. `spans` is sorted by start. Every interval is a
+      possible first pick. Tap the one that leaves the most room for the rest.
+    code: |
+      spans = [[0, 9], [1, 4], [2, 7], [3, 5], [5, 8], [6, 10]]
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[0,9]', '[1,4]', '[2,7]', '[3,5]', '[5,8]', '[6,10]']
+    correct: 1
+    explanation: >-
+      `[1, 4]` ends at 4, sooner than any other, so every later start of 4 or more is still open.
+      Here `[5, 8]` can follow it, for 2 intervals, which a brute force confirms is the most.
+    misses:
+      - index: 0
+        explanation: >-
+          `[0, 9]` starts first but ends at 9. Nothing starts at 9 or later, so it ends the
+          schedule at 1.
+      - index: 2
+        explanation: "`[2, 7]` ends at 7, which shuts out `[5, 8]` and `[6, 10]`. `[1, 4]` ends at 4."
+      - index: 3
+        explanation: >-
+          `[3, 5]` is the shortest, and `[5, 8]` can follow it, but it ends at 5. `[1, 4]` ends
+          at 4 and leaves every start of 4 or later open.
+      - index: 4
+        explanation: "`[5, 8]` ends at 8. Only a start of 8 or later could follow it, and none exists."
+      - index: 5
+        explanation: "`[6, 10]` ends last, at 10, so it leaves the least room."
+
+  - id: sched-review-trace-ties
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, greedy, python]
+    prompt: >-
+      Two pairs of intervals share an end. Python's sort is stable, so each pair keeps its input
+      order. The board shows `spans` after the sort. Predict each step before it is shown.
+    code: |
+      def most_meetings(spans):
+          spans = sorted(spans, key=lambda iv: iv[1])
+          last, count = 0, 1
+          for i in range(1, len(spans)):
+              if spans[i][0] >= spans[last][1]:
+                  last = i
+                  count += 1
+          return count
+
+      most_meetings([[3, 6], [5, 8], [0, 2], [7, 9], [2, 5], [6, 8], [1, 3], [4, 5]])
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[0,2]', '[1,3]', '[2,5]', '[4,5]', '[3,6]', '[5,8]', '[6,8]', '[7,9]']
+    start:
+      - { name: last, at: 0 }
+      - { name: i, at: 1 }
+    steps:
+      - line: 4
+        ask: After the passes with `i` at 1, 2 and 3, where is `last`?
+        pointer: last
+        correct: 2
+        explanation: >-
+          `[1, 3]` starts before 2. `[2, 5]` starts at 2, so `last` moves to 2. `[4, 5]` starts at
+          4, before the new end 5, so it is skipped.
+        misses:
+          - index: 3
+            explanation: >-
+              `[4, 5]` ends at 5 too, but it starts at 4, before `[2, 5]` ends. Once `[2, 5]` is
+              kept, `4 >= 5` is False.
+          - index: 1
+            explanation: "`[1, 3]` starts at 1, before `[0, 2]` ends at 2, so it is skipped."
+          - index: 0
+            explanation: "`[2, 5]` starts at 2, where `[0, 2]` ends. `2 >= 2` is True, so `last` moves."
+        elsewhere: Among indexes 1 to 3, only `[2, 5]` starts at 2 or later.
+        also:
+          - { name: i, at: 3 }
+      - line: 4
+        ask: After the passes with `i` at 4 and 5, where is `last`?
+        pointer: last
+        correct: 5
+        explanation: >-
+          `[3, 6]` starts at 3, before the kept end 5. `[5, 8]` starts at 5, so `last` moves to 5.
+        misses:
+          - index: 4
+            explanation: "`[3, 6]` starts at 3, before `[2, 5]` ends at 5, so it is skipped."
+          - index: 2
+            explanation: "`[5, 8]` starts at 5, where `[2, 5]` ends. `5 >= 5` is True, so `last` moves."
+        elsewhere: The kept end is 5, and `[5, 8]` starts there.
+        also:
+          - { name: i, at: 5 }
+      - line: 4
+        ask: After the passes with `i` at 6 and 7, where is `last`?
+        pointer: last
+        correct: 5
+        explanation: >-
+          `[6, 8]` and `[7, 9]` both start before the kept end 8, so `last` stays at 5.
+        misses:
+          - index: 6
+            explanation: >-
+              `[6, 8]` shares the end 8, but it starts at 6, before `[5, 8]` ends. `6 >= 8` is
+              False.
+          - index: 7
+            explanation: "`[7, 9]` starts at 7, before 8, so it overlaps `[5, 8]`."
+        elsewhere: Neither interval starts at 8 or later, so `last` does not move.
+        also:
+          - { name: i, at: 7 }
+      - line: 8
+        ask: What does the call return?
+        options:
+          - id: three
+            text: '3'
+            explanation: "`last` moved twice after starting at 0, so `count` is 3: `[0, 2]`, `[2, 5]`, `[5, 8]`."
+          - id: four
+            text: '4'
+            explanation: >-
+              Neither tied partner fits: `[4, 5]` starts before 5 and `[6, 8]` starts before 8.
+              The count is 3.
+          - id: two
+            text: '2'
+            explanation: "`count` starts at 1 for `[0, 2]` and grows at `[2, 5]` and `[5, 8]`, so it is 3."
+          - id: five
+            text: '5'
+            explanation: "`[4, 5]`, `[6, 8]` and the rest clash with a kept interval. Only 3 are kept."
+        correct: three
+
+  - id: sched-review-removals
+    heading: How many must go?
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching meetings may both stay. Remove as few meetings as possible so the rest never
+      overlap: `[[4, 9], [0, 3], [2, 5], [8, 12], [1, 2], [5, 7], [10, 11], [6, 8]]`. How many
+      are removed?
+    options:
+      - id: four
+        text: 4, keeping `[1, 2]`, `[2, 5]`, `[5, 7]`, `[10, 11]`
+        explanation: >-
+          In end order the loop keeps `[1, 2]`, `[2, 5]`, `[5, 7]` and `[10, 11]`. Of 8, 4 go.
+          A brute force over every subset agrees that 4 is the most that can stay.
+      - id: five
+        text: 5, keeping `[0, 3]`, `[4, 9]` and `[10, 11]`
+        explanation: >-
+          That is start order. `[0, 3]` and `[4, 9]` start early but end late, and shut out
+          `[1, 2]`, `[2, 5]` and `[5, 7]`.
+      - id: seven
+        text: 7, since all 8 meetings merge into one block of time
+        explanation: >-
+          Merging finds the covered time, `[0, 12]`, not how many meetings fit side by side.
+      - id: three
+        text: 3, keeping five meetings that only touch or nest
+        explanation: >-
+          A nested meeting overlaps the one around it. `[8, 12]` runs from before 10 until after
+          11, so it clashes with `[10, 11]` for its whole length, and 4 is the most.
+    correct: four
+    followUps:
+      five:
+        prompt: Sorted by start, `[0, 3]` comes first. Why is it a worse first pick than `[1, 2]`?
+        options:
+          - { id: ends-later, text: "It ends at 3, and `[1, 2]` ends at 2" }
+          - { id: longer-better, text: "It is not worse, since it starts first" }
+          - { id: overlap-count, text: "It overlaps more meetings by its length alone" }
+        correct: ends-later
+        explanation: >-
+          The first pick should end soonest. `[1, 2]` lets `[2, 5]` follow, while `[0, 3]` does
+          not.
+      seven:
+        prompt: Merging gives one block, `[0, 12]`. What does that tell you?
+        options:
+          - { id: coverage, text: "Which time is covered, not how many meetings fit together" }
+          - { id: removals, text: "That 7 meetings must be removed" }
+          - { id: one-fits, text: "That only one meeting can stay" }
+        correct: coverage
+        explanation: >-
+          Meetings in one merged block can still sit side by side. Keeping the most is a
+          selection problem, and earliest finish solves it.
+      three:
+        prompt: Do `[8, 12]` and `[10, 11]` overlap?
+        options:
+          - { id: nested, text: "Yes. All of `[10, 11]` lies inside `[8, 12]`" }
+          - { id: no-clash, text: "No. A nested meeting does not count as a clash" }
+          - { id: touch, text: "They only touch at 11" }
+        correct: nested
+        explanation: >-
+          Nesting is the largest kind of overlap. Only a start at or after the other end avoids
+          a clash.
+
+  - id: sched-review-sort-start
+    heading: What does it return?
+    tags: [intervals, greedy, sorting]
+    prompt: |-
+      Touching intervals may both be kept. This version sorts with the default key.
+
+      ```python
+      def most_meetings(spans):
+          count, last_end = 0, float('-inf')
+          for s, e in sorted(spans):
+              if s >= last_end:
+                  count += 1
+                  last_end = e
+          return count
+
+      most_meetings([[2, 4], [1, 11], [3, 6], [7, 9], [5, 7], [10, 12]])
+      ```
+
+      What does the call return?
+    options:
+      - id: one
+        text: 1, since `[1, 11]` comes first and blocks the rest
+        explanation: >-
+          The default sort compares starts first, so `[1, 11]` is read first and kept. Every
+          other interval starts before 11. Sorting by end returns 4: `[2, 4]`, `[5, 7]`,
+          `[7, 9]`, `[10, 12]`.
+      - id: four
+        text: 4, since the order of the sort does not change the count
+        explanation: >-
+          The order decides which intervals the loop keeps. Sorted by start, `[1, 11]` comes
+          first and is kept, and then nothing else fits.
+      - id: two
+        text: 2, since `[10, 12]` still fits after `[1, 11]`
+        explanation: "`[10, 12]` starts at 10, before `[1, 11]` ends at 11, so it overlaps."
+      - id: six
+        text: 6, since the list sorted by start never overlaps
+        explanation: >-
+          Sorting does not remove overlaps. After `[1, 11]` is kept, the test fails for every
+          later start.
+    correct: one
+    followUps:
+      four:
+        prompt: What does `sorted(spans)` order a list of pairs by?
+        options:
+          - { id: start, text: "The first item, the start, then the end to break ties" }
+          - { id: end, text: "The second item, the end" }
+          - { id: length, text: "The length of each pair" }
+        correct: start
+        explanation: >-
+          Lists compare item by item, so the default sort is by start. Earliest finish needs
+          `key=lambda iv: iv[1]`.
+      two:
+        prompt: "`last_end` is 11. What does `10 >= 11` give?"
+        options:
+          - { id: skipped, text: "False. `[10, 12]` is skipped" }
+          - { id: kept, text: "True. `[10, 12]` is kept" }
+          - { id: tie, text: "It depends on the end, 12" }
+        correct: skipped
+        explanation: >-
+          A start before the kept end is a clash, so `[1, 11]` blocks `[10, 12]` as well.
+      six:
+        prompt: In start order, which interval does the loop read first?
+        options:
+          - { id: one-eleven, text: "`[1, 11]`, which then blocks the rest" }
+          - { id: two-four, text: "`[2, 4]`, which ends first" }
+          - { id: ten-twelve, text: "`[10, 12]`, which ends last" }
+        correct: one-eleven
+        explanation: >-
+          Start order reads `[1, 11]` first. It overlaps every other interval, so each later test
+          fails.
+
+  - id: sched-review-tied-ends
+    heading: Does the tie matter?
+    tags: [intervals, greedy, sorting]
+    prompt: >-
+      Every interval has a start before its end, and touching intervals may both be kept. Two
+      intervals in a list end at 6: `[1, 6]` and `[4, 6]`. The sort by end may put either one
+      first. Can that change how many intervals the loop keeps?
+    options:
+      - id: no-same-end
+        text: No. Once either is kept, the other starts before 6 and is skipped
+        explanation: >-
+          Both leave the same end, 6, so whatever follows is the same. If only one fits after
+          the last kept end, it is kept in either order. A check over 20,000 random lists found
+          no case where the order of ties changed the count.
+      - id: yes-later
+        text: Yes. Keep `[4, 6]`, since it starts later and wastes less
+        explanation: >-
+          Where it starts does not matter once it fits. Both end at 6, so the same intervals can
+          follow either one.
+      - id: yes-longer
+        text: Yes. Keep `[1, 6]`, since it covers more of the timeline
+        explanation: >-
+          Covering time earns nothing. The count depends on the end, and the ends are equal.
+      - id: stable-only
+        text: No, but only because Python's sort keeps ties in input order
+        explanation: >-
+          Stability decides which tie is read first, and that choice does not matter. Any order
+          of the ties gives the same count.
+    correct: no-same-end
+    followUps:
+      yes-later:
+        prompt: "`[1, 6]` or `[4, 6]` is kept. Which intervals can follow each one?"
+        options:
+          - { id: same, text: "The same ones, those that start at 6 or later" }
+          - { id: later-more, text: "More can follow `[4, 6]`, since it starts later" }
+          - { id: earlier-more, text: "More can follow `[1, 6]`, since it is longer" }
+        correct: same
+        explanation: >-
+          What follows a kept interval depends only on its end. Equal ends leave equal room.
+      yes-longer:
+        prompt: Does the loop gain anything by covering more time?
+        options:
+          - { id: counts-once, text: "No. Each kept interval counts once" }
+          - { id: counts-more, text: "Yes. A longer interval counts for more" }
+          - { id: sometimes, text: "Only when the interval is the first one kept" }
+        correct: counts-once
+        explanation: >-
+          The goal is the number of intervals, so length never helps. Only the end affects what
+          comes next.
+      stable-only:
+        prompt: If the sort put `[4, 6]` before `[1, 6]` instead, would the count change?
+        options:
+          - { id: same-count, text: "No. Either order keeps one of them and ends at 6" }
+          - { id: new-count, text: "Yes. A different tie order keeps different counts" }
+          - { id: error, text: "The sort would fail on equal keys" }
+        correct: same-count
+        explanation: >-
+          The count does not rely on stability. With start before end on every interval, any
+          order of the ties gives the same answer.
