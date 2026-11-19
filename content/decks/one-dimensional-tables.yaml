@@ -1,0 +1,545 @@
+id: one-dimensional-tables
+title: One-dimensional tables
+description: Say what a table entry means, start the empty and impossible entries right, and pick the entries each one is built from. Each card opens with a worked example.
+heading: What does the table hold?
+
+questions:
+  - id: entry-read-from-code
+    heading: What does an entry mean?
+    tags: [dp, python]
+    prompt: |-
+      **Worked example:** in `ways[i] = ways[i - 1] + ways[i - 2]` for a climb of 1 or 2 steps
+      at a time, `ways[i]` is the number of step orders that end exactly on step `i`. `ways[0] = 1`
+      counts standing still, and the line adds the orders whose last move was 1 step to those
+      whose last move was 2.
+
+      Below, a climber starts on step 0 or step 1, moves up 1 or 2 steps at a time, pays `fee[i]`
+      for every step stood on, and leaves from either of the top two steps.
+
+      ```python
+      def cheapest(fee):
+          best = [0] * len(fee)
+          best[0] = fee[0]
+          best[1] = fee[1]
+          for i in range(2, len(fee)):
+              best[i] = fee[i] + min(best[i - 1], best[i - 2])
+          return min(best[-1], best[-2])
+
+      cheapest([3, 8, 2, 7, 1, 6])   # 6
+      ```
+
+      What does `best[i]` hold?
+    options:
+      - id: stand-on-i
+        text: The cheapest total paid to stand on step `i`, its own fee included
+        explanation: >-
+          `best[0] = fee[0]` is the cost of standing on step 0, and each pass adds `fee[i]` to the
+          cheaper of the two steps the climber could have come from. For `[3, 8, 2, 7, 1, 6]` the
+          table is 3, 8, 5, 12, 6, 12. The climber leaves from step 4 or step 5, so the call
+          returns `min(12, 6)`, which is 6.
+      - id: from-i-to-top
+        text: The cheapest total paid to climb from step `i` to the top, its own fee included
+        explanation: >-
+          That meaning would be filled from the top down, each entry built from the two steps
+          above it. This loop fills upward, and `best[0] = fee[0]` is the price of standing on
+          step 0, not of a whole climb from it.
+      - id: fee-excluded
+        text: The cheapest total paid to stand on step `i`, its own fee not included
+        explanation: >-
+          The line adds `fee[i]` itself, and `best[0]` is set to `fee[0]`, not 0. Under this
+          meaning `best[0]` and `best[1]` would both be 0.
+      - id: cheapest-fee
+        text: The smallest single fee among steps 0 through `i`, kept as a running minimum
+        explanation: >-
+          The line adds a fee to an earlier entry, so the entries are running totals. `best[3]` is
+          12, which is 7 + 5, while no single fee in `[3, 8, 2, 7]` is 12.
+    correct: stand-on-i
+    followUps:
+      from-i-to-top:
+        prompt: Which entries does `best[i]` read in this loop?
+        options:
+          - id: lower
+            text: "`best[i - 1]` and `best[i - 2]`, so the entry describes the climb up to step `i`"
+          - id: higher
+            text: "`best[i + 1]` and `best[i + 2]`, so the entry describes the climb above step `i`"
+          - id: both-ways
+            text: Both lower and higher steps, since `min` looks in both directions
+        correct: lower
+        explanation: >-
+          The entries an entry reads tell you what it covers. Reading the two steps below means
+          `best[i]` sums everything paid from the start up to step `i`. A table of costs to the top
+          would read upward and be filled from the last step down.
+      fee-excluded:
+        prompt: What does `best[0]` hold for `fee = [3, 8, 2, 7, 1, 6]`?
+        options:
+          - id: three
+            text: 3, the fee of step 0
+          - id: zero
+            text: 0, since nothing has been climbed yet
+          - id: eight
+            text: 8, the fee of step 1
+        correct: three
+        explanation: >-
+          The setup line stores `fee[0]` in `best[0]`, and every pass adds `fee[i]` before storing.
+          So each entry includes the fee of its own step. If it did not, `best[0]` would be 0.
+      cheapest-fee:
+        prompt: In `fee[i] + min(best[i - 1], best[i - 2])`, what kind of value does `best[i]` become?
+        options:
+          - id: total
+            text: A total, since a fee is added to an earlier entry on every pass
+          - id: single
+            text: A single fee, since `min` picks one value
+          - id: count
+            text: The number of steps stood on so far
+        correct: total
+        explanation: >-
+          `min` picks which earlier total to build on, and the fee of step `i` is then added to it.
+          Each entry is a sum of fees along the cheapest climb to that step.
+
+  - id: entry-answer-cell
+    format: tap-cell
+    heading: Tap the answer
+    tags: [dp]
+    prompt: >-
+      **Worked example:** if `best[i]` is the best answer using the first `i + 1` values, the
+      answer for the whole list sits in the last cell. If an entry only describes stretches that
+      end exactly at index `i`, the best stretch could end anywhere, so the answer is the largest
+      cell. Below, `end[i]` is the largest total of a stretch of neighbors that ends exactly at
+      index `i`. Tap the cell that holds the largest total of any stretch.
+    code: |
+      nums = [2, -5, 4, -1, 3, -6, 2]
+      end = [nums[0]]
+      for i in range(1, len(nums)):
+          end.append(nums[i] + max(end[i - 1], 0))
+      print(end)   # [2, -3, 4, 3, 6, 0, 2]
+    sequence: { kind: array, name: end, cells: [2, -3, 4, 3, 6, 0, 2] }
+    correct: 4
+    explanation: >-
+      `end[4]` is 6, the total of `4, -1, 3`. Every stretch ends at some index, so the best one is
+      the largest entry, wherever it sits.
+    misses:
+      - index: 0
+        explanation: "`end[0]` is 2, the stretch `2` alone. `4, -1, 3` totals 6, which is more."
+      - index: 1
+        explanation: >-
+          `end[1]` is -3, the best stretch that ends on the -5. It is the smallest entry, not the
+          largest.
+      - index: 2
+        explanation: "`end[2]` is 4, the 4 on its own. Carrying it through `-1, 3` reaches 6 at index 4."
+      - index: 3
+        explanation: "`end[3]` is 3, for `4, -1`. The 3 after it lifts the total to 6."
+      - index: 5
+        explanation: >-
+          `end[5]` is 0, the best stretch that has to end on the -6. A stretch is free to stop
+          before it.
+      - index: 6
+        explanation: >-
+          This is the last cell, but `end[6]` only covers stretches that end on the final 2. It
+          holds 2, while a stretch that ends at index 4 totals 6.
+
+  - id: entry-keeps-count
+    heading: Which meaning fits?
+    tags: [dp]
+    prompt: |-
+      **Worked example:** for a climb of 1 or 2 steps, `ways[i]` is the number of step orders that
+      end on step `i`. It covers the whole climb up to step `i`, so taking off the last move leaves
+      a shorter climb that an earlier entry already counts.
+
+      Below, digits are read as letters, with `1` to `26` standing for A to Z. A `0` cannot stand
+      alone, and a two-digit piece cannot start with `0`. So `'1226'` can be read 5 ways, such as
+      `1 2 26` and `12 2 6`. To count the readings of a digit string `s`, which meaning of
+      `ways[i]` should the table use?
+    options:
+      - id: prefix-count
+        text: The number of ways to read the first `i` digits of `s`
+        explanation: >-
+          The last piece of a reading is one digit or two, so a reading of the first `i` digits is
+          a reading of the first `i - 1` or `i - 2` digits plus that piece. Both are earlier
+          entries. `ways[0] = 1` counts the empty start, and the answer is `ways[len(s)]`. For
+          `'1226'` the table is 1, 1, 2, 3, 5.
+      - id: readable
+        text: Whether the first `i` digits of `s` can be read at all
+        explanation: >-
+          True or False says that a reading exists, not how many. `'10'` and `'1226'` are both
+          readable, yet one has 1 reading and the other 5. Two True values cannot be added into a
+          count.
+      - id: digit-alone
+        text: The number of ways to read digit `i` of `s` on its own
+        explanation: >-
+          Whether a digit stands alone or pairs with a neighbor depends on the digits around it, so
+          a count for one digit cannot be combined into a total for the string.
+      - id: letters
+        text: The number of letters in a reading of the first `i` digits of `s`
+        explanation: >-
+          Readings of one prefix have different lengths: `1 2 2 6` has four letters and `12 26` has
+          two. The entry would have no single value, and the question asks how many readings there
+          are, not how long they are.
+    correct: prefix-count
+    followUps:
+      readable:
+        prompt: "`'10'` and `'1226'` both store True. What can a True or False entry not do here?"
+        options:
+          - id: add-up
+            text: Add up, since True does not say how many readings a prefix has
+          - id: fill-left
+            text: Be filled from left to right
+          - id: zero-digit
+            text: Handle a `0` digit
+        correct: add-up
+        explanation: >-
+          A count of readings is built by adding the counts of shorter prefixes. A True or False
+          entry answers a different question, whether any reading exists, and loses how many.
+      digit-alone:
+        prompt: In `'1226'`, does the 2 at index 1 have one fixed way to be read?
+        options:
+          - id: depends
+            text: No. It is alone in `1 2 26`, joins the 1 in `12 26`, and joins the next 2 in `1 22 6`
+          - id: once
+            text: Yes, since every digit is read exactly once
+          - id: alone
+            text: Yes, it is always read on its own as B
+        correct: depends
+        explanation: >-
+          How one digit is read depends on its neighbors, so per-digit counts do not combine. A
+          prefix, everything up to a point, is a unit whose readings can be counted and extended.
+      letters:
+        prompt: How many letters do the readings `1 2 2 6` and `12 26` have?
+        options:
+          - id: four-two
+            text: 4 and 2, so one prefix has no single letter count
+          - id: four-four
+            text: 4 and 4, since every digit becomes a letter
+          - id: two-two
+            text: 2 and 2, since pairs are read first
+        correct: four-two
+        explanation: >-
+          A two-digit piece makes one letter, so readings of the same digits differ in length. An
+          entry must have one value for its prefix, and the count of readings does.
+
+  - id: empty-start-counts-one
+    heading: Which setup is right?
+    tags: [dp, python]
+    prompt: |-
+      **Worked example:** to count the orders of 1-steps and 2-steps that reach step `i`,
+      `ways[0]` is 1, not 0. Standing still on step 0 is one order with no moves, and every order
+      that starts with a 2-step builds on it.
+
+      Below, a climber takes steps of 2 or 3 at a time.
+
+      ```python
+      def count(n):
+          ways = [0] * (n + 1)
+          # setup goes here
+          for i in range(2, n + 1):
+              ways[i] = ways[i - 2] + (ways[i - 3] if i >= 3 else 0)
+          return ways[n]
+      ```
+
+      Which setup makes `count(9)` return the number of orders that reach step 9?
+    options:
+      - id: zero-is-one
+        text: "`ways[0] = 1`, and every other entry stays 0"
+        explanation: >-
+          Step 0 has one order, the empty one. Step 1 cannot be reached with 2s and 3s, so it has 0
+          orders, and the loop fills the rest from those two. The table is 1, 0, 1, 1, 1, 2, 2, 3,
+          4, 5, so `count(9)` is 5: `3+3+3` and the four orders of `2+2+2+3`.
+      - id: all-zero
+        text: No setup, so every entry stays 0, since no move reaches step 0
+        explanation: >-
+          Every entry is a sum of earlier entries, so with nothing to start from the whole table
+          stays 0 and `count(9)` returns 0. The empty order on step 0 is the one count everything
+          else grows from.
+      - id: step-one
+        text: "`ways[0] = 1` and `ways[1] = 1`, the two steps below the smallest move"
+        explanation: >-
+          Step 1 cannot be reached with 2s and 3s, so its count is 0. Setting it to 1 invents an
+          order that later entries build on: `ways[3]` becomes 2 and `count(9)` returns 9
+          instead of 5.
+      - id: minus-one
+        text: "`ways[0] = 1`, and every other entry starts at -1 to mark it not yet known"
+        explanation: >-
+          The loop overwrites entries 2 and up, but `ways[1]` keeps its -1, and it is added like a
+          count: `ways[3]` is -1 + 1, which is 0. `count(9)` returns 1. In a counting table an
+          unreachable step holds 0, which adds nothing.
+    correct: zero-is-one
+    followUps:
+      all-zero:
+        prompt: Each `ways[i]` is a sum of earlier entries. If they all start at 0, what can the loop produce?
+        options:
+          - id: only-zero
+            text: Only 0, so `ways[0] = 1` is the seed every count grows from
+          - id: right-later
+            text: The right counts, once the loop has run long enough
+          - id: error
+            text: An error, since 0 + 0 is not a count
+        correct: only-zero
+        explanation: >-
+          A sum of zeros is zero. The empty order on step 0 is a real order, the one with no moves,
+          and counting it as 1 is what lets `ways[2]`, `ways[3]` and everything after them be
+          nonzero.
+      step-one:
+        prompt: How many orders of 2-steps and 3-steps end exactly on step 1?
+        options:
+          - id: none
+            text: None, so `ways[1]` must be 0
+          - id: empty
+            text: One, the order with no moves
+          - id: single
+            text: One, a single 1-step
+        correct: none
+        explanation: >-
+          Every move climbs at least 2, so step 1 is never landed on. The order with no moves ends
+          on step 0, and a 1-step is not allowed. An impossible step counts 0 orders.
+      minus-one:
+        prompt: In a counting table, what should a step that cannot be reached hold?
+        options:
+          - id: zero
+            text: 0, since adding it must leave every count unchanged
+          - id: minus
+            text: -1, so the code can tell it apart from a real count
+          - id: none-value
+            text: "`None`, to mark it as empty"
+        correct: zero
+        explanation: >-
+          Counts are added, so an unreachable entry must be the value that adds nothing, which is 0.
+          A -1 is subtracted from every count built on it, and `None` raises `TypeError` the first
+          time it is added.
+
+  - id: max-needs-minus-inf
+    heading: Which setup is right?
+    tags: [dp, python]
+    prompt: |-
+      **Worked example:** for the fewest coins, an amount that cannot be made starts at `inf`.
+      `min` never prefers it, and `1 + inf` is still `inf`, so it cannot pass for a real count.
+      For a largest count the roles flip.
+
+      Below, a rod of length `n` is cut into pieces of length 3 and 5 with nothing left over.
+      `most[i]` is the largest number of pieces for length `i`, or `-inf` when no exact cut
+      exists. Here `inf` is `float('inf')`.
+
+      ```python
+      def most_pieces(n):
+          # setup goes here
+          for i in range(1, n + 1):
+              for p in (3, 5):
+                  if p <= i:
+                      most[i] = max(most[i], 1 + most[i - p])
+          return most[n]
+      ```
+
+      Which setup is right?
+    options:
+      - id: minus-inf
+        text: "`most = [-inf] * (n + 1)`, then `most[0] = 0`"
+        explanation: >-
+          Length 0 is cut with 0 pieces. Every other length starts as impossible: `max` never
+          prefers `-inf`, and `1 + -inf` stays `-inf`. Length 4 stays `-inf`, and
+          `most_pieces(13)` returns 3, for `3 + 5 + 5`.
+      - id: zeros
+        text: "`most = [0] * (n + 1)`"
+        explanation: >-
+          A 0 on an impossible length reads as "zero pieces cut it exactly". `most[4]` becomes
+          1 + `most[1]`, which is 1, though no cut makes 4. `most_pieces(13)` returns 4: four 3s
+          plus a leftover 1 counted as done.
+      - id: plus-inf
+        text: "`most = [inf] * (n + 1)`, then `most[0] = 0`"
+        explanation: >-
+          `max` prefers `inf` over any real count, so every length from 1 up keeps `inf`, and
+          `most_pieces(13)` returns `inf`. The marker for impossible has to lose every comparison,
+          and in a `max` table that is `-inf`.
+      - id: base-one
+        text: "`most = [-inf] * (n + 1)`, then `most[0] = 1`"
+        explanation: >-
+          Length 0 needs no pieces. A 1 there adds a phantom piece to every cut built on it:
+          `most[3]` becomes 2 and `most_pieces(13)` returns 4.
+    correct: minus-inf
+    followUps:
+      zeros:
+        prompt: With every entry starting at 0, what does `most[4]` hold, and why is that wrong?
+        options:
+          - id: one-piece
+            text: 1, from `1 + most[1]`, but no cut of 3s and 5s makes 4
+          - id: zero-pieces
+            text: 0, since no piece fits in 4, which is right
+          - id: still-inf
+            text: "`-inf`, since the loop marks lengths it cannot cut"
+        correct: one-piece
+        explanation: >-
+          The loop never marks anything impossible. It only builds on what the setup stored, and a
+          0 on length 1 looks like a real cut. An impossible length needs a value no real count can
+          be confused with.
+      plus-inf:
+        prompt: In `max(most[i], 1 + most[i - p])`, which starting value can a real count never beat?
+        options:
+          - id: inf
+            text: "`inf`, so a table that starts at `inf` never changes"
+          - id: minus
+            text: "`-inf`, so a table that starts at `-inf` never changes"
+          - id: zero
+            text: 0, since counts are never negative
+        correct: inf
+        explanation: >-
+          `max` keeps the larger value, and nothing is larger than `inf`. The impossible marker must
+          lose every comparison, so a `min` table uses `inf` and a `max` table uses `-inf`.
+      base-one:
+        prompt: How many pieces does a rod of length 0 take?
+        options:
+          - id: none
+            text: None, so `most[0]` is 0 and `most[3]` is 1
+          - id: one
+            text: One, the empty rod itself
+          - id: impossible
+            text: It cannot be cut, so `-inf`
+        correct: none
+        explanation: >-
+          Nothing is left to cut, so it takes zero pieces. That 0 is the start every real cut
+          builds on: a lone 3 is `1 + most[0]`, which is 1.
+
+  - id: stone-route-trace
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      **Worked example:** a route to stone `i` arrives from a stone one hop back. With hops of 1
+      or 2, those are stones `i - 1` and `i - 2`, and a missing stone (`None`) is not one of them:
+      its entry stays `inf`, so `min` passes it over. Below, a frog starts on stone 0, hops 1 or 2
+      stones forward, and pays `cost[i]` for each stone it lands on. The passes up to `i = 2`
+      have run, so `best` starts `[1, 7, 3]`, and the route to stone 2 came from stone 0
+      (`src`). The pass with `i` at 3 skips the missing stone. Predict each step before it is
+      shown.
+    code: |
+      inf = float('inf')
+
+      def cheapest(cost):
+          best = [inf] * len(cost)
+          best[0] = cost[0]
+          for i in range(1, len(cost)):
+              if cost[i] is None:        # a missing stone
+                  continue
+              for j in (i - 1, i - 2):
+                  if j >= 0:
+                      best[i] = min(best[i], best[j] + cost[i])
+          return best[-1]
+
+      cheapest([1, 6, 2, None, 3, 9, 1])
+    sequence: { kind: array, name: cost, cells: [1, 6, 2, None, 3, 9, 1] }
+    start:
+      - { name: i, at: 2 }
+      - { name: src, at: 0 }
+    steps:
+      - line: 6
+        ask: On the pass with `i` at 4, tap the stone the cheapest route to stone 4 arrives from.
+        pointer: src
+        correct: 2
+        explanation: >-
+          Stone 4 is one hop from stone 3 or stone 2. Stone 3 is missing, so `best[3]` is `inf`.
+          The route comes from stone 2, and `best[4]` is 3 + 3, which is 6.
+        misses:
+          - index: 3
+            explanation: >-
+              Stone 3 is missing. Its entry is still `inf`, so `min` passes it over.
+          - index: 1
+            explanation: >-
+              From stone 1 to stone 4 is a hop of 3. The frog hops 1 or 2, so only stones 3 and 2
+              lead to stone 4.
+        elsewhere: Stone 4 can only be reached from stones 3 and 2, and stone 3 is missing.
+        also:
+          - { name: i, at: 4 }
+      - line: 11
+        ask: What is `best[5]`?
+        options:
+          - id: fifteen
+            text: '15'
+            explanation: >-
+              Stone 5 is reached from stone 4 (`best[4]` is 6) or stone 3 (missing). 6 + 9 is 15.
+          - id: twelve
+            text: '12'
+            explanation: >-
+              That arrives from stone 3 as if it cost nothing, 3 + 9. A missing stone cannot be
+              landed on, so `best[3]` is `inf`.
+          - id: unreachable
+            text: inf
+            explanation: >-
+              Only one of the two stones before it is missing. Stone 4 is a valid stone one hop
+              back, so stone 5 can be reached.
+        correct: fifteen
+        also:
+          - { name: i, at: 5 }
+          - { name: src, at: 4 }
+      - line: 6
+        ask: On the last pass, `i` is 6. Tap the stone the cheapest route to stone 6 arrives from.
+        pointer: src
+        correct: 4
+        explanation: >-
+          Stone 6 is one hop from stone 5 or stone 4. Reaching stone 4 costs 6 and reaching stone 5
+          costs 15, so the route comes from stone 4.
+        misses:
+          - index: 5
+            explanation: >-
+              Stone 5 is a valid stone one hop back, but reaching it already costs 15. Reaching
+              stone 4 costs 6.
+        elsewhere: Stone 6 is reached from stone 5 or stone 4.
+        also:
+          - { name: i, at: 6 }
+      - line: 12
+        ask: What does the call return?
+        options:
+          - id: seven
+            text: '7'
+            explanation: >-
+              `best[6]` is `best[4]` + 1, which is 7: stones 0, 2, 4 and 6, paying 1 + 2 + 3 + 1.
+          - id: sixteen
+            text: '16'
+            explanation: >-
+              That arrives from stone 5, 15 + 1. `min` keeps the cheaper stone, and stone 4 is
+              cheaper.
+          - id: twenty-two
+            text: '22'
+            explanation: >-
+              That pays for every stone that is present. The frog may hop over a stone, so it lands
+              on 0, 2, 4 and 6 only.
+        correct: seven
+
+  - id: decode-last-piece
+    format: tap-cell
+    heading: Tap the entry it adds
+    tags: [dp]
+    prompt: >-
+      **Worked example:** with `s = '1226'`, `ways[4]` adds `ways[3]` for a last piece `6` and
+      `ways[2]` for a last piece `26`, since both are letters. Below, `s = '1106'`, and the cells
+      are the finished table. `ways[3]` covers the first three digits, `'110'`, so its last piece
+      is either the `0` alone or `10`. Tap the one entry that `ways[3]` adds.
+    code: |
+      def count_reads(s):
+          ways = [0] * (len(s) + 1)
+          ways[0] = 1
+          for i in range(1, len(s) + 1):
+              if s[i - 1] != '0':                  # last piece: one digit
+                  ways[i] += ways[i - 1]
+              if i >= 2 and 10 <= int(s[i - 2:i]) <= 26:
+                  ways[i] += ways[i - 2]           # last piece: two digits
+          return ways[len(s)]
+
+      count_reads('1106')   # 1
+    sequence: { kind: array, name: ways, cells: [1, 1, 2, 1, 1] }
+    markers:
+      - { name: i, at: 3 }
+    correct: 1
+    explanation: >-
+      The `0` cannot stand alone, so the one-digit case adds nothing. `10` is a letter, so the
+      two-digit case adds `ways[1]`, the readings of `'1'`. `ways[3]` is 1, for `1 10`.
+    misses:
+      - index: 0
+        explanation: >-
+          `ways[0]` would be read for a last piece of three digits, `110`. Pieces are one or two
+          digits.
+      - index: 2
+        explanation: >-
+          `ways[2]` is read when the last piece is the `0` alone. A `0` is not a letter, so that
+          case adds nothing, even though `ways[2]` holds 2.
+      - index: 3
+        explanation: This is `ways[3]` itself, the entry being filled. It adds earlier entries.
+      - index: 4
+        explanation: >-
+          `ways[4]` covers all four digits and is filled after `ways[3]`. An entry only adds
+          entries that come before it.

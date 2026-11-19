@@ -1,0 +1,189 @@
+id: one-dimensional-tables-checkpoint
+title: "One-dimensional tables: checkpoint"
+description: Build a table for a fresh counting or optimization task. Each item combines the One-dimensional tables skills.
+heading: Which plan is right?
+
+questions:
+  - id: tables-exam-colored-slabs
+    heading: Which plan is right?
+    tags: [dp]
+    prompt: >-
+      A path of length `n` is paved from left to right with no gaps. A slab of length 1 comes in
+      red or blue, and a slab of length 2 comes only in gray. Two pavings differ when any slab's
+      color or position differs, so red-blue and blue-red are different. Let `w[i]` be the number
+      of ways to pave a path of length `i`. Which plan is right?
+    options:
+      - id: right
+        text: "`w[i] = 2 * w[i-1] + w[i-2]`, with `w[0] = 1` and `w[1] = 2`"
+        explanation: >-
+          The last slab is red, blue or gray. A red or a blue one leaves any paving of `i - 1`,
+          which gives two cases, and a gray one leaves any paving of `i - 2`. The empty path has
+          one paving, the one with no slabs. The table for 0 to 4 is 1, 2, 5, 12, 29.
+      - id: no-colors
+        text: "`w[i] = w[i-1] + w[i-2]`, with `w[0] = 1` and `w[1] = 2`"
+        explanation: How many colors can the last slab have when it has length 1?
+      - id: gray-twice
+        text: "`w[i] = 2 * (w[i-1] + w[i-2])`, with `w[0] = 1` and `w[1] = 2`"
+        explanation: How many colors does a slab of length 2 come in?
+      - id: empty-zero
+        text: "`w[i] = 2 * w[i-1] + w[i-2]`, with `w[0] = 0` and `w[1] = 2`"
+        explanation: How many pavings of length 2 are a single gray slab?
+    correct: right
+    followUps:
+      no-colors:
+        prompt: A paving of length 3 ends in a slab of length 1. Given `w[2] = 5`, how many such pavings are there?
+        options:
+          - id: ten
+            text: 10, since the last slab is red or blue on top of any of the 5
+          - id: five
+            text: 5, one for each paving of length 2
+          - id: seven
+            text: 7, the 5 plus the two colors
+        correct: ten
+        explanation: >-
+          Each of the 5 shorter pavings can end in a red slab or a blue one, and those are
+          different pavings. So the length-1 case counts `w[i-1]` twice.
+      gray-twice:
+        prompt: A paving ends in a gray slab. How many choices does that last slab add?
+        options:
+          - id: one
+            text: One, since gray is its only color, so `w[i-2]` is added once
+          - id: two
+            text: Two, the same as a slab of length 1
+          - id: three
+            text: Three, one for each color in the set
+        correct: one
+        explanation: >-
+          Each case is counted once per way to make its last slab. A slab of length 2 has one color,
+          so it adds `w[i-2]` once. Doubling both terms counts a second gray that does not exist:
+          `w[2]` comes out 6 instead of 5.
+      empty-zero:
+        prompt: With `w[0] = 0`, what is `w[2]`, and which paving goes missing?
+        options:
+          - id: four-gray
+            text: 4, missing the paving that is a single gray slab
+          - id: five
+            text: 5, and nothing goes missing
+          - id: four-mixed
+            text: 4, missing red-blue
+        correct: four-gray
+        explanation: >-
+          A single gray slab covers length 2 and leaves the empty path, which `w[0]` counts. With
+          `w[0] = 0` that paving is lost, and so is every paving built on it: `w[4]` becomes 24
+          instead of 29.
+
+  - id: tables-exam-codes-end-b
+    format: tap-cell
+    heading: Tap the entry that counts them
+    tags: [dp]
+    prompt: >-
+      A code is a string of the letters A and B with no two Bs side by side. `count[i]` is the
+      number of codes of length `i`, shown below for 0 to 6. Every code of length 6 ends in A or
+      in B. Tap the entry that equals the number of codes of length 6 that end in B.
+    code: |
+      # count[i]: strings of A and B of length i with no 'BB'
+      count = [1, 2, 3, 5, 8, 13, 21]
+    sequence: { kind: array, name: count, cells: [1, 2, 3, 5, 8, 13, 21] }
+    correct: 4
+    explanation: >-
+      A B at the end needs an A just before it, so these codes are a code of length 4 followed by
+      `AB`. There are `count[4]` of them, which is 8. The codes that end in A are any code of
+      length 5 plus an A, 13 of them, and 13 + 8 is 21.
+    misses:
+      - index: 0
+        explanation: >-
+          `count[0]` is the empty code. A code of length 6 that ends in `AB` still has 4 letters
+          before them.
+      - index: 1
+        explanation: Taking off the final `AB` leaves 4 letters, not 1.
+      - index: 2
+        explanation: Taking off the final `AB` leaves 4 letters, not 2.
+      - index: 3
+        explanation: >-
+          A code that ends in B ends in `AB`, so the last two letters are fixed, not three.
+      - index: 5
+        explanation: >-
+          `count[5]` counts the codes that end in A, any code of length 5 plus an A. A B cannot
+          follow just any code, since that code may already end in B.
+      - index: 6
+        explanation: "`count[6]` counts every code of length 6, the ones that end in A as well."
+
+  - id: tables-exam-cups-at-least
+    heading: Which setup is right?
+    tags: [dp, python]
+    prompt: |-
+      Packs of 3 cups cost $5 and packs of 5 cups cost $7. `least(n)` should return the smallest
+      price for **at least** `n` cups, so extra cups are fine. Here `inf` is `float('inf')`.
+
+      ```python
+      def least(n):
+          cost = [START] * (n + 1)
+          cost[0] = BASE
+          for i in range(1, n + 1):
+              for size, price in ((3, 5), (5, 7)):
+                  cost[i] = min(cost[i], price + cost[PREV])
+          return cost[n]
+      ```
+
+      Which choice of `START`, `BASE` and `PREV` is right?
+    options:
+      - id: right
+        text: "`START = inf`, `BASE = 0`, `PREV = max(0, i - size)`"
+        explanation: >-
+          The last pack covers `size` of the cups still needed. When fewer remain, one pack covers
+          them all and nothing is left to buy, so the step back stops at 0 instead of landing on
+          an impossible amount. `inf` starts every other entry so `min` can replace it. For 7 cups
+          the table gives $12, a 3-pack and a 5-pack.
+      - id: exact
+        text: "`START = inf`, `BASE = 0`, `PREV = i - size`"
+        explanation: What does `cost[i - size]` read when `i` is smaller than `size`?
+      - id: base-inf
+        text: "`START = inf`, `BASE = inf`, `PREV = max(0, i - size)`"
+        explanation: What does buying nothing cost when you need 0 cups?
+      - id: start-zero
+        text: "`START = 0`, `BASE = 0`, `PREV = max(0, i - size)`"
+        explanation: Can `min(cost[i], ...)` ever replace a starting value of 0?
+    correct: right
+    followUps:
+      exact:
+        prompt: With `PREV = i - size`, `cost[2]` reads `cost[-1]`. What does that hold, and what does `least(7)` return?
+        options:
+          - id: inf-seven
+            text: "`inf`, the unfilled last entry, so `cost[2]` and `cost[4]` stay `inf` and `least(7)` is `inf`"
+          - id: error
+            text: Nothing, since a negative index raises `IndexError`
+          - id: twelve
+            text: "`cost[0]`, so `least(7)` is still $12"
+        correct: inf-seven
+        explanation: >-
+          A negative index counts from the end of the list, where entries still hold `inf`. So 1,
+          2 and 4 cups look impossible, although one pack covers them, and 7 builds only on those.
+          With "at least", a shortfall smaller than a pack is covered by that pack, which is why
+          the step back stops at 0.
+      base-inf:
+        prompt: With `BASE = inf`, what is `cost[3]`?
+        options:
+          - id: inf
+            text: "`inf`, and so is every entry, since each one builds on `cost[0]`"
+          - id: five
+            text: $5, one 3-pack
+          - id: zero
+            text: $0, since 3 is a pack size
+        correct: inf
+        explanation: >-
+          Every chain of packs ends at `cost[0]`, the price of the cups still needed once the order
+          is covered. Needing nothing costs $0. With `inf` there, every price is `inf + 5` or
+          `inf + 7`, which is `inf`.
+      start-zero:
+        prompt: With every entry starting at 0, what does `min(cost[i], price + cost[PREV])` keep?
+        options:
+          - id: zero
+            text: 0, since a price plus a cost is never below 0, so the table stays 0
+          - id: right
+            text: The cheaper pack, since `min` compares the two packs
+          - id: price
+            text: The price of the first pack tried
+        correct: zero
+        explanation: >-
+          A `min` table can only move down from where it starts. A start of 0 means "free", and no
+          real price beats it, so `least(7)` returns 0. Entries that `min` must fill start at `inf`.

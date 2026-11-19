@@ -331,6 +331,30 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('keeps an old two-item construct-a-recurrence sitting and requires the full sitting for new attempts', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'one-dimensional-tables')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		expect(drills).toHaveLength(5);
+		expect(checkpoint.mix).toEqual(['counting', 'optimization']);
+		const slots = { ...attempt('nonadjacent-slots', true), deckId: 'one-dimensional-dp', examRulesVersion: 6 };
+		const coins = { ...attempt('min-coins-recurrence', true), deckId: 'one-dimensional-dp', examRulesVersion: 6 };
+		// One item alone was never a pass of the two-item pool.
+		expect(examPassed(drills, checkpoint.mix, [slots])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [slots, { ...coins, day: '2026-02-02' }])).toBe(false);
+		// Both items on one day, with at most one miss, was a pass.
+		expect(examPassed(drills, checkpoint.mix, [slots, coins])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...slots, correct: false }, coins])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...slots, correct: false }, { ...coins, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...slots, examRulesVersion: 1 }, { ...coins, examRulesVersion: 1 }])).toBe(true);
+		// A current-version attempt is not a legacy sitting.
+		expect(examPassed(drills, checkpoint.mix, [slots, { ...coins, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
 		const sitting = [attempt('a', true), attempt('b', true), attempt('c', false), attempt('d', true), attempt('e', true)];
 		expect(examPassed(pool, mix, sitting)).toBe(true);
