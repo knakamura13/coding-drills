@@ -1,0 +1,213 @@
+id: dependency-order-checkpoint
+title: 'Dependency order: checkpoint'
+description: Explain a partial Kahn result, separating cycle members from the tasks they block.
+questions:
+  - id: dep-exam-break-cycle
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      Kahn's algorithm seeds the queue with every node whose in-degree is 0. For `n = 6` and edges `(0, 1), (1, 2), (2, 1), (2, 3), (4, 5)`, where `(a, b)` means a comes before b, it returns `[0, 4, 5]`.
+
+      Removing which one edge makes it return all six nodes?
+    options:
+      - id: two-one
+        text: '`(2, 1)`'
+        explanation: Nodes 1 and 2 wait for each other. Without `(2, 1)`, 1 waits only for 0, then 2 and 3 follow, and the result is `[0, 4, 1, 5, 2, 3]`.
+      - id: two-three
+        text: '`(2, 3)`'
+        explanation: Node 3 is blocked by the cycle but is not on it. Removing this edge frees 3, giving `[0, 3, 4, 5]`, while 1 and 2 still wait for each other.
+      - id: zero-one
+        text: '`(0, 1)`'
+        explanation: Node 1 still has the edge from 2, and 2 still has the edge from 1. The result stays `[0, 4, 5]`.
+      - id: four-five
+        text: '`(4, 5)`'
+        explanation: Nodes 4 and 5 are already in the result. The loop between 1 and 2 is untouched, so the result is still three nodes short.
+    correct: two-one
+    followUps:
+      two-three:
+        prompt: After `(2, 3)` is removed, why do 1 and 2 still never join the queue?
+        options:
+          - id: mutual
+            text: Each keeps an edge from the other, so neither count can reach 0
+          - id: three-last
+            text: Node 3 was the last prerequisite they were waiting for
+          - id: empty-early
+            text: The queue runs out before the loop gets to them
+        correct: mutual
+        explanation: Removing an edge out of the cycle frees what it blocked, not the cycle itself. To finish, the change must remove an edge on the cycle.
+      zero-one:
+        prompt: Without `(0, 1)`, what is the in-degree of node 1 at the start?
+        options:
+          - id: one
+            text: 1, from the edge `(2, 1)`
+          - id: zero
+            text: 0, so it starts in the queue
+          - id: two
+            text: 2, from both 0 and 2
+        correct: one
+        explanation: Node 1 still waits for node 2, and node 2 waits for node 1. Removing the edge from 0 changes neither of those.
+      four-five:
+        prompt: Is `(4, 5)` on any cycle?
+        options:
+          - id: no-cycle
+            text: No. Nothing leads from 5 back to 4
+          - id: yes-cycle
+            text: Yes. Every edge in a graph with a cycle lies on one
+          - id: shared
+            text: Yes. It shares the queue with the cycle nodes
+        correct: no-cycle
+        explanation: Removing an edge helps only if it breaks the cycle. The only cycle here is `1→2→1`.
+
+  - id: dep-exam-blocked-node
+    format: tap-cell
+    tags:
+      - graph
+      - queue
+    prompt: Kahn's algorithm returned only `[0, 1]` for this graph, where `(a, b)` means a comes before b. Tap the missing node that is not on a cycle.
+    code: |-
+      n = 5
+      edges = [(0, 1), (1, 2), (2, 3), (3, 2), (3, 4)]
+      kahn(n, edges)  # [0, 1]
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4]
+    correct: 4
+    explanation: Node 4 has no edge back toward 2 or 3, so it is not on the cycle. It waits for 3, which never finishes, so its count stays at 1.
+    misses:
+      - index: 0
+        explanation: Node 0 is in the result. It had no prerequisite.
+      - index: 1
+        explanation: Node 1 is in the result. Its only prerequisite, 0, was processed first.
+      - index: 2
+        explanation: '`(2, 3)` and `(3, 2)` make 2 and 3 wait for each other, so 2 is on the cycle.'
+      - index: 3
+        explanation: '`(2, 3)` and `(3, 2)` make 2 and 3 wait for each other, so 3 is on the cycle.'
+
+  - id: dep-exam-cycle-check
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      `start` is a copy of `indeg` taken before the loop. Which check, run after the loop, reports a cycle exactly when the graph has one?
+
+      ```python
+      start = indeg[:]
+      queue = deque(v for v in range(n) if indeg[v] == 0)
+      order = []
+      while queue:
+          v = queue.popleft()
+          order.append(v)
+          for w in out[v]:
+              indeg[w] -= 1
+              if indeg[w] == 0:
+                  queue.append(w)
+      ```
+    options:
+      - id: short-order
+        text: '`len(order) < n`'
+        explanation: Each node on a cycle has a prerequisite on the same cycle, so none of their counts reaches 0, and neither do the counts of nodes after them. Without a cycle every node is eventually queued, so `order` has all `n`.
+      - id: empty-queue
+        text: '`not queue`'
+        explanation: The loop stops only when the queue is empty, so this check is true for every graph.
+      - id: big-count
+        text: '`max(start) >= 2`'
+        explanation: The diamond `(0, 1), (0, 2), (1, 3), (2, 3)` starts node 3 at 2 and has no cycle. The loop returns all four nodes.
+      - id: no-zero
+        text: '`0 not in start`'
+        explanation: If no node starts at 0, a cycle must exist, but a cycle can also sit after a free node. For `(0, 1), (1, 2), (2, 1)`, `start` is `[0, 2, 1]`, and the cycle of 1 and 2 goes unreported.
+    correct: short-order
+    followUps:
+      empty-queue:
+        prompt: When does `while queue:` stop?
+        options:
+          - id: always-empty
+            text: When the queue is empty, which happens on every input
+          - id: on-cycle
+            text: When the loop meets a node on a cycle
+          - id: after-n
+            text: After exactly `n` nodes have been removed
+        correct: always-empty
+        explanation: Each node joins the queue at most once, so the loop always ends. The evidence of a cycle is how many nodes made it into `order`.
+      big-count:
+        prompt: Does the diamond `(0, 1), (0, 2), (1, 3), (2, 3)` contain a cycle?
+        options:
+          - id: no-cycle
+            text: No. Node 3 has two prerequisites, and both of them finish
+          - id: yes-two-paths
+            text: Yes. Two different paths from 0 meet again at node 3
+          - id: yes-count
+            text: Yes. Any node with two prerequisites is part of a loop
+        correct: no-cycle
+        explanation: Two paths that meet are not a cycle. A cycle needs a path that leads from a node back to the same node.
+      no-zero:
+        prompt: On the edges `(0, 1), (1, 2), (2, 1)`, which nodes does the loop process?
+        options:
+          - id: only-zero
+            text: Only node 0
+          - id: none
+            text: None, because the graph contains a cycle
+          - id: all
+            text: All three, starting from node 0
+        correct: only-zero
+        explanation: Node 0 has no prerequisite and is processed. Node 1 drops to 1 and waits for 2, which waits for 1. A free start node can hide a cycle further on.
+
+  - id: dep-exam-finishable-tasks
+    tags:
+      - graph
+      - queue
+    prompt: |-
+      A team orders its tasks with Kahn's algorithm. Each pair `(a, b)` means a finishes before b starts:
+
+      `("build", "test")`, `("test", "ship")`, `("lint", "docs")`, `("docs", "lint")`, `("docs", "ship")`
+
+      Which tasks appear in the result?
+    options:
+      - id: build-test
+        text: build and test
+        explanation: Build has no prerequisite and unlocks test. Lint and docs wait for each other, and ship waits for docs, so the result is `["build", "test"]`.
+      - id: with-ship
+        text: build, test and ship
+        explanation: Ship has two prerequisites, test and docs. Test lowers its count to 1, and docs never finishes.
+      - id: with-one
+        text: build, test, and one of lint or docs
+        explanation: Lint and docs each wait for the other, so neither count reaches 0. Kahn's algorithm never picks one to break the tie.
+      - id: none
+        text: None of them
+        explanation: The cycle stops lint, docs and the tasks that wait for them. Build and test depend on neither.
+    correct: build-test
+    followUps:
+      with-ship:
+        prompt: Which pairs end at ship?
+        options:
+          - id: two
+            text: '`("test", "ship")` and `("docs", "ship")`'
+          - id: one
+            text: Only `("test", "ship")`
+          - id: none
+            text: None, since ship is last
+        correct: two
+        explanation: Ship waits for test and docs. Docs is stuck in a cycle with lint, so ship is blocked although it is not on the cycle.
+      with-one:
+        prompt: What would the queue need for lint to be processed?
+        options:
+          - id: count-zero
+            text: '`indeg["lint"]` to reach 0, which needs docs processed first'
+          - id: smallest
+            text: Lint to have the smallest count left when the queue empties
+          - id: name-order
+            text: Lint to come first by name among the stuck tasks
+        correct: count-zero
+        explanation: The queue only receives tasks whose count is 0. Lint needs docs and docs needs lint, so both stay at 1.
+      none:
+        prompt: Does any pair make build or test wait for lint or docs?
+        options:
+          - id: 'no'
+            text: No. No path from lint or docs leads to them
+          - id: yes-all
+            text: Yes. A cycle anywhere blocks every task
+          - id: yes-ship
+            text: Yes. Ship links the cycle to them
+        correct: 'no'
+        explanation: A cycle blocks its own tasks and everything downstream of them. Ship is downstream of docs, but build and test come before ship and do not depend on the cycle.

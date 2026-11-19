@@ -1,5 +1,5 @@
-/** Version 3 expands the simultaneous-spread checkpoint to five items. */
-export const EXAM_RULES_VERSION = 3;
+/** Version 4 expands the partial-Kahn-result checkpoint to five items. */
+export const EXAM_RULES_VERSION = 4;
 
 export interface QuestionRef {
 	deckId: string;
