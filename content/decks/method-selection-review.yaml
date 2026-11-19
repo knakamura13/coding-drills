@@ -1,0 +1,573 @@
+id: method-selection-review
+title: "Method selection: review"
+description: Fresh tasks for the Method selection skills, for recall on later days. No worked examples this time.
+heading: Which method fits?
+
+questions:
+  - id: select-review-sortable-task
+    heading: Which task survives sorting?
+    tags: [sorting, arrays-strings]
+    prompt: >-
+      Each task below reads a list of daily readings in date order. For which one can you sort the
+      readings first without changing the answer?
+    options:
+      - id: pairs
+        text: Count the pairs of readings that total exactly `k`
+        explanation: >-
+          A pair is two readings, wherever they sit. Sorting keeps every reading, so the same pairs
+          exist after it and the count does not change.
+      - id: run
+        text: Find the longest run of days whose total is at most `S`
+        explanation: Which days sit next to each other once the readings are sorted?
+      - id: record
+        text: Find the first day after day 1 whose reading beats every earlier day
+        explanation: What does "earlier day" mean once the readings are sorted?
+      - id: rises
+        text: Count the days whose reading is higher than the day before
+        explanation: In a sorted list, how many days can fail to rise?
+    correct: pairs
+    followUps:
+      run:
+        prompt: Readings `1, 9, 2` with `S = 3`. What is the longest run before sorting, and after?
+        options:
+          - { id: changes, text: '1 before and 2 after, since sorting puts 1 and 2 side by side' }
+          - { id: same-two, text: '2 both times, since the values are the same' }
+          - { id: same-one, text: '1 both times, since the 9 still blocks the run' }
+        correct: changes
+        explanation: >-
+          In date order the 9 sits between the 1 and the 2, so the best run is a single day.
+          Sorted to `1, 2, 9`, the run `1, 2` totals 3. A run depends on neighbors, and sorting
+          changes them.
+      record:
+        prompt: >-
+          Readings `5, 3, 8`. In date order the answer is the 8. Sorted, the list is `3, 5, 8`.
+          What would the sorted list answer?
+        options:
+          - { id: five, text: 'The 5, a different reading' }
+          - { id: eight, text: 'The 8, the same reading' }
+          - { id: none, text: No reading at all }
+        correct: five
+        explanation: >-
+          In date order the 3 does not beat the 5 before it, so the first record after day 1 is the
+          8. Sorted, the 5 already beats the 3. "Earlier" means earlier days, and sorting
+          rearranges the days.
+      rises:
+        prompt: Readings `6, 2, 7, 3`. How many days rise before sorting, and after?
+        options:
+          - { id: one-three, text: '1 before and 3 after' }
+          - { id: one-one, text: '1 both times' }
+          - { id: three-three, text: '3 both times' }
+        correct: one-three
+        explanation: >-
+          In date order only 2 to 7 rises. Sorted to `2, 3, 6, 7`, every day after the first rises.
+          The count is about each day and the day before it, which sorting changes.
+
+  - id: select-review-monotone-minutes
+    heading: Which fact makes it legal?
+    tags: [binary-search]
+    prompt: >-
+      Printers each take a fixed number of minutes per job, for example 2, 3 and 7. They all work
+      at once, and a printer that takes `m` minutes per job finishes `t // m` jobs in `t` minutes.
+      Find the fewest whole minutes to finish `P` jobs. Binary search on the minutes fits. Which
+      fact makes that legal?
+    options:
+      - id: monotone
+        text: With more minutes, the printers never finish fewer jobs
+        explanation: >-
+          `t // m` never falls as `t` grows, so if `t` minutes are enough, `t + 1` are too. The
+          minutes that work form one block, and each probe says which side of its start it is on.
+      - id: listed
+        text: The printers are listed from fastest to slowest
+        explanation: Listed in another order, would the jobs done in `t` minutes change?
+      - id: whole
+        text: The answer is a whole number of minutes
+        explanation: Whole numbers can be probed, but does that say which half to drop?
+      - id: bound
+        text: '`P` jobs take at most `P` times the fastest printer''s minutes'
+        explanation: That gives the search a place to stop. Does it say which half holds the answer?
+    correct: monotone
+    followUps:
+      listed:
+        prompt: Does the order the printers are listed in change how many jobs finish in `t` minutes?
+        options:
+          - { id: no, text: 'No, the count is a sum over the printers' }
+          - { id: fastest, text: 'Yes, the fastest must come first' }
+          - { id: starts, text: 'Yes, the order decides which printer starts' }
+        correct: no
+        explanation: >-
+          The jobs done in `t` minutes are `t // m` added up over the printers, and a sum does not
+          depend on order. Sorting the printers changes nothing the search relies on.
+      whole:
+        prompt: Which fact tells a probe at `t` which half to drop?
+        options:
+          - { id: larger, text: 'If `t` works, every larger `t` works too' }
+          - { id: integers, text: Every `t` is a whole number }
+          - { id: sorted, text: The printers are sorted by speed }
+        correct: larger
+        explanation: >-
+          A probe that works rules out everything above it as the smallest answer, and a probe that
+          fails rules out everything below. That needs the answer to flip once, from fails to works.
+      bound:
+        prompt: An upper bound gives `hi`. What else must hold for the search to work?
+        options:
+          - { id: flips-once, text: 'Whether `t` is enough flips only once, from no to yes' }
+          - { id: power, text: The bound must be a power of two }
+          - { id: middle, text: The answer must sit near the middle of the range }
+        correct: flips-once
+        explanation: >-
+          Bounds say where to start. The single flip from not enough to enough is what lets each
+          probe drop half of what is left.
+
+  - id: select-review-fixed-width
+    heading: Which fact allows it?
+    tags: [sliding-window]
+    prompt: |-
+      Two tasks on daily rainfall:
+
+      1. The highest total over any 7 consecutive days.
+      2. The longest run of days whose total is at most 50 mm.
+
+      Task 1 moves both ends of its window one day on every pass. Which fact allows that?
+    options:
+      - id: fixed
+        text: The run length is fixed at 7, so one day enters as one day leaves
+        explanation: >-
+          With a fixed length, each pass adds the new day and subtracts the day 7 back. Task 2 has
+          no fixed length, so each pass decides how many days to drop.
+      - id: nonneg
+        text: Rainfall is never negative, so the total only grows as days join
+        explanation: Would task 1 still work on daily temperature changes, some of them negative?
+      - id: order
+        text: The days come in date order, so the window can move forward
+        explanation: Task 2 also reads days in date order. Why does it not move both ends each pass?
+      - id: limit
+        text: The total stays at most 50 mm, so no day ever has to be dropped
+        explanation: Does task 1 have a limit on its total at all?
+    correct: fixed
+    followUps:
+      nonneg:
+        prompt: >-
+          A 7-day window runs over temperature changes, some negative. Does adding the day that
+          enters and subtracting the day that leaves still give each total?
+        options:
+          - { id: exact, text: 'Yes, the update is exact whatever the signs' }
+          - { id: breaks, text: 'No, a negative day breaks the update' }
+          - { id: drop-first, text: Only after the negative days are removed }
+        correct: exact
+        explanation: >-
+          The next total is the old total plus the new day minus the oldest one. That is plain
+          arithmetic, not a rule about signs. Signs matter for task 2, where the window decides
+          when to drop a day.
+      order:
+        prompt: Both tasks read days in order. What does task 2 decide on each pass that task 1 does not?
+        options:
+          - { id: how-many, text: How many days to drop from the left }
+          - { id: next, text: Which day to read next }
+          - { id: sort, text: Whether to sort the days }
+        correct: how-many
+        explanation: >-
+          Task 2 drops days only while its total is over 50 mm, so a pass can drop none or
+          several. Task 1 always drops exactly one, the day that falls out of the 7.
+      limit:
+        prompt: Task 1 has no limit on its total. What tells it when to drop a day?
+        options:
+          - { id: width, text: 'The width: once 7 days are in, each new day pushes out the oldest' }
+          - { id: over, text: The total going over 50 mm }
+          - { id: dry, text: A day with no rain }
+        correct: width
+        explanation: >-
+          A fixed window drops by count, not by total. The 50 mm limit belongs to task 2 and plays
+          no part in task 1.
+
+  - id: contrast-review-tap-unsorted
+    format: tap-cell
+    heading: Tap the value it drops first
+    tags: [two-pointers, hash-map]
+    prompt: >-
+      The opposite-ends scan runs on this unsorted list with `target = 6` and returns `False`,
+      though 2 + 4 = 6. Tap the value of that pair the scan drops first.
+    code: |
+      def has_pair(nums, target):
+          left, right = 0, len(nums) - 1
+          while left < right:
+              total = nums[left] + nums[right]
+              if total == target:
+                  return True
+              if total < target:
+                  left += 1
+              else:
+                  right -= 1
+          return False
+
+      has_pair([6, 2, 9, 4, 7], 6)   # False
+    sequence: { kind: array, name: nums, cells: [6, 2, 9, 4, 7] }
+    markers:
+      - { name: left, at: 0 }
+      - { name: right, at: 4 }
+    correct: 3
+    explanation: >-
+      On the second pass 6 + 4 = 10, over 6, so `right` drops the 4. That is safe only when every
+      value from `left` on is at least 6, and here the 2 sits to its left. A set of seen values
+      finds the pair when the 4 arrives, since the 2 is already in it.
+    misses:
+      - index: 0
+        explanation: >-
+          Every sum the scan sees (13, 10, 15, then 8) is over 6, so `left` never moves and the 6 is
+          never dropped. It is not in the pair either.
+      - index: 1
+        explanation: >-
+          The 2 is in the pair, but the scan drops it last (6 + 2 = 8). The 4 went two passes
+          earlier.
+      - index: 2
+        explanation: The scan drops the 9 on its third pass, but no pair that totals 6 uses it.
+      - index: 4
+        explanation: The 7 goes first (6 + 7 = 13), but no pair that totals 6 uses it.
+
+  - id: contrast-review-prefix-or-window
+    heading: Which method is fastest?
+    tags: [prefix-sum, sliding-window]
+    prompt: >-
+      A list holds `n` daily sales. Then `q` questions arrive, each asking for the total from day
+      `a` to day `b`, with a different start and length each time. Which method answers them all
+      fastest?
+    options:
+      - id: prefix
+        text: Build running totals once, then answer each with one subtraction
+        explanation: >-
+          Building costs O(n), and each answer is `P[b + 1] - P[a]`, which is O(1), so the whole job
+          is O(n + q). A window pays off when the width is fixed and the windows step along in
+          order. Here each question jumps.
+      - id: window
+        text: Slide a window from day `a` to day `b` for each question in turn
+        explanation: How much does one question cost when its range is long?
+      - id: sort
+        text: Sort the sales once, then add up positions `a` to `b` for each
+        explanation: After sorting, which days sit between positions `a` and `b`?
+      - id: heap
+        text: Keep the sales in a heap and pop the days in each range
+        explanation: In what order does a heap hand back the sales?
+    correct: prefix
+    followUps:
+      window:
+        prompt: Each question can cover up to `n` days. What do `q` questions cost with a window per question?
+        options:
+          - { id: nq, text: 'O(n · q), since each one can read n days' }
+          - { id: n-plus-q, text: 'O(n + q), since the window moves once' }
+          - { id: q, text: 'O(q), since each answer is one total' }
+        correct: nq
+        explanation: >-
+          A window only saves work when consecutive questions overlap and step along in order. Here
+          each question starts fresh, so each can cost up to n steps. Running totals bring each
+          answer down to O(1).
+      sort:
+        prompt: What does sorting do to "day `a` to day `b`"?
+        options:
+          - { id: moves, text: 'It moves days away from their dates, so the range holds other days' }
+          - { id: nothing, text: 'Nothing, since the total of all sales stays the same' }
+          - { id: faster, text: It makes the sum faster without changing it }
+        correct: moves
+        explanation: >-
+          A range of days means consecutive dates. After sorting, positions `a` to `b` hold the
+          sales ranked there, not the sales on those dates.
+      heap:
+        prompt: What does a min-heap hand back on each pop?
+        options:
+          - { id: smallest, text: 'The smallest sale left, whatever its day' }
+          - { id: date-order, text: The next day in date order }
+          - { id: day-a, text: The sale on day `a` first }
+        correct: smallest
+        explanation: >-
+          A heap orders by value and forgets dates. A range question needs dates, which running
+          totals keep.
+
+  - id: contrast-review-drag-grow
+    format: drag-pointers
+    heading: Drag the pointers
+    tags: [sliding-window]
+    prompt: >-
+      Find the longest run with total at most `S = 10`, where no value is negative. The window
+      holds `3, 1, 2` (total 6). The next two passes add the 1 and then the 5. Drag `left` and
+      `right` to where they sit when both passes end.
+    code: |
+      best = total = left = 0
+      for right in range(len(nums)):
+          total += nums[right]
+          while total > S:
+              total -= nums[left]
+              left += 1
+          best = max(best, right - left + 1)
+    sequence: { kind: array, name: nums, cells: [3, 1, 2, 1, 5, 4] }
+    pointers:
+      - name: left
+        start: 0
+        correct: 1
+        explanation: >-
+          The 1 makes the total 7, still at most 10, so the window grows and nothing leaves. The 5
+          makes it 12, and dropping the 3 leaves 9. The width went from 3 to 4 and stayed there,
+          which a fixed-width step never does.
+        misses:
+          - index: 0
+            explanation: The 5 makes the total 12, over 10, so the loop drops the 3.
+          - index: 2
+            explanation: >-
+              That moves `left` once per pass, as a fixed width would. After the 1 the total is 7,
+              not over 10, so nothing leaves on that pass.
+          - index: 3
+            explanation: After the 3 leaves, the total is 9, not over 10, so the 1 stays.
+        elsewhere: Values leave only while the total is over 10, and only the 5 pushes it over.
+      - name: right
+        start: 2
+        correct: 4
+        explanation: Two passes move `right` two cells, onto the 5.
+        misses:
+          - index: 3
+            explanation: That is one pass. The prompt runs two, the 1 and then the 5.
+        elsewhere: Each pass moves `right` one cell, and two passes end on the 5 at index 4.
+
+  - id: contrast-review-bfs-dfs
+    heading: What does it give?
+    tags: [bfs, dfs, grid]
+    prompt: >-
+      On a grid with walls, each move goes one cell up, down, left or right, and every move costs
+      the same. You need the fewest moves from S to T. A depth-first search and a breadth-first
+      search both reach T. What does breadth-first search give that depth-first search does not?
+    options:
+      - id: shortest
+        text: The first time it reaches T, no shorter route exists
+        explanation: >-
+          BFS takes cells in rounds by distance: every cell 1 move away, then every cell 2 away,
+          and so on. So it first reaches T in the round equal to T's distance. DFS follows one
+          route as deep as it goes, and the first route it finds can be long.
+      - id: fewer
+        text: It visits fewer cells than DFS on every grid
+        explanation: Could DFS head straight for T on its first try?
+      - id: walls
+        text: It can route around walls, which DFS cannot
+        explanation: What does DFS do when its route meets a wall?
+      - id: memory
+        text: It holds fewer cells in memory than DFS on every grid
+        explanation: How many cells can one BFS round hold on an open grid?
+    correct: shortest
+    followUps:
+      fewer:
+        prompt: Can DFS ever visit fewer cells than BFS before it reaches T?
+        options:
+          - { id: yes, text: 'Yes, when its first route heads straight for T' }
+          - { id: never, text: 'No, BFS always visits fewer' }
+          - { id: same, text: 'No, the two always visit the same cells' }
+        correct: yes
+        explanation: >-
+          Visit counts depend on the grid and the neighbor order, and DFS can get lucky. What it
+          cannot promise is that the route it found is the shortest.
+      walls:
+        prompt: What does DFS do when its route meets a wall or a cell it has seen?
+        options:
+          - { id: back, text: Backs up and tries another neighbor }
+          - { id: stop, text: Stops the whole search }
+          - { id: through, text: Moves through it anyway }
+        correct: back
+        explanation: >-
+          Both searches skip walls and seen cells, and both reach every cell they can. The
+          difference is the order they reach cells in.
+      memory:
+        prompt: Which search can hold more cells at once?
+        options:
+          - { id: either, text: 'Either one, depending on the shape of the grid' }
+          - { id: bfs, text: 'Always BFS' }
+          - { id: dfs, text: 'Always DFS' }
+        correct: either
+        explanation: >-
+          A BFS round can span a whole diagonal of an open grid, and a DFS route can wind through
+          most of a maze. Memory is not what sets them apart here. The fewest-moves promise is.
+
+  - id: justify-review-trace-rate
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search, python]
+    prompt: >-
+      A batch of `b` jobs at rate `r` takes `(b + r - 1) // r` hours, which rounds up. Batches `6,
+      1, 8, 5` must finish within 6 hours, one batch at a time. The cells are the rates 1 to 8.
+      Predict each step.
+    code: |
+      def hours_needed(batches, rate):
+          return sum((b + rate - 1) // rate for b in batches)
+
+      def least_rate(batches, h):
+          lo, hi = 1, max(batches)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if hours_needed(batches, mid) <= h:
+                  hi = mid
+              else:
+                  lo = mid + 1
+          return lo
+
+      least_rate([6, 1, 8, 5], 6)
+    sequence: { kind: array, name: rate, cells: [1, 2, 3, 4, 5, 6, 7, 8] }
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 7
+        ask: First pass, `mid` is 4. Where is `lo` after it?
+        pointer: lo
+        correct: 4
+        explanation: >-
+          At rate 4 the hours are 2 + 1 + 2 + 2 = 7, over 6. Rate 4 fails, so `lo` moves to 5.
+        misses:
+          - index: 3
+            explanation: '`lo` goes past a rate that fails, to `mid + 1`.'
+          - index: 0
+            explanation: Rate 4 needs 7 hours, over 6, so `lo` moves up.
+        elsewhere: A rate that fails sets `lo` to `mid + 1`, here 5.
+      - line: 7
+        ask: Next, `mid` is 6. Where is `hi` after this pass?
+        pointer: hi
+        correct: 5
+        explanation: At rate 6 the hours are 1 + 1 + 2 + 1 = 5, within 6. So `hi` drops to 6.
+        misses:
+          - index: 7
+            explanation: Rate 6 needs 5 hours, within 6, so `hi` moves down.
+          - index: 6
+            explanation: '`hi` takes `mid` itself, which is 6, not 7.'
+        elsewhere: A rate that works sets `hi` to `mid`, here 6.
+      - line: 7
+        ask: Next, `mid` is 5. What does the call return?
+        options:
+          - id: five
+            text: '5'
+            explanation: >-
+              At rate 5 the hours are 2 + 1 + 2 + 1 = 6, which meets the limit, so `hi` drops to 5
+              and meets `lo`. Rate 4 needed 7.
+          - id: six
+            text: '6'
+            explanation: Rate 6 works, but 5 works too and is smaller.
+          - id: four
+            text: '4'
+            explanation: Rate 4 needs 7 hours, over 6.
+        correct: five
+        also:
+          - { name: hi, at: 4 }
+
+  - id: justify-review-exists-counterexample
+    heading: Which input rules it out?
+    tags: [prefix-sum, sliding-window]
+    prompt: |-
+      Values can be negative, and the task asks whether any run of consecutive values totals exactly `k`. A teammate wants this window instead of a set of running totals:
+
+      ```python
+      def window_has(nums, k):
+          total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total > k and left <= right:
+                  total -= nums[left]
+                  left += 1
+              if total == k:
+                  return True
+          return False
+      ```
+
+      Which input shows the window is wrong?
+    options:
+      - id: drop-then-negative
+        text: '`[4, -3, 2]` with `k = 3`'
+        explanation: >-
+          The whole list totals 3. The window drops the 4 at once, since 4 is over 3, then sees
+          totals of -3 and -1 and returns `False`. The -3 after the 4 would have pulled the total
+          back to 3.
+      - id: tail
+        text: '`[1, 3, 2]` with `k = 5`'
+        explanation: Does the window ever hold `3, 2`?
+      - id: after-big
+        text: '`[6, 1, 2]` with `k = 3`'
+        explanation: What does the window hold once the 6 is dropped and the 2 arrives?
+      - id: has-negative
+        text: '`[3, -2, 4]` with `k = 2`'
+        explanation: This list has a negative value. Does the window still find `-2, 4`?
+    correct: drop-then-negative
+    followUps:
+      tail:
+        prompt: On `[1, 3, 2]` with `k = 5`, what does the window return?
+        options:
+          - { id: finds-it, text: '`True`, once it drops the 1 and holds `3, 2`' }
+          - { id: false-all, text: '`False`, since 1 + 3 + 2 is 6' }
+          - { id: false-stop, text: '`False`, since it stops at `1, 3`' }
+        correct: finds-it
+        explanation: >-
+          At the 2 the total is 6, over 5, so the 1 leaves and `3, 2` totals 5. The window is right
+          on this input, so it rules nothing out.
+      after-big:
+        prompt: On `[6, 1, 2]` with `k = 3`, what does the window return?
+        options:
+          - { id: finds-it, text: '`True`, from the run `1, 2`' }
+          - { id: false-big, text: '`False`, since the 6 is over 3' }
+          - { id: false-sum, text: '`False`, since 6 + 1 + 2 is 9' }
+        correct: finds-it
+        explanation: >-
+          The 6 leaves at once, then the 1 and the 2 total 3. With no negative value nearby the
+          window behaves, so this input cannot show it is wrong.
+      has-negative:
+        prompt: On `[3, -2, 4]` with `k = 2`, what does the window return?
+        options:
+          - { id: finds-it, text: '`True`, from the run `-2, 4`' }
+          - { id: false-neg, text: '`False`, since a negative value breaks it' }
+          - { id: false-start, text: '`False`, since the 3 is over 2' }
+        correct: finds-it
+        explanation: >-
+          The 3 leaves at once, then -2 and 4 total 2. A negative value can break the window, but
+          only on some inputs. A counterexample has to be one of them.
+
+  - id: justify-review-pick-pair
+    heading: Which method fits?
+    tags: [hash-map, two-pointers]
+    prompt: >-
+      A list of `n` prices is not sorted. Find whether two of them total exactly the budget `b`,
+      in O(n) expected time. Which method fits?
+    options:
+      - id: set
+        text: Keep a set of prices seen so far and look for `b - price`
+        explanation: >-
+          Each lookup and insert is O(1) expected, so one pass is O(n). The set needs no order, and
+          each lookup checks a price against every earlier one at once.
+      - id: scan
+        text: Run the opposite-ends scan on the list as it is given
+        explanation: What does dropping `right` assume about the values between the pointers?
+      - id: sort-scan
+        text: Sort the prices, then run the opposite-ends scan on them
+        explanation: This finds the pair. What does it cost?
+      - id: window
+        text: Slide a window and look for a run that totals `b` exactly
+        explanation: Must the two prices sit next to each other?
+    correct: set
+    followUps:
+      scan:
+        prompt: When the sum is too big, the scan drops `right`. What does that assume?
+        options:
+          - { id: sorted, text: 'Every value from `left` on is at least `nums[left]`' }
+          - { id: distinct, text: The list has no repeated prices }
+          - { id: budget, text: The budget is larger than every price }
+        correct: sorted
+        explanation: >-
+          Dropping `right` is safe only if it cannot pair with anything still in range, which holds
+          when the list is sorted. On an unsorted list a small value can hide between the pointers.
+      sort-scan:
+        prompt: Sorting and then scanning finds the pair. Why is it not the answer here?
+        options:
+          - { id: time, text: 'Sorting costs O(n log n), over the O(n) budget' }
+          - { id: loses, text: Sorting loses which prices total `b` }
+          - { id: space, text: The scan needs O(n) extra space }
+        correct: time
+        explanation: >-
+          It is a correct method that misses only the time budget. Sorting keeps every price, so
+          the pair is still there, but the sort alone is O(n log n).
+      window:
+        prompt: Prices `5, 9, 3` with `b = 8`. Which two total 8?
+        options:
+          - { id: apart, text: '5 and 3, though the 9 sits between them' }
+          - { id: none, text: 'None, since no two neighbors total 8' }
+          - { id: last, text: '9 and 3, the last two' }
+        correct: apart
+        explanation: >-
+          The task asks for any two prices, wherever they sit. A window only sees runs of
+          neighbors, so it cannot find 5 + 3 here.
