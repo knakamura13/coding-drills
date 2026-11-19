@@ -1,0 +1,292 @@
+id: greedy-scheduling-checkpoint
+title: "Greedy scheduling: checkpoint"
+description: Find the schedule that earliest finish keeps on new inputs, and explain why no schedule keeps more. Each item combines the Greedy scheduling skills.
+heading: Which schedule is kept?
+
+questions:
+  - id: sched-exam-retained-set
+    heading: Which meetings stay?
+    tags: [intervals, greedy, sorting]
+    prompt: >-
+      Touching meetings may both stay. The loop sorts by end and keeps each meeting that starts at
+      or after the last kept end:
+      `[[5, 8], [0, 4], [9, 11], [3, 5], [1, 2], [6, 9], [4, 6], [8, 10]]`. Which meetings does it
+      keep, and how many are removed?
+    options:
+      - id: earliest-finish
+        text: "`[1, 2]`, `[3, 5]`, `[5, 8]`, `[8, 10]`, so 4 are removed"
+        explanation: >-
+          In end order: keep `[1, 2]`, skip `[0, 4]`, keep `[3, 5]`, skip `[4, 6]`, keep `[5, 8]`,
+          skip `[6, 9]`, keep `[8, 10]` (it touches 8), skip `[9, 11]`. Of 8, 4 go, and a brute
+          force agrees that 4 is the most that can stay.
+      - id: start-order
+        text: "`[0, 4]`, `[4, 6]`, `[6, 9]`, `[9, 11]`, so 4 are removed"
+        explanation: >-
+          This schedule is also valid and also keeps 4, but it is what start order builds. In end
+          order `[1, 2]` comes first and is kept, so `[0, 4]` is skipped.
+      - id: strict
+        text: "`[1, 2]`, `[3, 5]`, `[6, 9]`, so 5 are removed"
+        explanation: >-
+          That treats touching meetings as a clash. Touching is allowed here, so `[5, 8]` follows
+          `[3, 5]` and `[8, 10]` follows `[5, 8]`.
+      - id: skip-touch
+        text: "`[1, 2]`, `[3, 5]`, `[5, 8]`, `[9, 11]`, so 4 are removed"
+        explanation: >-
+          Another valid schedule of 4, but not the loop's. `[8, 10]` ends at 10, before
+          `[9, 11]`, and starts where `[5, 8]` ends, so it is kept, and `[9, 11]` then clashes.
+    correct: earliest-finish
+    followUps:
+      start-order:
+        prompt: Both `[0, 4]` and `[1, 2]` could start a schedule. Which does the loop read first, and why?
+        options:
+          - { id: one-two, text: "`[1, 2]`, since it ends at 2" }
+          - { id: zero-four, text: "`[0, 4]`, since it starts at 0" }
+          - { id: either, text: "Either, since both keep 4 in the end" }
+        correct: one-two
+        explanation: >-
+          The loop reads in end order. Equal counts can come from several schedules, but the
+          loop builds the one whose picks end soonest.
+      strict:
+        prompt: "`[3, 5]` is kept. What does `5 >= 5` give for `[5, 8]`?"
+        options:
+          - { id: kept, text: "True. `[5, 8]` is kept" }
+          - { id: skipped, text: "False. `[5, 8]` is skipped" }
+          - { id: depends, text: "It depends on the end of `[5, 8]`" }
+        correct: kept
+        explanation: >-
+          When touching is allowed, the test is `>=`, and a meeting that starts at the kept end
+          stays.
+      skip-touch:
+        prompt: After `[5, 8]` is kept, the loop reads `[6, 9]`, then `[8, 10]`, then `[9, 11]`. Which is kept?
+        options:
+          - { id: eight-ten, text: "`[8, 10]`. It starts at 8, the kept end" }
+          - { id: nine-eleven, text: "`[9, 11]`. It is the first that starts after 8" }
+          - { id: six-nine, text: "`[6, 9]`. It is read first" }
+        correct: eight-ten
+        explanation: >-
+          `[6, 9]` starts before 8. `[8, 10]` touches the kept end and is read before `[9, 11]`,
+          so it is kept, and `[9, 11]` then starts before 10.
+
+  - id: sched-exam-trace-inclusive
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, greedy, python]
+    prompt: >-
+      Each booking `[a, b]` holds a room on days `a` through `b`, both included. The board shows
+      `days` after the sort. Predict each step before it is shown.
+    code: |
+      def most_bookings(days):
+          days = sorted(days, key=lambda b: b[1])
+          last, count = 0, 1
+          for i in range(1, len(days)):
+              if days[i][0] > days[last][1]:
+                  last = i
+                  count += 1
+          return count
+
+      most_bookings([[6, 8], [1, 2], [7, 9], [3, 5], [8, 10], [2, 4], [4, 7], [5, 6]])
+    sequence:
+      kind: array
+      name: days
+      cells: ['[1,2]', '[2,4]', '[3,5]', '[5,6]', '[4,7]', '[6,8]', '[7,9]', '[8,10]']
+    start:
+      - { name: last, at: 0 }
+      - { name: i, at: 1 }
+    steps:
+      - line: 4
+        ask: After the passes with `i` at 1 and 2, where is `last`?
+        pointer: last
+        correct: 2
+        explanation: >-
+          `[2, 4]` starts on day 2, which `[1, 2]` holds, so `2 > 2` is False. `[3, 5]` starts on
+          day 3, and `3 > 2`, so `last` moves to 2.
+        misses:
+          - index: 1
+            explanation: >-
+              `[2, 4]` only touches `[1, 2]`, but both include day 2. The strict test `2 > 2` is
+              False.
+          - index: 0
+            explanation: "`[3, 5]` starts on day 3, after day 2, so `3 > 2` holds and `last` moves."
+        elsewhere: Among indexes 1 and 2, only `[3, 5]` starts after day 2.
+        also:
+          - { name: i, at: 2 }
+      - line: 4
+        ask: After the passes with `i` at 3, 4 and 5, where is `last`?
+        pointer: last
+        correct: 5
+        explanation: >-
+          `[5, 6]` needs day 5, which `[3, 5]` holds, and `[4, 7]` starts on day 4. `[6, 8]`
+          starts on day 6, after 5, so `last` moves to 5.
+        misses:
+          - index: 3
+            explanation: >-
+              `[5, 6]` ends soonest, but it starts on day 5, which `[3, 5]` still holds. `5 > 5`
+              is False.
+          - index: 4
+            explanation: "`[4, 7]` starts on day 4, which `[3, 5]` holds, so it is skipped."
+          - index: 2
+            explanation: "`[6, 8]` starts on day 6, after day 5, so `6 > 5` holds and `last` moves."
+        elsewhere: The kept booking holds day 5, and `[6, 8]` is the first to start after it.
+        also:
+          - { name: i, at: 5 }
+      - line: 4
+        ask: After the passes with `i` at 6 and 7, where is `last`?
+        pointer: last
+        correct: 5
+        explanation: >-
+          `[7, 9]` and `[8, 10]` start on days 7 and 8, which `[6, 8]` holds, so `last` stays.
+        misses:
+          - index: 6
+            explanation: "`[7, 9]` starts on day 7, which `[6, 8]` holds, so it is skipped."
+          - index: 7
+            explanation: >-
+              `[8, 10]` only touches `[6, 8]`, but both include day 8. `8 > 8` is False.
+        elsewhere: Neither booking starts after day 8, so `last` does not move.
+        also:
+          - { name: i, at: 7 }
+      - line: 8
+        ask: What does the call return?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              It keeps `[1, 2]`, `[3, 5]` and `[6, 8]`. A brute force over every subset agrees
+              that 3 bookings is the most with no shared day.
+          - id: five
+            text: '5'
+            explanation: >-
+              That is the count with `>=`, which lets touching bookings both stay. Here they
+              share a day, so `[2, 4]`, `[5, 6]` and `[8, 10]` are skipped.
+          - id: four
+            text: '4'
+            explanation: "`last` moved only twice after starting at 0, so `count` is 3."
+          - id: two
+            text: '2'
+            explanation: "`count` starts at 1 for `[1, 2]` and grows at `[3, 5]` and `[6, 8]`, so it is 3."
+        correct: three
+
+  - id: sched-exam-stays-ahead
+    heading: Can another schedule keep more?
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching intervals may both be kept. On some list, the earliest-finish loop keeps 3
+      intervals, which end at 3, 6 and 10. Another valid schedule has 3 intervals that end at 4,
+      8 and 11. Could the list hold a 4th interval that extends the other schedule?
+    options:
+      - id: no-loop-would-keep
+        text: No. It starts at 11 or later, so the loop would have kept a 4th
+        explanation: >-
+          A 4th interval for the other schedule starts at 11 or later, so it also ends after 10
+          and is read after the loop's third pick, while the kept end is still 10. Then
+          `s >= 10` holds and the loop would have kept a 4th, but it kept 3.
+      - id: yes-room
+        text: Yes. The other schedule ends later, so it has room the loop gave away
+        explanation: >-
+          A later end is less room, not more. Each of the loop's ends is at or before the
+          matching end of the other schedule, so whatever follows that schedule follows the
+          loop's too.
+      - id: yes-between
+        text: Yes, if that interval starts somewhere between 10 and 11
+        explanation: >-
+          To follow the other schedule it must start at 11 or later. A start between 10 and 11
+          would overlap the interval that ends at 11.
+      - id: only-disjoint
+        text: Only if the two schedules share no intervals at all
+        explanation: >-
+          Shared intervals do not matter. The argument compares end times: the loop's third end,
+          10, is no later than the other's, 11.
+    correct: no-loop-would-keep
+    followUps:
+      yes-room:
+        prompt: The loop's ends are 3, 6, 10 and the other's are 4, 8, 11. What does each pair show?
+        options:
+          - { id: ahead, text: "The loop's end is never later, so it never has less room" }
+          - { id: behind, text: "The loop's end is always earlier, so it wasted time" }
+          - { id: nothing, text: "Nothing, since the schedules hold different intervals" }
+        correct: ahead
+        explanation: >-
+          After each pick, the loop's last end is at or before any other schedule's. That is
+          why it can always take whatever the other schedule takes next.
+      yes-between:
+        prompt: An interval starts at 10.5. Can it follow the interval that ends at 11?
+        options:
+          - { id: no-overlap, text: "No. It starts before 11, so they overlap" }
+          - { id: yes-after-ten, text: "Yes. It starts after 10" }
+          - { id: yes-short, text: "Yes, if it is short enough" }
+        correct: no-overlap
+        explanation: >-
+          Following an interval means starting at or after its end. Starting after the loop's
+          end is easier than starting after the other schedule's.
+      only-disjoint:
+        prompt: What does the argument compare between the two schedules?
+        options:
+          - { id: ends, text: "The end of each schedule's k-th interval" }
+          - { id: shared, text: "How many intervals they share" }
+          - { id: lengths, text: "The total length of each schedule" }
+        correct: ends
+        explanation: >-
+          The loop's k-th end is never later than another schedule's k-th end. Shared or not,
+          that keeps the loop at least as large.
+
+  - id: sched-exam-second-swap
+    heading: Why does the next swap work?
+    tags: [intervals, greedy]
+    prompt: >-
+      Touching intervals may both be kept. On `[[1, 3], [2, 4], [3, 7], [5, 6], [6, 9], [8, 10]]`,
+      the earliest-finish loop keeps `[1, 3]`, `[5, 6]`, `[6, 9]`. Another best schedule is
+      `[1, 3]`, `[3, 7]`, `[8, 10]`. Both start with `[1, 3]`. Why can `[5, 6]` replace `[3, 7]`
+      and leave a valid schedule of 3?
+    options:
+      - id: earliest-after
+        text: Of the intervals that fit after `[1, 3]`, `[5, 6]` ends first
+        explanation: >-
+          After `[1, 3]`, the rest is the same problem on intervals that start at 3 or later, and
+          the loop again takes the earliest end there. It ends no later than `[3, 7]`, so it
+          ends before `[8, 10]` starts.
+      - id: second-overall
+        text: "`[5, 6]` has the second earliest end in the whole list"
+        explanation: >-
+          It does not: `[2, 4]` ends at 4. The loop skips `[2, 4]` because it starts before 3.
+          The second pick is the earliest end among intervals that fit after the first.
+      - id: shorter
+        text: "`[5, 6]` is shorter than `[3, 7]`, so it clashes with fewer intervals"
+        explanation: >-
+          Length is not what the swap uses. What matters is that `[5, 6]` starts at or after 3
+          and ends by 8.
+      - id: inside
+        text: "`[5, 6]` lies inside `[3, 7]`, and only an inner interval can replace it"
+        explanation: >-
+          Lying inside is not needed. `[4, 8]` is not inside `[3, 7]`, yet it starts after 3 and
+          ends at 8, where `[8, 10]` starts, so it would also work.
+    correct: earliest-after
+    followUps:
+      second-overall:
+        prompt: "`[2, 4]` ends at 4, before `[5, 6]`. Why does the loop not keep it second?"
+        options:
+          - { id: clashes, text: "It starts at 2, before `[1, 3]` ends" }
+          - { id: shorter, text: "It is shorter than `[5, 6]`" }
+          - { id: read-late, text: "It is read after `[5, 6]`" }
+        correct: clashes
+        explanation: >-
+          The second pick is the earliest end among the intervals that start at or after the
+          first pick's end. `[2, 4]` is not one of them.
+      shorter:
+        prompt: Would `[9, 10]`, which is shorter than `[3, 7]`, also replace it?
+        options:
+          - { id: no-clash, text: "No. It overlaps `[8, 10]`" }
+          - { id: yes-short, text: "Yes. Any shorter interval fits" }
+          - { id: yes-after, text: "Yes. It starts after 3" }
+        correct: no-clash
+        explanation: >-
+          A replacement has to start at or after the previous end and end by the next start.
+          Length alone guarantees neither.
+      inside:
+        prompt: Which two conditions must the replacement for `[3, 7]` meet?
+        options:
+          - { id: start-end, text: "Start at or after 3, and end by 8" }
+          - { id: inside, text: "Start after 3 and end before 7" }
+          - { id: length, text: "Be no longer than `[3, 7]`" }
+        correct: start-end
+        explanation: >-
+          It must fit after `[1, 3]` and before `[8, 10]`. The earliest end among intervals that
+          start at 3 or later always meets both.
