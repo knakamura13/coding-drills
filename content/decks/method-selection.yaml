@@ -1,0 +1,434 @@
+id: method-selection
+title: Method selection
+description: Name the fact that decides the method, contrast two methods that could work, and back one with a trace or a counterexample. Each card opens with a worked example.
+heading: Which method fits?
+
+questions:
+  - id: select-order-matters
+    heading: Which fact decides it?
+    tags: [sorting, arrays-strings]
+    prompt: |-
+      **Worked example:** to ask whether any two values in a list total `k`, sorting first is safe. A pair is two values, and sorting keeps every value, so the same pairs exist after it.
+
+      Now take `nums = [1, 5, 2]` with `k = 3`, and two tasks:
+
+      1. Do any two values total 3?
+      2. Does some run of consecutive values total 3?
+
+      Sorted, the list is `[1, 2, 5]`. Which fact decides whether sorting first is safe for a task?
+    options:
+      - id: neighbors
+        text: Whether the task cares which values sit side by side
+        explanation: >-
+          Task 1 asks about values only, and 1 + 2 = 3 before and after sorting. Task 2 asks about
+          runs. In `[1, 5, 2]` the runs total 1, 5, 2, 6, 7 and 8, so none totals 3. Sorting puts
+          the 1 beside the 2 and invents the run `1, 2`.
+      - id: negatives
+        text: Whether the list holds any negative values at all
+        explanation: Nothing here is negative. Does task 2 still change its answer after sorting?
+      - id: size
+        text: Whether `k` is larger than every value in the list
+        explanation: Would the run `1, 2` exist in the original list for any `k`?
+      - id: cost
+        text: Whether sorting fits in the time budget for the task
+        explanation: Even if sorting were free, would task 2 give the same answer after it?
+    correct: neighbors
+    followUps:
+      negatives:
+        prompt: Sorting `[1, 5, 2]` invents the run `1, 2`. What did sorting change?
+        options:
+          - { id: adjacency, text: Which values are neighbors }
+          - { id: signs, text: The sign of some values }
+          - { id: total, text: The total of the whole list }
+        correct: adjacency
+        explanation: >-
+          Sorting keeps every value and the total, and it changes no sign. It gives values new
+          neighbors, and a run is defined by its neighbors.
+      size:
+        prompt: Is `1, 2` a run of the original list `[1, 5, 2]`?
+        options:
+          - { id: no, text: 'No, the 5 sits between them' }
+          - { id: values, text: 'Yes, both values are in the list' }
+          - { id: k, text: 'Yes, once `k` is at least 3' }
+        correct: no
+        explanation: >-
+          A run is consecutive positions in the original list. The 1 and the 2 sit at positions 0
+          and 2, so any run holding both also holds the 5. Changing `k` does not change that.
+      cost:
+        prompt: Suppose sorting were free. Would sorting first be safe for task 2?
+        options:
+          - { id: no, text: 'No, it changes which runs exist' }
+          - { id: free, text: 'Yes, a free step cannot change an answer' }
+          - { id: positive, text: 'Yes, because every value is positive' }
+        correct: no
+        explanation: >-
+          Cost and correctness are separate questions. Sorting changes which values are
+          neighbors, so it changes the answer to a task about runs, whatever it costs.
+
+  - id: select-value-search
+    heading: What does the search run over?
+    tags: [binary-search]
+    prompt: |-
+      **Worked example:** to find where 37 belongs in a sorted list of prices, binary search probes indexes, and the sorted order says which half to drop.
+
+      A different task: parcels ship in the order given. Each day a truck loads parcels in order until the next one would go over its capacity, then leaves. Find the smallest capacity that ships every parcel within `D` days.
+
+      Binary search fits this task too. What does it search over, and what makes that legal?
+    options:
+      - id: capacities
+        text: Capacities from the largest parcel to the total; more room never adds days
+        explanation: >-
+          Below the largest parcel nothing ships, and at the total weight one day is enough. A
+          bigger truck never needs an extra day, so the capacities that work form one block at the
+          top, and the search finds where that block starts. The parcels are never sorted.
+      - id: indexes
+        text: Indexes of the parcel list, since binary search needs a list to probe
+        explanation: What would an index of the parcel list tell you about a capacity?
+      - id: sorted-indexes
+        text: Indexes after sorting the parcels by weight, so the cut sits in one place
+        explanation: The trucks load in the given order. What could sorting do to the days needed?
+      - id: sorted-only
+        text: Capacities, but only when the parcels arrive sorted from light to heavy
+        explanation: Take the parcels in any order. Can a larger capacity ever need more days?
+    correct: capacities
+    followUps:
+      indexes:
+        prompt: The answer is a capacity. Is it always one of the parcel weights?
+        options:
+          - { id: between, text: 'No, it can fall between or above them' }
+          - { id: heaviest, text: 'Yes, it is always the heaviest parcel' }
+          - { id: weight, text: 'Yes, it is always one of the weights' }
+        correct: between
+        explanation: >-
+          Parcels `2, 4, 1, 5` with 2 days need capacity 6, which is no parcel's weight. The search
+          runs over a range of numbers, not over positions in the list.
+      sorted-indexes:
+        prompt: Parcels ship in order. Can sorting them change the days a capacity needs?
+        options:
+          - { id: yes, text: 'Yes, it changes which parcels share a day' }
+          - { id: total, text: 'No, the total weight stays the same' }
+          - { id: positions, text: 'No, sorting only moves parcels around' }
+        correct: yes
+        explanation: >-
+          At capacity 6, `2, 4, 1, 5` ships in 2 days (`2, 4` then `1, 5`). Sorted to `1, 2, 4,
+          5` it needs 3 (`1, 2`, then `4`, then `5`). The order is part of the task, so sorting
+          answers a different question.
+      sorted-only:
+        prompt: With the parcels in any fixed order, how do the days change as capacity grows?
+        options:
+          - { id: never-up, text: They never go up }
+          - { id: zigzag, text: They go up and down unless the parcels are sorted }
+          - { id: one-each, text: They fall by one for each unit of capacity }
+        correct: never-up
+        explanation: >-
+          A bigger truck can always take at least the parcels a smaller one took, so the loading
+          never needs more days. That holds for any order, and it is the fact that lets the search
+          drop half the range.
+
+  - id: contrast-unsorted-scan
+    format: tap-cell
+    heading: Tap the value it drops first
+    tags: [two-pointers, hash-map]
+    prompt: >-
+      **Worked example:** on a sorted list, the opposite-ends scan drops `right` when the sum is
+      too big. Every value from `left` on is at least `nums[left]`, so `nums[right]` pairs with
+      nothing. Below, the same scan runs on a list that is not sorted, with `target = 4`. It
+      returns `False`, though 1 + 3 = 4. Tap the value of that pair the scan drops first.
+    code: |
+      def has_pair(nums, target):
+          left, right = 0, len(nums) - 1
+          while left < right:
+              total = nums[left] + nums[right]
+              if total == target:
+                  return True
+              if total < target:
+                  left += 1
+              else:
+                  right -= 1
+          return False
+
+      has_pair([5, 1, 8, 3], 4)   # False
+    sequence: { kind: array, name: nums, cells: [5, 1, 8, 3] }
+    markers:
+      - { name: left, at: 0 }
+      - { name: right, at: 3 }
+    correct: 3
+    explanation: >-
+      The first sum is 5 + 3 = 8, over 4, so `right` drops the 3. On a sorted list that is safe,
+      but here the 1 sits between them. A set of seen values needs no order: when the 3 arrives, it
+      looks for 1, which it has already seen.
+    misses:
+      - index: 0
+        explanation: >-
+          Every sum the scan sees (8, 13, then 6) is over 4, so only `right` moves and the 5 is
+          never dropped. It is not in the pair either.
+      - index: 1
+        explanation: >-
+          The 1 is in the pair, and the scan drops it on its last pass (5 + 1 = 6). It dropped the
+          other half of the pair two passes before that.
+      - index: 2
+        explanation: The scan drops the 8 on its second pass, but no pair that totals 4 uses it.
+
+  - id: contrast-variable-drag
+    format: drag-pointers
+    heading: Drag the pointers
+    tags: [sliding-window]
+    prompt: >-
+      **Worked example:** a window of fixed width 3 moves both ends one cell each pass, as one value
+      enters and one leaves. This task is different: find the longest run with total at most
+      `S = 8`, where no value is negative. The window holds `2, 1, 3, 2` (total 8), and the next
+      pass adds the 6. Drag `left` and `right` to where they sit when that pass ends.
+    code: |
+      best = total = left = 0
+      for right in range(len(nums)):
+          total += nums[right]
+          while total > S:
+              total -= nums[left]
+              left += 1
+          best = max(best, right - left + 1)
+    sequence: { kind: array, name: nums, cells: [2, 1, 3, 2, 6, 1] }
+    pointers:
+      - name: left
+        start: 0
+        correct: 3
+        explanation: >-
+          The 6 makes the total 14. The loop drops the 2 (12), the 1 (11) and the 3 (8), and stops
+          because 8 is not over 8. The width shrinks from 4 to 2, which a fixed-width step never
+          does.
+        misses:
+          - index: 1
+            explanation: >-
+              That is a fixed-width step, one value in and one out. The total would be 1 + 3 + 2 +
+              6 = 12, still over 8, so the loop keeps dropping.
+          - index: 2
+            explanation: After the 2 and the 1 leave, the total is 11, still over 8. The 3 has to go too.
+          - index: 4
+            explanation: >-
+              After the 3 leaves, the total is 8. The loop runs only while the total is over 8, so
+              the 2 stays.
+        elsewhere: The loop drops values only while the total is over 8, and it stops at a total of 8.
+      - name: right
+        start: 3
+        correct: 4
+        explanation: Each pass moves `right` to the value it adds, here the 6.
+        misses:
+          - index: 3
+            explanation: That is where `right` was before this pass. The pass adds the 6 at index 4.
+        elsewhere: One pass adds one value, the 6 at index 4.
+
+  - id: contrast-heap-or-sort
+    heading: What does it save?
+    tags: [heap, sorting, complexity]
+    prompt: |-
+      **Worked example:** sorting puts every value in order in O(n log n) time, and Python's `sorted` builds a new list of all n values. A min-heap that is never allowed past `k` values keeps only the best `k` seen so far, with the smallest of them at `heap[0]`.
+
+      A sensor log holds about 10 million readings, and you need the 10 largest. Both methods give the right answer. What does the size-10 heap save?
+    options:
+      - id: both
+        text: Extra space falls to O(10), and time to O(n log 10) from O(n log n)
+        explanation: >-
+          Each reading costs at most one push or replace on a heap of 10, which is O(log 10). The heap
+          never holds more than 10 readings. Sorting stores all n and pays O(n log n).
+      - id: partial
+        text: It reads only part of the log, since it can stop once it holds 10
+        explanation: Could the largest reading be the last one in the log?
+      - id: ordered
+        text: It hands back the 10 in sorted order with no extra work at the end
+        explanation: Which value does a min-heap promise to keep at the front?
+      - id: log-n
+        text: Extra space only, since each heap step still costs O(log n) time
+        explanation: How many values does this heap hold when it takes a reading?
+    correct: both
+    followUps:
+      partial:
+        prompt: The log ends with its largest reading. When does a top-10 heap first see it?
+        options:
+          - { id: last, text: 'On the last reading, so every reading must be read' }
+          - { id: early, text: Within the first 10 readings }
+          - { id: never, text: 'Never, since the heap is already full by then' }
+        correct: last
+        explanation: >-
+          Any reading could be one of the 10 largest, so each one is compared with the heap's
+          smallest. Both methods read all n readings. The heap saves work per reading, not
+          readings.
+      ordered:
+        prompt: A min-heap holds the 10 largest readings. What can you read off it with no more work?
+        options:
+          - { id: smallest, text: 'Only the smallest of the 10, at `heap[0]`' }
+          - { id: all, text: All 10 in increasing order }
+          - { id: largest, text: Only the largest of the 10 }
+        correct: smallest
+        explanation: >-
+          A heap keeps its smallest value at the front and promises nothing about the order of the
+          rest. Listing the 10 in order takes a sort of those 10, which is cheap. A sorted log
+          already has them in order.
+      log-n:
+        prompt: Each push or replace costs O(log m) on a heap of m values. What is m here?
+        options:
+          - { id: ten, text: '10, since the heap never holds more' }
+          - { id: n, text: 'n, the number of readings' }
+          - { id: log, text: 'log n, the height of a tree over all readings' }
+        correct: ten
+        explanation: >-
+          The heap is capped at 10, so each step is O(log 10), a constant. Over n readings that is
+          O(n log 10), which is O(n).
+
+  - id: justify-trace-capacity
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search, python]
+    prompt: >-
+      **Worked example:** parcels `2, 4` with `D = 1` need capacity 6, their total. The search runs
+      over capacities: `lo` starts at the largest parcel and `hi` at the total, and a capacity
+      that ships in time lets `hi` drop to it. Below, parcels `2, 4, 1, 5` ship in order with `D =
+      2`. The cells are the capacities 5 to 12. Predict each step.
+    code: |
+      def days_needed(parcels, cap):
+          days, load = 1, 0
+          for w in parcels:
+              if load + w > cap:
+                  days += 1
+                  load = 0
+              load += w
+          return days
+
+      def least_capacity(parcels, D):
+          lo, hi = max(parcels), sum(parcels)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if days_needed(parcels, mid) <= D:
+                  hi = mid
+              else:
+                  lo = mid + 1
+          return lo
+
+      least_capacity([2, 4, 1, 5], 2)
+    sequence: { kind: array, name: cap, cells: [5, 6, 7, 8, 9, 10, 11, 12] }
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 13
+        ask: First pass, `mid` is 8. Where is `hi` after it?
+        pointer: hi
+        correct: 3
+        explanation: >-
+          At capacity 8 the truck takes `2, 4, 1` (7) and then `5`: 2 days, which meets `D`. So
+          `hi` drops to 8.
+        misses:
+          - index: 7
+            explanation: Capacity 8 ships in 2 days, which meets `D = 2`, so `hi` moves down.
+          - index: 4
+            explanation: '`hi` takes `mid` itself, not `mid + 1`. Only `lo` adds one.'
+        elsewhere: A capacity that works sets `hi` to `mid`, here 8.
+      - line: 13
+        ask: Next, `mid` is 6. Where is `hi` after this pass?
+        pointer: hi
+        correct: 1
+        explanation: >-
+          At 6 the truck takes `2, 4`, then `1, 5`: 2 days. Capacity 6 works, so `hi` drops to 6.
+        misses:
+          - index: 3
+            explanation: Capacity 6 also ships in 2 days, so `hi` moves again.
+          - index: 2
+            explanation: '`hi` takes `mid`, which is 6, not 7.'
+        elsewhere: Capacity 6 works, so `hi` drops to `mid`, which is 6.
+      - line: 13
+        ask: Next, `mid` is 5. Where is `lo` after this pass?
+        pointer: lo
+        correct: 1
+        explanation: >-
+          At 5 the truck takes `2`, then `4, 1`, then `5`: 3 days, over `D`. So `lo` moves to 6
+          and meets `hi`.
+        misses:
+          - index: 0
+            explanation: Capacity 5 needs 3 days, over `D = 2`, so `lo` moves past it.
+        elsewhere: A capacity that fails sets `lo` to `mid + 1`, here 6.
+      - line: 12
+        ask: What does the call return?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              `lo` and `hi` meet at 6. Capacity 6 ships in 2 days and 5 needs 3, so 6 is the
+              smallest that works.
+          - id: five
+            text: '5'
+            explanation: 'Capacity 5 needs 3 days: `2`, then `4, 1`, then `5`.'
+          - id: seven
+            text: '7'
+            explanation: Capacity 7 works, but 6 works too and is smaller.
+        correct: six
+
+  - id: justify-window-counterexample
+    heading: Which input rules it out?
+    tags: [prefix-sum, sliding-window, hash-map]
+    prompt: |-
+      **Worked example:** one small input where a method gives the wrong answer is enough to rule it out.
+
+      The task: count the runs of consecutive values that total exactly `k`, where values can be negative. Prefix counts do it in O(n) expected time. A teammate offers this window instead:
+
+      ```python
+      def window_count(nums, k):
+          count = total = left = 0
+          for right in range(len(nums)):
+              total += nums[right]
+              while total > k and left <= right:
+                  total -= nums[left]
+                  left += 1
+              if total == k:
+                  count += 1
+          return count
+      ```
+
+      Which input shows the window gives the wrong count?
+    options:
+      - id: signed
+        text: '`[1, -1, 1]` with `k = 1`'
+        explanation: >-
+          Three runs total 1: the first `1`, `1, -1, 1`, and the last `1`. The window counts 2.
+          The total never goes over 1, so it never drops the first 1, and the last `1` alone is
+          never its window. Prefix counts find all 3.
+      - id: mixed
+        text: '`[3, 1, 2]` with `k = 3`'
+        explanation: Which runs total 3, and does the window reach each one?
+      - id: pair
+        text: '`[3, -1, 1]` with `k = 3`'
+        explanation: This list has a negative value. Which runs total 3, and does the window reach each?
+      - id: repeats
+        text: '`[4, 4, 4]` with `k = 4`'
+        explanation: Every value here is positive. What does dropping from the left always do?
+    correct: signed
+    followUps:
+      mixed:
+        prompt: On `[3, 1, 2]` with `k = 3` the window counts 2. How many runs total 3?
+        options:
+          - { id: two, text: '2, the `3` alone and `1, 2`' }
+          - { id: one, text: '1, the `3` alone' }
+          - { id: three, text: '3, adding the whole list' }
+        correct: two
+        explanation: >-
+          The whole list totals 6, so only `3` and `1, 2` count. The window finds both, so this
+          input agrees with prefix counts and rules nothing out.
+      pair:
+        prompt: On `[3, -1, 1]` with `k = 3` the window counts 2. How many runs total 3?
+        options:
+          - { id: two, text: '2, the `3` alone and the whole list' }
+          - { id: one, text: '1, the `3` alone' }
+          - { id: zero, text: '0, since the -1 hides every run' }
+        correct: two
+        explanation: >-
+          `3, -1` totals 2 and `-1, 1` totals 0, so only `3` and the whole list count. The window's
+          totals are 3, 2 and 3, so it finds both. A negative value can break the window, but not on
+          this input.
+      repeats:
+        prompt: Every value in `[4, 4, 4]` is positive. Can the window miss a run on a list like that?
+        options:
+          - { id: no, text: 'No, so this input cannot show it is wrong' }
+          - { id: repeats, text: 'Yes, repeated values confuse the window' }
+          - { id: singles, text: 'Yes, it misses runs of length 1' }
+        correct: no
+        explanation: >-
+          With positive values, dropping from the left always lowers the total, so the window stops
+          at the only start that can total `k`. It counts all 3 runs here, the same as prefix
+          counts.

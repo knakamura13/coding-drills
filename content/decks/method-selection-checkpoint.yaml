@@ -1,0 +1,254 @@
+id: method-selection-checkpoint
+title: "Method selection: checkpoint"
+description: Choose a method, trace it on a fresh input, and name an input that rules out its closest alternative. Each item combines the Method selection skills.
+heading: Which one is right?
+
+questions:
+  - id: method-exam-trace-readers
+    format: step-trace
+    heading: Predict each step
+    tags: [binary-search, python]
+    prompt: >-
+      Chapters with these page counts are read in order and split between 2 readers, each taking
+      one unbroken run of chapters. Find the smallest page limit such that no reader reads more
+      than it. The cells are the limits 4 to 11. Predict each step.
+    code: |
+      def readers_needed(pages, limit):
+          readers, load = 1, 0
+          for p in pages:
+              if load + p > limit:
+                  readers += 1
+                  load = 0
+              load += p
+          return readers
+
+      def least_limit(pages, r):
+          lo, hi = max(pages), sum(pages)
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if readers_needed(pages, mid) <= r:
+                  hi = mid
+              else:
+                  lo = mid + 1
+          return lo
+
+      least_limit([3, 2, 1, 1, 4], 2)
+    sequence: { kind: array, name: limit, cells: [4, 5, 6, 7, 8, 9, 10, 11] }
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 7 }
+    steps:
+      - line: 12
+        ask: When `mid` works, the loop keeps `lo` to `mid` and drops the rest. Why is that safe?
+        options:
+          - id: monotone
+            text: A larger limit never needs more readers
+            explanation: >-
+              Each reader can only take more chapters when the limit rises. So if `mid` is enough,
+              every larger limit is too, and the smallest one is at or below `mid`.
+          - id: sorted
+            text: The chapters are sorted by length
+            explanation: >-
+              They are not: `3, 2, 1, 1, 4`. The search relies on how limits behave, not on the
+              order of the chapters.
+          - id: middle
+            text: The answer always sits near the middle of the range
+            explanation: >-
+              Nothing puts it there. Each probe only says which side of the answer `mid` is on.
+        correct: monotone
+      - line: 13
+        ask: First pass, `mid` is 7. Where is `hi` after it?
+        pointer: hi
+        correct: 3
+        explanation: >-
+          At 7 the first reader takes `3, 2, 1, 1` (7 pages) and the second takes `4`: 2 readers.
+          Limit 7 works, so `hi` drops to 7.
+        misses:
+          - index: 7
+            explanation: Limit 7 needs 2 readers, which meets `r = 2`, so `hi` moves down.
+          - index: 4
+            explanation: '`hi` takes `mid` itself, 7, not `mid + 1`.'
+        elsewhere: A limit that works sets `hi` to `mid`, here 7.
+      - line: 13
+        ask: Next, `mid` is 5. Where is `lo` after this pass?
+        pointer: lo
+        correct: 2
+        explanation: >-
+          At 5 the runs are `3, 2`, then `1, 1`, then `4`: 3 readers, one too many. Limit 5 fails,
+          so `lo` moves to 6.
+        misses:
+          - index: 0
+            explanation: Limit 5 needs 3 readers, more than 2, so `lo` moves up.
+          - index: 1
+            explanation: '`lo` goes past a limit that fails, to `mid + 1`.'
+          - index: 3
+            explanation: '`lo` moves to `mid + 1`, which is 6, not to where `hi` sits.'
+        elsewhere: A limit that fails sets `lo` to `mid + 1`, here 6.
+      - line: 13
+        ask: Next, `mid` is 6. What does the call return?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              At 6 the runs are `3, 2, 1` and `1, 4`: 2 readers. So `hi` drops to 6 and meets
+              `lo`. Limit 5 needed 3 readers.
+          - id: seven
+            text: '7'
+            explanation: Limit 7 works, but 6 works too and is smaller.
+          - id: five
+            text: '5'
+            explanation: 'Limit 5 needs 3 readers: `3, 2`, then `1, 1`, then `4`.'
+        correct: six
+        also:
+          - { name: hi, at: 2 }
+
+  - id: method-exam-signed-count
+    heading: Which method, and which input?
+    tags: [prefix-sum, hash-map, sliding-window]
+    prompt: >-
+      Values can be negative. Count the runs of consecutive values that total exactly `k`, in O(n)
+      expected time. Pick the method, and an input that rules out its closest alternative: a
+      window that drops values from the left while its total is over `k` and counts each time the
+      total equals `k`.
+    options:
+      - id: right
+        text: Prefix counts; on `[2, -2, 2]` with `k = 2` the window counts 2 of the 3 runs
+        explanation: >-
+          The first `2`, `2, -2, 2` and the last `2` each total 2. The total never goes over 2, so
+          the window never drops the first 2, so it never holds a window of just the final value. Counting earlier
+          running totals in a map, seeded with 0, finds all 3.
+      - id: wrong-input
+        text: Prefix counts; on `[4, -2, 3]` with `k = 5` the window misses the whole list
+        explanation: Run the window on `[4, -2, 3]`. Does its total ever go over 5?
+      - id: window
+        text: The window; dropping from the left while over `k` never loses a run
+        explanation: Can a value further right pull the total back down?
+      - id: sort
+        text: Sort, then the window; sorted values make the totals easier to track
+        explanation: Which runs exist once the values are sorted?
+    correct: right
+    followUps:
+      wrong-input:
+        prompt: On `[4, -2, 3]` with `k = 5`, how many runs does the window count?
+        options:
+          - { id: one, text: '1, the whole list, which is the only run' }
+          - { id: zero, text: '0, since the -2 hides the run' }
+          - { id: dropped, text: '1, but only after it drops the 4' }
+        correct: one
+        explanation: >-
+          The totals are 4, 2 and 5, never over 5, so nothing is dropped and the window counts the
+          whole list. No other run totals 5, so the window is right here and the input rules
+          nothing out.
+      window:
+        prompt: On `[2, -2, 2]` with `k = 2`, which run does the window never hold?
+        options:
+          - { id: last, text: The last `2` alone }
+          - { id: first, text: The first `2` alone }
+          - { id: whole, text: The whole list }
+        correct: last
+        explanation: >-
+          The totals are 2, 0 and 2, never over 2, so nothing is dropped and the left end stays at
+          the first value. The last `2` alone needs the first two values gone, and the -2 is what
+          kept the total low.
+      sort:
+        prompt: Why can't sorting come before counting runs?
+        options:
+          - { id: neighbors, text: 'Runs are set by the original neighbors, which sorting changes' }
+          - { id: cost, text: Sorting costs more time than the count allows }
+          - { id: negatives, text: Sorting removes the negative values }
+        correct: neighbors
+        explanation: >-
+          A run is consecutive positions in the original order. Sorting gives values new neighbors,
+          so it can create or destroy runs, and the count it gives belongs to a different list.
+
+  - id: method-exam-tap-set-pass
+    format: tap-cell
+    heading: Tap where it returns True
+    tags: [hash-map, two-pointers]
+    prompt: >-
+      The opposite-ends scan returns `False` on this unsorted list with `target = 5`, though 3 + 2
+      = 5. The set pass below is the method that fits. Tap the cell it is reading when it returns
+      `True`.
+    code: |
+      def has_pair(nums, target):
+          seen = set()
+          for x in nums:
+              if target - x in seen:
+                  return True
+              seen.add(x)
+          return False
+
+      has_pair([7, 3, 9, 2, 5, 8], 5)
+    sequence: { kind: array, name: nums, cells: [7, 3, 9, 2, 5, 8] }
+    correct: 3
+    explanation: >-
+      At the 2 the pass looks for 5 - 2 = 3, which it added two cells earlier, so it returns
+      `True`. The opposite-ends scan dropped the 2 early (7 + 8, then 7 + 5, then 7 + 2 are all
+      over 5) because it assumed the list was sorted.
+    misses:
+      - index: 0
+        explanation: At the 7 the set is empty, and it looks for -2, which is not in this list.
+      - index: 1
+        explanation: At the 3 it looks for 2, which has not arrived yet. It adds the 3 and moves on.
+      - index: 2
+        explanation: At the 9 it looks for -4, which is not in this list.
+      - index: 4
+        explanation: The pass never reads the 5. It returned one cell earlier.
+      - index: 5
+        explanation: The pass never reads the 8. It returned two cells earlier.
+
+  - id: method-exam-sorted-counterexample
+    heading: Which method, and which input?
+    tags: [sliding-window, sorting]
+    prompt: >-
+      Every value is at least 1. Find whether some run of consecutive values totals exactly `k`,
+      in O(n) time and O(1) extra space. Pick the method, and an input that rules out sorting the
+      values first.
+    options:
+      - id: right
+        text: Window in the given order; sorting `[2, 6, 1]` invents the run `1, 2` for `k = 3`
+        explanation: >-
+          With every value at least 1, dropping from the left always lowers the total, so the
+          window is safe and needs O(1) space. `[2, 6, 1]` has no run totaling 3, but sorted to
+          `[1, 2, 6]` it starts with `1, 2`.
+      - id: wrong-input
+        text: Window in the given order; sorting `[4, 1, 3]` invents the run `1, 3` for `k = 4`
+        explanation: Look at `[4, 1, 3]` before sorting. Is `1, 3` already a run?
+      - id: prefix
+        text: Prefix counts; sorting `[2, 6, 1]` invents the run `1, 2` for `k = 3`
+        explanation: How much space does a set of running totals take?
+      - id: sort-first
+        text: Sort first, then the window; sorting keeps every value and the total
+        explanation: What does a run depend on besides its values?
+    correct: right
+    followUps:
+      wrong-input:
+        prompt: Which runs of `[4, 1, 3]` total 4?
+        options:
+          - { id: both, text: '`4` and `1, 3`, so sorting changes nothing here' }
+          - { id: none, text: 'None, so sorting invents one' }
+          - { id: only-four, text: 'Only `4`, so `1, 3` is invented' }
+        correct: both
+        explanation: >-
+          The 1 and the 3 are already neighbors, so the run exists before sorting too. A
+          counterexample needs the sorted answer and the true answer to differ.
+      prefix:
+        prompt: Prefix counts give the right answer. Which part of the task do they miss?
+        options:
+          - { id: space, text: 'O(1) extra space, since they store up to n running totals' }
+          - { id: time, text: 'O(n) time, since each lookup is slow' }
+          - { id: wrong, text: 'Correctness, since every value is positive' }
+        correct: space
+        explanation: >-
+          A set of running totals grows with the list, so it takes O(n) space. With every value at
+          least 1, the window gives the same answer in O(1) space.
+      sort-first:
+        prompt: Sorting keeps every value. What does it change?
+        options:
+          - { id: neighbors, text: 'Which values are neighbors, and so which runs exist' }
+          - { id: total, text: The total of the whole list }
+          - { id: minimum, text: Whether any value is below 1 }
+        correct: neighbors
+        explanation: >-
+          A run is a stretch of neighbors in the original order. Sorting keeps the values and the
+          total but gives them new neighbors, so it answers a question about a different list.

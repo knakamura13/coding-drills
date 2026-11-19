@@ -183,6 +183,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | in review |
 | Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | in review |
 | Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | in review |
+| Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | in review |
+| Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | in review |
+| Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | in review |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
