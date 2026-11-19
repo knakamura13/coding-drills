@@ -18,31 +18,38 @@ button[aria-pressed=true] { background: #225c45; color: white; }
 nav { display: flex; gap: 8px; flex-wrap: wrap; }
 article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; padding: 19px; margin: 17px 0; }
 pre { white-space: pre-wrap; background: #edf3ed; padding: 10px 12px; border-radius: 5px; font-size: .92rem; }
+table { border-collapse: collapse; margin: 14px 0; }
+caption { text-align: left; font-size: .88rem; color: #41564a; padding-bottom: 6px; }
+th, td { border: 1px solid #9fb3a4; min-width: 44px; height: 36px; padding: 5px 8px; text-align: center; }
+th { background: #f4f4ed; }
+td.marked { background: #e4f0df; font-weight: 650; }
 .choices { display: grid; gap: 7px; margin-top: 14px; }
 .feedback { margin-top: 14px; background: #f1f4ed; border-left: 3px solid #567d63; padding: 10px 12px; }
 .feedback p { margin: 5px 0; }
 .step, .small { color: #41564a; font-size: .88rem; }
 article .step { margin: 0 0 9px; }
 footer { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+[hidden] { display: none; }
 </style>
 </head>
 <body>
 <main>
 <header>Coding Drills · Lesson review</header>
 <h1>Longest common substring</h1>
-<nav aria-label="Lesson version">
+<nav aria-label="Lesson version" id="versions" hidden>
 <button id="combined" aria-pressed="true">Combined card</button>
 <button id="guided" aria-pressed="false">One step at a time</button>
 </nav>
 <article id="card" aria-label="Lesson card"></article>
-<footer><p class="small">Try carrying an earlier count across a mismatch in both versions.</p><button id="restart">Start over</button></footer>
+<footer id="lesson-actions" hidden><button id="setup">Review the setup</button><button id="restart">Start over</button></footer>
 </main>
 <script>
 const combined = {
  title: "Which rule gives the right result?",
- context: 'For “parcel” and “pancake,” each cell counts the matching run ending at its two letters. When the letters match, add 1 to the diagonal cell.',
- question: "What goes into a cell on a mismatch, and where do you find the final answer?",
- options: ["Use zero. Take the largest cell anywhere.", "Use the larger neighbor. Take the corner cell.", "Use zero. Take the corner cell.", "Copy the diagonal. Take the largest cell anywhere."],
+ context: 'Compare “cat” and “cab.” We’ve filled in the cells for the matching pairs c / c and a / a. The question mark marks the cell for t / b.',
+ grid: ["cat", "cab", ["1", "", "", "", "2", "", "", "", "?"]],
+ question: "What rule fills the question mark, and where should we look for the answer once the table is complete?",
+ options: ["Use zero. Take the largest cell anywhere.", "Use the larger of the cells above and to the left. Take the bottom-right cell.", "Use zero. Take the bottom-right cell.", "Copy the cell one row up and one column left. Take the largest cell anywhere."],
  feedback: [
   "A mismatch ends the current run. The largest run may have ended earlier, so scan all the cells.",
   "Keeping the larger neighbor lets a run survive a gap. Check what a substring allows between two letters.",
@@ -55,19 +62,19 @@ const combined = {
 const guided = [
  {
   title: "Read what one cell represents",
-  context: 'Each cell measures the matching run that ends at the specific pair of letters being compared.',
-  example: 'ca… and ca…\nAt the pair a / a, the cell is 2.',
+  context: 'Start filling in the table for “cat” and “cab.” Look at the cell where the two a’s meet.',
+  grid: ["ca", "ca", ["1", "", "", "2"]],
   question: 'What does the 2 count?',
   options: ['The longest run anywhere in the words', 'The run “ca” ending at that pair of letters'],
   right: 1,
   feedback: 'A cell describes only the run ending at its pair of letters. An earlier run can have a different length.',
-  retry: {example:'plan… and plan…\nAt the pair n / n, the cell is 4.',question:'What does the 4 count?',options:['The run “plan” ending at that pair of letters','The longest run anywhere in the words'],right:0}
+  retry: {example:'Compare “planet” and “plants.” At the pair n / n, the cell is 4.',question:'What does the 4 count?',options:['The run “plan” ending at that pair of letters','The longest run anywhere in the words'],right:0}
  },
  {
   title: "Predict a mismatch",
   context: 'The previous letter pair ended a matching run of length 2. Now look at the next pair.',
-  example: 'cat\ncab\nNext pair: t / b',
-  question: 'How long is the matching run ending at this pair?',
+  grid: combined.grid,
+  question: 'How long is the matching run ending at t / b?',
   options:['0', '2'],
   right:0,
   feedback:'A matching run ending here would have to include these two letters. Since they differ, this cell is zero.',
@@ -86,6 +93,8 @@ const guided = [
 ];
 
 const card = document.getElementById("card");
+const versions = document.getElementById("versions");
+const lessonActions = document.getElementById("lesson-actions");
 let mode, stage, retry;
 function add(tag, text, parent=card, className=""){
  const node=document.createElement(tag);
@@ -105,7 +114,53 @@ function heading(text){
  h.tabIndex=-1;
  return h;
 }
+function showGrid([across, down, cells], label){
+ const table = add("table", "");
+ add("caption", label, table);
+ const header = add("tr", "", add("thead", "", table));
+ add("td", "", header);
+ for(const letter of across)add("th", letter, header).scope = "col";
+ const rows = add("tbody", "", table);
+ for(const [row, letter] of [...down].entries()){
+  const line = add("tr", "", rows);
+  add("th", letter, line).scope = "row";
+  for(let column=0;column<across.length;column++){
+   const value = cells[row*across.length+column];
+   const cell = add("td", value || "—", line, value ? "marked" : "");
+   if(!value)cell.setAttribute("aria-label","Not filled in yet");
+   if(value==="?")cell.setAttribute("aria-label","Cell to predict");
+  }
+ }
+}
+function showSetup(focus=true){
+ versions.hidden = true;
+ lessonActions.hidden = true;
+ const savedCard = document.createDocumentFragment();
+ if(mode)savedCard.append(...card.childNodes);
+ card.replaceChildren();
+ const h = heading("Find a shared stretch of letters");
+ add("p", 'Given two words, find the longest stretch that appears in both. The letters must stay together and in order. For example, “nap” and “map” share “ap,” so the answer is 2.');
+ add("h3", "Use a table to remember shorter matches");
+ add("p", 'Put one word across the top and the other down the left. Each cell measures the shared stretch that ends at those two letters. Dashes mark cells we haven’t filled.');
+ showGrid(["sh","sh",["1","","","2"]], "“ship” across · “shin” down");
+ add("p", 'At s / s the run is “s,” so the cell is 1. The cell for h / h is 2 because the two h’s extend the run “s” by one letter. The 1 is one row up and one column left. That’s the diagonal cell.');
+ add("p", 'Reusing a smaller answer that we’ve already saved is the idea behind dynamic programming here. Now work out what happens when two letters differ and how to read the final answer.');
+ const choices = add("div", "", card, "choices");
+ if(mode)control("Return to the lesson",()=>{
+  card.replaceChildren(savedCard);
+  versions.hidden = false;
+  lessonActions.hidden = false;
+  card.querySelector("h2").focus();
+ },choices);
+ else {
+  control("Start with the combined card",()=>start("combined"),choices);
+  control("Go one step at a time",()=>start("guided"),choices);
+ }
+ if(focus)h.focus();
+}
 function render(focus=true){
+ versions.hidden = false;
+ lessonActions.hidden = false;
  document.getElementById("combined").setAttribute("aria-pressed",mode==="combined");
  document.getElementById("guided").setAttribute("aria-pressed",mode==="guided");
  card.replaceChildren();
@@ -121,6 +176,7 @@ function render(focus=true){
  if(mode==="guided")add("p", "Step "+(stage+1)+" of "+guided.length+(retry ? " · Retry" : ""),card,"step");
  const h=heading(step.title);
  if(!retry)add("p",step.context);
+ if(prompt.grid)showGrid(prompt.grid, "Compare the letters at each row and column");
  if(prompt.example)add("pre",prompt.example);
  add("p",prompt.question);
  const choices=add("div","",card,"choices");
@@ -142,11 +198,12 @@ function render(focus=true){
  },choices));
  if(focus)h.focus();
 }
-function start(version, focus=true){mode=version;stage=0;retry=false;render(focus)}
+function start(version){mode=version;stage=0;retry=false;render()}
 document.getElementById("combined").onclick=()=>start("combined");
 document.getElementById("guided").onclick=()=>start("guided");
 document.getElementById("restart").onclick=()=>start(mode);
-start(location.hash==="#guided"?"guided":"combined",false);
+document.getElementById("setup").onclick=()=>showSetup();
+showSetup(false);
 </script>
 </body>
 </html>
