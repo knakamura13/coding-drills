@@ -11,8 +11,9 @@
  * Version 13 grows the Weighted paths checkpoint pool.
  * Version 14 grows the One-dimensional tables checkpoint pool.
  * Version 15 grows the Subsequence tables checkpoint pool.
+ * Version 16 grows the Enumerating choices checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 15;
+export const EXAM_RULES_VERSION = 16;
 
 export interface QuestionRef {
 	deckId: string;

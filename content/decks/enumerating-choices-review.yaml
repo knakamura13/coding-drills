@@ -1,0 +1,746 @@
+id: enumerating-choices-review
+title: "Enumerating choices: review"
+description: Fresh searches for the Enumerating choices skills, for recall on later days. No worked examples this time.
+heading: What does the search record?
+
+questions:
+  - id: triple-after-review
+    heading: Which leaf comes next?
+    tags: [backtracking, recursion]
+    prompt: |-
+      This search records every 3-letter selection of `letters = "wxyz"`, one leaf per set.
+
+      ```python
+      def pick(start):
+          if len(path) == 3:
+              out.append("".join(path))
+              return
+          for j in range(start, len(letters)):
+              path.append(letters[j])
+              pick(j + 1)
+              path.pop()
+      ```
+
+      Which string is recorded right after `"wyz"`?
+    options:
+      - id: xyz
+        text: "`\"xyz\"`"
+        explanation: >-
+          After `"wyz"` every set that starts with w is done. The top loop moves to x, and the call
+          below only uses letters after x, so the one set left is `"xyz"`. That makes four in
+          all: `"wxy"`, `"wxz"`, `"wyz"`, `"xyz"`.
+      - id: wzx
+        text: "`\"wzx\"`"
+        explanation: >-
+          The call below always starts after the letter just taken. Nothing comes after z, so no
+          set starts with `"wz"`.
+      - id: xwy
+        text: "`\"xwy\"`"
+        explanation: >-
+          After x is taken at index 1, the call below starts at index 2, so w never follows x. The
+          set of w, x and y was already recorded as `"wxy"`.
+      - id: none
+        text: Nothing, `"wyz"` is the last
+        explanation: >-
+          x still has two letters after it, y and z, so the x branch records `"xyz"`.
+    correct: xyz
+    followUps:
+      wzx:
+        prompt: With `path == ['w', 'z']`, which letters can the next call take?
+        options:
+          - id: none
+            text: None, since nothing comes after z
+          - id: unused
+            text: x and y, the letters not used yet
+          - id: any
+            text: Any letter, including w again
+        correct: none
+        explanation: >-
+          The next call is `pick(4)`, and `range(4, 4)` is empty. That branch records nothing.
+      xwy:
+        prompt: The top loop takes x at index 1. Where does the call below start?
+        options:
+          - id: two
+            text: Index 2, so it sees only y and z
+          - id: zero
+            text: Index 0, so it sees w, y and z
+          - id: one
+            text: Index 1, so it can take x again
+        correct: two
+        explanation: >-
+          The call is `pick(j + 1)`. Starting after the item just taken keeps the letters in each
+          set in index order, so each set comes out once.
+      none:
+        prompt: How many letters must come after the first letter of a 3-letter set?
+        options:
+          - id: two
+            text: At least two, and x has y and z after it
+          - id: three
+            text: Three, so only w can start a set
+          - id: zero
+            text: None, since any letter can start a set
+        correct: two
+        explanation: >-
+          The other two letters must come later in the string. x has two later letters, y has one
+          and z has none, so x starts exactly one set.
+
+  - id: ordering-copies-review
+    heading: How many items are copied?
+    tags: [backtracking, complexity]
+    prompt: |-
+      This search records every ordering of 4 distinct items.
+
+      ```python
+      def explore():
+          if len(path) == len(items):
+              out.append(path[:])
+              return
+          for i in range(len(items)):
+              if used[i]:
+                  continue
+              used[i] = True
+              path.append(items[i])
+              explore()
+              path.pop()
+              used[i] = False
+      ```
+
+      How many items do the `path[:]` copies write in total?
+    options:
+      - id: ninety-six
+        text: "96"
+        explanation: >-
+          There are 4 · 3 · 2 · 1 = 24 orderings, and each copy writes all 4 items, so 96.
+      - id: twenty-four
+        text: "24"
+        explanation: >-
+          24 is the number of leaves. Each leaf copies 4 items, so the copies write 96.
+      - id: sixty-four
+        text: "64"
+        explanation: >-
+          64 is 4 · 2^4, a bound that fits subsets, not orderings. An ordering search has 4!
+          leaves, and each is a full list of 4.
+      - id: two-fifty-six
+        text: "256"
+        explanation: >-
+          256 is 4^4 leaves, which would let an item be used again. `used` blocks that, so each
+          level has one choice fewer than the one above.
+    correct: ninety-six
+    followUps:
+      twenty-four:
+        prompt: What does one `path[:]` cost in this search?
+        options:
+          - id: four
+            text: 4 item copies, since every leaf holds all 4 items
+          - id: one
+            text: 1 step, since it is a single slice
+          - id: varies
+            text: Between 1 and 4 copies, depending on the leaf
+        correct: four
+        explanation: >-
+          The search records only when every item is placed, so each copy is a full list of 4.
+      sixty-four:
+        prompt: How long is each list this search records?
+        options:
+          - id: four
+            text: Always 4, since it records only once every item is placed
+          - id: two
+            text: 2 on average, as with subsets
+          - id: any
+            text: Anywhere from 0 to 4
+        correct: four
+        explanation: >-
+          The record line runs only when `len(path) == len(items)`. Orderings use every item.
+      two-fifty-six:
+        prompt: With `path == [items[0]]`, how many items can the next level take?
+        options:
+          - id: three
+            text: 3, since `used[0]` blocks the first item
+          - id: four
+            text: 4, any item including the first
+          - id: one
+            text: 1, only the next item in order
+        correct: three
+        explanation: >-
+          Each level skips the items already in `path`, so the levels offer 4, 3, 2 and 1
+          choices: 24 leaves.
+
+  - id: thirteenth-ordering-review
+    format: tap-cell
+    heading: Which letter starts it?
+    tags: [backtracking, recursion]
+    prompt: >-
+      This search records every ordering of `"abcd"` as a string, in the order its loop finds
+      them. The first string is `"abcd"`. Tap the first letter of the 13th string recorded.
+    code: |
+      def explore():
+          if len(path) == len(letters):
+              out.append("".join(path))
+              return
+          for i in range(len(letters)):
+              if used[i]:
+                  continue
+              used[i] = True
+              path.append(letters[i])
+              explore()
+              path.pop()
+              used[i] = False
+    sequence:
+      kind: string
+      name: letters
+      cells: [a, b, c, d]
+    correct: 2
+    explanation: >-
+      Each first letter leads 3! = 6 orderings of the other three. Strings 1 to 6 start with a,
+      7 to 12 with b, and 13 to 18 with c. The 13th is `"cabd"`.
+    misses:
+      - index: 0
+        explanation: >-
+          Only 6 strings start with a, one for each ordering of b, c and d. The a block ends at the
+          6th string.
+      - index: 1
+        explanation: >-
+          b leads strings 7 to 12. The 13th is the first string after that block.
+      - index: 3
+        explanation: >-
+          That counts 4 strings per first letter. Each first letter leads 6, one per ordering of
+          the other three, so d first appears at the 19th string.
+
+  - id: three-fours-review
+    heading: What does the search return?
+    tags: [backtracking, sorting]
+    prompt: |-
+      This search records each distinct subset of a sorted list once. `nums` is `[4, 4, 4]`.
+
+      ```python
+      def explore(start):
+          out.append(path[:])
+          for i in range(start, len(nums)):
+              if i > start and nums[i] == nums[i - 1]:
+                  continue
+              path.append(nums[i])
+              explore(i + 1)
+              path.pop()
+      ```
+
+      Which lists does `out` hold at the end?
+    options:
+      - id: four-lists
+        text: "`[]`, `[4]`, `[4, 4]` and `[4, 4, 4]`"
+        explanation: >-
+          In each call only the first remaining 4 opens a branch, so the search walks straight
+          down and records on entry: `[]`, `[4]`, `[4, 4]`, `[4, 4, 4]`. Those are the four
+          distinct subsets, zero to three 4s.
+      - id: two-lists
+        text: "`[]` and `[4]` only"
+        explanation: >-
+          That is what `i > 0` would return. With `i > start`, a loop's first pass is never
+          skipped, so the second and third 4 can join the path.
+      - id: eight-lists
+        text: All 8 index subsets, repeats included
+        explanation: >-
+          Without the test there would be 8. The test skips any 4 that would open a second
+          sibling branch at the same depth, which removes the 4 repeats.
+      - id: three-lists
+        text: "`[]`, `[4]` and `[4, 4]` only"
+        explanation: >-
+          `explore(3)` still runs with `path == [4, 4, 4]` and records it on its first line. Its
+          loop is empty, but the record comes before the loop.
+    correct: four-lists
+    followUps:
+      two-lists:
+        prompt: In `explore(1)`, with `path == [4]`, is index 1 skipped?
+        options:
+          - id: no
+            text: No, `i == start`, so `i > start` is false
+          - id: yes-equal
+            text: Yes, it equals the 4 at index 0
+          - id: yes-all
+            text: Yes, every repeat is skipped
+        correct: no
+        explanation: >-
+          The test skips a repeat only after the loop has already tried an equal value at this
+          depth. The first pass has nothing to repeat.
+      eight-lists:
+        prompt: In the top call, the loop reaches index 1 after index 0's branch is done. What happens?
+        options:
+          - id: skipped
+            text: It is skipped, since it would start the same subsets
+          - id: taken
+            text: It is taken, since index 0 is no longer in `path`
+          - id: stops
+            text: The loop stops, since the rest are 4s too
+        correct: skipped
+        explanation: >-
+          Index 0's branch already produced every subset that starts with a 4. Starting again from
+          index 1 would repeat them, so `continue` moves on.
+      three-lists:
+        prompt: When does this search record a list?
+        options:
+          - id: entry
+            text: At the start of every call, before the loop
+          - id: take
+            text: Only when the loop finds an item to take
+          - id: end
+            text: Only when `start` reaches the end of the list
+        correct: entry
+        explanation: >-
+          The first line of `explore` records `path`. Every call, including one with an empty
+          loop, adds one list.
+
+  - id: unsorted-skip-review
+    heading: What does the search return?
+    tags: [backtracking, sorting]
+    prompt: |-
+      The same search runs on `nums = [5, 3, 5]`, which was never sorted. Order inside a subset
+      does not matter, so `[5, 3]` and `[3, 5]` are the same subset.
+
+      ```python
+      def explore(start):
+          out.append(path[:])
+          for i in range(start, len(nums)):
+              if i > start and nums[i] == nums[i - 1]:
+                  continue
+              path.append(nums[i])
+              explore(i + 1)
+              path.pop()
+      ```
+
+      What does `out` hold at the end?
+    options:
+      - id: eight
+        text: "8 lists: `[5]` and the 3-and-5 pair each appear twice"
+        explanation: >-
+          The test compares only neighbours, and the two 5s are not neighbours, so nothing is
+          skipped. All 8 index subsets come out:
+          `[[], [5], [5, 3], [5, 3, 5], [5, 5], [3], [3, 5], [5]]`. Sorted first, the input
+          `[3, 5, 5]` gives 6.
+      - id: six
+        text: "6 lists, each distinct subset once"
+        explanation: >-
+          The test catches a repeat only when it sits right after an equal value. Here the 3 sits
+          between the 5s, so the test never fires.
+      - id: seven
+        text: "7 lists: only `[5]` appears twice"
+        explanation: >-
+          `[5, 3]` takes indexes 0 and 1, and `[3, 5]` takes indexes 1 and 2. They hold the same
+          values, so they are one subset recorded twice.
+      - id: four
+        text: "4 lists: the second 5 is always skipped"
+        explanation: >-
+          The second 5 is compared with 3, its left neighbour, so it is never skipped. It shows up
+          in `[5, 3, 5]`, `[5, 5]`, `[3, 5]` and the last `[5]`.
+    correct: eight
+    followUps:
+      six:
+        prompt: At index 2 in the top loop, what does `nums[i] == nums[i - 1]` compare?
+        options:
+          - id: three
+            text: The 5 with the 3, so it is false
+          - id: five
+            text: The 5 with the 5 at index 0, so it is true
+          - id: every
+            text: The 5 with every earlier value
+        correct: three
+        explanation: >-
+          The test reads only the left neighbour. Sorting is what puts equal values next to each
+          other so that the test can see them.
+      seven:
+        prompt: Are `[5, 3]` and `[3, 5]` different subsets here?
+        options:
+          - id: same
+            text: No, order inside a subset does not matter
+          - id: indexes
+            text: Yes, they come from different indexes
+          - id: unsorted
+            text: Yes, because the input was not sorted
+        correct: same
+        explanation: >-
+          A subset is a choice of values. Different index choices that hold the same values give
+          the same subset, so both lists repeat one.
+      four:
+        prompt: Is the 5 at index 2 ever skipped?
+        options:
+          - id: never
+            text: No, its left neighbour is 3, not 5
+          - id: always
+            text: Yes, in every loop after the first
+          - id: top
+            text: Only in the top call
+        correct: never
+        explanation: >-
+          The skip needs `nums[2] == nums[1]`, and 5 is not 3. Every loop that reaches index 2
+          takes it.
+
+  - id: ordering-skip-trace-review
+    format: step-trace
+    heading: Trace the skips
+    tags: [backtracking, sorting]
+    prompt: >-
+      This search records each distinct ordering of sorted `nums = [3, 3, 7]` once. The top call
+      has taken index 0, so `path == [3]` and `used == [True, False, False]`. `i` marks the item
+      each step takes. Predict each step before it is shown.
+    code: |
+      def explore():
+          if len(path) == len(nums):
+              out.append(path[:])
+              return
+          for i in range(len(nums)):
+              if used[i]:
+                  continue
+              if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
+                  continue
+              used[i] = True
+              path.append(nums[i])
+              explore()
+              path.pop()
+              used[i] = False
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 3, 7]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: The call one level down runs its loop. Tap the first item it takes.
+        pointer: i
+        correct: 1
+        explanation: >-
+          Index 0 is used, so it is skipped. Index 1 equals index 0, but `used[0]` is True, so the
+          first 3 is in `path` and this 3 is the next position, not a repeat. `path` becomes
+          `[3, 3]`.
+        misses:
+          - index: 0
+            explanation: >-
+              `used[0]` is True, since that 3 is already in `path`. The first `continue` skips it.
+          - index: 2
+            explanation: >-
+              The second 3 is not skipped here. Its left neighbour is in `path`, so `not used[0]`
+              is False and the test lets it through.
+        elsewhere: The first unused item that passes the skip test is index 1.
+      - line: 14
+        ask: >-
+          That branch records `[3, 3, 7]`, then `[3, 7, 3]`. Back in the top call, `used[0]` is
+          False again. Tap the next item the top loop takes.
+        pointer: i
+        correct: 2
+        explanation: >-
+          Index 1 equals index 0 and `used[0]` is now False, so it is skipped: starting with that 3
+          would repeat both orderings just recorded. The loop takes the 7.
+        misses:
+          - index: 1
+            explanation: >-
+              This 3 is a sibling of the 3 the top loop just finished. `not used[0]` is True, so
+              the test skips it to avoid recording `[3, 3, 7]` and `[3, 7, 3]` again.
+          - index: 0
+            explanation: >-
+              The top loop has finished index 0 and moves forward. It never goes back.
+        elsewhere: The top loop skips index 1 and takes index 2.
+      - line: 5
+        ask: "`path == [7]`. Tap the first item the next level takes."
+        pointer: i
+        correct: 0
+        explanation: >-
+          Index 0 is unused and has no left neighbour, so it is taken. `path` becomes `[7, 3]`.
+        misses:
+          - index: 1
+            explanation: >-
+              Index 1 is skipped while index 0 is unused, since `not used[0]` is True. The loop
+              takes index 0 first.
+          - index: 2
+            explanation: >-
+              `used[2]` is True, since the 7 is already in `path`.
+        elsewhere: The first item tried is index 0, and nothing skips it.
+      - line: 3
+        ask: How many orderings does the search record in all?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              `[3, 3, 7]`, `[3, 7, 3]` and `[7, 3, 3]`: one for each place the 7 can go.
+          - id: six
+            text: "6"
+            explanation: >-
+              6 treats the two 3s as different items. The skip test drops the 3 orderings that
+              only swap them.
+          - id: two
+            text: "2"
+            explanation: >-
+              The 7 can go first, second or last, and each gives a different ordering, so 3.
+        correct: three
+
+  - id: ones-and-twos-review
+    heading: How many lists?
+    tags: [backtracking, sorting]
+    prompt: |-
+      The same skip search runs on sorted `nums = [1, 1, 2, 2]`.
+
+      ```python
+      def explore(start):
+          out.append(path[:])
+          for i in range(start, len(nums)):
+              if i > start and nums[i] == nums[i - 1]:
+                  continue
+              path.append(nums[i])
+              explore(i + 1)
+              path.pop()
+      ```
+
+      How many lists does `out` hold at the end?
+    options:
+      - id: nine
+        text: "9"
+        explanation: >-
+          Each distinct subset once: zero, one or two 1s, times zero, one or two 2s, is 3 · 3 = 9.
+      - id: sixteen
+        text: "16"
+        explanation: >-
+          16 is the take-or-skip count over 4 indexes. The test never lets a second equal value
+          open a sibling branch, so each subset of values comes out once.
+      - id: four
+        text: "4"
+        explanation: >-
+          4 counts subsets of the values 1 and 2 used once each. The second 1 and the second 2 can
+          still join a path, as in `[1, 1]` and `[1, 1, 2, 2]`.
+    correct: nine
+    followUps:
+      sixteen:
+        prompt: In the top call, the loop reaches the second 1 after the first 1's branch is done. What happens?
+        options:
+          - id: skipped
+            text: It is skipped, since it would start the same subsets again
+          - id: taken
+            text: It is taken, opening a second branch that starts with 1
+          - id: ends
+            text: The loop ends there
+        correct: skipped
+        explanation: >-
+          The first 1's branch already recorded every subset that starts with a 1. The `continue`
+          moves on to the 2s.
+      four:
+        prompt: Can this search record `[1, 1]`?
+        options:
+          - id: yes
+            text: Yes, the call holding `[1]` tries the second 1 first
+          - id: no
+            text: No, the skip test removes every repeat
+          - id: with-twos
+            text: Only together with the 2s
+        correct: yes
+        explanation: >-
+          In `explore(1)` the second 1 is the loop's first pass, `i == start`, so it is taken. A
+          repeat is skipped only as a sibling, never down one path.
+
+  - id: unsorted-prunes-review
+    heading: Which checks are safe?
+    tags: [backtracking, sorting]
+    prompt: |-
+      The weights are positive but not sorted, for example `[2, 6, 3]`. The search must find
+      every set that adds up to the target.
+
+      ```python
+      def explore(start, left):
+          # check A goes here
+          if left == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(weights)):
+              # check B goes here
+              path.append(weights[i])
+              explore(i + 1, left - weights[i])
+              path.pop()
+      ```
+
+      Check A is `if left < 0: return`. Check B is `if weights[i] > left: break`. Which are safe
+      to add?
+    options:
+      - id: only-a
+        text: Only A, because B needs later weights to be no lighter
+        explanation: >-
+          A needs only positive weights: a negative `left` can only fall further. B assumes nothing
+          lighter comes later, which only sorting guarantees. With target 5, the call holding
+          `[2]` meets 6 > 3 and breaks, so B returns `[]` and loses `[2, 3]`.
+      - id: both
+        text: Both, because every weight is positive
+        explanation: >-
+          Positive weights make A safe. B also needs order: in `[2, 6, 3]` the 6 comes before the
+          3, so breaking at 6 never tries the 3.
+      - id: only-b
+        text: Only B, because it ends the loop sooner
+        explanation: >-
+          Ending sooner is safe only when nothing later can fit. Unsorted, a light weight can
+          follow a heavy one.
+      - id: neither
+        text: Neither, since weights can fit in any order
+        explanation: >-
+          A does not depend on order. Once `left` is below 0, taking more positive weights only
+          lowers it.
+    correct: only-a
+    followUps:
+      both:
+        prompt: With `[2, 6, 3]` and target 5, the call holding `[2]` meets the 6. What does `break` skip?
+        options:
+          - id: three-too
+            text: The 3 as well, so `[2, 3]` is never tried
+          - id: six-only
+            text: Only the 6
+          - id: nothing
+            text: Nothing, since the 6 is the last weight
+        correct: three-too
+        explanation: >-
+          `break` leaves the whole loop, not one weight. That is safe only when every later weight
+          is too heavy as well.
+      only-b:
+        prompt: Which property makes `break` safe?
+        options:
+          - id: no-lighter
+            text: Every later weight is at least as heavy as this one
+          - id: positive
+            text: Every weight is positive
+          - id: tried-one
+            text: The loop has already tried at least one weight
+        correct: no-lighter
+        explanation: >-
+          If this weight is too heavy and nothing later is lighter, nothing later fits. Sorting
+          gives that guarantee, and positivity alone does not.
+      neither:
+        prompt: With positive weights, once `left` is below 0, can a later weight bring it back to 0?
+        options:
+          - id: no
+            text: No, every weight only lowers it
+          - id: lighter
+            text: Yes, if a lighter weight comes later
+          - id: unsorted
+            text: Yes, since the weights are unsorted
+        correct: no
+        explanation: >-
+          Taking a positive weight always lowers `left`. The order of the weights does not change
+          that.
+
+  - id: remaining-sum-review
+    heading: Which input breaks the check?
+    tags: [backtracking]
+    prompt: |-
+      This check stops a call when even taking every remaining value cannot reach `left`:
+
+      ```python
+      def explore(start, left):
+          if left > sum(nums[start:]):
+              return
+          if left == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(nums)):
+              path.append(nums[i])
+              explore(i + 1, left - nums[i])
+              path.pop()
+      ```
+
+      The target is 7. On which input does the check lose a valid set?
+    options:
+      - id: negative
+        text: "`[4, -1, 3]`"
+        explanation: >-
+          With a negative value, the sum of what remains is not the most the rest can add: leaving
+          the -1 out gives more. At the top, the sum is 6, which is less than 7, so the search stops
+          at once and loses `[4, 3]`.
+      - id: zero
+        text: "`[4, 0, 3]`"
+        explanation: >-
+          A 0 adds nothing either way, so the sum of the rest is still the most it can add. The
+          sum here is exactly 7, the check passes, and both `[4, 0, 3]` and `[4, 3]` are found.
+      - id: repeat
+        text: "`[3, 4, 3]`"
+        explanation: >-
+          Repeats change how many sets come out, not the bound. With no negative value, taking
+          everything that is left gives the biggest total, so the check never cuts a valid set.
+      - id: descending
+        text: "`[4, 3, 1]`"
+        explanation: >-
+          The check adds up every remaining value, and reordering values never changes their
+          total. Unlike `break`, it needs no sorting.
+    correct: negative
+    followUps:
+      zero:
+        prompt: With no negative values, what is the largest total the rest of the list can add?
+        options:
+          - id: sum
+            text: The sum of all of it
+          - id: largest
+            text: Its largest single value
+          - id: order
+            text: It depends on the order
+        correct: sum
+        explanation: >-
+          Taking a value that is 0 or more never lowers a total, so taking everything gives the
+          most. That is why the check is safe without negatives.
+      repeat:
+        prompt: Does `[3, 4, 3]` hold a value that lowers a total when taken?
+        options:
+          - id: no
+            text: No, so the sum of the rest is the most it can add
+          - id: second
+            text: Yes, the second 3
+          - id: any
+            text: Yes, any repeated value
+        correct: no
+        explanation: >-
+          Only a negative value lowers a total. Equal values add the same amount as any other
+          positive value.
+      descending:
+        prompt: Does `left > sum(nums[start:])` depend on the order of the remaining values?
+        options:
+          - id: no
+            text: No, a sum is the same in any order
+          - id: ascending
+            text: Yes, it needs ascending order, like `break`
+          - id: descending
+            text: Yes, it needs descending order
+        correct: no
+        explanation: >-
+          The check looks at the total of the rest, not at which value comes next. Only a negative
+          value can make it wrong.
+
+  - id: break-drag-review
+    format: drag-pointers
+    heading: Where does the loop stop?
+    tags: [backtracking, sorting]
+    prompt: >-
+      `weights` is sorted and the target is 9. The top loop took the 3, so `explore(2, 6)` runs
+      with `path == [3]`. Drag `i` to where this call's loop is when `break` runs.
+    code: |
+      def explore(start, left):
+          if left == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(weights)):
+              if weights[i] > left:
+                  break
+              path.append(weights[i])
+              explore(i + 1, left - weights[i])
+              path.pop()
+    sequence:
+      kind: array
+      name: weights
+      cells: [1, 3, 4, 6, 8, 11]
+    pointers:
+      - name: i
+        start: 2
+        correct: 4
+        explanation: >-
+          8 is the first weight above 6, and 11 after it is heavier still, so `break` loses
+          nothing. On the way, the 6 fits exactly and `[3, 6]` is recorded.
+        misses:
+          - index: 3
+            explanation: >-
+              6 equals `left`, and `6 > 6` is false. The loop takes it and the next call records
+              `[3, 6]`.
+          - index: 5
+            explanation: >-
+              The loop stops at the first weight above 6. 8 already is, so 11 is never reached.
+          - index: 2
+            explanation: >-
+              4 fits with 2 to spare. The loop takes it, and the call below breaks on 6 > 2, which
+              ends only the call below's loop.
+        elsewhere: The break runs at the first weight greater than `left`, which is 6.
