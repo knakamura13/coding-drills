@@ -1,0 +1,323 @@
+id: weighted-paths-checkpoint
+title: "Weighted paths: checkpoint"
+description: Pick a shortest-path method for the stated weights and time limit, and find the repeated work in a heap or a pass, on new graphs.
+heading: Which method fits, and where is the waste?
+
+questions:
+  - id: wp-exam-equal-weights
+    heading: Which method fits?
+    tags: [graph, bfs, complexity]
+    prompt: >-
+      A transit map has V stations and E one-way links, and every link takes exactly 3 minutes.
+      You need the fewest minutes from one station to every other station, in O(V + E) time.
+      Which method fits?
+    options:
+      - id: bfs
+        text: Breadth-first search, then multiply each edge count by 3
+        explanation: >-
+          When every link costs the same, the fewest links is also the fewest minutes, and BFS
+          finds fewest links in O(V + E). Multiplying by 3 turns links into minutes.
+      - id: dijkstra
+        text: Dijkstra's algorithm with a `heapq` binary heap
+        explanation: >-
+          It returns the right minutes, but every push and pop costs O(log V), so it runs in
+          O((V + E) log V). That misses the O(V + E) limit, and equal weights need no heap.
+      - id: bellman-ford
+        text: Bellman-Ford, relaxing every link V - 1 times
+        explanation: >-
+          It also returns the right minutes, but V - 1 passes over E links cost O(V * E), far
+          above O(V + E). Its extra power is for negative weights, and there are none.
+      - id: dfs
+        text: Depth-first search, keeping the time each station is first reached
+        explanation: >-
+          DFS follows one branch as deep as it goes, so it can reach a station first by a long
+          detour. The time it records is not always the fewest.
+    correct: bfs
+    followUps:
+      dijkstra:
+        prompt: Dijkstra's algorithm gives the right answer here. What rules it out?
+        options:
+          - id: log-factor
+            text: Its heap makes it O((V + E) log V), above the O(V + E) limit
+          - id: equal-wrong
+            text: It returns wrong times when every link has the same weight
+          - id: per-station
+            text: It needs a separate heap for every station on the map
+        correct: log-factor
+        explanation: >-
+          With equal weights the heap's order matches the order BFS visits nodes in, so the heap
+          only adds its log factor. BFS gets the same answers within the limit.
+      bellman-ford:
+        prompt: What does Bellman-Ford cost on this map?
+        options:
+          - id: v-times-e
+            text: O(V * E), since each of its V - 1 passes relaxes all E links
+          - id: v-plus-e
+            text: O(V + E), since every link is relaxed only once in total
+          - id: e-log-v
+            text: O(E log V), the same as Dijkstra's algorithm with a heap
+        correct: v-times-e
+        explanation: >-
+          Bellman-Ford repeats a full pass over every link up to V - 1 times. That repetition is
+          what lets it handle negative weights, and this map has none.
+      dfs:
+        prompt: Why can DFS reach a station first by a route that is not the fewest links?
+        options:
+          - id: deep-first
+            text: It follows one branch to its end before it tries a nearer station
+          - id: same-order
+            text: It cannot. It finds the fewest links, just visiting in another order
+          - id: no-cycles
+            text: It works correctly only on maps that have no cycles in them
+        correct: deep-first
+        explanation: >-
+          DFS goes deep before wide, so a station two links away can be reached first through a
+          branch ten links long. BFS goes wide first, so its first visit is the closest.
+
+  - id: wp-exam-zero-weights
+    heading: Which method fits?
+    tags: [graph, heap, complexity]
+    prompt: >-
+      A delivery map has V depots and E one-way roads. Each road has a toll of 0 or more, and
+      some roads are free. You need the cheapest total toll from one depot to every other depot,
+      in O((V + E) log V) time. Which method fits?
+    options:
+      - id: dijkstra
+        text: Dijkstra's algorithm, relaxing free roads like any other road
+        explanation: >-
+          No toll is negative, so the smallest heap entry is always final, and a free road adds
+          0, which never undercuts it. With a binary heap this runs in O((V + E) log V).
+      - id: bellman-ford
+        text: Bellman-Ford, since a toll of 0 breaks Dijkstra's finalizing
+        explanation: >-
+          A toll of 0 is not negative, so Dijkstra stays correct. Bellman-Ford would also be
+          correct, but it costs O(V * E), above the limit.
+      - id: bfs
+        text: Breadth-first search, counting each road as one step
+        explanation: >-
+          Tolls differ from road to road, so the route with the fewest roads need not be the
+          cheapest. A free road and a costly road count the same to BFS.
+      - id: drop-free
+        text: Dijkstra's algorithm, after deleting every free road first
+        explanation: >-
+          A free road is often the cheapest way on. Deleting it can raise a depot's toll or cut
+          the depot off entirely.
+    correct: dijkstra
+    followUps:
+      bellman-ford:
+        prompt: Why are free roads safe for Dijkstra's finalizing?
+        options:
+          - id: ties-only
+            text: A route that adds 0 can at best tie a popped distance, never beat it
+          - id: pushed-back
+            text: The heap moves entries that cost 0 to the back, so they never pop
+          - id: skipped
+            text: Dijkstra's algorithm skips every road whose weight is 0
+        correct: ties-only
+        explanation: >-
+          A popped distance is final when no later route can be cheaper. Later routes add weights
+          of 0 or more, so they can match it but never undercut it.
+      bfs:
+        prompt: When does counting roads give the cheapest total toll?
+        options:
+          - id: equal-tolls
+            text: Only when every road has the same toll
+          - id: non-negative
+            text: Whenever no toll in the map is negative
+          - id: some-free
+            text: Whenever at least some of the roads are free
+        correct: equal-tolls
+        explanation: >-
+          Fewest roads matches cheapest only when every road costs the same. Once tolls differ,
+          a route with more roads can cost less.
+      drop-free:
+        prompt: What is lost by deleting the free roads before searching?
+        options:
+          - id: routes
+            text: Every route that uses one, and those are often the cheapest
+          - id: nothing
+            text: Nothing, since a road that costs 0 adds no cost to a route
+          - id: ties
+            text: Only some tied routes, which never change a cheapest toll
+        correct: routes
+        explanation: >-
+          A free road adds nothing to the toll, which is exactly why a cheapest route may need
+          it. Without it, the search can only find dearer routes, or none.
+
+  - format: step-trace
+    id: wp-exam-repeat-trace
+    heading: Find the repeated work
+    tags: [graph, heap, python]
+    prompt: >-
+      Predict each step of Dijkstra's loop on this graph. `u` marks the node expanded most
+      recently.
+    code: |
+      import heapq
+      graph = {"S": [("A", 1), ("C", 9)], "A": [("B", 2), ("C", 7)],
+               "B": [("C", 3), ("D", 8)], "C": [("D", 1)], "D": []}
+      dist = {node: float("inf") for node in graph}
+      dist["S"] = 0
+      heap = [(0, "S")]
+      while heap:
+          d, u = heapq.heappop(heap)
+          if d > dist[u]:
+              continue
+          for v, w in graph[u]:
+              if d + w < dist[v]:
+                  dist[v] = d + w
+                  heapq.heappush(heap, (d + w, v))
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, A, B, C, D]
+    start:
+      - { name: u, at: 0 }
+    steps:
+      - line: 8
+        ask: '`S` has been expanded. Which node is expanded next? Move `u` to it.'
+        pointer: u
+        correct: 1
+        explanation: '`S` pushed `(1, "A")` and `(9, "C")`. The smaller entry pops first, so `A` is expanded at 1.'
+        misses:
+          - index: 3
+            explanation: '`C`''s entry is 9, larger than `A`''s 1.'
+        elsewhere: Only `A` and `C` have entries in the heap, and `A`'s is smaller.
+      - line: 8
+        ask: Which node is expanded next?
+        pointer: u
+        correct: 2
+        explanation: '`A` pushed `(3, "B")` and `(8, "C")`. The heap holds 3, 8 and 9, so `B` is expanded at 3.'
+        misses:
+          - index: 3
+            explanation: '`C` now has entries 8 and 9, both larger than `B`''s 3.'
+        elsewhere: '`S` and `A` are done, and `D` has no entry yet. The smallest entry is `(3, "B")`.'
+      - line: 8
+        ask: Which node is expanded next?
+        pointer: u
+        correct: 3
+        explanation: >-
+          `B` pushed `(6, "C")`, since 3 + 3 is less than 8, and `(11, "D")`. The heap holds 6, 8,
+          9 and 11, so `C` is expanded at 6.
+        misses:
+          - index: 4
+            explanation: '`D`''s only entry is 11, larger than `C`''s 6.'
+        elsewhere: The smallest entry in the heap is `(6, "C")`.
+      - line: 8
+        ask: '`D` is expanded next. With what distance does its entry pop?'
+        options:
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              `C` pushed `(7, "D")`, since 6 + 1 is less than 11. It pops before the stale 8 and 9
+              for `C` and the old 11 for `D`.
+          - id: eleven
+            text: '`11`'
+            explanation: '11 came from `B`. `C` later found 6 + 1 = 7, and that entry pops first.'
+          - id: nine
+            text: '`9`'
+            explanation: >-
+              9 would be the stale `(8, "C")` entry plus `C -> D`. `C` was expanded at 6, so it
+              pushed 7 instead.
+        correct: seven
+      - line: 9
+        ask: If the two stale-check lines were deleted, how many times would the loop scan the edges out of `C`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              `C` was pushed with 9, 8 and 6. Without the check, all three entries are expanded.
+              The answers stay right, since 8 + 1 and 9 + 1 do not beat 7, but two scans are
+              wasted.
+          - id: one
+            text: '1'
+            explanation: >-
+              That is the count with the stale check. Without it, the entries 8 and 9 for `C` are
+              expanded as well.
+          - id: two
+            text: '2'
+            explanation: >-
+              `C` has three entries: 9 from `S`, 8 from `A` and 6 from `B`. Each one is expanded
+              when the check is gone.
+        correct: three
+
+  - id: wp-exam-idle-passes
+    heading: Where is the wasted work?
+    tags: [graph, complexity, python]
+    prompt: |-
+      ```python
+      INF = float("inf")
+      edges = [("S", "A", 2), ("S", "B", 7), ("A", "B", 3),
+               ("B", "C", 1), ("A", "C", 6), ("C", "D", 2)]
+      dist = {n: INF for n in "SABCD"}
+      dist["S"] = 0
+      for _ in range(len(dist) - 1):  # 4 passes
+          for u, v, w in edges:
+              if dist[u] + w < dist[v]:
+                  dist[v] = dist[u] + w
+      ```
+
+      How many of the 4 passes lower at least one distance, and which change skips the wasted
+      work without changing any answer?
+    options:
+      - id: one-stop
+        text: 1. Stop as soon as a whole pass lowers nothing
+        explanation: >-
+          Every edge comes after the edges into its start, so pass 1 sets every final value:
+          `A` 2, `B` 5, `C` 6 and `D` 8. Passes 2 to 4 lower nothing. Stopping after the first
+          pass that lowers nothing runs 2 passes and returns the same distances.
+      - id: four
+        text: 4. Every pass is needed, since V - 1 passes is the bound
+        explanation: >-
+          V - 1 passes is the worst case, for an edge order that reaches one node per pass. Here
+          the order lets pass 1 finish, and passes 2 to 4 change nothing.
+      - id: one-skip-inf
+        text: 1. Skip any edge whose start is still `inf`
+        explanation: >-
+          The count is right, but the fix saves nothing here. Every start is lowered before its
+          edges are checked in pass 1, and in passes 2 to 4 no start is `inf`.
+      - id: two
+        text: 2. The second pass lowers the rest, and then the loop can stop
+        explanation: >-
+          The second pass lowers nothing. It is the pass that shows the work is done, so an early
+          stop runs 2 passes, but only 1 of them lowers a distance.
+    correct: one-stop
+    followUps:
+      four:
+        prompt: Why can Bellman-Ford need as many as V - 1 passes?
+        options:
+          - id: worst-order
+            text: In a bad edge order, each pass fixes one more edge of a cheapest route
+          - id: random
+            text: Each pass relaxes just one edge per node, chosen at random
+          - id: every-node
+            text: Every node must be lowered once in every pass until the end
+        correct: worst-order
+        explanation: >-
+          A cheapest route has at most V - 1 edges, and a pass in the worst order fixes only one
+          of them. In a helpful order, as here, one pass can fix them all.
+      one-skip-inf:
+        prompt: 'In pass 1, when `A -> B` is checked, is `dist["A"]` still `inf`?'
+        options:
+          - id: already-two
+            text: No. `S -> A` comes earlier in the list, so `A` is already 2
+          - id: old-values
+            text: Yes. A pass reads only the values from before it started
+          - id: end-of-pass
+            text: Yes. Distances are written only at the end of each pass
+        correct: already-two
+        explanation: >-
+          A pass writes each new value at once, and later edges read it. With starts always
+          lowered first, there is no `inf` start to skip.
+      two:
+        prompt: What does the second pass do on this list?
+        options:
+          - id: confirms
+            text: It checks all six edges and lowers nothing, which shows the values are final
+          - id: lowers-d
+            text: It lowers `D` from 8 to its final value
+          - id: lowers-c
+            text: It lowers `C` through `B`, a route that pass 1 missed
+        correct: confirms
+        explanation: >-
+          Pass 1 already found `C` through `B` and `D` through `C`. A pass that changes nothing
+          proves no later pass will, which is when the loop can stop.
