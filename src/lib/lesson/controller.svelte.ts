@@ -12,7 +12,6 @@ import {
 } from '$lib/domain/lesson';
 import { movePointer } from '$lib/domain/drag';
 import type { Rng } from '$lib/domain/shuffle';
-import { preferences } from '$lib/preferences/store.svelte';
 import { getRepository, type Flag } from '$lib/storage';
 import { syncSoon } from '$lib/sync/store.svelte';
 
@@ -92,13 +91,9 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		},
 		select(optionId: string) {
 			const question = state.plan[state.cursor]?.question;
-			// A tap, and each step of a trace, answers in one gesture. Multiple choice follows
-			// the preference. A drag answer has several pointers to place, so it waits for Check.
-			const immediate = question
-				? isTapCellQuestion(question) ||
-					isStepTraceQuestion(question) ||
-					(preferences.immediateFeedback && isChoiceQuestion(question))
-				: false;
+			// A tap, and each step of a trace, answers in one gesture. Multiple choice and a drag
+			// answer (several pointers to place) wait for Check.
+			const immediate = question ? isTapCellQuestion(question) || isStepTraceQuestion(question) : false;
 			state = select(state, optionId, immediate);
 		},
 		/** Moves one pointer of a drag question. The answer is every pointer's cell, checked on Check. */

@@ -56,7 +56,7 @@ export default defineConfig({
 				'src/lib/domain/**/*.ts',
 				'src/lib/markdown/**/*.ts',
 				'src/lib/storage/**/*.ts',
-				'src/lib/flags/**/*.ts'
+				'src/lib/ui/**/*.ts'
 			],
 			exclude: ['**/*.test.ts'],
 			thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 }
