@@ -1,0 +1,292 @@
+id: bounded-heaps-checkpoint
+title: "Bounded heaps: checkpoint"
+description: Keep the top K of a stream or merge sorted runs lazily, on new inputs, within a memory limit.
+heading: What does the capped heap do?
+
+questions:
+  - format: step-trace
+    id: checkpoint-pushpop-trace
+    heading: Follow the evictions
+    tags: [heap, python]
+    prompt: >-
+      The heap starts with the first 3 scores. Each later score goes through `heappushpop`, which
+      returns the score it evicts. `out` marks the score evicted most recently, and it starts on
+      index 0 before anything is evicted. Predict each step.
+    code: |
+      from heapq import heapify, heappushpop
+
+      scores = [12, 5, 9, 3, 14, 10, 16, 8]
+      k = 3
+      h = scores[:k]
+      heapify(h)
+      for x in scores[k:]:
+          heappushpop(h, x)
+      print(h[0])
+    sequence:
+      kind: array
+      name: scores
+      cells: [12, 5, 9, 3, 14, 10, 16, 8]
+    start:
+      - { name: out, at: 0 }
+    steps:
+      - line: 8
+        ask: When 3 arrives, which score is evicted? Move `out` to it.
+        pointer: out
+        correct: 3
+        explanation: >-
+          The heap holds 12, 5 and 9, so its root is 5. The 3 is smaller than the root, so
+          `heappushpop` hands the 3 straight back and the heap does not change.
+        misses:
+          - index: 1
+            explanation: >-
+              5 is the root, but `heappushpop` pushes before it pops. The 3 is smaller than 5, so
+              the 3 is what comes back out.
+          - index: 0
+            explanation: 12 arrived first, but the heap evicts its smallest score, not its oldest.
+          - index: 2
+            explanation: '9 is neither the arrival nor the root. The smaller of 3 and the root 5 leaves.'
+        elsewhere: The smaller of the arrival, 3, and the root, 5, is evicted. That is the 3.
+      - line: 8
+        ask: When 14 arrives, which score is evicted?
+        pointer: out
+        correct: 1
+        explanation: The 14 beats the root, 5, so the 5 is evicted and the heap holds 9, 12 and 14.
+        misses:
+          - index: 3
+            explanation: The 3 never entered the heap. It was evicted in the step before.
+          - index: 2
+            explanation: '9 is the second smallest kept score. Only the root, 5, leaves.'
+          - index: 4
+            explanation: '14 is larger than the root, 5, so it stays and the 5 leaves.'
+        elsewhere: The root is 5 and the arrival is 14. The smaller one, 5, is evicted.
+      - line: 8
+        ask: When 10 arrives, which score is evicted?
+        pointer: out
+        correct: 2
+        explanation: The heap holds 9, 12 and 14. The 10 beats the root, 9, so the 9 leaves.
+        misses:
+          - index: 5
+            explanation: '10 is larger than the root, 9, so the 10 stays and the 9 leaves.'
+          - index: 1
+            explanation: The 5 left in the step before. The root is now 9.
+          - index: 0
+            explanation: '12 is above the root, 9. Only the smaller of the root and the arrival leaves.'
+        elsewhere: The heap holds 9, 12 and 14, and 10 arrives. The 9 is evicted.
+      - line: 9
+        ask: 16 and then 8 arrive. What does `print(h[0])` show?
+        options:
+          - id: twelve
+            text: '12'
+            explanation: >-
+              16 evicts the root, 10, and 8 is smaller than the new root, 12, so it is evicted at
+              once. The heap ends with 12, 14 and 16, and `h[0]` is the 3rd largest score, 12.
+          - id: sixteen
+            text: '16'
+            explanation: '16 is the largest score, but `h[0]` is the root of a min-heap, the smallest kept score.'
+          - id: ten
+            text: '10'
+            explanation: '10 was the root when 16 arrived. 16 is larger, so the 10 is evicted.'
+          - id: eight
+            text: '8'
+            explanation: >-
+              `heappushpop` pushes the 8 and pops the smallest, which is the 8 itself. It never
+              enters the heap.
+        correct: twelve
+
+  - id: checkpoint-closest-names
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heappush, heappop
+
+      def closest(points, k):
+          h = []
+          for name, d in points:
+              heappush(h, (-d, name))
+              if len(h) > k:
+                  heappop(h)
+          return sorted(name for _, name in h)
+
+      pts = [("a", 5), ("b", 2), ("c", 8), ("d", 1), ("e", 6)]
+      print(closest(pts, 2))
+      ```
+
+      What does it print?
+    options:
+      - id: nearest
+        text: "`['b', 'd']`"
+        explanation: >-
+          The entries hold negated distances, so the root is the farthest point kept, and every pop
+          evicts it. The two nearest points, `d` at 1 and `b` at 2, remain, and `sorted` orders
+          their names.
+      - id: farthest
+        text: "`['c', 'e']`"
+        explanation: Check what the minus sign does to which entry is the root.
+      - id: first-two
+        text: "`['a', 'b']`"
+        explanation: Check whether a pop removes the oldest entry.
+      - id: three-kept
+        text: "`['b', 'd', 'e']`"
+        explanation: Check how many entries are left after a pop.
+    correct: nearest
+    followUps:
+      farthest:
+        prompt: The heap holds `(-5, 'a')`, `(-2, 'b')` and `(-8, 'c')`. Which entry does `heappop` remove?
+        options:
+          - id: c-farthest
+            text: "`(-8, 'c')`, the farthest point"
+          - id: b-nearest
+            text: "`(-2, 'b')`, the nearest point"
+          - id: a-first
+            text: "`(-5, 'a')`, the first pushed"
+        correct: c-farthest
+        explanation: >-
+          `-8` is the smallest first field, so it is the root. Negating the distances puts the
+          farthest point at the root, where the pop finds it, so the nearest points stay.
+      first-two:
+        prompt: What decides which entry the pop removes?
+        options:
+          - id: root
+            text: The smallest tuple, here the most negative distance
+          - id: age
+            text: The order the points were pushed in
+          - id: name
+            text: The name, in alphabetical order
+        correct: root
+        explanation: >-
+          `heappop` always takes the smallest tuple. The first field differs for every point
+          here, so the names are never compared and the push order plays no part.
+      three-kept:
+        prompt: How many entries does `h` hold at the end of each pass, once it has filled?
+        options:
+          - id: k-entries
+            text: '`k`, here 2'
+          - id: k-plus-one
+            text: '`k + 1`, here 3'
+          - id: all
+            text: All the points seen so far
+        correct: k-entries
+        explanation: >-
+          The push can bring the heap to 3 for a moment, and `len(h) > 2` then pops one, so every
+          pass ends with 2 entries.
+
+  - id: checkpoint-refill-line
+    heading: Which line completes it?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heapify, heappop, heappush
+
+      def merge(runs):
+          h = [(r[0], i, 0) for i, r in enumerate(runs) if r]
+          heapify(h)
+          while h:
+              x, i, j = heappop(h)
+              yield x
+              # REFILL
+      ```
+
+      Which `REFILL` makes `list(merge([[2, 9, 11], [4, 5], [1, 7]]))` return all seven values
+      in order, with at most one entry per run in the heap?
+    options:
+      - id: same-run
+        text: '`if j + 1 < len(runs[i]): heappush(h, (runs[i][j + 1], i, j + 1))`'
+        explanation: >-
+          The popped run is the only one without an entry, so its next value goes in, with its
+          position moved on by one. An exhausted run pushes nothing and drops out. The result is
+          `[1, 2, 4, 5, 7, 9, 11]`, and the heap never holds more than 3 entries.
+      - id: stale-position
+        text: '`if j + 1 < len(runs[i]): heappush(h, (runs[i][j + 1], i, j))`'
+        explanation: Check which position the pushed entry records.
+      - id: every-run
+        text: Push `runs[r][j + 1]` for every run `r` that is long enough
+        explanation: Check how many entries run 1 has after the 4 pops.
+      - id: guard-on-heap
+        text: '`if h and j + 1 < len(runs[i]): heappush(h, (runs[i][j + 1], i, j + 1))`'
+        explanation: Check the pass that empties the heap.
+    correct: same-run
+    followUps:
+      stale-position:
+        prompt: 'The pop returns `(5, 1, 0)`, an entry for run 1''s second value that still records position 0. What gets pushed?'
+        options:
+          - id: same-again
+            text: '`(5, 1, 0)` again, so the merge yields 5 forever'
+          - id: next
+            text: The next value, since the value field moved on
+          - id: nothing
+            text: Nothing, since run 1 is finished
+        correct: same-again
+        explanation: >-
+          The position never advances, so `runs[1][0 + 1]` is read again and again. Python yields
+          1, 2, 4 and then 5 without end.
+      every-run:
+        prompt: When the 4 pops from run 1, this pushes a value from every run. What follows?
+        options:
+          - id: duplicates
+            text: Runs that already have an entry get a second one, so values repeat and the heap grows
+          - id: faster
+            text: The merge finishes sooner with the same output
+          - id: same
+            text: Nothing changes, since the extra entries are skipped
+        correct: duplicates
+        explanation: >-
+          Only the popped run lost its entry. Pushing for every run reads values that are already
+          waiting. Python yields 21 values: 5, 7 and 9 three times each, and 11 nine times.
+      guard-on-heap:
+        prompt: The pop takes the last entry and leaves `h` empty, but its run still has values. What does `if h and ...` do?
+        options:
+          - id: drops-tail
+            text: It skips the push, the loop ends, and the run's last values are lost
+          - id: pushes
+            text: It pushes as usual, since the run still has values
+          - id: raises
+            text: It raises `IndexError` on the empty heap
+        correct: drops-tail
+        explanation: >-
+          `h` is empty and falsy, so the push is skipped and `while h` ends. Here run 0's 11 is
+          lost, and the result is `[1, 2, 4, 5, 7, 9]`.
+
+  - format: tap-cell
+    id: checkpoint-next-push-tap
+    heading: Which value is pushed?
+    tags: [heap, python]
+    prompt: >-
+      The cells lay out `runs[0]`, `runs[1]` and `runs[2]` side by side (indices 0 to 2, 3 to 4,
+      and 5 to 7). The merge has printed 1, 2 and 3. Which value does it push right after it
+      prints the 3? Tap it.
+    code: |
+      from heapq import heapify, heappop, heappush
+
+      runs = [[3, 6, 7], [1, 9], [2, 4, 5]]
+      h = [(r[0], i, 0) for i, r in enumerate(runs)]
+      heapify(h)
+      while h:
+          x, i, j = heappop(h)
+          print(x)
+          if j + 1 < len(runs[i]):
+              heappush(h, (runs[i][j + 1], i, j + 1))
+    sequence:
+      kind: array
+      cells: [3, 6, 7, 1, 9, 2, 4, 5]
+    correct: 1
+    explanation: >-
+      The 3 was run 0's entry, so run 0 is the one left without a value in the heap. Its next value
+      is the 6. The heap then holds 4, 6 and 9, one per run.
+    misses:
+      - index: 6
+        explanation: >-
+          4 is the next value to be printed, but it is already in the heap. Run 2 pushed it when
+          the 2 left.
+      - index: 4
+        explanation: The 9 was pushed when the 1 left. Run 1 still has it in the heap.
+      - index: 7
+        explanation: '5 is behind the 4 in run 2. It is pushed only when the 4 is printed.'
+      - index: 2
+        explanation: '7 is two places into run 0. The 6 comes before it.'
+      - index: 0
+        explanation: The 3 is the value just popped. The push brings in the value after it.
+      - index: 3
+        explanation: The 1 was printed first. Its pop pushed the 9.
+      - index: 5
+        explanation: The 2 was printed second. Its pop pushed the 4.

@@ -99,6 +99,7 @@ paths:
       - id: top-k-or-merge
         title: Top K or a lazy merge
         summary: Meet a memory limit while selecting top K or merging lazily.
+        mix: [top-k, merge]
 
   - id: link-rewrites
     title: Link rewrites
@@ -146,6 +147,9 @@ drills:
   - questionId: top-k-min-heap
     disposition: exam
     path: bounded-heaps
+    legacyPassBefore: 5
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
     note: Choose which score to evict, then justify the size bound for a stream.
   - questionId: heapify-vs-pushes
     disposition: exam
@@ -160,6 +164,9 @@ drills:
   - questionId: merge-k-sorted
     disposition: exam
     path: bounded-heaps
+    legacyPassBefore: 5
+    tests: [expose-stream-head, replenish-popped-stream]
+    covers: [merge]
     note: Track one head per stream, choose which to replenish and bound memory.
   - questionId: reverse-in-place
     disposition: exam
@@ -902,6 +909,130 @@ drills:
     path: heap-operations
     tests: [compare-priority-fields, choose-tie-breaker]
     note: New checkpoint item. Predict the first pop from negated urgencies with a counter among ties.
+  - questionId: evict-root-tap
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    note: New teaching card (tap the cell). Tap the root a capped min-heap evicts when a larger score arrives.
+  - questionId: capped-stream-trace
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    note: New teaching card (step-through trace). Follow each eviction over a stream with k = 3, including an arrival that is evicted at once.
+  - questionId: pop-condition-off-by-one
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    note: New teaching card. Popping when len(h) >= k keeps k - 1 scores.
+  - questionId: replace-before-compare
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    note: New teaching card. heapreplace on every arrival evicts the root before comparing, so a late small score is kept.
+  - questionId: initial-heads
+    disposition: keep
+    path: bounded-heaps
+    skill: expose-stream-head
+    note: New teaching card. The merge heap starts with one front per run, not the k smallest values or all of them.
+  - questionId: head-entry-shape
+    disposition: keep
+    path: bounded-heaps
+    skill: expose-stream-head
+    note: New teaching card. Pick (value, run) over (value, iterator), (run, value) and a bare value.
+  - questionId: merge-heads-trace
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    note: New teaching card (step-through trace). Tap each value the merge prints next, then pick the entry pushed for the popped run.
+  - questionId: replenish-which-run
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    note: New teaching card. Push the popped run's next value, against the smallest unread value, both, or nothing.
+  - questionId: arrival-evicted-tap
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    variant: true
+    note: Review variant (tap the cell). An arrival smaller than every kept score sifts to the root and is the one evicted.
+  - questionId: k-smallest-orientation
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    variant: true
+    note: Review variant. Negate distances to keep the k smallest with heapq, against plain pushes, h.pop() and the first k.
+  - questionId: replace-condition
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    variant: true
+    note: Review variant. Replace only when the arrival beats h[0], against h[-1], below the root and max(h).
+  - questionId: pop-before-push
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    variant: true
+    note: Review variant on a fresh input. Popping before the push lets a late small score in.
+  - questionId: peak-heap-size
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    variant: true
+    note: Review variant. Push then pop holds k + 1 for a moment, never n or 2k.
+  - questionId: kth-largest-tap
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    variant: true
+    note: Review variant (tap the cell). The root of the capped heap is the kth largest of the stream.
+  - questionId: empty-run-guard
+    disposition: keep
+    path: bounded-heaps
+    skill: expose-stream-head
+    variant: true
+    note: Review variant. An empty run has no front, so r[0] raises IndexError unless it is filtered out.
+  - questionId: tied-iterator-heads
+    disposition: keep
+    path: bounded-heaps
+    skill: expose-stream-head
+    variant: true
+    note: Review variant. Tied fronts stored with their iterators raise TypeError after the first pop.
+  - questionId: heads-after-pops-drag
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    variant: true
+    note: Review variant on a fresh input (drag the pointers). Place each run's entry after three values are printed.
+  - questionId: break-on-exhausted
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    variant: true
+    note: Review variant. Breaking when a run runs out drops the other runs' values.
+  - questionId: checkpoint-pushpop-trace
+    disposition: exam
+    path: bounded-heaps
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
+    note: New checkpoint item (step-through trace). Follow heappushpop evictions on a fresh stream, then read h[0].
+  - questionId: checkpoint-closest-names
+    disposition: exam
+    path: bounded-heaps
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
+    note: New checkpoint item. Predict the k nearest names kept with negated distances.
+  - questionId: checkpoint-refill-line
+    disposition: exam
+    path: bounded-heaps
+    tests: [expose-stream-head, replenish-popped-stream]
+    covers: [merge]
+    note: New checkpoint item. Pick the refill line, against a stale position, every run, and a guard that drops the last run's tail.
+  - questionId: checkpoint-next-push-tap
+    disposition: exam
+    path: bounded-heaps
+    tests: [expose-stream-head, replenish-popped-stream]
+    covers: [merge]
+    note: New checkpoint item (tap the cell). Tap the value pushed right after the third value is printed.
 
 followUps:
   - questionId: heapq-min-heap

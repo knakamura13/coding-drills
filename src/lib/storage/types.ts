@@ -1,5 +1,8 @@
-/** Version 4 expands several one-item checkpoints to full five-item sittings. */
-export const EXAM_RULES_VERSION = 4;
+/**
+ * Version 4 expands several one-item checkpoints to full five-item sittings.
+ * Version 5 expands the top-K-or-merge checkpoint from two items to a full sitting.
+ */
+export const EXAM_RULES_VERSION = 5;
 
 export interface QuestionRef {
 	deckId: string;

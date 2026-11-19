@@ -183,6 +183,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Heap operations: teaching levels | `heap-operations` | in review |
 | Data structures #12 | Heap operations: review variants | `heap-operations-review` | in review |
 | Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | in review |
+| Data structures #12 | Bounded heaps: teaching levels | `bounded-heaps` | in review |
+| Data structures #12 | Bounded heaps: review variants | `bounded-heaps-review` | in review |
+| Data structures #12 | Bounded heaps: checkpoint | `bounded-heaps-checkpoint` | in review |
 | Trees and graphs #13 | Reachability | `reachability` | in review |
 | Trees and graphs #13 | Reachability: review | `reachability-review` | in review |
 | Trees and graphs #13 | Reachability: checkpoint | `reachability-checkpoint` | in review |
