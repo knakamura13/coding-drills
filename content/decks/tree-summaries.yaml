@@ -1,0 +1,489 @@
+id: tree-summaries
+title: Tree summaries
+description: Build a node's height from its children, tell the height it returns from the path that bends at it, and keep the longest path seen.
+heading: What does the call report?
+
+questions:
+  - id: tree-summaries-one-empty-side
+    heading: What does the call return?
+    tags: [tree, recursion]
+    prompt: |-
+      **Worked example:** A leaf has two empty children. Each call on `None` returns 0, so the leaf
+      returns `1 + max(0, 0)`, which is 1.
+
+      `height` counts the nodes on the longest downward path. Node X has a leaf Y as its left child
+      and nothing on its right. What does `height(X)` return?
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          return 1 + max(left, right)
+      ```
+
+      ```text
+        X
+       /
+      Y
+      ```
+    options:
+      - id: two
+        text: "`2`"
+        explanation: >-
+          The left call on Y returns 1, as in the worked example. The right call on `None` returns 0.
+          X returns `1 + max(1, 0)`, which is 2: X and Y are both on the longest downward path.
+      - id: one
+        text: "`1`"
+        explanation: >-
+          1 would mean X is a leaf. X has one child, and `max` takes the larger of the two sides, so
+          the empty right side does not cancel the left one.
+      - id: raises
+        text: An error, because `node.right` is `None`
+        explanation: >-
+          Calling `height` on `None` is safe. The first check in the function catches it before any
+          attribute is read.
+    correct: two
+    followUps:
+      one:
+        prompt: X's left call returns 1 and its right call returns 0. Which value does `max(left, right)` pick?
+        options:
+          - { id: picks-leaf, text: "The 1 from Y, so X's path holds X and Y" }
+          - { id: picks-empty, text: "The 0 from the empty side, since a missing child wins" }
+          - { id: neither, text: "Neither; a node with one child counts as a leaf" }
+        correct: picks-leaf
+        explanation: >-
+          An empty subtree reports 0, which never beats a real child. A node is a leaf only when both
+          sides are empty.
+      raises:
+        prompt: What happens when the call `height(None)` runs?
+        options:
+          - { id: returns-zero, text: "The `if node is None` check returns 0 before `.left` is read" }
+          - { id: attribute, text: "It reads `None.left` and raises `AttributeError`" }
+          - { id: returns-none, text: "It returns `None`, and `max` skips it" }
+        correct: returns-zero
+        explanation: >-
+          The base case is the reason a call on a missing child is allowed. Every leaf makes two such
+          calls, and each one stops at the first check.
+
+  - id: tree-summaries-combine-line
+    heading: Which line completes it?
+    tags: [tree, recursion]
+    prompt: |-
+      **Worked example:** If a node's children report 2 and 1, its longest downward path takes the
+      taller side and adds the node itself: 1 + 2, which is 3.
+
+      `height` should count the nodes on the longest path from `node` down to a leaf, with 0 for an
+      empty subtree. Which line completes it?
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          # ??? one line here
+      ```
+
+      ```text
+          4
+         / \
+        2   6
+       /   / \
+      1   5   8
+      ```
+    options:
+      - id: max-plus-one
+        text: "`return 1 + max(left, right)`"
+        explanation: >-
+          The node adds itself to the taller side below it. On this tree, 2 and 6 each return 2, so
+          the root returns 3: a path such as 4, 6, 8.
+      - id: no-plus-one
+        text: "`return max(left, right)`"
+        explanation: >-
+          Without the 1 no node is ever counted. Every leaf returns `max(0, 0)`, and zeros pass all
+          the way up, so the root returns 0.
+      - id: sum
+        text: "`return 1 + left + right`"
+        explanation: >-
+          Adding both sides counts every node in the subtree. On this tree it returns 6, the node
+          count, not the length of one downward path.
+      - id: min
+        text: "`return 1 + min(left, right)`"
+        explanation: >-
+          `min` follows the shorter side. The node 2 has an empty right side, so it returns 1, and
+          the root returns 2 although the path 4, 6, 8 holds 3 nodes.
+    correct: max-plus-one
+    followUps:
+      no-plus-one:
+        prompt: What does a leaf return with `return max(left, right)`?
+        options:
+          - { id: leaf-zero, text: "0, because nothing adds the leaf itself" }
+          - { id: leaf-one, text: "1, because a leaf is one node" }
+          - { id: leaf-error, text: "It raises, because both sides are empty" }
+        correct: leaf-zero
+        explanation: >-
+          A call must add its own node to what it learns from below. Without that, every value in
+          the tree is built from the base case's 0.
+      sum:
+        prompt: Does a single downward path from 4 visit both 2 and 6?
+        options:
+          - { id: one-side, text: "No; a downward path takes one child at each node" }
+          - { id: both-sides, text: "Yes; a path from the root passes every child" }
+          - { id: depends, text: "Only when both subtrees have the same height" }
+        correct: one-side
+        explanation: >-
+          Going down from a node means choosing its left or its right child. Height measures the
+          longer choice, so the two sides are compared, not added.
+      min:
+        prompt: Which side does the longest downward path from a node go into?
+        options:
+          - { id: taller-side, text: "The side that reports the larger height" }
+          - { id: shorter-side, text: "The side that reports the smaller height" }
+          - { id: left-side, text: "Always the left side, then the right" }
+        correct: taller-side
+        explanation: >-
+          The node is on top, and the rest of the path is the longest path in one of its subtrees.
+          The longer of the two is the one to keep.
+
+  - id: tree-summaries-heights-trace
+    format: step-trace
+    heading: What does each call return?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `height(root)` runs on the tree below. It counts nodes: 0 for an empty subtree, 1 for a leaf.
+      The cells list the nodes level by level. Predict each step.
+
+      ```text
+            A
+           / \
+          B   C
+         / \
+        D   E
+             \
+              F
+      ```
+    code: |-
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          return 1 + max(left, right)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 6
+        ask: Which real call is the first to return a value?
+        pointer: call
+        correct: 3
+        explanation: >-
+          A calls B, and B calls its left child D first. D is a leaf, so its two calls on `None` return
+          0 and the call on D returns 1 before any other real call finishes.
+        misses:
+          - index: 5
+            explanation: >-
+              F is the deepest node, but it is in B's right subtree. B finishes its left call on D
+              before it calls E, and E before F.
+          - index: 2
+            explanation: C is a leaf, but A calls it only after the whole left subtree has returned.
+          - index: 0
+            explanation: A waits for both of its children, so its call returns last.
+        elsewhere: Follow left links down from the root until a node has no children.
+      - line: 5
+        ask: The call on E has `left = 0`. What does it return once its right call finishes?
+        options:
+          - id: two
+            text: "2"
+            explanation: The right call on F returns 1, so E returns `1 + max(0, 1)`, which is 2.
+          - id: one
+            text: "1"
+            explanation: E would be a leaf only if both sides were empty. Its right child F returns 1.
+          - id: three
+            text: "3"
+            explanation: E counts itself and F. The empty left side adds nothing.
+        correct: two
+      - line: 6
+        ask: What does the call on B return?
+        options:
+          - id: three
+            text: "3"
+            explanation: B gets 1 from D and 2 from E, and returns `1 + max(1, 2)`, which is 3.
+          - id: four
+            text: "4"
+            explanation: 4 is the number of nodes under and including B. Height takes only the taller side.
+          - id: two
+            text: "2"
+            explanation: 2 is what E returned. B adds itself on top of it.
+        correct: three
+      - line: 6
+        ask: What does the call on A return?
+        options:
+          - id: four
+            text: "4"
+            explanation: A gets 3 from B and 1 from C and returns 4, the nodes on A, B, E, F.
+          - id: five
+            text: "5"
+            explanation: >-
+              5 is `3 + 1 + 1`, which counts both sides. A downward path enters only B or C.
+          - id: six
+            text: "6"
+            explanation: 6 is the node count. Height counts the nodes on one downward path.
+        correct: four
+
+  - id: tree-summaries-return-or-path
+    heading: What leaves the call, and what bends at it?
+    tags: [tree, recursion]
+    prompt: |-
+      **Worked example:** A node whose children report heights 3 and 2 returns 4 to its parent, itself
+      plus the taller side. The longest path that bends at it goes down both sides: 3 + 2, so 5 edges.
+
+      `height` counts nodes, and a path's length counts edges.
+
+      ```text
+            W
+           /
+          X
+         / \
+        P   Q
+       /     \
+      R       S
+      ```
+
+      What does the call on X return to W, and how many edges does the longest path that bends at X
+      have?
+    options:
+      - id: right
+        text: Returns 3; the path that bends at X has 4 edges
+        explanation: >-
+          X's children both report 2. X returns `1 + max(2, 2)`, which is 3. The path R, P, X, Q, S
+          uses both sides and has `2 + 2` edges, which is 4.
+      - id: return-path
+        text: Returns 4; the path that bends at X has 4 edges
+        explanation: >-
+          4 is the bent path, but the parent W cannot use it: a path coming down from W enters X and
+          then continues into only one of X's children.
+      - id: count-nodes
+        text: Returns 3; the path that bends at X has 5 edges
+        explanation: >-
+          The path R, P, X, Q, S has 5 nodes and 4 links between them. With heights in nodes, the
+          left height plus the right height is already the edge count.
+      - id: no-self
+        text: Returns 2; the path that bends at X has 4 edges
+        explanation: >-
+          2 is what each child reports. X is on every downward path from X, so it adds itself on top.
+    correct: right
+    followUps:
+      return-path:
+        prompt: A path comes down from W into X. How many of X's children can it then visit?
+        options:
+          - { id: one-child, text: "One, because going into both would mean passing X twice" }
+          - { id: both-children, text: "Both, one after the other" }
+          - { id: no-children, text: "None, because it must stop at X" }
+        correct: one-child
+        explanation: >-
+          A path never repeats a node. Whatever W extends has to be a one-sided chain from X, which
+          is X's height, while the bent path is only a candidate answer.
+      count-nodes:
+        prompt: "`height(P)` is 2, counting P and R. How many edges join X to R?"
+        options:
+          - { id: two-edges, text: "2, the links X to P and P to R" }
+          - { id: three-edges, text: "3, one per node from X to R" }
+          - { id: one-edge, text: "1, because R is a leaf" }
+        correct: two-edges
+        explanation: >-
+          A child's height in nodes equals the edges from its parent down to the bottom of that
+          side. So the two heights add up to the edges of the bent path, with no extra term.
+      no-self:
+        prompt: Which nodes are on the longest downward path that starts at X?
+        options:
+          - { id: x-included, text: "X, then P and R (or Q and S)" }
+          - { id: x-excluded, text: "P and R only; X is the parent" }
+          - { id: all-five, text: "X, P, Q, R and S" }
+        correct: x-included
+        explanation: >-
+          A downward path from X starts at X. The call on X therefore reports one more than its
+          taller child.
+
+  - id: tree-summaries-bend-ends
+    format: drag-pointers
+    heading: Where does the path end?
+    tags: [tree, dfs]
+    prompt: |-
+      A path that bends at A goes down into A's left subtree and down into its right subtree. Drag
+      `left` to the far end of the longest such path in A's left subtree, and `right` to its far
+      end in A's right subtree. The cells list the nodes level by level.
+
+      ```text
+              A
+             / \
+            B   C
+           / \   \
+          D   E   F
+             /     \
+            G       H
+      ```
+    code: |
+      # height counts nodes; the longest path that
+      # bends at a node has height(left) + height(right) edges
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G, H]
+    pointers:
+      - name: left
+        start: 0
+        correct: 6
+        explanation: >-
+          B's taller side is E, then G, so the left half is A, B, E, G: `height(B)` is 3. The whole
+          path G, E, B, A, C, F, H has 3 + 3 = 6 edges.
+        misses:
+          - index: 3
+            explanation: >-
+              D is a leaf, but the path through D gives B a side of 2 nodes. Through E and G it has 3,
+              so G is farther.
+          - index: 4
+            explanation: E has a child, G. The path keeps going down while there is a node below.
+          - index: 1
+            explanation: B is only one link below A. The path continues down B's taller side.
+        elsewhere: The left end stays in A's left subtree, at the bottom of B's taller side.
+      - name: right
+        start: 0
+        correct: 7
+        explanation: C has one child, F, and F has one child, H, so the right half ends at H.
+        misses:
+          - index: 5
+            explanation: F has a right child, H, so the path goes one more link down.
+          - index: 2
+            explanation: C is one link below A, and it has a child below it.
+        elsewhere: The right end stays in A's right subtree, at the bottom of its longest chain.
+
+  - id: tree-summaries-best-node
+    format: tap-cell
+    heading: Which call sets the answer?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      **Worked example:** Every call offers one candidate, `left + right`, the path that bends at its
+      node. `best` keeps the largest candidate seen so far.
+
+      `diameter(root)` runs on the tree below and returns 5. Tap the node whose call first raises `best` to 5.
+
+      ```text
+              A
+             /
+            B
+           / \
+          C   D
+         /     \
+        E       F
+                 \
+                  G
+      ```
+    code: |
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = max(best, left + right)
+              return 1 + max(left, right)
+          height(root)
+          return best
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G]
+    correct: 1
+    explanation: >-
+      B's children report 2 (C, E) and 3 (D, F, G), so B offers `2 + 3`, which is 5: the path E, C,
+      B, D, F, G. A runs after B and offers only `4 + 0`, and `max` keeps 5.
+    misses:
+      - index: 0
+        explanation: >-
+          A's left side reports 4 and its right side is empty, so A offers 4. The longest path never
+          reaches A: it bends one level lower.
+      - index: 2
+        explanation: C offers `1 + 0`, which is 1. Its subtree is only C and E.
+      - index: 3
+        explanation: D's left side is empty and its right side reports 2, so D offers 2.
+      - index: 4
+        explanation: E is a leaf and offers 0. A path needs at least two nodes to have an edge.
+      - index: 5
+        explanation: F offers `0 + 1`, which is 1, the path F, G.
+      - index: 6
+        explanation: G is a leaf and offers 0. G is an end of the longest path, not where it bends.
+
+  - id: tree-summaries-root-only
+    heading: What does this version return?
+    tags: [tree, recursion]
+    prompt: |-
+      This version measures only the path that bends at the root. `height` counts nodes.
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          return 1 + max(height(node.left), height(node.right))
+
+      def diameter(root):
+          return height(root.left) + height(root.right)
+      ```
+
+      ```text
+            P
+           /
+          Q
+         / \
+        R   S
+       /     \
+      T       U
+      ```
+
+      What does `diameter(root)` return on this tree?
+    options:
+      - id: three
+        text: "`3`"
+        explanation: >-
+          `height(Q)` is 3 and P's right side is empty, so it returns 3, the path T, R, Q, P. The
+          longest path, T, R, Q, S, U, has 4 edges, but it bends at Q, and this code adds the two
+          sides only at P.
+      - id: four
+        text: "`4`"
+        explanation: >-
+          4 is the longest path in the tree, but this code adds two heights at one node only. That
+          path never passes through P.
+      - id: five
+        text: "`5`"
+        explanation: >-
+          5 is the number of nodes on the path T, R, Q, S, U. The code returns the sum of two
+          heights, and it takes them at the root.
+    correct: three
+    followUps:
+      four:
+        prompt: The 4-edge path bends at Q. Which nodes does this code add a left and right height at?
+        options:
+          - { id: root-only, text: "Only at P, the root, so Q's two sides are never added together" }
+          - { id: every-node, text: "At every node, since `height` visits them all" }
+          - { id: leaves-only, text: "Only at the leaves" }
+        correct: root-only
+        explanation: >-
+          `height` visits every node, but it only returns one-sided heights. To catch a path that
+          bends below the root, each call must offer its own `left + right`, and the largest is kept.
+      five:
+        prompt: What does `height(root.left) + height(root.right)` measure when heights count nodes?
+        options:
+          - { id: edges-at-root, text: "Edges on the longest path that bends at the root" }
+          - { id: nodes-in-tree, text: "Nodes in the whole tree" }
+          - { id: nodes-on-path, text: "Nodes on the longest path anywhere" }
+        correct: edges-at-root
+        explanation: >-
+          Each side's height in nodes equals the edges from the root to the bottom of that side.
+          Their sum is the edge count of one bent path, the one through the root.

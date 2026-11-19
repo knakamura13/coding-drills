@@ -4,8 +4,9 @@
  * Version 6 expands the select-window-method checkpoint from one item to a full sitting.
  * Version 7 expands the validate-or-ancestor checkpoint from two items to a full sitting.
  * Version 8 grows the Greedy choices checkpoint pool.
+ * Version 9 grows the Tree summaries checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 8;
+export const EXAM_RULES_VERSION = 9;
 
 export interface QuestionRef {
 	deckId: string;

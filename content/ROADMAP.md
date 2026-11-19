@@ -219,3 +219,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | BST order | `bst-order` | in review |
 | Trees and graphs #13 | BST order: review | `bst-order-review` | in review |
 | Trees and graphs #13 | BST order: checkpoint | `bst-order-checkpoint` | in review |
+| Trees and graphs #13 | Tree summaries | `tree-summaries` | in review |
+| Trees and graphs #13 | Tree summaries: review | `tree-summaries-review` | in review |
+| Trees and graphs #13 | Tree summaries: checkpoint | `tree-summaries-checkpoint` | in review |

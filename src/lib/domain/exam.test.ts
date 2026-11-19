@@ -221,6 +221,27 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('carries forward prior trace-diameter passes, including version 6', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'tree-summaries')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const original = { ...attempt('diameter-return-vs-record', true), deckId: 'trees-traversals-bst' };
+		expect(drills).toHaveLength(5);
+		expect(checkpoint.mix).toEqual(['complete-code', 'trace-tree']);
+		// The old pool was this one item, so one correct answer under an older version was a pass.
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 6 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, correct: false }])).toBe(false);
+		// A single item of the new five-item pool is not a sitting, even under an older version.
+		const fresh = drills.find((drill) => drill.questionId === 'tree-summaries-exam-trace')!;
+		expect(examPassed(drills, checkpoint.mix, [{ ...attempt(fresh.questionId, true), deckId: fresh.deckId, examRulesVersion: 6 }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
 		const sitting = [attempt('a', true), attempt('b', true), attempt('c', false), attempt('d', true), attempt('e', true)];
 		expect(examPassed(pool, mix, sitting)).toBe(true);
