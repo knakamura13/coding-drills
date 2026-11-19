@@ -42,18 +42,22 @@ questions:
     correct: memo
     followUps:
       table:
-        prompt: How many values does a bottom-up table compute for `n = 10**6`, against the cache?
+        prompt: >-
+          A dense bottom-up table fills every index from 0 to `n`. For `n = 10**6`, how many values
+          does it compute, against the cache?
         options:
           - id: million-vs-few
-            text: 1,000,001 against 108, since the table cannot know which values the answer needs
+            text: 1,000,001 against 108
           - id: same
-            text: The same number, since both compute each needed value once
+            text: 108 against 108
           - id: fewer
-            text: Fewer, since the table skips values that are never read
+            text: 21 against 108
         correct: million-vs-few
         explanation: >-
-          A table fills every state in order. A cache computes only states that a call reaches.
-          When the reachable states are sparse, the cache does far less work.
+          A dense table fills every index, read or not. A cache computes only the states a call
+          reaches, and here those are sparse. A table could fill only the reachable states, but it
+          would first have to find them by walking `// 2` and `// 3` from `n`, which the recursion
+          already does.
       rolling:
         prompt: For `n = 10**6`, how far back from `n` is the read `f(n // 2)`?
         options:
@@ -138,7 +142,8 @@ questions:
       return dp[n]
       ```
 
-      `n` can reach a million, and only `dp[n]` is needed. Which version fits best?
+      `n` can reach a million, and only `dp[n]` is needed. The counts grow large, but treat each
+      stored count as one unit of space and each addition as one step. Which version fits best?
     options:
       - id: three-vars
         text: A loop that keeps the last three values, in O(n) time and O(1) extra space
@@ -232,14 +237,15 @@ questions:
       - id: low-to-high
         text: "`c` from 1 up to `r - 1`, since the left neighbor has to be up to date first"
         explanation: >-
-          Left to right, `row[c - 1]` already holds this row's value, which is a sideways step the
-          walk cannot take. On `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]` it returns 10, where the
-          answer is 8.
+          Left to right, after the first iteration, `row[c - 1]` already holds this row's value,
+          which is a sideways step the walk cannot take. On `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]`
+          it returns 10, where the answer is 8.
       - id: either
         text: Either direction, since each write reads only entries of the row above
         explanation: >-
           The reads are meant to be the row above, but in one list that holds only for entries not
-          yet rewritten. Left to right reads a rewritten `row[c - 1]`, and returns 10 instead of 8
+          yet rewritten. Left to right reads a rewritten `row[c - 1]` after the first iteration, and
+          returns 10 instead of 8
           on `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]`.
       - id: two-rows
         text: No order works; a second list is needed, since both reads come from the row above
@@ -249,19 +255,21 @@ questions:
     correct: high-to-low
     followUps:
       low-to-high:
-        prompt: Going left to right, what does `row[c - 1]` hold when `row[c]` is written?
+        prompt: >-
+          Going left to right on row 3, the loop writes `row[1]` and then `row[2]`. What does
+          `row[1]` hold when `row[2]` is written?
         options:
           - id: new
-            text: The current row's total at `c - 1`, a cell the walk cannot step from
+            text: Row 3's total at index 1, a cell the walk cannot step from
           - id: old
-            text: The row above's total at `c - 1`, which the walk needs
+            text: Row 2's total at index 1, which the walk needs
           - id: copy
             text: A copy saved before the inner loop
         correct: new
         explanation: >-
-          The direction decides whether a read sees the old or the new value. A step comes from the
-          row above, so this update needs old values on both sides, and only right to left keeps
-          `c - 1` old.
+          `row[1]` was rewritten one iteration earlier. Only the first iteration of a row reads an
+          old `row[c - 1]`, since `row[0]` is updated after the loop. A step comes from the row above, so every
+          interior cell needs old values on both sides, and only right to left keeps `c - 1` old.
       either:
         prompt: >-
           In one list, which entries still hold the row above while `row[c]` is being written?
@@ -280,11 +288,11 @@ questions:
         prompt: Going right to left, what does `row[c - 1]` hold when `row[c]` is written?
         options:
           - id: old
-            text: The row above's total at `c - 1`, since the loop has not reached it yet
+            text: The row above's total at `c - 1`
           - id: new
             text: The current row's total at `c - 1`
           - id: lost
-            text: Nothing useful, since it was overwritten
+            text: The current row's total at `c`
         correct: old
         explanation: >-
           From right to left, every read at `c - 1` and `c` happens before that index is
