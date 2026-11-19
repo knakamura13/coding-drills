@@ -1,0 +1,499 @@
+id: bst-order
+title: BST order
+description: Use the ordering of a binary search tree to pick a subtree, carry an ancestor's bound down, and find where two targets split.
+heading: Where does the order send you?
+
+questions:
+  - id: bst-order-rule-out-subtree
+    heading: What can one comparison rule out?
+    tags: [tree, binary-search]
+    prompt: |-
+      In a binary search tree (BST) with distinct values, every value in a node's left subtree is smaller
+      than the node and every value in its right subtree is larger.
+
+      **Worked example:** A search for 25 compares it with 50 first. 25 is smaller, so only 50's left
+      subtree can hold it, and 70, 60 and 80 are never looked at.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+
+      A search for 63 also starts by comparing with 50. Which nodes does that one comparison rule out?
+    options:
+      - id: left-subtree
+        text: 30, 20, 40 and 35, the whole left subtree of 50
+        explanation: >-
+          63 is larger than 50, and every value left of 50 is smaller than 50, so none of them can be 63.
+          One comparison discards that entire subtree. The search continues at 70 and never looks at
+          30, 20, 40 or 35.
+      - id: left-child
+        text: Only 30, the left child of 50
+        explanation: >-
+          The rule covers the whole left subtree, not only the child. 20, 40 and 35 are all below 30, so
+          they are all smaller than 50 as well, and none of them can be 63.
+      - id: right-subtree
+        text: 70, 60 and 80, the whole right subtree of 50
+        explanation: >-
+          That is the side 63 must be on. Values larger than 50 live to the right of 50, so the search
+          keeps the right subtree and drops the left.
+      - id: nothing-yet
+        text: None yet, since every node must still be compared once
+        explanation: >-
+          That is how a search of an unordered tree works. In a BST the comparison with 50 tells you
+          which side 63 must be on, so the other side never needs to be checked.
+    correct: left-subtree
+    followUps:
+      left-child:
+        prompt: 35 sits two levels below 30. What does the BST rule at 50 say about it?
+        options:
+          - { id: below-fifty, text: "It is in 50's left subtree, so it must be smaller than 50" }
+          - { id: only-parent, text: "Nothing; the rule at 50 only constrains 50's two children" }
+          - { id: larger-thirty, text: "Only that it is larger than 30, its grandparent" }
+        correct: below-fifty
+        explanation: >-
+          The rule at a node constrains its whole subtree, at every depth. Everything under 30 is in 50's
+          left subtree, so everything under 30 is smaller than 50.
+      right-subtree:
+        prompt: Which side of 50 holds values larger than 50?
+        options:
+          - { id: right-side, text: "The right side, so a search for 63 continues at 70" }
+          - { id: left-side, text: "The left side, so a search for 63 continues at 30" }
+          - { id: either-side, text: "Either side, depending on how the tree was built" }
+        correct: right-side
+        explanation: >-
+          Larger values are always to the right in a BST. A search keeps the side that can hold the
+          target and discards the other.
+      nothing-yet:
+        prompt: What makes it safe to skip a subtree without looking inside it?
+        options:
+          - { id: ordering, text: "Every value in it is on the wrong side of 50 to equal 63" }
+          - { id: balanced, text: "The tree is balanced, so the skipped half is small" }
+          - { id: sorted-list, text: "The values were inserted in sorted order" }
+        correct: ordering
+        explanation: >-
+          The ordering, not the shape, is what lets a search discard a subtree. A lopsided BST still
+          lets each comparison drop one side; it just may need more comparisons in total.
+
+  - id: bst-order-search-trace
+    format: step-trace
+    heading: Where does the search go next?
+    tags: [tree, binary-search]
+    prompt: |-
+      `search(root, 38)` runs on the tree below. The cells list the nodes level by level; they are not
+      the order the search visits them. Tap where `node` is after each pass, then say how the search ends.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+    code: |-
+      def search(node, target):
+          while node is not None:
+              if target == node.val:
+                  return node
+              if target < node.val:
+                  node = node.left
+              else:
+                  node = node.right
+          return None
+    sequence:
+      kind: array
+      name: nodes
+      cells: [50, 30, 70, 20, 40, 60, 80, 35]
+    start:
+      - { name: node, at: 0 }
+    steps:
+      - line: 2
+        ask: Where is `node` after the first pass?
+        pointer: node
+        correct: 1
+        explanation: 38 is smaller than 50, so `node` moves to 50's left child, 30.
+        misses:
+          - index: 2
+            explanation: 70 is 50's right child. 38 is smaller than 50, so the search goes left.
+          - index: 4
+            explanation: Each pass moves exactly one level. 40 is two levels below 50.
+        elsewhere: One pass compares 38 with 50 and moves to one of 50's children.
+      - line: 2
+        ask: Where is `node` after the second pass?
+        pointer: node
+        correct: 4
+        explanation: 38 is larger than 30, so `node` moves to 30's right child, 40.
+        misses:
+          - index: 3
+            explanation: 20 is 30's left child. 38 is larger than 30, so the search goes right.
+          - index: 7
+            explanation: 35 is two levels below 30. One pass moves one level, to a child of 30.
+        elsewhere: The search is at 30 now, so it moves to one of 30's children.
+      - line: 2
+        ask: Where is `node` after the third pass?
+        pointer: node
+        correct: 7
+        explanation: 38 is smaller than 40, so `node` moves to 40's left child, 35.
+        misses:
+          - index: 1
+            explanation: The search never moves back up. From 40 it can only go to one of 40's children.
+          - index: 5
+            explanation: >-
+              60 is in 50's right subtree. The first comparison already ruled that side out for 38.
+        elsewhere: The search is at 40, and 38 is smaller, so it moves to 40's left child.
+      - line: 3
+        ask: How does the search end?
+        options:
+          - id: returns-none
+            text: It moves to 35's empty right child and returns `None`
+            explanation: >-
+              38 is not 35 and is larger, so `node` moves to 35's right child. There is none, so the loop
+              ends and the search returns `None`. 38 is not in the tree.
+          - id: returns-closest
+            text: It returns 35, the closest value it reached
+            explanation: >-
+              The search only returns a node whose value equals the target. 35 is not 38, so it keeps
+              going, falls off at 35's empty right child, and returns `None`.
+          - id: backs-up
+            text: It backs up to 40 and tries 40's right side
+            explanation: >-
+              Nothing in the loop moves back up. 40 has no right child anyway, and the ordering already
+              says 38 can only be below 35 on the right, where there is nothing.
+        correct: returns-none
+
+  - id: bst-order-insert-parent
+    format: tap-cell
+    heading: Where does the new value go?
+    tags: [tree, binary-search, recursion]
+    prompt: |-
+      `insert(root, 65)` adds 65 to the tree below. It follows the same left-or-right choices as a
+      search, and puts the new node in the first empty child slot it reaches.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+
+      Tap the node that becomes the parent of 65.
+    code: |
+      def insert(node, val):
+          if node is None:
+              return TreeNode(val)
+          if val < node.val:
+              node.left = insert(node.left, val)
+          else:
+              node.right = insert(node.right, val)
+          return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [50, 30, 70, 20, 40, 60, 80, 35]
+    correct: 5
+    explanation: >-
+      65 is larger than 50, so it goes right to 70. 65 is smaller than 70, so it goes left to 60. 65 is
+      larger than 60, and 60 has no right child, so 65 becomes 60's right child.
+    misses:
+      - index: 0
+        explanation: 50 already has two children. 65 is larger than 50, so the call goes on to 70.
+      - index: 1
+        explanation: 30 is in 50's left subtree, where every value is smaller than 50. 65 is larger, so it never goes there.
+      - index: 2
+        explanation: >-
+          The call does reach 70, but 65 is smaller than 70, so it goes into 70's left slot. That slot
+          already holds 60, so the call carries on to 60.
+      - index: 3
+        explanation: 20 is in 50's left subtree. 65 is larger than 50, so it goes right at the root.
+      - index: 4
+        explanation: 40 is in 50's left subtree. 65 is larger than 50, so it never reaches 40.
+      - index: 6
+        explanation: >-
+          80 is larger than 65, but 65 is also smaller than 70, so the call turns left at 70 and never
+          reaches 80.
+      - index: 7
+        explanation: 35 is in 50's left subtree, which the first comparison ruled out.
+
+  - id: bst-order-inherited-range
+    heading: What range is allowed here?
+    tags: [tree]
+    prompt: |-
+      Every ancestor puts a limit on a node: being in an ancestor's left subtree means smaller than it,
+      and being in its right subtree means larger.
+
+      **Worked example:** 70 is in 50's right subtree and has no other ancestor, so 70 must be greater
+      than 50, with no upper limit.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+
+      Which values could sit where 40 is and keep the tree a BST? (Keep everything else as it is, and
+      ignore the 35 below it.)
+    options:
+      - id: both-bounds
+        text: Greater than 30 and less than 50
+        explanation: >-
+          40 is in 30's right subtree, so it must be larger than 30. It is also in 50's left subtree, so
+          it must be smaller than 50. Both ancestors apply at once, giving the open range (30, 50).
+      - id: parent-only
+        text: Greater than 30, with no upper limit
+        explanation: >-
+          That checks only the parent. 40 is also in 50's left subtree, so a value such as 55 would sit
+          on the left of 50 while being larger than it.
+      - id: root-only
+        text: Less than 50, with no lower limit
+        explanation: >-
+          That checks only the root. 40 is a right child of 30, so a value such as 25 would sit on
+          30's right while being smaller than it.
+      - id: wrong-ancestor
+        text: Greater than 30 and less than 70
+        explanation: >-
+          70 is not an ancestor of 40; it sits on the other side of the root. The upper limit comes from
+          50, the ancestor whose left subtree holds this position.
+    correct: both-bounds
+    followUps:
+      parent-only:
+        prompt: Suppose 55 sat where 40 is. Which rule would it break?
+        options:
+          - { id: root-rule, text: "It is in 50's left subtree, but it is larger than 50" }
+          - { id: parent-rule, text: "It is a right child of 30, but it is not larger than 30" }
+          - { id: no-rule, text: "None; each parent-child pair would still be in order" }
+        correct: root-rule
+        explanation: >-
+          Each parent-child pair being in order is not enough. A node must also fit every ancestor
+          above its parent, so the upper limit from 50 still applies two levels down.
+      root-only:
+        prompt: Suppose 25 sat where 40 is. Which rule would it break?
+        options:
+          - { id: parent-rule, text: "A right child of 30 needs a value above 30, and 25 is below it" }
+          - { id: root-rule, text: "It is in 50's left subtree, but it is larger than 50" }
+          - { id: no-rule, text: "None; 25 is smaller than 50, which is all that matters here" }
+        correct: parent-rule
+        explanation: >-
+          The parent is an ancestor too. The nearest ancestor on each side sets the tightest bound,
+          and here the lower bound comes from 30.
+      wrong-ancestor:
+        prompt: Which nodes set the limits for the position of 40?
+        options:
+          - { id: path-nodes, text: "The nodes on the path from the root down to it: 50 and 30" }
+          - { id: same-level, text: "The nodes on the level above it: 30 and 70" }
+          - { id: neighbors, text: "The nodes drawn closest to it on either side" }
+        correct: path-nodes
+        explanation: >-
+          Only ancestors constrain a node. Their bounds are inherited down the path, and nodes on other
+          branches, such as 70, put no limit on it.
+
+  - id: bst-order-grandparent-violation
+    format: tap-cell
+    heading: Which node breaks the rule?
+    tags: [tree, recursion]
+    prompt: |-
+      In the tree below, every left child is smaller than its parent and every right child is larger.
+      It is still not a BST, because one node does not fit an ancestor further up.
+
+      ```text
+              40
+            /    \
+          20      60
+         /  \    /  \
+        10  45  50  70
+      ```
+
+      Tap the node that breaks the BST rule. The function shows the range each call checks.
+    code: |
+      def valid(node, low, high):
+          if node is None:
+              return True
+          if not low < node.val < high:
+              return False
+          return (valid(node.left, low, node.val)
+                  and valid(node.right, node.val, high))
+    sequence:
+      kind: array
+      name: nodes
+      cells: [40, 20, 60, 10, 45, 50, 70]
+    correct: 4
+    explanation: >-
+      45 is a right child of 20 and larger than it, so the pair looks fine. But 45 is in 40's left
+      subtree, so it must be smaller than 40. Its call gets the range (20, 40), and 45 is outside it.
+    misses:
+      - index: 0
+        explanation: 40 is the root. It has no ancestor, so its range is unlimited and it always fits.
+      - index: 1
+        explanation: 20 is in 40's left subtree and is smaller than 40. Its range is (-inf, 40), and 20 fits.
+      - index: 2
+        explanation: 60 is in 40's right subtree and is larger than 40. Its range is (40, inf), and 60 fits.
+      - index: 3
+        explanation: 10 must be smaller than 20 and smaller than 40. Its range is (-inf, 20), and 10 fits.
+      - index: 5
+        explanation: >-
+          50 is in 40's right subtree and 60's left subtree, so its range is (40, 60). 50 fits both
+          ancestors.
+      - index: 6
+        explanation: 70 must be larger than 40 and larger than 60. Its range is (60, inf), and 70 fits.
+
+  - id: bst-order-split-node
+    heading: Where do the two targets part ways?
+    tags: [tree, binary-search]
+    prompt: |-
+      The lowest common ancestor of two values is the lowest node with both of them in its subtree. A
+      node counts as being in its own subtree.
+
+      **Worked example:** For 20 and 40, both are smaller than 50, so both are in 50's left subtree.
+      At 30, 20 is smaller and 40 is larger, so they go different ways. The answer is 30.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+
+      What is the lowest common ancestor of 35 and 60?
+    options:
+      - id: root
+        text: "50"
+        explanation: >-
+          35 is smaller than 50 and 60 is larger, so they are already on different sides of the root. No
+          node below 50 has both in its subtree, so 50 is the answer.
+      - id: thirty
+        text: "30"
+        explanation: >-
+          30's subtree holds 35 but not 60. 60 is larger than 50, so it is on 50's right side, away
+          from 30.
+      - id: forty
+        text: "40"
+        explanation: >-
+          40 is 35's parent, but 60 is not below 40. The common ancestor has to hold both values.
+      - id: seventy
+        text: "70"
+        explanation: >-
+          70 is 60's parent, but 35 is smaller than 50, so it is on 50's left side, away from 70.
+    correct: root
+    followUps:
+      thirty:
+        prompt: Comparing both values with 50, which way does each one go?
+        options:
+          - { id: split, text: "35 goes left and 60 goes right, so they part at 50" }
+          - { id: both-left, text: "Both go left, so the answer is below 50 on the left" }
+          - { id: both-right, text: "Both go right, so the answer is below 50 on the right" }
+        correct: split
+        explanation: >-
+          The first node where the two values go different ways is the lowest common ancestor. Here
+          that happens at the root.
+      forty:
+        prompt: Is 60 anywhere in 40's subtree?
+        options:
+          - { id: no-sixty, text: "No; 60 is larger than 50, so it is in the root's other subtree" }
+          - { id: yes-larger, text: "Yes; 60 is larger than 40, so it is in 40's right subtree" }
+          - { id: yes-near, text: "Yes; 60 and 40 are close in value" }
+        correct: no-sixty
+        explanation: >-
+          A common ancestor must contain both values. Being larger than 40 is not enough: 60 also has to
+          be smaller than 50 to sit under 40, and it is not.
+      seventy:
+        prompt: Is 35 anywhere in 70's subtree?
+        options:
+          - { id: no-35, text: "No; everything under 70 is above 50, and 35 is below 50" }
+          - { id: yes-smaller, text: "Yes; 35 is smaller than 70, so it is in 70's left subtree" }
+          - { id: yes-any, text: "Yes; every node is in the subtree of a node on the second level" }
+        correct: no-35
+        explanation: >-
+          Everything under 70 is larger than 50. 35 is smaller than 50, so it is on the other side of the
+          root, and only the root holds both.
+
+  - id: bst-order-target-is-ancestor
+    format: step-trace
+    heading: Where does the walk stop?
+    tags: [tree, binary-search]
+    prompt: |-
+      `lca(root, 35, 40)` finds the lowest common ancestor of 35 and 40. A node counts as being in its
+      own subtree. The cells list the nodes level by level. Tap where `node` is after each pass, then
+      say what the call returns.
+
+      ```text
+              50
+            /    \
+          30      70
+         /  \    /  \
+        20  40  60  80
+            /
+           35
+      ```
+    code: |-
+      def lca(node, p, q):
+          while node is not None:
+              if p < node.val and q < node.val:
+                  node = node.left
+              elif p > node.val and q > node.val:
+                  node = node.right
+              else:
+                  return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [50, 30, 70, 20, 40, 60, 80, 35]
+    start:
+      - { name: node, at: 0 }
+    steps:
+      - line: 2
+        ask: Where is `node` after the first pass?
+        pointer: node
+        correct: 1
+        explanation: 35 and 40 are both smaller than 50, so both are in 50's left subtree, and `node` moves to 30.
+        misses:
+          - index: 2
+            explanation: Both values are smaller than 50, so the walk goes left, not right.
+          - index: 4
+            explanation: One pass moves one level. 40 is two levels below 50.
+        elsewhere: Both values are smaller than 50, so the walk moves to 50's left child.
+      - line: 2
+        ask: Where is `node` after the second pass?
+        pointer: node
+        correct: 4
+        explanation: 35 and 40 are both larger than 30, so `node` moves to 30's right child, 40.
+        misses:
+          - index: 3
+            explanation: 20 is 30's left child. Both values are larger than 30, so the walk goes right.
+          - index: 7
+            explanation: One pass moves one level, to a child of 30. 35 is two levels below 30.
+        elsewhere: Both values are larger than 30, so the walk moves to 30's right child.
+      - line: 3
+        ask: What does the call return?
+        options:
+          - id: forty
+            text: "40"
+            explanation: >-
+              35 is smaller than 40, but 40 is not smaller than itself, so the first test fails. The
+              second fails too, and the call returns 40. 40 holds 35 below it and is one of the targets.
+          - id: thirty-five
+            text: "35"
+            explanation: >-
+              Moving left needs both values to be smaller than 40, and `q` is 40 itself, so the walk stops
+              here. 35 is in 40's subtree, but 40 is not in 35's.
+          - id: thirty
+            text: "30"
+            explanation: >-
+              The walk never goes back up. At 30 both values were larger, so they had not split yet,
+              and 30 is not the lowest node holding both.
+        correct: forty

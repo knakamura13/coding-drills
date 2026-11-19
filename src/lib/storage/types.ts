@@ -2,8 +2,9 @@
  * Version 4 expands several one-item checkpoints to full five-item sittings.
  * Version 5 expands the top-K-or-merge checkpoint from two items to a full sitting.
  * Version 6 expands the select-window-method checkpoint from one item to a full sitting.
+ * Version 7 expands the validate-or-ancestor checkpoint from two items to a full sitting.
  */
-export const EXAM_RULES_VERSION = 6;
+export const EXAM_RULES_VERSION = 7;
 
 export interface QuestionRef {
 	deckId: string;
