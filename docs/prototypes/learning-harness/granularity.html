@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson granularity · Coding Drills</title>
+<style>
+:root { color-scheme: light; font: 16px/1.5 "DM Sans", system-ui, sans-serif; background: #f4f4ed; color: #1a312b; }
+* { box-sizing: border-box; }
+main { max-width: 660px; margin: auto; padding: 28px 18px 52px; }
+header { border-bottom: 1px solid #a8b7aa; padding-bottom: 11px; font-weight: 650; }
+h1 { margin: 23px 0 14px; font: normal clamp(30px, 6vw, 45px)/1.06 Georgia, serif; }
+h2 { margin: 0 0 12px; font-size: 23px; line-height: 1.26; }
+button { font: inherit; min-height: 44px; border: 1px solid #587767; border-radius: 6px; background: #edf4eb; color: #1a4937; padding: 8px 13px; text-align: left; cursor: pointer; }
+button:hover { background: #dcebdd; }
+button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
+button[aria-pressed=true] { background: #225c45; color: white; }
+nav { display: flex; gap: 8px; flex-wrap: wrap; }
+article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; padding: 19px; margin: 17px 0; }
+pre { white-space: pre-wrap; background: #edf3ed; padding: 10px 12px; border-radius: 5px; font-size: .92rem; }
+.choices { display: grid; gap: 7px; margin-top: 14px; }
+.feedback { margin-top: 14px; background: #f1f4ed; border-left: 3px solid #567d63; padding: 10px 12px; }
+.feedback p { margin: 5px 0; }
+.step, .small { color: #41564a; font-size: .88rem; }
+article .step { margin: 0 0 9px; }
+footer { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+</style>
+</head>
+<body>
+<main>
+<header>Coding Drills · Lesson review</header>
+<h1>Longest common substring</h1>
+<nav aria-label="Lesson version">
+<button id="combined" aria-pressed="true">Combined card</button>
+<button id="guided" aria-pressed="false">One step at a time</button>
+</nav>
+<article id="card" aria-label="Lesson card"></article>
+<footer><p class="small">Try carrying an earlier count across a mismatch in both versions.</p><button id="restart">Start over</button></footer>
+</main>
+<script>
+const combined = {
+ title: "Which rule gives the right result?",
+ context: 'For “parcel” and “pancake,” each cell counts the matching run ending at its two letters. When the letters match, add 1 to the diagonal cell.',
+ question: "What goes into a cell on a mismatch, and where do you find the final answer?",
+ options: ["Use zero. Take the largest cell anywhere.", "Use the larger neighbor. Take the corner cell.", "Use zero. Take the corner cell.", "Copy the diagonal. Take the largest cell anywhere."],
+ feedback: [
+  "A mismatch ends the current run. The largest run may have ended earlier, so scan all the cells.",
+  "Keeping the larger neighbor lets a run survive a gap. Check what a substring allows between two letters.",
+  "Zero is right for the mismatch. The corner only measures the run ending at the last pair, so it can miss a longer run that ended earlier.",
+  "The largest cell is right for the answer. A mismatch ends the current run, so copying the diagonal would carry a run through a gap."
+ ],
+ right: 0
+};
+
+const guided = [
+ {
+  title: "Read what one cell represents",
+  context: 'Each cell measures the matching run that ends at the specific pair of letters being compared.',
+  example: 'ca… and ca…\nAt the pair a / a, the cell is 2.',
+  question: 'What does the 2 count?',
+  options: ['The longest run anywhere in the words', 'The run “ca” ending at that pair of letters'],
+  right: 1,
+  feedback: 'A cell describes only the run ending at its pair of letters. An earlier run can have a different length.',
+  retry: {example:'plan… and plan…\nAt the pair n / n, the cell is 4.',question:'What does the 4 count?',options:['The run “plan” ending at that pair of letters','The longest run anywhere in the words'],right:0}
+ },
+ {
+  title: "Predict a mismatch",
+  context: 'The previous letter pair ended a matching run of length 2. Now look at the next pair.',
+  example: 'cat\ncab\nNext pair: t / b',
+  question: 'How long is the matching run ending at this pair?',
+  options:['0', '2'],
+  right:0,
+  feedback:'A matching run ending here would have to include these two letters. Since they differ, this cell is zero.',
+  retry:{example:'stew\nstep\nNext pair: w / p',question:'After the shared run “ste,” what goes in the new cell?',options:['3','0'],right:1}
+ },
+ {
+  title:'Find the result',
+  context:'The table stores each matching run at the pair where it ends.',
+  example:'kit\nkid\nEarlier pair i / i: 2\nFinal pair t / d: 0',
+  question:'Which of these two cells holds the answer for these words?',
+  options:['The earlier cell with 2', 'The final cell with 0'],
+  right:0,
+  feedback:'The mismatch affects the final cell. The earlier cell still records the longer matching run.',
+  retry:{example:'ping\npint\nEarlier pair n / n: 3\nFinal pair g / t: 0',question:'Which cell holds the answer for these words?',options:['The final cell with 0','The earlier cell with 3'],right:1}
+ }
+];
+
+const card = document.getElementById("card");
+let mode, stage, retry;
+function add(tag, text, parent=card, className=""){
+ const node=document.createElement(tag);
+ node.textContent=text;
+ if(className)node.className=className;
+ parent.append(node);
+ return node;
+}
+function control(label, action, parent){
+ const button=add("button",label,parent);
+ button.type="button";
+ button.addEventListener("click",action);
+ return button;
+}
+function heading(text){
+ const h=add("h2",text);
+ h.tabIndex=-1;
+ return h;
+}
+function render(focus=true){
+ document.getElementById("combined").setAttribute("aria-pressed",mode==="combined");
+ document.getElementById("guided").setAttribute("aria-pressed",mode==="guided");
+ card.replaceChildren();
+ const step = mode==="guided" ? guided[stage] : combined;
+ if(!step){
+  const done=heading("Sequence complete");
+  add("p","You identified what a cell represents, predicted a mismatch and recovered the longest run from an earlier cell.");
+  control("Compare the combined card",()=>start("combined"),card);
+  if(focus)done.focus();
+  return;
+ }
+ const prompt = retry ? step.retry : step;
+ if(mode==="guided")add("p", "Step "+(stage+1)+" of "+guided.length+(retry ? " · Retry" : ""),card,"step");
+ const h=heading(step.title);
+ if(!retry)add("p",step.context);
+ if(prompt.example)add("pre",prompt.example);
+ add("p",prompt.question);
+ const choices=add("div","",card,"choices");
+ prompt.options.forEach((option,index)=>control(option,()=>{
+  for (const button of choices.children)button.disabled=true;
+  const correct=prompt.right===index;
+  const result=add("div","",card,"feedback");
+  const verdict=add("p",correct?"Correct": "Try this reasoning",result);
+  verdict.tabIndex=-1;
+  add("p",mode==="guided"?step.feedback:step.feedback[index],result);
+  if(mode==="combined"){
+   control("Try one step at a time",()=>start("guided"),result);
+  }else if(correct){
+   control("Continue",()=>{stage++;retry=false;render()},result);
+  }else{
+   control(retry?"Retry this example":"Try a fresh example",()=>{retry=true;render()},result);
+  }
+  verdict.focus();
+ },choices));
+ if(focus)h.focus();
+}
+function start(version, focus=true){mode=version;stage=0;retry=false;render(focus)}
+document.getElementById("combined").onclick=()=>start("combined");
+document.getElementById("guided").onclick=()=>start("guided");
+document.getElementById("restart").onclick=()=>start(mode);
+start(location.hash==="#guided"?"guided":"combined",false);
+</script>
+</body>
+</html>
