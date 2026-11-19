@@ -195,3 +195,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | Connectivity | `connectivity` | in review |
 | Trees and graphs #13 | Connectivity: review | `connectivity-review` | in review |
 | Trees and graphs #13 | Connectivity: checkpoint | `connectivity-checkpoint` | in review |
+| Trees and graphs #13 | Tree walks | `tree-walks` | in review |
+| Trees and graphs #13 | Tree walks: review | `tree-walks-review` | in review |
+| Trees and graphs #13 | Tree walks: checkpoint | `tree-walks-checkpoint` | in review |

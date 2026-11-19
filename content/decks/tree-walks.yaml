@@ -1,0 +1,483 @@
+id: tree-walks
+title: Tree walks
+description: Name the parts of a binary tree, trace the order a walk visits them, and tell height from node count.
+heading: What does the walk do?
+
+questions:
+  - id: tree-walks-follow-links
+    format: tap-cell
+    heading: Which node is it?
+    tags: [tree]
+    prompt: |-
+      **Worked example:** `root` is A. `root.left` follows one link down to A's left child, B.
+      `root.left.left` follows one more link, to D.
+
+      ```text
+              A
+             / \
+            B   C
+           / \   \
+          D   E   F
+             /
+            G
+      ```
+
+      Tap the node that `root.left.right` names.
+    code: |
+      class TreeNode:
+          def __init__(self, val, left=None, right=None):
+              self.val = val
+              self.left = left
+              self.right = right
+
+      root.left.right
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G]
+    correct: 4
+    explanation: >-
+      Read the links from left to right. `root` is A, `.left` moves down to B, and `.right` moves down
+      from B to its right child, E. Each link moves exactly one level down.
+    misses:
+      - index: 0
+        explanation: >-
+          A is `root` itself. Every `.left` or `.right` moves one level down, so two links end two levels
+          below A.
+      - index: 1
+        explanation: That is `root.left`. The `.right` after it moves one more level down, from B to its right child.
+      - index: 2
+        explanation: >-
+          That is `root.right`. The first link after `root` is `.left`, which goes to B, and the
+          `.right` is taken from there.
+      - index: 3
+        explanation: That is `root.left.left`. The second link is `.right`, so it goes to B's other child.
+      - index: 5
+        explanation: >-
+          F is `root.right.right`. The first link here is `.left`, so the walk never enters C's side of
+          the tree.
+      - index: 6
+        explanation: >-
+          G is `root.left.right.left`, three links down. `root.left.right` stops one level higher, at G's
+          parent.
+
+  - id: tree-walks-subtree-members
+    heading: Which nodes are in the subtree?
+    tags: [tree]
+    prompt: |-
+      **Worked example:** The subtree rooted at C is C together with everything below it: C and F.
+
+      ```text
+              A
+             / \
+            B   C
+           / \   \
+          D   E   F
+             /
+            G
+      ```
+
+      Which nodes make up the subtree rooted at B?
+    options:
+      - id: children-only
+        text: D and E
+        explanation: >-
+          D and E are B's children, but a subtree also holds its own root and every node further
+          down. G sits below E, and B itself is the root of this subtree.
+      - id: no-root
+        text: D, E and G
+        explanation: >-
+          These are the nodes below B, but a subtree includes the node it is rooted at. The worked
+          example lists C in the subtree rooted at C.
+      - id: whole
+        text: B, D, E and G
+        explanation: >-
+          A subtree is one node and all of its descendants. B's descendants are its children D and E
+          and E's child G. A call such as `walk(root.left)` works on exactly these four nodes.
+      - id: with-parent
+        text: A, B, D, E and G
+        explanation: >-
+          A is B's parent, above B. A subtree reaches only downward from its root, so it never
+          includes an ancestor.
+    correct: whole
+    followUps:
+      children-only:
+        prompt: G is E's child, and E is B's child. Is G in the subtree rooted at B?
+        options:
+          - { id: yes-descendant, text: "Yes, because a subtree holds every node below its root, however many levels down" }
+          - { id: no-grandchild, text: "No, because G is two links below B, not one" }
+          - { id: no-leaf, text: "No, because G is a leaf and leaves belong only to their parent" }
+        correct: yes-descendant
+        explanation: >-
+          A subtree is not limited to one level. It holds the root and every descendant, so children,
+          grandchildren and deeper nodes all count.
+      no-root:
+        prompt: In the worked example, why is C part of the subtree rooted at C?
+        options:
+          - { id: root-included, text: "A subtree is named by its root, and the root is one of its nodes" }
+          - { id: c-is-leaf, text: "C is included only because it has a single child" }
+          - { id: c-is-right, text: "C is included only because it is a right child" }
+        correct: root-included
+        explanation: >-
+          The node a subtree is rooted at is the top node of that subtree. A call on that node handles
+          the node itself before or after its children, depending on the walk.
+      with-parent:
+        prompt: Which direction does a subtree extend from its root?
+        options:
+          - { id: down-only, text: "Only downward, through children and their children" }
+          - { id: up-and-down, text: "Up to the parent and down to the children" }
+          - { id: whole-level, text: "Sideways across the root's level, then downward" }
+        correct: down-only
+        explanation: >-
+          A node's subtree is the node plus its descendants. Its parent and siblings are outside it, and
+          a call on that node never reaches them through `.left` and `.right`.
+
+  - id: tree-walks-three-node-orders
+    heading: What is in `out` afterward?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      **Worked example:** If `out.append` comes before both calls, the walk records 5, then 3, then 8.
+
+      Here the append sits between the two calls. The tree is `TreeNode(5, TreeNode(3), TreeNode(8))`,
+      and `out` starts as `[]`.
+
+      ```python
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          out.append(node.val)
+          walk(node.right, out)
+      ```
+
+      ```text
+        5
+       / \
+      3   8
+      ```
+    options:
+      - id: preorder
+        text: "`[5, 3, 8]`"
+        explanation: >-
+          That is the worked example's order, with the append before both calls. Here the call on the
+          left child runs first, so 3 is recorded before 5.
+      - id: inorder
+        text: "`[3, 5, 8]`"
+        explanation: >-
+          The call on 5 first runs `walk` on its left child, which records 3. Then 5 runs its own append,
+          and last the call on its right child records 8. A node between the calls lands between its
+          left and right subtrees.
+      - id: postorder
+        text: "`[3, 8, 5]`"
+        explanation: >-
+          That order needs the append after both calls. Here the call on 5 records 5 as soon as its left
+          call returns, before it starts the call on 8.
+    correct: inorder
+    followUps:
+      preorder:
+        prompt: What is the first line the call on 5 runs after its `None` check?
+        options:
+          - { id: left-call, text: "`walk(node.left, out)`, so the call on 3 runs before 5 is recorded" }
+          - { id: append-first, text: "`out.append(node.val)`, so 5 is recorded first" }
+          - { id: right-call, text: "`walk(node.right, out)`, so 8 is recorded first" }
+        correct: left-call
+        explanation: >-
+          Lines run top to bottom inside each call. Whatever sits above the append runs first, so a
+          left call above it records the whole left subtree before the node.
+      postorder:
+        prompt: When the call on 3 returns, what does the call on 5 run next?
+        options:
+          - { id: its-append, text: "Its append, which records 5" }
+          - { id: right-next, text: "The call on 8, because both children come first" }
+          - { id: return-now, text: "It returns, because 3 was its only job" }
+        correct: its-append
+        explanation: >-
+          The append is the next line after the left call. The right call comes after it, so 5 is
+          recorded before 8 here. Only an append placed after both calls waits for both children.
+
+  - id: tree-walks-preorder-trace
+    format: step-trace
+    heading: Which node is recorded next?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `walk(root, out)` records a node, then walks its left subtree, then its right subtree. The cells
+      list the nodes level by level; they are not the visiting order. The call on A has just recorded A.
+      Tap the node whose call records next, each time.
+
+      ```text
+              A
+             / \
+            B   C
+           / \   \
+          D   E   F
+      ```
+    code: |-
+      def walk(node, out):
+          if node is None:
+              return
+          out.append(node.val)
+          walk(node.left, out)
+          walk(node.right, out)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 4
+        ask: Which node is recorded after A?
+        pointer: call
+        correct: 1
+        explanation: A's next line is the call on its left child, B, and B records itself before anything else.
+        misses:
+          - index: 2
+            explanation: >-
+              C is A's right child. A runs its left call first, and that call has to finish B's whole
+              subtree before A reaches the line that calls C.
+          - index: 3
+            explanation: D is below B. The call on B records B before it calls D.
+        elsewhere: A calls its left child first, and that call records its own node before going further down.
+      - line: 4
+        ask: Which node is recorded after B?
+        pointer: call
+        correct: 3
+        explanation: B's next line is its own left call, so D is recorded next.
+        misses:
+          - index: 2
+            explanation: >-
+              That is level order, the next cell in the row. A recursive walk goes down first: B calls D
+              before the call on B returns to A.
+          - index: 4
+            explanation: E is B's right child. B calls its left child, D, first.
+        elsewhere: After recording itself, B calls its left child, so the walk goes one level down.
+      - line: 4
+        ask: Which node is recorded after D?
+        pointer: call
+        correct: 4
+        explanation: >-
+          D has no children, so its two calls on `None` return at once. Control goes back to B, whose
+          next line is the call on its right child, E.
+        misses:
+          - index: 2
+            explanation: >-
+              C waits until the call on B returns, and B still has its right call to make. E is
+              recorded first.
+          - index: 1
+            explanation: B was recorded already, before its children. A call records its node once.
+        elsewhere: D is a leaf, so the call on D returns to B, which still has a right child to visit.
+      - line: 4
+        ask: Which node is recorded after E?
+        pointer: call
+        correct: 2
+        explanation: >-
+          E is a leaf, so its call returns to B. B has finished both calls and returns to A, whose last
+          line calls its right child, C.
+        misses:
+          - index: 5
+            explanation: >-
+              F is below C. The call on C records C before it reaches the line that calls F.
+          - index: 0
+            explanation: A was recorded first. The call on A resumes at its right call, without recording A again.
+        elsewhere: After B's subtree is done, A calls its right child, which records itself before its children.
+
+  - id: tree-walks-round-boundary
+    format: tap-cell
+    heading: Where does the round end?
+    tags: [tree, bfs, queue]
+    prompt: |-
+      **Worked example:** When a round starts with the queue `[B, C]`, `n` is 2. The round pops B and
+      C, and the children they add wait for the next round.
+
+      A round starts with the queue `[D, E, F]`, which is depth 2 of the tree below. The round has popped
+      D and appended its child G. Tap the last node this round will pop.
+
+      ```text
+              A
+            /   \
+           B     C
+          / \     \
+         D   E     F
+        /         / \
+       G         H   I
+      ```
+    code: |
+      queue = deque([root])
+      while queue:
+          n = len(queue)
+          for _ in range(n):
+              node = queue.popleft()
+              if node.left:
+                  queue.append(node.left)
+              if node.right:
+                  queue.append(node.right)
+    sequence:
+      kind: array
+      name: queue
+      cells: [E, F, G]
+    correct: 1
+    explanation: >-
+      `n` was 3 when the round began, for D, E and F. D is gone, so two pops remain, E and then F. G was
+      appended during the round and waits behind F for the next round.
+    misses:
+      - index: 0
+        explanation: >-
+          E is popped next, but it is not the last pop of the round. `n` was set to 3 before the round
+          began, and only D has been popped.
+      - index: 2
+        explanation: >-
+          G was appended by D during this round. `n` was fixed at 3 before G arrived, so G belongs to the
+          next round, depth 3.
+
+  - id: tree-walks-height-two-shapes
+    heading: What are the heights?
+    tags: [tree, complexity]
+    prompt: |-
+      Height here is the number of nodes on the longest path from the root down to a leaf. One node has
+      height 1 and the empty tree has height 0. Both trees hold 7 nodes.
+
+      ```text
+      Tree P:     1
+                /   \
+               2     3
+              / \   / \
+             4   5 6   7
+      ```
+
+      Tree Q is a chain: 1 has the right child 2, 2 has the right child 3, and so on down to 7. No node
+      in Q has a left child.
+
+      What are the heights of P and Q?
+    options:
+      - id: right
+        text: P is 3 and Q is 7
+        explanation: >-
+          Every path from the root of P to a leaf passes through 3 nodes, such as 1, 2, 4. Q has a single
+          path that passes through all 7 nodes. The node count is the same, but the shape sets the height.
+      - id: count
+        text: Both are 7
+        explanation: >-
+          7 is the node count. Height counts only the nodes on one root-to-leaf path. In P, the path 1,
+          2, 4 already ends at a leaf.
+      - id: log
+        text: Both are 3
+        explanation: >-
+          A height near log₂ n holds only when each level is filled. Q puts one node on each level, so
+          its single path runs through every node.
+    correct: right
+    followUps:
+      count:
+        prompt: In tree P, which nodes are on the path from the root to the leaf 4?
+        options:
+          - { id: three, text: "1, 2 and 4" }
+          - { id: all, text: "All 7 nodes" }
+          - { id: four, text: "1, 2, 3 and 4" }
+        correct: three
+        explanation: >-
+          A root-to-leaf path follows one child link per level, so it never visits a sibling such as 3.
+          Height measures the longest such path, not the whole tree.
+      log:
+        prompt: How many nodes does tree Q have on each level?
+        options:
+          - { id: one-each, text: "One on every level, across 7 levels" }
+          - { id: doubling, text: "1, 2 and 4, like P" }
+          - { id: two-each, text: "Two on most levels" }
+        correct: one-each
+        explanation: >-
+          With one child per node, every level holds one node, so the tree is as tall as its node count.
+          That chain is the worst case for anything that grows with the height.
+
+  - id: tree-walks-live-calls-trace
+    format: step-trace
+    heading: How deep is the stack?
+    tags: [tree, recursion]
+    prompt: |-
+      `height(root)` runs on the tree below. A call is active from the moment it starts until it
+      returns. Count only calls on real nodes, not calls on `None`. Predict each step.
+
+      ```text
+          A
+         / \
+        B   C
+       /
+      D
+      ```
+    code: |-
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          return 1 + max(left, right)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 4
+        ask: The call on A runs line 4. Which node does the next real call start on?
+        pointer: call
+        correct: 1
+        explanation: Line 4 calls `height` on A's left child, B.
+        misses:
+          - index: 2
+            explanation: C is A's right child. Line 5 calls it only after the left call has returned.
+        elsewhere: Line 4 passes `node.left`, A's left child.
+      - line: 4
+        ask: The call on B runs line 4. Which node does the next real call start on?
+        pointer: call
+        correct: 3
+        explanation: B's left child is D, so B's line 4 starts a call on D while the calls on A and B wait.
+        misses:
+          - index: 2
+            explanation: >-
+              C is A's child, not B's. A cannot reach its line 5 until the call on B has returned.
+        elsewhere: B's line 4 passes B's own left child.
+      - line: 2
+        ask: When the call on D starts, how many real calls are active, counting it?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              The calls on A and B are each paused at line 4, waiting for their left call, and the call
+              on D has just started: A, B and D.
+          - id: two
+            text: "2"
+            explanation: >-
+              The call on D counts as well. A, B and D are all active, one call for each node on the path
+              down from the root.
+          - id: four
+            text: "4"
+            explanation: >-
+              C has not been called yet. A reaches its line 5 only after the call on B returns, so just
+              A, B and D are active.
+        correct: three
+      - line: 5
+        ask: D and then B return. The call on A runs line 5. Which node does the next real call start on?
+        pointer: call
+        correct: 2
+        explanation: A's line 5 calls `height` on its right child, C.
+        misses:
+          - index: 1
+            explanation: The call on B has returned with its height, 2. A's line 5 passes its right child.
+        elsewhere: Line 5 passes `node.right`, A's right child.
+      - line: 2
+        ask: When the call on C starts, how many real calls are active, counting it?
+        options:
+          - id: two
+            text: "2"
+            explanation: >-
+              The calls on B and D have returned and their frames are gone. Only A, waiting at line 5,
+              and C are active.
+          - id: four
+            text: "4"
+            explanation: >-
+              4 counts every call made so far. A call stops being active when it returns, and B and D
+              returned before A reached line 5.
+          - id: three
+            text: "3"
+            explanation: >-
+              3 was the depth at D. Since then D and B have returned, so the stack is shorter: A and C.
+        correct: two

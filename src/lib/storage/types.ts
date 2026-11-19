@@ -1,4 +1,4 @@
-/** Version 4 expands the partial-Kahn-result checkpoint to five items. */
+/** Version 4 expands several one-item checkpoints to full five-item sittings. */
 export const EXAM_RULES_VERSION = 4;
 
 export interface QuestionRef {
