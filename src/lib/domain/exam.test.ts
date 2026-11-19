@@ -112,9 +112,16 @@ describe('examPassed', () => {
 		const original = { ...attempt('top-k-min-heap', true), deckId: 'heaps-top-k', examRulesVersion: 4 };
 		expect(drills).toHaveLength(6);
 		expect(checkpoint.mix).toEqual(['top-k', 'merge']);
-		expect(examPassed(drills, checkpoint.mix, [original])).toBe(true);
-		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 1 }])).toBe(true);
-		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const other = { ...attempt('merge-k-sorted', true), deckId: 'heaps-top-k', examRulesVersion: 4 };
+		// One item alone was never a pass of the two-item pool.
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, day: '2026-02-02' }])).toBe(false);
+		// Both items on one day, with at most one miss, was a pass.
+		expect(examPassed(drills, checkpoint.mix, [original, other])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, correct: false }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, correct: false }, { ...other, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 1 }, { ...other, examRulesVersion: 1 }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
 		const sitting = drills.map((drill) => ({
 			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
 		}));

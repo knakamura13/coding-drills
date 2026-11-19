@@ -153,7 +153,7 @@ Every question in `content/decks` is mapped to a skill path in `content/curricul
 
 A checkpoint can list `mix: [kind, ...]` (only on a path with one checkpoint). Every exam then includes at least one item whose `covers` names each kind, and a checkpoint is passed only when each kind was answered right. A skill needs at least three drills, since it is mastered only while its latest answer on every drill was right.
 
-When a checkpoint grows from one item to a full sitting, the old item can set `legacyPassBefore` to the exam rules version that introduces the change. A correct first attempt on that item from an older version still passes. New attempts use the full sitting rule.
+When a checkpoint's exam pool grows, each old item sets `legacyPassBefore` to the exam rules version that introduces the change. The items that share that version are the old pool, and an older sitting of it still passes under the rule it was taken under: every old item (up to five) answered on one day, with at most one miss when the pool had more than one item. For a one-item pool that is one correct answer. New attempts use the full sitting rule.
 
 ## Tags
 
