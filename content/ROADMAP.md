@@ -189,6 +189,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | in review |
 | Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | in review |
 | Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | in review |
+| Problem-solving patterns #14 | Grid tables: teaching levels | `grid-tables` | in review |
+| Problem-solving patterns #14 | Grid tables: review variants | `grid-tables-review` | in review |
+| Problem-solving patterns #14 | Grid tables: checkpoint | `grid-tables-checkpoint` | in review |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
