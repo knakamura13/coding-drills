@@ -7,6 +7,7 @@
 <h1 id="title"></h1><p id="question"></p><article id="card"></article><aside><p><b>Solo walkthrough</b><br><span id="guide"></span></p><button id="restart">Start over</button></aside><footer>Review prototype · local session only</footer></main><script>(function demo(){
 const scenarios={
  steps:{title:"One new reasoning step",question:"Can the learner make each move using something they already understand?",guide:"Compare the combined prompt with a lesson that starts by checking what a table cell means."},
+ wrong:{title:"Two reasons for one wrong tap",question:"Can one extra prediction distinguish two plausible errors before the answer is revealed?",guide:"Tap index 6 first. Restart to compare following the target, rounding up, correcting the read, and an unexpected tap."},
  trace:{title:"Review a missed trace step",question:"Does the next review exercise address the exact move that caused trouble?",guide:"Try a correct choice of half followed by the wrong bound. Restart and miss the first move instead."},
  correct:{title:"Check a correct prediction",question:"Did a rule or a visible target lead to the correct cell?",guide:"Choose index 5 first. On the second screen, see what changes when the target moves."},
  transfer:{title:"Recognize a rule in a new setting",question:"Does the learner recognize when the midpoint rule matters in a search log?",guide:"Try the log cold. Then compare it with a directly cued review prompt."},
@@ -45,6 +46,17 @@ function draw(){
    const [skill,prompt,opts,right,reason]=splitRoute(a,b);
    if(c===undefined)return heading("Next review · "+skill)+`<p>${esc(a===1&&b===1?"Both original moves were correct.":"The original trace counts as one miss. The next exercise targets its first missed move.")}</p><h3>${esc(prompt)}</h3>`+choices(opts);
    return end(c===right?"Review answered correctly":"Try the rule again",reason+" The original trace keeps its first result.");
+ }
+ case "wrong":{
+   const cells=["4","5","6","7"];
+   const board=code("index   4   5   6   7\nvalue  21  26  33  40\nmid = (4 + 7) // 2");
+   if(a===undefined)return q("Target 33. Which index is read next?",board,cells);
+   if(a!==2)return end(a===1?"Correct · index 5":"The probe reads index 5","The active bounds give (4 + 7) // 2 = 5.");
+   if(b===undefined)return q("The target is now 40. Which cell will the code read next?",board,cells);
+   if(b===3&&c===undefined)return q("The values are covered. Place the probe using only the bounds.",code("lo = 4   hi = 7\n[ ? ]  [ ? ]  [ ? ]  [ ? ]"),cells);
+   if(b===2&&c===undefined)return q("What does 11 // 2 give?",code("mid = (4 + 7) // 2"),["5","6"]);
+   if(b===2&&d===undefined)return q("11 // 2 gives 5. Tap the cell the probe will read.",board,cells);
+   return end(b===1?"The new prediction is correct":"The next read is at index 5",b===0?"These two taps leave the reason unclear. The probe reads the lower middle of the active range.":"The bounds stayed fixed, so the probe stays at 5 and reads 26. The original missed answer counts once.");
  }
  case "correct":{
    const board=code("index   4   5   6   7\nvalue  21  26  33  40\nmid = (4 + 7) // 2");
