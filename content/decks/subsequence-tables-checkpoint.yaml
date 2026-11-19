@@ -1,0 +1,251 @@
+id: subsequence-tables-checkpoint
+title: "Subsequence tables: checkpoint"
+description: Fill and walk back fresh LCS tables, find an unbroken shared run, and separate fill, storage and walk-back costs.
+heading: What does the table hold?
+
+questions:
+  - id: checkpoint-row-trace
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      `a = "lament"`, `b = "mantle"` and `i = 6`, so `a[i - 1]` is `t`. The board is `prev`, row 5
+      of the LCS table. The passes with `j` at 1 and 2 have run, so `cur` starts `[0, 1, 1]`.
+      Predict each step.
+    code: |
+      cur = [0] * (len(b) + 1)
+      for j in range(1, len(b) + 1):
+          if a[i - 1] == b[j - 1]:
+              cur[j] = prev[j - 1] + 1
+          else:
+              cur[j] = max(prev[j], cur[j - 1])
+    sequence: { kind: array, name: prev, cells: [0, 1, 1, 2, 2, 2, 2] }
+    start:
+      - { name: j, at: 2 }
+    steps:
+      - line: 3
+        ask: On the pass with `j` at 3, `b[2]` is `n`. What is `cur[3]`?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              `n` is not `t`, so the cell takes the larger of `prev[3]`, 2, and `cur[2]`, 1.
+          - id: one
+            text: '1'
+            explanation: Check which neighbors a mismatch compares.
+          - id: three
+            text: '3'
+            explanation: Check whether this pass is a match.
+        correct: two
+        also:
+          - { name: j, at: 3 }
+      - line: 3
+        ask: Tap where `j` is on the pass where `a[i - 1]` equals `b[j - 1]`.
+        pointer: j
+        correct: 4
+        explanation: >-
+          The `t` of `mantle` is `b[3]`, and the code compares `b[j - 1]`, so the match comes on
+          the pass with `j` at 4.
+        misses:
+          - index: 3
+            explanation: Check which letter of `b` the code reads when `j` is 3.
+          - index: 5
+            explanation: Check which letter of `b` the code reads when `j` is 5.
+        elsewhere: The code compares `b[j - 1]`.
+      - line: 3
+        ask: What does the pass with `j` at 4 store in `cur[4]`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The letters match, so the cell is `prev[3] + 1`: 2 for `lamen` and `man`, plus the
+              `t`.
+          - id: two
+            text: '2'
+            explanation: Check which rule a match uses.
+          - id: one
+            text: '1'
+            explanation: Check what a match adds 1 to.
+        correct: three
+      - line: 3
+        ask: The pass with `j` at 5 compares `t` with `l`. What is `cur[5]`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              No match, so the cell is the larger of `prev[5]`, 2, and `cur[4]`, 3.
+          - id: two
+            text: '2'
+            explanation: Check the cell to the left as well as the cell above.
+          - id: four
+            text: '4'
+            explanation: Check whether this pass is a match.
+        correct: three
+        also:
+          - { name: j, at: 5 }
+      - line: 3
+        ask: The pass with `j` at 6 runs. What length does the full table report?
+        options:
+          - id: three
+            text: "3, such as `ant`"
+            explanation: >-
+              `cur[6]` is `dp[6][6]`, the larger of `prev[6]`, 2, and `cur[5]`, 3. `ant` and `mnt`
+              are in order in both words.
+          - id: two
+            text: "2, the run `nt`"
+            explanation: Check whether the table counts letters with gaps between them.
+          - id: four
+            text: "4, as `mantle` adds its `e`"
+            explanation: Check whether `lament` has an `e` after its `t`.
+        correct: three
+        also:
+          - { name: j, at: 6 }
+
+  - id: checkpoint-walk-ties-left
+    heading: What does the walk back return?
+    tags: [dp]
+    prompt: |-
+      The table is for `a = "stone"` and `b = "snore"`. A walk back starts at `dp[5][5]`. On a
+      match it records the letter and steps diagonally. On a mismatch it steps up if
+      `dp[i - 1][j] > dp[i][j - 1]` and left otherwise, so a tie steps **left**. It returns the
+      recorded letters reversed. What does it return?
+
+      ```
+           -  s  n  o  r  e
+      -    0  0  0  0  0  0
+      s    0  1  1  1  1  1
+      t    0  1  1  1  1  1
+      o    0  1  1  2  2  2
+      n    0  1  2  2  2  2
+      e    0  1  2  2  2  3
+      ```
+    options:
+      - id: sne
+        text: "`sne`"
+        explanation: >-
+          `(5, 5)` records `e`. The ties at `(4, 4)` and `(4, 3)` both step left, and `(4, 2)`
+          records `n`. Two steps up, where 1 beats 0, reach `(1, 1)`, which records `s`. Reversed:
+          `sne`.
+      - id: soe
+        text: "`soe`"
+        explanation: Check which way this walk breaks a tie.
+      - id: ens
+        text: "`ens`"
+        explanation: Check the order in which the walk records its letters.
+    correct: sne
+    followUps:
+      soe:
+        prompt: At `(4, 4)` both neighbors hold 2. Which way does `>` send the walk?
+        options:
+          - { id: left, text: "Left, since 2 > 2 is false" }
+          - { id: up, text: "Up, since a tie always goes up" }
+          - { id: diagonal, text: "Diagonally, since neither neighbor is larger" }
+        correct: left
+        explanation: >-
+          With `>`, the walk goes up only when the cell above is strictly larger. Ties step left.
+          `soe` and `sne` are both longest common subsequences, and the tie rule picks which one
+          comes out.
+      ens:
+        prompt: The walk starts at the corner and moves toward `dp[0][0]`. In what order does it record letters?
+        options:
+          - { id: back, text: "From the ends of the words toward the start, so the list comes out reversed" }
+          - { id: front, text: "From the start of the words toward the end, already in reading order" }
+          - { id: sorted, text: "In sorted order, since the table only counts letters" }
+        correct: back
+        explanation: >-
+          The corner covers the whole words, and the walk finds each match before the matches to
+          its left. Reversing the list puts the letters back in reading order.
+
+  - id: checkpoint-run-end-tap
+    format: tap-cell
+    heading: Where does the shared run end?
+    tags: [dp, arrays-strings]
+    prompt: >-
+      `a = "harbor"` and `b = "barber"`. The code fills a table that resets to 0 on a mismatch and
+      keeps the largest cell in `best`. Tap the letter of `a` where the longest stretch that is
+      unbroken in both words ends.
+    code: |
+      best = 0
+      for i in range(1, len(a) + 1):
+          for j in range(1, len(b) + 1):
+              if a[i - 1] == b[j - 1]:
+                  run[i][j] = run[i - 1][j - 1] + 1
+                  best = max(best, run[i][j])
+    sequence: { kind: string, name: a, cells: [h, a, r, b, o, r] }
+    correct: 3
+    explanation: >-
+      `arb` is unbroken in both words, `h-arb-or` and `b-arb-er`, and ends at `a[3]`. No stretch of
+      four is shared, so `best` is 3.
+    misses:
+      - index: 5
+        explanation: Check whether the letters before this `r` are unbroken in both words.
+      - index: 4
+        explanation: Check whether `barber` has this letter.
+      - index: 0
+        explanation: Check whether `barber` has this letter.
+      - index: 1
+        explanation: Check whether the shared stretch stops here.
+      - index: 2
+        explanation: Check whether the shared stretch stops here.
+
+  - id: checkpoint-length-or-string
+    heading: What does each program need?
+    tags: [dp, complexity]
+    prompt: >-
+      Two programs fill the LCS table for `a` of length 50 and `b` of length 400, with one row per
+      prefix of `a` and one column per prefix of `b`. Program A needs only the length. Program B
+      needs one longest common subsequence, rebuilt by the plain walk back from `dp[50][400]`.
+      Which statement is correct?
+    options:
+      - id: two-rows-or-all
+        text: "Both fill 20,000 cells. A can keep two rows of 401; B keeps all 51 rows"
+        explanation: >-
+          The fill computes one cell per pair of nonempty prefixes, 50 x 400 = 20,000, in either
+          program. A row reads only the row above, so A needs 2 x 401 entries. The walk back climbs
+          into rows far above the last, so B stores 51 x 401 = 20,451 entries and walks at most
+          449 steps.
+      - id: two-rows-both
+        text: "Both can keep two rows, since the walk back reads only the last row"
+        explanation: Check which rows the walk can reach when it steps up.
+      - id: walk-quadratic
+        text: "B keeps all 51 rows and may walk 20,000 steps, one per cell"
+        explanation: Check what each step of the walk does to `i + j`.
+      - id: a-full
+        text: "A must also keep all 51 rows, since every row feeds `dp[50][400]`"
+        explanation: Check which rows a row reads while it is filled.
+    correct: two-rows-or-all
+    followUps:
+      two-rows-both:
+        prompt: >-
+          From `(i, j)` the walk may step to `(i - 1, j)`. After many such steps, which rows can it
+          read?
+        options:
+          - { id: earlier, text: "Rows far above the last one, all the way toward row 0" }
+          - { id: last-two, text: "Only the last two rows, since it moves one row at a time" }
+          - { id: last, text: "Only row 50, since `j` is the index that changes" }
+        correct: earlier
+        explanation: >-
+          The walk can climb from row 50 to row 0, so every row may be read. Two rows give the
+          length, but rebuilding the string this way needs the whole table.
+      walk-quadratic:
+        prompt: >-
+          The walk starts with `i + j = 450`, and every step lowers `i + j` by 1 or 2. At most how
+          many steps can it take?
+        options:
+          - { id: at-most-449, text: "449, as it stops once `i` or `j` reaches 0" }
+          - { id: twenty-thousand, text: "20,000, as it may visit every cell" }
+          - { id: fifty, text: "50, as only `i` limits the walk" }
+        correct: at-most-449
+        explanation: >-
+          No cell repeats, since `i + j` always falls. The walk stops at `i = 0` or `j = 0`, so it
+          takes at most m + n - 1 steps, far fewer than the 20,000 cells of the fill.
+      a-full:
+        prompt: While row 30 is being filled, which earlier rows will the fill still read?
+        options:
+          - { id: row-29, text: "Only row 29, along with row 30 itself" }
+          - { id: all, text: "All of rows 0 to 29, since the corner depends on them" }
+          - { id: none, text: "None, since each row is computed from `a` and `b` alone" }
+        correct: row-29
+        explanation: >-
+          Row `i` reads only row `i - 1` and itself. Earlier rows have already shaped row 29, so
+          the length needs just two rows of 401 entries.
