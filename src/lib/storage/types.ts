@@ -8,8 +8,9 @@
  * Version 10 grows the DP storage checkpoint pool.
  * Version 11 grows the Grid tables checkpoint pool.
  * Version 12 grows the Greedy scheduling checkpoint pool.
+ * Version 13 grows the Weighted paths checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 12;
+export const EXAM_RULES_VERSION = 13;
 
 export interface QuestionRef {
 	deckId: string;
