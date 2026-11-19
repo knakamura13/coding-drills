@@ -1,0 +1,393 @@
+id: connectivity
+title: Connectivity
+description: Read an adjacency list, count components, and follow union-find roots as links arrive.
+questions:
+  - id: connectivity-adj-both-lists
+    format: tap-cell
+    tags:
+      - graph
+      - python
+    prompt: >-
+      An undirected edge `(a, b)` can be walked either way, so the build loop writes it into two
+      lists. After this loop, `adj[3]` holds exactly one node. Tap that node.
+    code: |
+      edges = [(0, 2), (2, 3), (1, 4)]
+      adj = [[] for _ in range(5)]
+      for a, b in edges:
+          adj[a].append(b)
+          adj[b].append(a)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4]
+    correct: 2
+    explanation: >-
+      The edge `(2, 3)` runs `adj[2].append(3)` and then `adj[3].append(2)`. No other edge touches
+      node 3, so `adj[3]` is `[2]`.
+    misses:
+      - index: 0
+        explanation: >-
+          Node 0 is joined only to node 2, by the edge `(0, 2)`. It never appears in `adj[3]`.
+      - index: 1
+        explanation: >-
+          Node 1 is joined only to node 4. The edge `(1, 4)` writes into `adj[1]` and `adj[4]`.
+      - index: 3
+        explanation: >-
+          A list holds a node's neighbors, not the node itself. No edge `(3, 3)` exists, so 3 is not in
+          `adj[3]`.
+      - index: 4
+        explanation: >-
+          Node 4 is joined only to node 1. The edge `(1, 4)` never writes into `adj[3]`.
+
+  - id: connectivity-adj-total-entries
+    tags:
+      - graph
+      - complexity
+    prompt: >-
+      Six undirected edges are added to `adj` with both `adj[a].append(b)` and `adj[b].append(a)`. No
+      edge repeats, and none joins a node to itself. How many entries do all the lists hold together?
+    options:
+      - id: twelve
+        text: 12, two for every edge
+        explanation: >-
+          Each edge is written once from each end, so the lists hold 2 × 6 = 12 entries. That is why a
+          full search reads O(V + E) entries: every list is scanned once, and the lists add up to 2E.
+      - id: six
+        text: 6, one for every edge
+        explanation: >-
+          That would hold if each edge were stored only in `adj[a]`. The loop also appends `a` to
+          `adj[b]`, so every edge appears twice.
+      - id: depends-on-nodes
+        text: It depends on how many nodes the graph has
+        explanation: >-
+          A node with no edges has an empty list, which adds nothing. The total depends only on the
+          edges: two entries for each one.
+    correct: twelve
+    followUps:
+      six:
+        prompt: For the edge `(2, 5)`, which lists gain an entry?
+        options:
+          - id: both
+            text: '`adj[2]` gains 5, and `adj[5]` gains 2'
+          - id: first
+            text: Only `adj[2]`, because 2 is listed first in the pair
+          - id: smaller
+            text: Only the list of the smaller node, to avoid storing the edge twice
+        correct: both
+        explanation: >-
+          An undirected edge works in both directions, so each endpoint must be able to find the
+          other. Storing it once would hide it from a search that starts at the other end.
+      depends-on-nodes:
+        prompt: What does a node with no edges add to the total?
+        options:
+          - id: nothing
+            text: Nothing, its list stays empty
+          - id: one
+            text: One entry, pointing back to itself
+          - id: placeholder
+            text: One placeholder entry, so the node still appears in the count
+        correct: nothing
+        explanation: >-
+          Entries come only from edges. An isolated node still has a list, but it is empty, so the total
+          is two entries per edge.
+
+  - id: connectivity-components-restart
+    format: step-trace
+    tags:
+      - graph
+      - dfs
+    prompt: >-
+      The graph has 6 nodes and the edges `(0, 2), (2, 4), (1, 3)`. Node 5 has none. `explore`
+      marks every node it can reach as seen. Predict each step.
+    code: |-
+      count = 0
+      for start in range(6):
+          if start in seen:
+              continue
+          count += 1
+          explore(start)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4, 5]
+    start:
+      - name: start
+        at: 0
+    steps:
+      - line: 6
+        ask: '`explore(0)` has finished. At which node does the next search start?'
+        pointer: start
+        correct: 1
+        explanation: >-
+          `explore(0)` marked 0, 2 and 4. Node 1 is the first node after 0 that is still unseen.
+        misses:
+          - index: 2
+            explanation: >-
+              Node 2 is joined to 0, so `explore(0)` already marked it. The loop skips it with
+              `continue`.
+          - index: 4
+            explanation: >-
+              Node 4 is reached through 2, so `explore(0)` marked it. Searching from it again would
+              count the same component twice.
+        elsewhere: >-
+          The loop moves forward in order and starts at the first unseen node. `explore(0)` marked 0, 2
+          and 4.
+      - line: 6
+        ask: '`explore(1)` has finished. At which node does the next search start?'
+        pointer: start
+        correct: 5
+        explanation: >-
+          `explore(1)` marked 1 and 3. Nodes 2, 3 and 4 are skipped, and node 5 has no edges, so
+          nothing marked it. It starts its own search.
+        misses:
+          - index: 3
+            explanation: Node 3 is joined to 1, so `explore(1)` already marked it.
+          - index: 4
+            explanation: Node 4 was marked during the first search, from 0 through 2.
+        elsewhere: >-
+          Every node from 0 to 4 is seen now. Node 5 has no edges, so no search has reached it.
+      - line: 5
+        ask: What is `count` when the loop ends?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              Searches start at 0, 1 and 5. Each start is one component: {0, 2, 4}, {1, 3} and {5}.
+          - id: two
+            text: '2'
+            explanation: >-
+              Node 5 has no edges, but it is still a component. The loop reaches it and starts a third
+              search.
+          - id: six
+            text: '6'
+            explanation: >-
+              `count` grows only when a node is still unseen. Nodes marked by an earlier search hit
+              `continue` first.
+        correct: three
+
+  - id: connectivity-components-isolated
+    tags:
+      - graph
+      - python
+    prompt: |-
+      The graph has `n = 6` nodes, numbered 0 to 5, and the edges `(0, 1), (2, 3), (3, 4)`. Node 5 has no edges. What does this return?
+
+      ```python
+      adj = defaultdict(list)
+      for a, b in edges:
+          adj[a].append(b)
+          adj[b].append(a)
+      count = 0
+      for start in adj:
+          if start not in seen:
+              count += 1
+              explore(start)
+      ```
+    options:
+      - id: two
+        text: '2, because node 5 is never a key in `adj`'
+        explanation: >-
+          A `defaultdict` creates a key only when the code touches it, and only edges touch it here. The
+          loop sees 0 to 4 and counts {0, 1} and {2, 3, 4}. Looping over `range(n)` counts node 5 as
+          well and returns the true answer, 3.
+      - id: three
+        text: '3, one for each component'
+        explanation: >-
+          There are three components, but this loop never visits node 5. Check which keys exist in
+          `adj` when the loop runs.
+      - id: six
+        text: '6, because there are six nodes'
+        explanation: >-
+          A search marks its whole component as seen, so 1, 3 and 4 never start a search. Count only
+          the starts.
+    correct: two
+    followUps:
+      three:
+        prompt: After the build loop, which keys does `adj` hold?
+        options:
+          - id: touched
+            text: 0, 1, 2, 3 and 4, the nodes that appear in some edge
+          - id: all
+            text: 0 to 5, because a defaultdict covers every possible key
+          - id: first
+            text: 0, 2 and 3, the first node of each edge
+        correct: touched
+        explanation: >-
+          A `defaultdict` adds a key the first time it is read or written. Node 5 is in no edge, so it
+          is never added, and the loop over `adj` skips it.
+      six:
+        prompt: When the loop reaches node 1, why does it not start a search?
+        options:
+          - id: marked
+            text: '`explore(0)` already marked it as seen'
+          - id: smaller
+            text: Node 1 has fewer neighbors than node 0
+          - id: odd
+            text: The loop skips every second key
+        correct: marked
+        explanation: >-
+          Each search marks its whole component. Later nodes in that component fail the
+          `start not in seen` test, so the count grows once per component.
+
+  - id: connectivity-find-root
+    format: drag-pointers
+    tags:
+      - graph
+    prompt: >-
+      Union-find stores one parent per node, and a root is its own parent. `parent[4]` is 2, so
+      node 4 points at node 2. Drag `x` to the node where `find(4)` stops.
+    code: |-
+      def find(x):
+          while parent[x] != x:
+              x = parent[x]
+          return x
+
+      find(4)
+    sequence:
+      kind: array
+      name: parent
+      cells: [0, 0, 1, 3, 2, 3]
+    pointers:
+      - name: x
+        start: 4
+        correct: 0
+        explanation: >-
+          4 points at 2, 2 at 1, and 1 at 0. `parent[0]` is 0, so the loop stops there. Node 0 is
+          the root that names this set.
+        misses:
+          - index: 2
+            explanation: >-
+              This is one step: `parent[4]` is 2. But `parent[2]` is 1, not 2, so the loop keeps
+              going.
+          - index: 1
+            explanation: >-
+              `parent[1]` is 0, not 1, so node 1 is not a root. The loop takes one more step.
+          - index: 3
+            explanation: >-
+              Node 3 is a root, since `parent[3]` is 3, but no step from 4 leads there. It roots a
+              different set, {3, 5}.
+        elsewhere: >-
+          Read each cell as the next node: 4 points at 2, 2 at 1, 1 at 0. Stop at the node whose cell
+          holds its own index.
+
+  - id: connectivity-union-write-root
+    format: tap-cell
+    tags:
+      - graph
+    prompt: >-
+      Sets {0, 1} and {2, 3} have roots 0 and 2. `union(1, 3)` joins them by changing one cell.
+      Tap the cell it writes.
+    code: |-
+      parent = [0, 0, 2, 2]
+
+      def union(a, b):
+          parent[find(a)] = find(b)
+
+      union(1, 3)
+    sequence:
+      kind: array
+      name: parent
+      cells: [0, 0, 2, 2]
+    correct: 0
+    explanation: >-
+      `find(1)` is 0 and `find(3)` is 2, so the line runs `parent[0] = 2`. Root 0 now hangs under
+      root 2, and all four nodes reach 2.
+    misses:
+      - index: 1
+        explanation: >-
+          Writing `parent[1] = 2` moves node 1 alone. Node 0 stays a root, so 0 and 3 would end up in
+          different sets. The union rewrites the root, `find(1)`.
+      - index: 2
+        explanation: >-
+          Node 2 is the root of the other set, and it stays a root. The left side of the assignment
+          is `parent[find(a)]`, the root of node 1's set.
+      - index: 3
+        explanation: >-
+          Node 3 is the argument `b`, but the code never writes `parent[b]`. It writes the parent of
+          the root it finds from `a`.
+
+  - id: connectivity-later-same-trace
+    format: step-trace
+    tags:
+      - graph
+    prompt: >-
+      Nodes 0 to 3 start as four sets, each its own root. Events arrive in order. Use `root` to show
+      where `find` stops, and pick each `same` answer as it happens.
+    code: |-
+      def union(a, b):
+          parent[find(a)] = find(b)
+
+      union(0, 1)
+      union(2, 3)
+      print(find(0) == find(2))
+      union(1, 2)
+      print(find(0) == find(2))
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3]
+    start:
+      - name: root
+        at: 0
+    steps:
+      - line: 6
+        ask: After the first two unions, where does `find(0)` stop?
+        pointer: root
+        correct: 1
+        explanation: >-
+          `union(0, 1)` ran `parent[0] = 1`. Node 0 now points at 1, and 1 is still its own parent.
+        misses:
+          - index: 0
+            explanation: >-
+              `union(0, 1)` wrote `parent[find(0)] = find(1)`, which is `parent[0] = 1`. Node 0 is no
+              longer a root.
+          - index: 3
+            explanation: >-
+              Node 3 became the root of {2, 3}. No union has joined 0 to 2 or 3 yet.
+        elsewhere: >-
+          The first union hung 0 under 1. Follow that one step from 0.
+      - line: 6
+        ask: 'What does the first `print` show?'
+        options:
+          - id: false-first
+            text: 'False'
+            explanation: >-
+              `find(0)` is 1 and `find(2)` is 3. The roots differ, so the sets are separate for now.
+          - id: true-first
+            text: 'True'
+            explanation: >-
+              No union has linked {0, 1} with {2, 3} yet. Their roots are 1 and 3, so the answer at
+              this moment is False.
+        correct: false-first
+      - line: 8
+        ask: After `union(1, 2)`, where does `find(0)` stop?
+        pointer: root
+        correct: 3
+        explanation: >-
+          `find(1)` was 1 and `find(2)` was 3, so the union wrote `parent[1] = 3`. Now 0 points at 1
+          and 1 points at 3, the root.
+        misses:
+          - index: 1
+            explanation: >-
+              Node 1 was a root before this union. The union wrote `parent[1] = 3`, so the walk from 0
+              continues past 1 to 3.
+          - index: 2
+            explanation: >-
+              The union writes the parent of a root, and node 2 was never a root after `union(2, 3)`.
+              The new root is `find(2)`, which is 3.
+        elsewhere: >-
+          The union hung root 1 under root 3. Walk from 0: 0 to 1, then 1 to 3.
+      - line: 8
+        ask: 'What does the second `print` show?'
+        options:
+          - id: true-second
+            text: 'True'
+            explanation: >-
+              `find(0)` and `find(2)` both stop at 3. A chain of links joins 0 to 2, so they share a
+              root.
+          - id: false-second
+            text: 'False'
+            explanation: >-
+              No edge joins 0 and 2 directly, but connection follows chains: 0 to 1 to 2. Both
+              `find` calls now stop at 3.
+        correct: true-second

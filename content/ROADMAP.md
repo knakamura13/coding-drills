@@ -189,3 +189,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | Dependency order | `dependency-order` | in review |
 | Trees and graphs #13 | Dependency order: review | `dependency-order-review` | in review |
 | Trees and graphs #13 | Dependency order: checkpoint | `dependency-order-checkpoint` | in review |
+| Trees and graphs #13 | Connectivity | `connectivity` | in review |
+| Trees and graphs #13 | Connectivity: review | `connectivity-review` | in review |
+| Trees and graphs #13 | Connectivity: checkpoint | `connectivity-checkpoint` | in review |

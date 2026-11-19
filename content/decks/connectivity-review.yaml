@@ -1,0 +1,504 @@
+id: connectivity-review
+title: 'Connectivity: review'
+description: Recall adjacency lists, component counts, and union-find roots on fresh graphs.
+questions:
+  - id: connectivity-review-edges-from-adj
+    tags:
+      - graph
+    prompt: |-
+      This adjacency list was built from an undirected edge list, writing each edge into both lists. Which edge list produced it?
+
+      ```python
+      adj = {0: [3], 1: [2, 3], 2: [1], 3: [0, 1]}
+      ```
+    options:
+      - id: three-edges
+        text: '`(0, 3), (1, 2), (1, 3)`'
+        explanation: >-
+          Each edge appears twice: `(0, 3)` as 3 in `adj[0]` and 0 in `adj[3]`, and likewise for the
+          other two. Six entries means three edges.
+      - id: six-edges
+        text: '`(0, 3), (1, 2), (1, 3), (2, 1), (3, 0), (3, 1)`'
+        explanation: >-
+          Building from this list would write every edge twice from each end, so each list would hold
+          its neighbors twice, such as `adj[0] == [3, 3]`.
+      - id: missing-edge
+        text: '`(0, 3), (1, 2)`'
+        explanation: >-
+          This list never joins 1 and 3, yet 3 appears in `adj[1]` and 1 appears in `adj[3]`.
+    correct: three-edges
+    followUps:
+      six-edges:
+        prompt: When the build loop reads `(3, 0)` after `(0, 3)`, what happens to `adj[0]`?
+        options:
+          - id: duplicate
+            text: It gains a second 3, since the loop appends without checking
+          - id: skips
+            text: Nothing, because 3 is already in the list
+          - id: replaces
+            text: The old 3 is replaced by the new one
+        correct: duplicate
+        explanation: >-
+          `append` never checks for an existing value. An undirected edge needs to be listed once. The
+          loop itself writes both directions.
+      missing-edge:
+        prompt: Which entries in `adj` come from an edge joining 1 and 3?
+        options:
+          - id: pair
+            text: 3 in `adj[1]` and 1 in `adj[3]`
+          - id: only-one
+            text: Only 3 in `adj[1]`
+          - id: none
+            text: None, since 1 and 3 are joined through 0
+        correct: pair
+        explanation: >-
+          Every entry comes from one edge, and every edge makes two entries. 3 sits in `adj[1]`, so an
+          edge between 1 and 3 must be in the list.
+
+  - id: connectivity-review-dict-keys
+    tags:
+      - graph
+      - python
+    prompt: >-
+      A graph has `n = 6` nodes, numbered 0 to 5. The edges `(0, 1), (1, 2), (3, 4)` are added to
+      `adj = defaultdict(list)`, appending each in both directions. What is `len(adj)`?
+    options:
+      - id: five
+        text: '5'
+        explanation: >-
+          Keys exist only for nodes that appear in an edge, which are 0 through 4. Node 5 is in no
+          edge, so it is not a key, even though it is a node of the graph.
+      - id: six
+        text: '6'
+        explanation: >-
+          The graph has six nodes, but a `defaultdict` makes a key only when one is used. Node 5 never
+          is.
+      - id: three
+        text: '3'
+        explanation: >-
+          There is one key per node, not per edge. Each edge adds both endpoints as keys if they are
+          new.
+    correct: five
+    followUps:
+      six:
+        prompt: When does a `defaultdict(list)` add a key?
+        options:
+          - id: on-use
+            text: The first time that key is read or written
+          - id: up-front
+            text: When it is created, for every integer up to the largest key
+          - id: on-len
+            text: When `len` is called, for each missing number
+        correct: on-use
+        explanation: >-
+          It fills in a missing key on first access. A node with no edges is never accessed by the
+          build loop, so code that loops over `adj` skips it.
+      three:
+        prompt: Which keys does the edge `(3, 4)` add?
+        options:
+          - id: both-ends
+            text: 3 and 4
+          - id: first-end
+            text: Only 3
+          - id: edge-key
+            text: One key for the pair `(3, 4)`
+        correct: both-ends
+        explanation: >-
+          The loop runs `adj[3].append(4)` and `adj[4].append(3)`. Each call creates its key if it was
+          missing.
+
+  - id: connectivity-review-third-start
+    format: tap-cell
+    tags:
+      - graph
+      - dfs
+    prompt: >-
+      The graph has 7 nodes and the edges `(0, 4), (4, 6), (1, 2), (3, 5)`. The loop starts a search
+      at each unseen node in order. Tap the node where the third search starts.
+    code: |-
+      for start in range(7):
+          if start not in seen:
+              explore(start)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4, 5, 6]
+    correct: 3
+    explanation: >-
+      The first search starts at 0 and marks 0, 4 and 6. The second starts at 1 and marks 1 and 2.
+      Node 3 is the next unseen node.
+    misses:
+      - index: 0
+        explanation: Node 0 is where the first search starts.
+      - index: 1
+        explanation: Node 1 is where the second search starts, since 0's search never reaches it.
+      - index: 2
+        explanation: Node 2 is joined to 1, so the second search already marked it.
+      - index: 4
+        explanation: Node 4 is joined to 0, so the first search marked it.
+      - index: 5
+        explanation: Node 5 is joined to 3. The third search, from 3, marks it.
+      - index: 6
+        explanation: Node 6 is reached through 4, so the first search marked it.
+
+  - id: connectivity-review-cycle-count
+    tags:
+      - graph
+    prompt: >-
+      A graph has 7 nodes, numbered 0 to 6, and the undirected edges `(0, 1), (1, 2), (2, 0), (3, 4)`.
+      Nodes 5 and 6 have no edges. How many connected components does it have?
+    options:
+      - id: four
+        text: '4'
+        explanation: >-
+          The components are {0, 1, 2}, {3, 4}, {5} and {6}. A node with no edges is a component of
+          its own.
+      - id: three
+        text: '3'
+        explanation: >-
+          That is 7 nodes minus 4 edges. The edge `(2, 0)` closes a triangle inside one component and
+          merges nothing, so the count does not drop.
+      - id: two
+        text: '2'
+        explanation: >-
+          {0, 1, 2} and {3, 4} are two components, but nodes 5 and 6 still count. Each is a component
+          with one node.
+    correct: four
+    followUps:
+      three:
+        prompt: Before `(2, 0)` is added, 0 and 2 are already joined through 1. What does that edge change?
+        options:
+          - id: nothing
+            text: Nothing about the count, since both ends are already in one component
+          - id: minus-one
+            text: It lowers the count by one, like every edge
+          - id: plus-one
+            text: It raises the count, since it creates a cycle
+        correct: nothing
+        explanation: >-
+          An edge lowers the count only when its ends are in different components. An edge inside a
+          component adds a cycle and leaves the count alone.
+      two:
+        prompt: Does a node with no edges belong to any component?
+        options:
+          - id: own
+            text: Yes, it forms a component by itself
+          - id: needs-edge
+            text: No, components need at least one edge
+          - id: nearest
+            text: It joins the component with the closest number
+        correct: own
+        explanation: >-
+          A component is a maximal group of nodes that reach one another. A lone node reaches only
+          itself, so it is its own component.
+
+  - id: connectivity-review-find-trace
+    format: step-trace
+    tags:
+      - graph
+    prompt: >-
+      Each cell holds that node's parent, and a root is its own parent. Trace `find(3)` one loop
+      pass at a time.
+    code: |-
+      def find(x):
+          while parent[x] != x:
+              x = parent[x]
+          return x
+
+      find(3)
+    sequence:
+      kind: array
+      name: parent
+      cells: [0, 0, 1, 2, 6, 4, 6]
+    start:
+      - name: x
+        at: 3
+    steps:
+      - line: 2
+        ask: After the first pass, where is `x`?
+        pointer: x
+        correct: 2
+        explanation: '`parent[3]` is 2, so `x` moves to node 2.'
+        misses:
+          - index: 3
+            explanation: '`parent[3]` is 2, not 3, so node 3 is not a root and the loop runs.'
+          - index: 0
+            explanation: >-
+              Node 0 is the root, but one pass moves `x` only one parent up, to `parent[3]`, which
+              is 2.
+        elsewhere: Read cell 3. It holds the next node, 2.
+      - line: 2
+        ask: After the second pass, where is `x`?
+        pointer: x
+        correct: 1
+        explanation: '`parent[2]` is 1, so `x` moves to node 1.'
+        misses:
+          - index: 0
+            explanation: >-
+              `x` is at 2, and `parent[2]` is 1. Node 0 is one pass further.
+        elsewhere: Read cell 2. It holds the next node, 1.
+      - line: 4
+        ask: What does `find(3)` return?
+        options:
+          - id: zero
+            text: '0'
+            explanation: '`parent[1]` is 0 and `parent[0]` is 0, so the loop stops at the root, 0.'
+          - id: one
+            text: '1'
+            explanation: '`parent[1]` is 0, not 1, so the loop takes one more pass, to 0.'
+          - id: six
+            text: '6'
+            explanation: >-
+              Node 6 is a root, but of a different set, {4, 5, 6}. No parent link from 3 leads there.
+        correct: zero
+
+  - id: connectivity-review-same-root
+    tags:
+      - graph
+    prompt: |-
+      Union-find holds `parent = [2, 2, 2, 0, 5, 5, 3]`, where a root is its own parent. Are nodes 1 and 6 in the same set?
+    options:
+      - id: same
+        text: Yes, both reach root 2
+        explanation: >-
+          1 points at 2. 6 points at 3, 3 at 0, and 0 at 2. Two nodes share a set exactly when
+          `find` returns the same root for both.
+      - id: parents-differ
+        text: No, their parents are 2 and 3
+        explanation: >-
+          A parent is only the first step. Follow both walks to the end: 6 goes through 3 and 0
+          before it stops at 2, the same root as 1.
+      - id: other-root
+        text: No, node 6 belongs to root 5
+        explanation: >-
+          Root 5 heads the set {4, 5}. Node 6 points at 3, and that chain ends at 2.
+    correct: same
+    followUps:
+      parents-differ:
+        prompt: What decides whether two nodes are in one set?
+        options:
+          - id: roots
+            text: Whether their walks end at the same root
+          - id: parents
+            text: Whether their parents are equal
+          - id: adjacent
+            text: Whether one is the parent of the other
+        correct: roots
+        explanation: >-
+          A set is a whole tree, and its root names it. Nodes deep in one tree can have different
+          parents and still share the root.
+      other-root:
+        prompt: What is `parent[6]`, and where does that walk end?
+        options:
+          - id: three
+            text: 3, and the walk goes on to 0 and then 2
+          - id: five
+            text: 5, the nearest root on the left
+          - id: six
+            text: 6, so node 6 is its own root
+        correct: three
+        explanation: >-
+          Read the cell at index 6, not the nearest root. Cell 6 holds 3, and the walk continues until
+          a cell holds its own index.
+
+  - id: connectivity-review-union-wrong-cell
+    tags:
+      - graph
+    prompt: |-
+      This union writes the parent of `a` itself instead of its root. Three nodes start as their own roots. What does the last line print?
+
+      ```python
+      parent = [0, 1, 2]
+
+      def union(a, b):
+          parent[a] = b
+
+      union(0, 1)
+      union(0, 2)
+      print(find(1) == find(2))
+      ```
+    options:
+      - id: prints-false
+        text: 'False, because 1 and 2 are separated'
+        explanation: >-
+          The second call overwrites `parent[0]` from 1 to 2, which cuts 0 away from 1. Now
+          `parent == [2, 1, 2]`, `find(1)` is 1 and `find(2)` is 2. Writing `parent[find(a)] = find(b)`
+          keeps the old links and prints True.
+      - id: prints-true
+        text: 'True, because both were linked to 0'
+        explanation: >-
+          The answer should be True, but trace the array. The second call replaces `parent[0]`, so the
+          link from 0 to 1 is lost.
+      - id: error
+        text: It raises an error, because node 0 has two parents
+        explanation: >-
+          A node has one parent cell. Assigning it again silently replaces the old value, with no error.
+    correct: prints-false
+    followUps:
+      prints-true:
+        prompt: After `union(0, 1)` and `union(0, 2)`, what is `parent[0]`?
+        options:
+          - id: two
+            text: 2, so the earlier link to 1 is gone
+          - id: one
+            text: 1, since the first link stays
+          - id: both
+            text: Both 1 and 2
+        correct: two
+        explanation: >-
+          Each node stores one parent. Writing `parent[0]` again drops the link to 1, which is why a
+          union must write into a root instead.
+      error:
+        prompt: What happens when a list cell is assigned a second time?
+        options:
+          - id: replaced
+            text: The new value replaces the old one without complaint
+          - id: raises
+            text: Python raises an error to protect the old value
+          - id: grows
+            text: The cell holds both values
+        correct: replaced
+        explanation: >-
+          List assignment always overwrites. Union-find avoids losing links by only writing into a
+          root, whose old value pointed at itself.
+
+  - id: connectivity-review-union-count
+    tags:
+      - graph
+    prompt: >-
+      Union-find starts with `count = 6`, one set per node, and subtracts 1 each time `union` joins
+      two different roots. The edges are `(0, 1), (1, 2), (2, 0), (3, 4)`. What is `count` at the end?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          Three unions merge: `(0, 1)`, `(1, 2)` and `(3, 4)`. When `(2, 0)` arrives, 2 and 0 already
+          share a root, so nothing merges. The sets are {0, 1, 2}, {3, 4} and {5}.
+      - id: two
+        text: '2'
+        explanation: >-
+          That subtracts 1 for every edge. The edge `(2, 0)` joins two nodes that already share a root,
+          so `count` stays put.
+      - id: four
+        text: '4'
+        explanation: >-
+          That counts only two merges. `(0, 1)`, `(1, 2)` and `(3, 4)` each join two different roots.
+          Only `(2, 0)` leaves `count` alone.
+    correct: three
+    followUps:
+      two:
+        prompt: What are `find(2)` and `find(0)` when `(2, 0)` arrives?
+        options:
+          - id: same
+            text: The same root, since `(0, 1)` and `(1, 2)` already joined them
+          - id: different
+            text: Different roots, since no edge has joined 0 and 2 yet
+          - id: own
+            text: Each is its own root until an edge joins them directly
+        correct: same
+        explanation: >-
+          Connection follows chains, so 0 and 2 shared a set before this edge. A union on one set
+          changes nothing and does not lower the count.
+      four:
+        prompt: When `(1, 2)` arrives, are 1 and 2 already in one set?
+        options:
+          - id: separate
+            text: No, 2 is still alone, so this union merges
+          - id: joined
+            text: Yes, `(0, 1)` already joined 2
+          - id: skipped
+            text: It does not matter, since only the first edge for a node counts
+        correct: separate
+        explanation: >-
+          Only `(0, 1)` came before it, and it did not touch 2. Joining a singleton to a set is a real
+          merge, so it lowers the count.
+
+  - id: connectivity-review-redundant-link
+    format: tap-cell
+    tags:
+      - graph
+    prompt: >-
+      Links arrive in this order, and union-find checks `find(a) == find(b)` before it merges.
+      Tap the first link whose ends already share a root.
+    code: |-
+      links = [(0, 1), (1, 2), (3, 4), (2, 0)]
+      for a, b in links:
+          if find(a) == find(b):
+              print("already joined", a, b)
+          else:
+              union(a, b)
+    sequence:
+      kind: array
+      name: links
+      cells: ['0-1', '1-2', '3-4', '2-0']
+    correct: 3
+    explanation: >-
+      By then `(0, 1)` and `(1, 2)` have put 0, 1 and 2 in one set. Link `2-0` joins two nodes that
+      already share a root. In a graph, it closes a cycle.
+    misses:
+      - index: 0
+        explanation: Every node starts as its own root, so the first link always merges.
+      - index: 1
+        explanation: >-
+          Node 2 has not been linked yet, so its root is 2 and the root of 1 differs. This link
+          merges.
+      - index: 2
+        explanation: >-
+          Nodes 3 and 4 have not been linked to anything. Their roots differ, so this link merges.
+
+  - id: connectivity-review-answer-in-time
+    tags:
+      - graph
+    prompt: |-
+      Events arrive in order, and each `same` is answered when it arrives. What are the two answers?
+
+      ```text
+      link(0, 1)
+      same(0, 2)
+      link(1, 2)
+      same(0, 2)
+      ```
+    options:
+      - id: false-true
+        text: False, then True
+        explanation: >-
+          When the first question arrives, 2 is still alone. After `link(1, 2)`, the chain 0, 1, 2
+          joins them, so the second answer is True.
+      - id: true-true
+        text: True, then True
+        explanation: >-
+          That answers both questions with the final graph. The first `same` arrives before
+          `link(1, 2)`, when 0 and 2 are in different sets.
+      - id: false-false
+        text: False, then False
+        explanation: >-
+          No link joins 0 and 2 directly, but `same` asks about any chain. After `link(1, 2)` they
+          share a root.
+    correct: false-true
+    followUps:
+      true-true:
+        prompt: Which links exist when the first `same(0, 2)` is asked?
+        options:
+          - id: only-first
+            text: Only `link(0, 1)`
+          - id: both
+            text: Both links, because the stream is read in full first
+          - id: none
+            text: None, because questions are answered before any link
+        correct: only-first
+        explanation: >-
+          An online stream answers each question with the links seen so far. A later link cannot change
+          an answer already given.
+      false-false:
+        prompt: After `link(0, 1)` and `link(1, 2)`, what do `find(0)` and `find(2)` return?
+        options:
+          - id: same-root
+            text: The same root, since 1 joins them
+          - id: different-roots
+            text: Different roots, since 0 and 2 were never linked to each other
+          - id: themselves
+            text: 0 and 2, each still its own root
+        correct: same-root
+        explanation: >-
+          Each union merges whole sets. Once 1 is in both sets, they become one set, and every node in
+          it reaches the same root.
