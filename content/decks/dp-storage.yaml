@@ -1,0 +1,546 @@
+id: dp-storage
+title: DP storage
+description: Keep only the past entries a table still reads, update old and new values in a safe order, and count states times work. Each card opens with a worked example.
+heading: Which one is right?
+
+questions:
+  - id: storage-tap-oldest-needed
+    format: tap-cell
+    heading: Which entry is still needed?
+    tags: [dp, python]
+    prompt: >-
+      **Worked example:** if every step reads `dp[i-1]` and `dp[i-2]`, then once `dp[5]` is
+      written the next step reads `dp[5]` and `dp[4]`, so `dp[3]` and older can go. Below, a
+      climber takes 1 or 3 stairs at a time, and `ways[7]` has just been written. Tap the
+      **oldest** entry that some later step still reads.
+    code: |
+      ways = [1, 1, 1]
+      for i in range(3, n + 1):
+          ways.append(ways[i - 1] + ways[i - 3])
+    sequence: { kind: array, name: ways, cells: [1, 1, 1, 2, 3, 4, 6, 9] }
+    correct: 5
+    explanation: >-
+      The next step computes `ways[8]` and reads `ways[7]` and `ways[5]`. Every step after that
+      reads higher indexes still, so `ways[5]` is the oldest entry left in use. Three values,
+      `ways[5]` to `ways[7]`, are all the loop needs from here on.
+    misses:
+      - index: 0
+        explanation: >-
+          `ways[0]` was last read by `ways[3]`. The farthest look-back is 3, so a step at 8 or
+          later never reaches back to index 0.
+      - index: 1
+        explanation: >-
+          `ways[1]` was last read when `ways[4]` was computed. No later step looks back that far.
+      - index: 2
+        explanation: >-
+          `ways[2]` was last read by `ways[5]`. From `ways[8]` on, the oldest read is `ways[i-3]`,
+          which is index 5 or higher.
+      - index: 3
+        explanation: >-
+          `ways[3]` fed `ways[6]` and is never read again. The next step looks back three cells
+          from 8, which lands on 5.
+      - index: 4
+        explanation: >-
+          `ways[4]` was read to compute `ways[7]`, the step that just ran. The next step is
+          `ways[8]`, whose look-back of 3 lands on index 5.
+      - index: 6
+        explanation: >-
+          `ways[6]` is still needed, by `ways[9]`, but it is not the oldest. `ways[8]` reads
+          `ways[5]`, one cell further back.
+      - index: 7
+        explanation: >-
+          `ways[7]` is the newest entry, not the oldest. The next step also reads `ways[5]`, three
+          cells back from 8.
+
+  - id: storage-window-width
+    heading: How much must stay?
+    tags: [dp, complexity]
+    prompt: |-
+      **Worked example:** `fib[i] = fib[i-1] + fib[i-2]` keeps the last two entries, because the
+      farthest read is two back.
+
+      A game scores plays worth 2 or 5 points, and `ways[i]` counts the orders that reach a score of
+      `i`. Only `ways[n]` is returned.
+
+      ```python
+      ways = [1] + [0] * n
+      for i in range(1, n + 1):
+          if i >= 2:
+              ways[i] += ways[i - 2]
+          if i >= 5:
+              ways[i] += ways[i - 5]
+      return ways[n]
+      ```
+
+      What is the least the loop must keep from the past to compute every later entry?
+    options:
+      - id: two-reads
+        text: Two values, `ways[i-2]` and `ways[i-5]`, because those are the only entries read
+        explanation: >-
+          Those are the reads for step `i`, but `ways[i-1]` becomes `ways[(i+1)-2]` on the very
+          next step, and `ways[i-3]` and `ways[i-4]` are read a few steps later. Dropping them
+          loses values that are still ahead.
+      - id: last-five
+        text: The last five entries, `ways[i-5]` up to `ways[i-1]`, read now or later
+        explanation: >-
+          Every index from `i-5` to `i-1` is read either now or on a later step, and nothing older
+          is ever read again. The window is as wide as the farthest look-back, 5, so the extra
+          space is O(1) and the time stays O(n).
+      - id: last-three
+        text: The last three entries, because the two reads are 5 - 2 = 3 cells apart
+        explanation: >-
+          The gap between the two reads does not set the window. The farthest read does. Step `i`
+          reaches back to `ways[i-5]`, which a three-entry window would already have dropped.
+      - id: whole-table
+        text: The whole table, because the two reads are not next to each other
+        explanation: >-
+          A gap between reads does not force the whole table. Everything older than `i-5` is never
+          read again, so a fixed window of five entries is enough.
+    correct: last-five
+    followUps:
+      two-reads:
+        prompt: >-
+          `ways[i]` reads `ways[i-2]` and `ways[i-5]`. When does the loop read today's
+          `ways[i-1]`?
+        options:
+          - id: next-step
+            text: On the next step, as that step's `i - 2`, and again four steps later as `i - 5`
+          - id: never
+            text: Never, because no step reads one cell back
+          - id: only-at-end
+            text: Only at the end, when `ways[n]` is returned
+        correct: next-step
+        explanation: >-
+          An entry that is not read now can be read later. A value stays needed until the
+          farthest look-back has passed it, so the window covers every index from `i-5` to
+          `i-1`.
+      last-three:
+        prompt: What sets how many past entries a rolling version must keep?
+        options:
+          - id: gap
+            text: The gap between the two look-backs
+          - id: farthest
+            text: The farthest look-back, since every index up to it is read now or later
+          - id: count-of-reads
+            text: The number of reads in the recurrence
+        correct: farthest
+        explanation: >-
+          Step `i` reads back as far as `i-5`. Every index between `i-5` and `i-1` takes that
+          position on some later step, so the window has to span all five.
+      whole-table:
+        prompt: After `ways[20]` is computed, which step ever reads `ways[14]` again?
+        options:
+          - id: none
+            text: None, since the furthest any later step reaches is 21 - 5 = 16
+          - id: step-twenty-one
+            text: "`ways[21]`, because it reads every earlier entry"
+          - id: last-step
+            text: The step that computes `ways[n]`
+        correct: none
+        explanation: >-
+          Each step reaches back at most 5 cells. Once the loop is past `i = 19`, index 14 is out
+          of reach for good, so it can be dropped.
+
+  - id: storage-trace-two-variables
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      **Worked example:** `a, b = b, a + b` evaluates the whole right side first, so with `a = 1`
+      and `b = 2` it sets `a = 2` and `b = 3`. Below, a walker starts on stair 0 or 1, climbs 1
+      or 2 stairs at a time, and pays the cost of every stair it stands on. `a` and `b` hold the
+      cheapest totals for the two stairs before `i`. Predict each step.
+    code: |
+      def cheapest(cost):
+          a, b = cost[0], cost[1]
+          for i in range(2, len(cost)):
+              a, b = b, cost[i] + min(a, b)
+          return b
+
+      cheapest([2, 7, 1, 5, 3, 4])
+    sequence: { kind: array, name: cost, cells: [2, 7, 1, 5, 3, 4] }
+    start:
+      - { name: i, at: 2 }
+    steps:
+      - line: 4
+        ask: "`a` is 2 and `b` is 7. After the pass with `i` at 2, what are `a` and `b`?"
+        options:
+          - id: shift
+            text: a = 7, b = 3
+            explanation: >-
+              The right side is built from the old values: `b` is 7, and `1 + min(2, 7)` is 3. Then
+              `a` takes 7 and `b` takes 3.
+          - id: stay
+            text: a = 2, b = 3
+            explanation: >-
+              `a` does change. The tuple moves the old `b` into `a`, so the window slides one stair
+              to the right.
+          - id: new-a
+            text: a = 7, b = 8
+            explanation: >-
+              That would use the new `a` inside `min`, as two separate lines would. The tuple reads
+              `min(2, 7)` before either name changes, so `b` is 1 + 2.
+        correct: shift
+      - line: 4
+        ask: After the pass with `i` at 3, what are `a` and `b`?
+        options:
+          - id: shift
+            text: a = 3, b = 8
+            explanation: >-
+              `a` takes the old `b`, 3. The new `b` is `5 + min(7, 3)`, which is 8.
+          - id: no-shift
+            text: a = 7, b = 8
+            explanation: >-
+              `a` must move up to the old `b`, 3. Keeping 7 leaves `a` one stair behind.
+          - id: max
+            text: a = 3, b = 12
+            explanation: >-
+              12 is `5 + 7`, which picks the dearer stair. The walker takes the cheaper of the two
+              ways in, so it adds `min(7, 3)`.
+        correct: shift
+        also:
+          - { name: i, at: 3 }
+      - line: 4
+        ask: After the pass with `i` at 4, what are `a` and `b`?
+        options:
+          - id: shift
+            text: a = 8, b = 6
+            explanation: >-
+              `a` takes 8. The new `b` is `3 + min(3, 8)`, which is 6, since stepping from stair 2
+              is cheaper than from stair 3.
+          - id: new-a
+            text: a = 8, b = 11
+            explanation: >-
+              11 is `3 + min(8, 8)`. It comes from reading `a` after it was set to 8. In the tuple,
+              `min` still sees the old `a`, 3.
+          - id: same
+            text: a = 6, b = 6
+            explanation: >-
+              `a` takes the old `b`, which is 8, not the value just computed.
+        correct: shift
+        also:
+          - { name: i, at: 4 }
+      - line: 5
+        ask: The pass with `i` at 5 runs. What does the call return?
+        options:
+          - id: ten
+            text: '10'
+            explanation: >-
+              `4 + min(8, 6)` is 10: stand on stairs 0, 2, 4 and 5 for 2 + 1 + 3 + 4. The full table
+              is `[2, 7, 3, 8, 6, 10]`, and the two variables track its last two entries.
+          - id: twelve
+            text: '12'
+            explanation: >-
+              12 is `4 + 8`, stepping from stair 3. Stair 4 is cheaper at 6, so `min` picks it.
+          - id: six
+            text: '6'
+            explanation: >-
+              6 is the total for stair 4. The last pass still adds the 4 on stair 5.
+        correct: ten
+        also:
+          - { name: i, at: 5 }
+
+  - id: storage-tap-reused-item
+    format: tap-cell
+    heading: Where does the row go wrong?
+    tags: [dp, python]
+    prompt: >-
+      **Worked example:** in a one-row table, an entry to the left of the loop has already been
+      rewritten for this pass, and an entry to the right still holds the last pass. Below, each
+      item may be packed once. The row holds the best value per capacity for an item of weight 3
+      worth 4. A pass now adds an item of weight 2 worth 3, going **left to right**. Tap the
+      first capacity that ends with a wrong value.
+    code: |
+      wt, val = 2, 3
+      for w in range(wt, len(dp)):
+          dp[w] = max(dp[w], dp[w - wt] + val)
+    sequence: { kind: array, name: dp, cells: [0, 0, 0, 4, 4, 4, 4] }
+    correct: 4
+    explanation: >-
+      At `w = 4` the loop reads `dp[2]`, which this pass already set to 3, the new item alone. So
+      it stores 3 + 3 = 6, the item packed twice. With the old `dp[2]` of 0 it would keep 4. A
+      loop from right to left reads only last-pass entries and gets `[0, 0, 3, 4, 4, 7, 7]`.
+    misses:
+      - index: 0
+        explanation: >-
+          The loop starts at `w = 2`, so `dp[0]` is never written. It stays 0, which is right.
+      - index: 1
+        explanation: >-
+          `dp[1]` is below the item's weight and the loop never writes it. 0 is right.
+      - index: 2
+        explanation: >-
+          `dp[2]` reads `dp[0]`, which this pass never writes. It becomes 3, the new item alone,
+          and that is right.
+      - index: 3
+        explanation: >-
+          `dp[3]` reads `dp[1]`, which this pass never writes, so it compares 4 with 0 + 3 and
+          keeps 4. That is right.
+      - index: 5
+        explanation: >-
+          `dp[5]` comes out as 7, which is right: it reads `dp[3]`, still 4, and adds 3 for both
+          items. The first wrong value was written one step earlier.
+      - index: 6
+        explanation: >-
+          `dp[6]` is wrong too: it reads the new `dp[4]` and stores 9. But the loop wrote a wrong
+          value at `w = 4` first.
+
+  - id: storage-unlimited-direction
+    heading: Which direction is right?
+    tags: [dp, python]
+    prompt: |-
+      **Worked example:** for items packed at most once, a one-row loop runs from high to low so
+      that `dp[w - wt]` still holds the last pass.
+
+      Here `dp[a]` counts the ways to pay amount `a` when each coin value may be used any number of
+      times, and order does not matter.
+
+      ```python
+      dp = [1] + [0] * A
+      for c in coins:
+          for a in range(c, A + 1):
+              dp[a] += dp[a - c]
+      return dp[A]
+      ```
+
+      With `coins = [1, 2, 5]` and `A = 6` it returns 5. Which statement about the inner loop's
+      direction is correct?
+    options:
+      - id: low-to-high
+        text: Low to high is right, since `dp[a - c]` may already use coin `c`, so `c` can repeat
+        explanation: >-
+          Reading an entry this pass already updated adds one more copy of the same coin on top of
+          ways that may use it. That is the point when coins are unlimited. Looping from high to
+          low would read only last-pass entries and count each coin at most once.
+      - id: high-to-low
+        text: High to low is needed, since reading an updated entry always double counts
+        explanation: >-
+          Rereading an updated entry adds the same coin again. For items packed at most once that
+          is an error, but here coins may repeat, so it is what the count needs. High to low
+          returns 1 for this input, only `1 + 5`.
+      - id: either
+        text: Either direction gives 5, since the sum does not depend on the order it is built in
+        explanation: >-
+          The direction decides which version of `dp[a - c]` is read, not just the order of the
+          additions. High to low returns 1 here, counting only `1 + 5`.
+      - id: two-rows
+        text: Neither works with one row; unlimited coins need a row per coin
+        explanation: >-
+          One row is enough. Low to high reads entries this coin's pass already updated, which is
+          what lets a coin repeat.
+    correct: low-to-high
+    followUps:
+      high-to-low:
+        prompt: >-
+          With the loop running from high to low, what does `dp[a - c]` hold when `dp[a]` is
+          updated?
+        options:
+          - id: before-coin
+            text: The count before coin `c` was added, so each coin value is used at most once
+          - id: after-coin
+            text: The count that already includes coin `c`, so `c` can be used again
+          - id: zero
+            text: Zero, since the high-to-low loop clears entries as it goes
+        correct: before-coin
+        explanation: >-
+          From high to low, smaller amounts have not been touched in this pass yet. That rule is
+          right when each item is packed once, and wrong when a coin may repeat. For `[1, 2, 5]`
+          and 6 it finds only `1 + 5`.
+      either:
+        prompt: For `coins = [1, 2, 5]` and `A = 6`, what does the loop return when it runs high to low?
+        options:
+          - id: one
+            text: 1, since only `1 + 5` uses each coin value at most once
+          - id: five
+            text: 5, the same as low to high
+          - id: zero
+            text: 0, since no amount can be paid
+        correct: one
+        explanation: >-
+          High to low reads last-pass values, so each coin value appears at most once in a way.
+          Among `{1, 2, 5}` only `1 + 5` makes 6. The direction changes what is counted.
+      two-rows:
+        prompt: >-
+          Going low to high in one row, what does `dp[a - c]` hold when `dp[a]` is updated?
+        options:
+          - id: includes-c
+            text: The count for `a - c` that already allows coin `c`, since it was updated this pass
+          - id: excludes-c
+            text: The count for `a - c` before coin `c`, since one row cannot hold both
+          - id: undefined
+            text: A partial value that mixes two coins, so the result is unreliable
+        correct: includes-c
+        explanation: >-
+          Low to high rewrites smaller amounts first, so the read sees ways that may already use
+          coin `c`. Adding `c` once more on top of them is how unlimited use is counted. A second
+          row would also work but is not needed.
+
+  - id: storage-count-lis
+    heading: What is the time?
+    tags: [dp, complexity]
+    prompt: |-
+      **Worked example:** a table with `n` entries that each read two earlier entries does O(1)
+      work per entry, so O(n) in all.
+
+      `dp[i]` is the length of the longest strictly rising run of picks that ends at `a[i]`, where
+      picks keep their order but need not be next to each other.
+
+      ```python
+      dp = [1] * n
+      for i in range(n):
+          for j in range(i):
+              if a[j] < a[i]:
+                  dp[i] = max(dp[i], dp[j] + 1)
+      return max(dp)
+      ```
+
+      What is the time of this code?
+    options:
+      - id: linear
+        text: O(n), since each of the `n` entries is computed once
+        explanation: >-
+          Computed once is not the same as O(1) work. Entry `i` checks every `j` below it, so the
+          checks add up to 0 + 1 + ... + (n - 1).
+      - id: quadratic
+        text: O(n²), since entry `i` checks all `i` earlier entries
+        explanation: >-
+          There are `n` states, and state `i` does `i` checks, so the total is n(n - 1)/2. For
+          `n = 1000` that is 499,500 comparisons. The time is states times work per state, and
+          here the work grows with `i`.
+      - id: n-log-n
+        text: O(n log n), since the inner scan stops at the first smaller value
+        explanation: >-
+          The inner loop has no `break`. It checks every `j` below `i`, whether or not one was
+          smaller. A different method with binary search does reach O(n log n), but not this
+          code.
+      - id: exponential
+        text: O(2ⁿ), since every set of picks is a candidate
+        explanation: >-
+          The table never lists sets of picks. It keeps one best length per end position and
+          builds it from earlier entries.
+    correct: quadratic
+    followUps:
+      linear:
+        prompt: >-
+          For `n = 5`, how many times does `a[j] < a[i]` run?
+        options:
+          - id: ten
+            text: 10, since `i` does `i` checks and 0 + 1 + 2 + 3 + 4 = 10
+          - id: five
+            text: 5, one per entry
+          - id: twenty-five
+            text: 25, since every pair is checked in both orders
+        correct: ten
+        explanation: >-
+          The total work is the sum of the work per state, not the number of states. With work
+          `i` at state `i`, the sum is n(n - 1)/2, which grows like n².
+      n-log-n:
+        prompt: When does the inner `for j in range(i)` loop end?
+        options:
+          - id: after-all
+            text: After it has checked every `j` from 0 to `i - 1`
+          - id: first-smaller
+            text: At the first `j` with `a[j] < a[i]`
+          - id: halfway
+            text: Halfway, since the rest was checked by earlier entries
+        correct: after-all
+        explanation: >-
+          There is no `break`, and the best predecessor can be anywhere below `i`, so every `j`
+          is checked. That makes the work at state `i` equal to `i`.
+      exponential:
+        prompt: How many values does the table store?
+        options:
+          - id: n
+            text: "`n`, one best length for each position where a run can end"
+          - id: two-to-n
+            text: 2ⁿ, one for each set of picks
+          - id: n-squared
+            text: n², one for each pair of positions
+        correct: n
+        explanation: >-
+          Many sets of picks end at the same position, and the table keeps only the best length
+          for each. That collapse is what makes it polynomial.
+
+  - id: storage-count-memo-calls
+    heading: How much work and depth?
+    tags: [dp, recursion, complexity]
+    prompt: |-
+      **Worked example:** with a cache, a call whose argument was seen before returns at once, so
+      the body runs once per distinct argument.
+
+      ```python
+      from functools import cache
+
+      @cache
+      def ways(n):
+          if n <= 1:
+              return 1
+          return ways(n - 1) + ways(n - 2)
+
+      ways(30)
+      ```
+
+      How many times does the body run past the cache, and how many `ways` frames are on the stack
+      at the deepest point?
+    options:
+      - id: thirty-one-thirty
+        text: 31 body runs; at most 30 frames at once, one per value from 30 to 1
+        explanation: >-
+          Arguments 0 to 30 are each computed once, 31 in all. The first chain goes 30, 29, ... down
+          to 1 before anything is cached, which is 30 frames. `ways(0)` is called later, from
+          `ways(2)`, at the same depth. So the time is O(n) and the stack is O(n) deep.
+      - id: thirty-one-two
+        text: 31 body runs; at most 2 frames, since each call reads two cached values
+        explanation: >-
+          Nothing is in the cache when the first chain starts. Each call waits on `ways(n - 1)`
+          before it returns, so the stack fills down to `ways(1)`.
+      - id: millions
+        text: About 2.7 million body runs, since each call still makes two calls
+        explanation: >-
+          That is the count without the cache: 2,692,537 calls for `n = 30`. With the cache, a
+          repeated argument is a lookup, so only 31 bodies run.
+      - id: thirty-one-sixteen
+        text: 31 body runs; at most 16 frames, since half the calls step down by 2
+        explanation: >-
+          The deepest chain always takes the `n - 1` call first. That chain steps down by 1 from 30
+          to 1, so it is 30 frames deep.
+    correct: thirty-one-thirty
+    followUps:
+      thirty-one-two:
+        prompt: When `ways(30)` first calls `ways(29)`, what is in the cache?
+        options:
+          - id: empty
+            text: Nothing, since a value is stored only when its call returns
+          - id: all
+            text: Every value from 0 to 29, filled on the first call
+          - id: two
+            text: The two base values, 0 and 1
+        correct: empty
+        explanation: >-
+          A cache fills from the bottom up as calls return. The first chain has to reach the base
+          case before any value exists, so the stack is about `n` frames deep at that point.
+      millions:
+        prompt: What happens on the second call to `ways(28)`?
+        options:
+          - id: lookup
+            text: It returns the stored value without running the body
+          - id: rerun
+            text: It runs the body again, since each call is separate
+          - id: half
+            text: It runs half the body, since one branch is cached
+        correct: lookup
+        explanation: >-
+          A repeat argument is answered from the cache. The work is the number of distinct
+          arguments times the work in one body, here 31 times a constant.
+      thirty-one-sixteen:
+        prompt: Which call does `ways(30)` make first?
+        options:
+          - id: minus-one
+            text: "`ways(29)`, the left side of the `+`, and it nests down to `ways(1)`"
+          - id: minus-two
+            text: "`ways(28)`, since the smaller call is cheaper"
+          - id: both
+            text: Both at once, on separate stacks
+        correct: minus-one
+        explanation: >-
+          Python evaluates the left operand first. Each call does the same, so the chain steps down
+          by 1 until it reaches a base case, 30 frames from the top.

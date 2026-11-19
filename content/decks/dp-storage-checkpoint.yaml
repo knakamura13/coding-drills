@@ -1,0 +1,291 @@
+id: dp-storage-checkpoint
+title: "DP storage: checkpoint"
+description: Choose between memoization, a table and rolling variables, and repair a one-row update. Each item combines the DP storage skills.
+heading: Which one is right?
+
+questions:
+  - id: storage-exam-sparse-states
+    heading: Which storage fits?
+    tags: [dp, recursion, complexity]
+    prompt: |-
+      ```python
+      def f(n):
+          if n == 0:
+              return 1
+          return f(n // 2) + f(n // 3)
+      ```
+
+      `f(10**6)` is needed once. Which way to compute it does the least work, and why?
+    options:
+      - id: memo
+        text: Memoization, since only values reachable from n by `// 2` and `// 3` are computed
+        explanation: >-
+          Repeated halving and thirding reach few distinct values: 108 for `n = 10**6`, and the
+          deepest chain is 21 calls. A cache runs each body once. A table from 0 up would fill
+          1,000,001 entries, almost none of which the answer uses.
+      - id: table
+        text: A bottom-up table, since it avoids call overhead and computes each value once
+        explanation: >-
+          A table from 0 to `n` computes every value, and here almost every one is wasted: the
+          answer depends on only 108 of them. Avoiding calls does not make up for a million
+          entries.
+      - id: rolling
+        text: Two rolling variables, since each value reads only two others
+        explanation: >-
+          Rolling variables need reads a fixed distance back. `n // 2` and `n // 3` are far from
+          `n`, and the distance grows with `n`, so no fixed window holds them.
+      - id: neither
+        text: Neither works well, since the recursion is about `n` calls deep before it returns
+        explanation: >-
+          Each call divides `n` by at least 2, so a chain is about log₂ n deep: 21 calls for a
+          million. Depth stays small, and the cache keeps the work small too.
+    correct: memo
+    followUps:
+      table:
+        prompt: How many values does a bottom-up table compute for `n = 10**6`, against the cache?
+        options:
+          - id: million-vs-few
+            text: 1,000,001 against 108, since the table cannot know which values the answer needs
+          - id: same
+            text: The same number, since both compute each needed value once
+          - id: fewer
+            text: Fewer, since the table skips values that are never read
+        correct: million-vs-few
+        explanation: >-
+          A table fills every state in order. A cache computes only states that a call reaches.
+          When the reachable states are sparse, the cache does far less work.
+      rolling:
+        prompt: For `n = 10**6`, how far back from `n` is the read `f(n // 2)`?
+        options:
+          - id: half
+            text: 500,000 positions, and the gap grows as `n` grows
+          - id: two
+            text: Two positions, like the Fibonacci look-back
+          - id: one
+            text: One position, since it is the previous call
+        correct: half
+        explanation: >-
+          A rolling window keeps a fixed number of recent entries. When the look-back grows with
+          `n`, no fixed window covers it.
+      neither:
+        prompt: How deep is the longest chain of calls from `f(10**6)`?
+        options:
+          - id: log
+            text: About 20, since each call at least halves `n`
+          - id: n
+            text: About a million, one per value
+          - id: sqrt
+            text: About a thousand, the square root of `n`
+        correct: log
+        explanation: >-
+          The chain `f(n // 2)`, `f(n // 4)`, ... reaches 0 after about log₂ n steps. Stack depth
+          follows the length of a chain, not the size of `n`.
+
+  - id: storage-exam-tap-subset
+    format: tap-cell
+    heading: Where does the row go wrong?
+    tags: [dp, python]
+    prompt: >-
+      `can[s]` is 1 when some of the numbers seen so far, each used at most once, add up to `s`.
+      The row below holds the result for the numbers `[3]`. A pass now adds the number 2, going
+      **left to right**. Tap the first sum that ends as 1 though no choice from `[3, 2]` makes it.
+    code: |
+      x = 2
+      for s in range(x, len(can)):
+          can[s] = can[s] or can[s - x]
+    sequence: { kind: array, name: can, cells: [1, 0, 0, 1, 0, 0, 0, 0] }
+    correct: 4
+    explanation: >-
+      At `s = 4` the loop reads `can[2]`, which this pass already set to 1 using the 2. So 4 is
+      marked as 2 + 2, the number used twice. The only sums of `[3, 2]` are 0, 2, 3 and 5. Right to
+      left reads only the old row and gives `[1, 0, 1, 1, 0, 1, 0, 0]`.
+    misses:
+      - index: 0
+        explanation: >-
+          The loop starts at `s = 2`, so `can[0]` is never written. The empty choice makes 0, so 1
+          is right.
+      - index: 1
+        explanation: >-
+          `can[1]` is never written, and no choice makes 1. 0 is right.
+      - index: 2
+        explanation: >-
+          `can[2]` reads `can[0]`, which this pass never writes, so it becomes 1, the 2 alone. That
+          is right.
+      - index: 3
+        explanation: >-
+          `can[3]` was already 1, from the 3. It stays 1, and that is right.
+      - index: 5
+        explanation: >-
+          `can[5]` reads `can[3]`, which this pass left at 1, and becomes 1: 3 + 2. That is right.
+      - index: 6
+        explanation: >-
+          `can[6]` is wrong too, built from the wrong `can[4]`, but the loop wrote a wrong value at
+          `s = 4` first.
+      - index: 7
+        explanation: >-
+          `can[7]` is wrong too, as 3 + 2 + 2, but the loop wrote a wrong value at `s = 4` first.
+
+  - id: storage-exam-choose-rolling
+    heading: Which version fits?
+    tags: [dp, complexity]
+    prompt: |-
+      A strip of length `n` is covered with tiles of length 1 and 3, and `dp[i]` counts the ways:
+
+      ```python
+      dp = [1, 1, 1]
+      for i in range(3, n + 1):
+          dp.append(dp[i - 1] + dp[i - 3])
+      return dp[n]
+      ```
+
+      `n` can reach a million, and only `dp[n]` is needed. Which version fits best?
+    options:
+      - id: three-vars
+        text: A loop that keeps the last three values, in O(n) time and O(1) extra space
+        explanation: >-
+          The farthest read is `dp[i - 3]`, so the entries from `i - 3` to `i - 1` are all that a
+          later step can read. Three variables hold them, and the time stays O(n).
+      - id: two-vars
+        text: A loop that keeps two values, `dp[i - 1]` and `dp[i - 3]`, since those are read
+        explanation: >-
+          `dp[i - 2]` is not read now, but it is the next step's `dp[i - 3]`. Dropping it loses a
+          value that is still ahead, so the window must hold three.
+      - id: memo
+        text: Memoized recursion, in O(n) time, since the cache keeps only what is needed
+        explanation: >-
+          The time is O(n), but `@cache` keeps every value it computes, and the first chain of
+          calls is about `n` frames deep. That is O(n) space in two places, and a chain of a
+          million calls is far past CPython's default limit of 1000.
+      - id: full-table
+        text: The full table, since `dp[i - 3]` skips over `dp[i - 2]`
+        explanation: >-
+          A skipped index does not force a full table. Nothing older than `i - 3` is read again, so
+          a three-value window is enough.
+    correct: three-vars
+    followUps:
+      two-vars:
+        prompt: Which step reads today's `dp[i - 2]`?
+        options:
+          - id: next
+            text: The next one, as its `dp[(i + 1) - 3]`
+          - id: never
+            text: None, since no step reads two back
+          - id: last
+            text: Only the last step
+        correct: next
+        explanation: >-
+          An entry stays needed until the farthest look-back has passed it. With a look-back of 3,
+          every one of the last three entries is read now or soon.
+      memo:
+        prompt: How does memoized recursion's extra space compare with a three-variable loop?
+        options:
+          - id: on-vs-o1
+            text: O(n) for the cache and about `n` stack frames, against O(1)
+          - id: same
+            text: The same, O(1), since each call reads three values
+          - id: smaller
+            text: Smaller, since the cache skips states it does not need
+        correct: on-vs-o1
+        explanation: >-
+          Here every value from 0 to `n` is reachable, so the cache keeps them all, and the stack
+          holds the first chain of calls. The loop drops what no later step reads.
+      full-table:
+        prompt: After `dp[50]` is computed, which later step reads `dp[46]`?
+        options:
+          - id: none
+            text: None, since the next step reaches back only to `dp[48]`
+          - id: next
+            text: "`dp[51]`, since it reads every earlier entry"
+          - id: last
+            text: "`dp[n]`, at the end"
+        correct: none
+        explanation: >-
+          Each step reaches back at most three. Once the loop is past `dp[49]`, `dp[46]` is never
+          read again.
+
+  - id: storage-exam-triangle-direction
+    heading: Which loop header is right?
+    tags: [dp, python]
+    prompt: |-
+      A walk goes from the top of a number triangle to its bottom row, stepping to the same index or
+      the next index one row down, and adds every number it passes. One list `row` replaces the
+      table. When row `r` starts, `row[c]` holds the cheapest total to reach `(r - 1, c)`.
+
+      ```python
+      row = [tri[0][0]]
+      for r in range(1, len(tri)):
+          row.append(row[-1] + tri[r][r])
+          for c in ???:
+              row[c] = tri[r][c] + min(row[c - 1], row[c])
+          row[0] += tri[r][0]
+      return min(row)
+      ```
+
+      Which header is correct?
+    options:
+      - id: high-to-low
+        text: "`c` from `r - 1` down to 1, since each cell needs the old values at `c - 1` and `c`"
+        explanation: >-
+          Both reads belong to the row above. Going right to left, `row[c - 1]` is written only
+          after `row[c]`, so it still holds the old value when read. On
+          `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]` it returns 8, as the full table does.
+      - id: low-to-high
+        text: "`c` from 1 up to `r - 1`, since the left neighbor has to be up to date first"
+        explanation: >-
+          Left to right, `row[c - 1]` already holds this row's value, which is a sideways step the
+          walk cannot take. On `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]` it returns 10, where the
+          answer is 8.
+      - id: either
+        text: Either direction, since each write reads only entries of the row above
+        explanation: >-
+          The reads are meant to be the row above, but in one list that holds only for entries not
+          yet rewritten. Left to right reads a rewritten `row[c - 1]`, and returns 10 instead of 8
+          on `[[3], [7, 1], [7, 1, 5], [1, 5, 3, 2]]`.
+      - id: two-rows
+        text: No order works; a second list is needed, since both reads come from the row above
+        explanation: >-
+          A second list would work, but one is enough. Right to left reaches `c` before `c - 1`, so
+          both reads still hold the row above.
+    correct: high-to-low
+    followUps:
+      low-to-high:
+        prompt: Going left to right, what does `row[c - 1]` hold when `row[c]` is written?
+        options:
+          - id: new
+            text: The current row's total at `c - 1`, a cell the walk cannot step from
+          - id: old
+            text: The row above's total at `c - 1`, which the walk needs
+          - id: copy
+            text: A copy saved before the inner loop
+        correct: new
+        explanation: >-
+          The direction decides whether a read sees the old or the new value. A step comes from the
+          row above, so this update needs old values on both sides, and only right to left keeps
+          `c - 1` old.
+      either:
+        prompt: >-
+          In one list, which entries still hold the row above while `row[c]` is being written?
+        options:
+          - id: not-yet
+            text: Only those the loop has not reached yet in this row
+          - id: all
+            text: All of them, until the row is finished
+          - id: none
+            text: None, since the list holds one row
+        correct: not-yet
+        explanation: >-
+          Every write replaces an old value. Whether a read gets the old or new value depends on
+          whether the loop has passed that index, so the direction matters.
+      two-rows:
+        prompt: Going right to left, what does `row[c - 1]` hold when `row[c]` is written?
+        options:
+          - id: old
+            text: The row above's total at `c - 1`, since the loop has not reached it yet
+          - id: new
+            text: The current row's total at `c - 1`
+          - id: lost
+            text: Nothing useful, since it was overwritten
+        correct: old
+        explanation: >-
+          From right to left, every read at `c - 1` and `c` happens before that index is
+          rewritten. One list holds both rows correctly at the moment each is read.

@@ -5,8 +5,9 @@
  * Version 7 expands the validate-or-ancestor checkpoint from two items to a full sitting.
  * Version 8 grows the Greedy choices checkpoint pool.
  * Version 9 grows the Tree summaries checkpoint pool.
+ * Version 10 grows the DP storage checkpoint pool.
  */
-export const EXAM_RULES_VERSION = 9;
+export const EXAM_RULES_VERSION = 10;
 
 export interface QuestionRef {
 	deckId: string;
