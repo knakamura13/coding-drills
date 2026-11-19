@@ -1,0 +1,318 @@
+id: search-state-checkpoint
+title: "Search state: checkpoint"
+description: Diagnose a sibling-state leak in a search you have not seen. Each item combines making a choice, undoing it, and saving a finished path.
+heading: What does the search do?
+
+questions:
+  - id: checkpoint-grid-seen-leak
+    tags: [backtracking, grid]
+    prompt: |-
+      This counts the paths from the top-left cell to the bottom-right cell that never visit a
+      cell twice. Moves go right, down, left and up. A cell is never taken out of `seen`.
+
+      ```python
+      def count_paths(rows, cols):
+          seen = set()
+          def walk(r, c):
+              if (r, c) == (rows - 1, cols - 1):
+                  return 1
+              seen.add((r, c))
+              total = 0
+              for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+                  nr, nc = r + dr, c + dc
+                  if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in seen:
+                      total += walk(nr, nc)
+              return total
+          return walk(0, 0)
+      ```
+
+      What does `count_paths(2, 3)` return?
+    options:
+      - id: two
+        text: "2"
+        explanation: >-
+          The first move right finds both paths that start that way. On the way, a walk from
+          (1, 1) steps into (1, 0), a dead end, and (1, 0) is never taken out of `seen`. So when the top call tries its
+          second move, down to (1, 0), that cell looks visited, and the two paths that start
+          downward are lost.
+      - id: four
+        text: "4"
+        explanation: >-
+          4 is the count with `seen.remove((r, c))` before `return total`. Here the cells a branch
+          visited stay marked, so later siblings are blocked by paths they are not on.
+      - id: three
+        text: "3"
+        explanation: >-
+          The lost paths are not just the long one that turns back up. Both paths that start with
+          a move down are blocked, because (1, 0) is already marked.
+      - id: one
+        text: "1"
+        explanation: >-
+          The second path, right then down then right, uses (1, 1), which nothing has marked when
+          it is tried. Only cells from finished branches block later ones.
+    correct: two
+    followUps:
+      four:
+        prompt: "When the top call tries its move down, is (1, 0) in `seen`?"
+        options:
+          - id: yes
+            text: Yes, a walk below the first move added it and nothing removed it
+          - id: no
+            text: No, only cells on the current path are in `seen`
+          - id: target
+            text: No, because (1, 0) is next to the start
+        correct: yes
+        explanation: >-
+          `seen` is one set shared by every call. Without a remove after the loop, it keeps every
+          cell any branch has visited, not just the cells on the current path.
+      three:
+        prompt: Which of the four paths begin with a move down from (0, 0)?
+        options:
+          - id: two-down
+            text: Two of them, and both need (1, 0) free
+          - id: one-down
+            text: One, the path that turns back up
+          - id: none-down
+            text: None, every path starts by moving right
+        correct: two-down
+        explanation: >-
+          Down, right, right, and down, right, up, right, down both go through (1, 0) first. A
+          stale mark on (1, 0) blocks both.
+      one:
+        prompt: "When the walk from (0, 1) tries to move down to (1, 1), what is in `seen`?"
+        options:
+          - id: three-cells
+            text: "(0, 0), (0, 1) and (0, 2), so (1, 1) is free"
+          - id: all
+            text: Every cell, since the first path marked them all
+          - id: target
+            text: "(0, 0), (0, 1), (0, 2) and the target, (1, 2)"
+        correct: three-cells
+        explanation: >-
+          The target returns 1 before it is added to `seen`. The first path marks only the cells
+          it passed through, so (1, 1) is still open.
+
+  - id: checkpoint-alias-pairs
+    tags: [backtracking, python]
+    prompt: |-
+      ```python
+      def choose_two(items):
+          out, path = [], []
+          def pick(start):
+              if len(path) == 2:
+                  out.append(path)
+                  return
+              for j in range(start, len(items)):
+                  path.append(items[j])
+                  pick(j + 1)
+                  path.pop()
+          pick(0)
+          return out
+      ```
+
+      `choose_two("abc")` returns `[[], [], []]`. Which one change makes it return
+      `[['a', 'b'], ['a', 'c'], ['b', 'c']]`?
+    options:
+      - id: copy
+        text: "Record `out.append(path[:])`"
+        explanation: >-
+          The undo is fine. The leak is in the record, which
+          saves `path` itself. The pops then empty that one list, and every entry shows `[]`. A
+          slice saves each pair as it was.
+      - id: no-pop
+        text: "Delete `path.pop()`"
+        explanation: >-
+          Without the pop, the letters pile up and `path` never has length 2 again after the first
+          leaf. `out` ends as one entry, `[['a', 'b', 'c', 'b', 'c', 'c']]`.
+      - id: pop-first
+        text: "Move `path.pop()` above `pick(j + 1)`"
+        explanation: >-
+          Then each letter is removed before the call that should see it. `path` never reaches
+          length 2, and the function returns `[]`.
+      - id: pick-j
+        text: "Call `pick(j)` instead of `pick(j + 1)`"
+        explanation: >-
+          That lets a letter pair with itself, and the record still saves `path` itself. It
+          returns six entries, all `[]`.
+    correct: copy
+    followUps:
+      no-pop:
+        prompt: Is the undo in `choose_two` in the wrong place?
+        options:
+          - id: correct-place
+            text: No, each pop follows its own call and comes before the next letter
+          - id: too-late
+            text: Yes, the pop should come before the call
+          - id: too-early
+            text: Yes, the pop should come after the loop
+        correct: correct-place
+        explanation: >-
+          The entries are wrong because they are all `path`, not because `path` held the wrong
+          letters. At each leaf it held the right pair.
+      pop-first:
+        prompt: What does a call see if the letter is popped before the call is made?
+        options:
+          - id: without
+            text: The path without that letter, so it never sees the choice
+          - id: with
+            text: The path with that letter, since the append came first
+          - id: copy
+            text: A copy of the path taken at the append
+        correct: without
+        explanation: >-
+          A call sees `path` as it is when the call starts. A choice has to stay in place for the
+          whole call, and be undone after it.
+      pick-j:
+        prompt: "What does `out.append(path)` store at each leaf?"
+        options:
+          - id: same
+            text: The one shared list, which later pops empty
+          - id: pair
+            text: The pair of letters at that moment
+          - id: new-list
+            text: A new list, since each leaf is a new call
+        correct: same
+        explanation: >-
+          Changing which calls run does not change what the record stores. Any version that saves
+          `path` itself ends with every entry showing its final, empty contents.
+
+  - id: checkpoint-running-total-leak
+    tags: [backtracking, recursion]
+    prompt: |-
+      This lists the selections from `nums` that add up to `target`. It undoes `path`, but not
+      `total`:
+
+      ```python
+      def sums_to(nums, target):
+          out, path = [], []
+          total = 0
+          def explore(i):
+              nonlocal total
+              if total == target:
+                  out.append(path[:])
+                  return
+              if i == len(nums) or total > target:
+                  return
+              path.append(nums[i])
+              total += nums[i]
+              explore(i + 1)
+              path.pop()
+              explore(i + 1)
+          explore(0)
+          return out
+      ```
+
+      What does `sums_to([2, 3, 5], 5)` return?
+    options:
+      - id: stale
+        text: "`[[2, 3], [2], []]`"
+        explanation: >-
+          After `[2, 3]` is recorded, the pop removes the 3 but `total` stays 5. The skip call of
+          `explore(1)` sees `total == 5` and records `[2]`. Back in `explore(0)`, the 2 comes off,
+          and its skip call records `[]` the same way.
+      - id: fixed
+        text: "`[[2, 3], [5]]`"
+        explanation: >-
+          That is what the search returns with `total -= nums[i]` after the pop. Here `total`
+          still counts items that were popped, so a sibling sees a sum it never chose.
+      - id: first-only
+        text: "`[[2, 3]]`"
+        explanation: >-
+          A stale `total` does not stop the search. It equals the target, so the stopping case
+          records every call that starts with it, whatever `path` holds.
+      - id: two-entries
+        text: "`[[2, 3], [2]]`"
+        explanation: >-
+          The skip call of `explore(0)` is a sibling too. `total` is still 5 when it starts, so it
+          records `[]`.
+    correct: stale
+    followUps:
+      fixed:
+        prompt: What does `path.pop()` do to `total`?
+        options:
+          - id: nothing
+            text: Nothing, so `total` still counts the popped item
+          - id: subtracts
+            text: It subtracts the popped item from `total`
+          - id: resets
+            text: It sets `total` back to 0
+        correct: nothing
+        explanation: >-
+          A choice that changes two things needs both undone. Here the pop undoes `path`, and
+          `total` keeps the 3 and the 2.
+      first-only:
+        prompt: "After `[2, 3]` is recorded and the 3 is popped, what does the skip call of `explore(1)` check first?"
+        options:
+          - id: total
+            text: "`total == target`, which is still true"
+          - id: length
+            text: "`i == len(nums)`, which ends the search"
+          - id: over
+            text: "`total > target`, which stops this branch"
+        correct: total
+        explanation: >-
+          The stopping case is tested first, and the stale `total` passes it. That call records
+          `path`, which now holds `[2]`.
+      two-entries:
+        prompt: "When `explore(0)` makes its skip call, what are `path` and `total`?"
+        options:
+          - id: empty-five
+            text: "`path` is `[]` and `total` is 5"
+          - id: empty-zero
+            text: "`path` is `[]` and `total` is 0"
+          - id: two-five
+            text: "`path` is `[2]` and `total` is 5"
+        correct: empty-five
+        explanation: >-
+          The 2 was popped from `path`, but no line took anything off `total`. That skip call
+          passes the stopping case and records `[]`.
+
+  - id: checkpoint-break-before-pop
+    format: tap-cell
+    heading: Which list goes missing?
+    tags: [backtracking, recursion]
+    prompt: >-
+      `nums` is sorted, so once a sum goes over `cap`, every later item would too, and the loop
+      stops. With `path.pop()` before `break`, `light_sets([1, 2, 4], 4)` returns the five lists in
+      the cells, in this order. This version breaks before it pops. Tap the first list it never
+      records.
+    code: |
+      def light_sets(nums, cap):
+          out, path = [], []
+          def pick(start):
+              out.append(path[:])
+              for j in range(start, len(nums)):
+                  path.append(nums[j])
+                  if sum(path) > cap:
+                      break
+                  pick(j + 1)
+                  path.pop()
+          pick(0)
+          return out
+    sequence:
+      kind: array
+      name: out
+      cells: ['[]', '[1]', '[1, 2]', '[2]', '[4]']
+    correct: 3
+    explanation: >-
+      `pick(2)` holds `[1, 2]`, appends 4 and breaks, leaving the 4. `pick(1)` pops that 4
+      instead of its own 2, then takes 4 itself and breaks again. `pick(0)` pops a 4 instead of
+      its 1, leaving `[1, 2]`, and its next take gives `[1, 2, 2]`, which breaks. `[2]` is never
+      recorded.
+    misses:
+      - index: 0
+        explanation: >-
+          `pick(0)` records `[]` on its first line, before any item is appended, so nothing can
+          leak into it.
+      - index: 1
+        explanation: >-
+          `pick(1)` records `[1]` as it starts. No break has happened yet, so `path` holds
+          exactly the 1.
+      - index: 2
+        explanation: >-
+          `pick(2)` records `[1, 2]` before its loop runs. The leak starts just after, when it
+          appends 4 and breaks without popping.
+      - index: 4
+        explanation: >-
+          `[4]` is missing too, but it comes after `[2]`. Once the 4 is left behind, the search
+          never gets back to an empty `path` to record either one.

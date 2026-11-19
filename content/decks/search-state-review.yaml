@@ -1,0 +1,669 @@
+id: search-state-review
+title: "Search state: review"
+description: Fresh searches for the Search state skills, for recall on later days. No worked examples this time.
+heading: What does the search hold?
+
+questions:
+  - id: skip-first-path-review
+    heading: What does path hold?
+    tags: [backtracking, recursion]
+    prompt: |-
+      This search tries the skip branch before the take branch. `items` is `[1, 5, 8]`.
+
+      ```python
+      def explore(i):
+          if i == len(items):
+              out.append(path[:])
+              return
+          explore(i + 1)          # skip item i
+          path.append(items[i])   # take item i
+          explore(i + 1)
+          path.pop()
+      ```
+
+      What does `path` hold when `explore(2)` starts for the second time?
+    options:
+      - id: five
+        text: "`[5]`"
+        explanation: >-
+          The first `explore(2)` comes from skipping 1 and skipping 5, so it holds `[]`. Back in
+          that `explore(1)`, the 5 goes in next, so the second `explore(2)` holds `[5]`.
+      - id: empty
+        text: "`[]`"
+        explanation: >-
+          `[]` is the first start, after skipping both items. The second start comes after the
+          same `explore(1)` takes its 5.
+      - id: one
+        text: "`[1]`"
+        explanation: >-
+          `[1]` needs the take of item 0, and `explore(0)` reaches its take only after its whole
+          skip branch has finished. Two `explore(2)` calls run inside that skip branch first.
+      - id: one-five
+        text: "`[1, 5]`"
+        explanation: >-
+          `[1, 5]` is the last of the four starts, since both takes come after their skip calls.
+    correct: five
+    followUps:
+      empty:
+        prompt: "The first `explore(2)` returns to `explore(1)`, which holds `[]`. What does `explore(1)` run next?"
+        options:
+          - id: take
+            text: Its take branch, which appends 5 and calls `explore(2)` again
+          - id: return
+            text: Nothing, it returns to `explore(0)` at once
+          - id: skip-again
+            text: Its skip branch again, since that one is listed first
+        correct: take
+        explanation: >-
+          A call runs both branches before it returns. Here the skip call comes first, then the
+          append and the take call.
+      one:
+        prompt: When does `explore(0)` append the 1?
+        options:
+          - id: after-skip
+            text: After its skip call, and everything below it, has returned
+          - id: at-start
+            text: As soon as it starts, before anything else
+          - id: at-leaf
+            text: When the first leaf records
+        correct: after-skip
+        explanation: >-
+          Lines run in order, and a call waits for each call it makes. The take line of
+          `explore(0)` runs only once the whole skip branch is done.
+      one-five:
+        prompt: How many times does `explore(2)` start in all, and which comes last?
+        options:
+          - id: four-last
+            text: Four times, and the start after taking both items comes last
+          - id: four-first
+            text: Four times, and the start after taking both items comes first
+          - id: two
+            text: Twice, once per branch of `explore(0)`
+        correct: four-last
+        explanation: >-
+          Items 0 and 1 are each taken or skipped, so `explore(2)` starts four times. Skips run
+          first, so the start with both taken is the last one.
+
+  - id: piece-start-review
+    format: drag-pointers
+    heading: Where does the next call start?
+    tags: [backtracking, recursion]
+    prompt: >-
+      `split` cuts a word into pieces and records each way to do it. `split(1)` has
+      `path == ['b']`. Its loop is at `end = 4`, so it appends `s[1:4]`, which is `'ana'`, and
+      calls the next level. Drag `start` to where that call begins (the slot past the end means
+      the word is used up).
+    code: |
+      def split(start):
+          if start == len(s):
+              out.append(path[:])
+              return
+          for end in range(start + 1, len(s) + 1):
+              path.append(s[start:end])
+              split(end)
+              path.pop()
+    sequence:
+      kind: string
+      name: s
+      cells: [b, a, n, a, n, a]
+      pastEnd: true
+    pointers:
+      - name: start
+        start: 1
+        correct: 4
+        explanation: >-
+          The call is `split(end)` with `end = 4`. The slice `s[1:4]` stops before index 4, so
+          the next piece starts there, at the second `n`.
+        misses:
+          - index: 3
+            explanation: >-
+              Index 3 is the last letter of `'ana'`. A slice stops before its end index, so the
+              next piece begins at 4.
+          - index: 1
+            explanation: >-
+              That is where the current call began. The next call starts where the piece just
+              taken ends.
+          - index: 2
+            explanation: >-
+              The piece taken is three letters long, not one. The next call starts at `end`,
+              which is 4.
+        elsewhere: The call passes `end`, which is 4.
+
+  - id: first-call-with-path-review
+    format: tap-cell
+    heading: Which call is this?
+    tags: [backtracking, recursion]
+    prompt: >-
+      `explore(i)` decides `items[i]`, take branch first. Which call is the first to start with
+      `path == [8]`? Tap the item it is about to decide (the slot past the end is the leaf).
+    code: |
+      def explore(i):
+          if i == len(items):
+              out.append(path[:])
+              return
+          path.append(items[i])
+          explore(i + 1)
+          path.pop()
+          explore(i + 1)
+    sequence:
+      kind: array
+      name: items
+      cells: [3, 8, 4, 6]
+      pastEnd: true
+    correct: 2
+    explanation: >-
+      To hold only `[8]`, the search must skip 3 and take 8. That take happens in `explore(1)`,
+      which then calls `explore(2)`. So the first call holding `[8]` decides the 4.
+    misses:
+      - index: 0
+        explanation: >-
+          `explore(0)` starts with `[]`. A call sees only the choices made above it, and nothing
+          is above `explore(0)`.
+      - index: 1
+        explanation: >-
+          `explore(1)` makes the take of 8 itself, after it starts. It starts holding `[]`, on the
+          branch that skipped 3.
+      - index: 3
+        explanation: >-
+          `explore(3)` does start with `[8]`, but only after `explore(2)` skips the 4.
+          `explore(2)` started first.
+      - index: 4
+        explanation: >-
+          The leaf with `[8]` comes after both 4 and 6 are skipped, so two calls holding `[8]`
+          start before it.
+
+  - id: trace-combo-undo-review
+    format: step-trace
+    heading: Trace the undo
+    tags: [backtracking, recursion]
+    prompt: >-
+      `pick` chooses two of `items = [4, 7, 9, 2]`. `pick(1)` holds `[4]`, its loop is at
+      `j = 1`, and `pick(2)` has just recorded `[4, 7]` and returned. The arrow `j` is the loop
+      index of `pick(1)`. Predict each step before it is shown.
+    code: |
+      def pick(start):
+          if len(path) == 2:
+              out.append(path[:])
+              return
+          for j in range(start, len(items)):
+              path.append(items[j])
+              pick(j + 1)
+              path.pop()
+    sequence:
+      kind: array
+      name: items
+      cells: [4, 7, 9, 2]
+    start:
+      - { name: j, at: 1 }
+    steps:
+      - line: 8
+        ask: "`pick(1)` runs line 8. What does `path` hold now?"
+        options:
+          - id: four
+            text: "`[4]`"
+            explanation: The pop removes the 7 that this pass appended.
+          - id: four-seven
+            text: "`[4, 7]`"
+            explanation: >-
+              `pick(2)` returning does not change `path`. Line 8 is what takes the 7 off.
+          - id: empty
+            text: "`[]`"
+            explanation: >-
+              One pop removes one item. The 4 belongs to `pick(0)`, which is still waiting on this
+              call.
+        correct: four
+      - line: 5
+        ask: The loop moves on. Tap where `j` lands.
+        pointer: j
+        correct: 2
+        explanation: The loop goes to the next index, so the next pass tries 9.
+        misses:
+          - index: 1
+            explanation: Each pass of the loop moves `j` on by one. The 7 has been tried.
+          - index: 3
+            explanation: The loop moves one index at a time, so it tries 9 before 2.
+        elsewhere: "`j` moves from 1 to 2."
+      - line: 6
+        ask: Line 6 runs. What does `path` hold?
+        options:
+          - id: four-nine
+            text: "`[4, 9]`"
+            explanation: The 7 was popped, so 9 goes in next to the 4.
+          - id: four-seven-nine
+            text: "`[4, 7, 9]`"
+            explanation: The pop on the last pass removed the 7 before this append.
+          - id: nine
+            text: "`[9]`"
+            explanation: >-
+              The 4 is `pick(0)`'s choice, and `pick(0)` has not undone it. Only the 7 came off.
+        correct: four-nine
+      - line: 7
+        ask: "`pick(3)` records `[4, 9]`, then line 8 pops the 9. Tap where `j` lands next."
+        pointer: j
+        correct: 3
+        explanation: The loop moves on to the last index and tries 2, recording `[4, 2]`.
+        misses:
+          - index: 2
+            explanation: The 9 has been tried and undone, so the loop moves on.
+        elsewhere: "`j` moves from 2 to 3."
+      - line: 8
+        ask: "`[4, 2]` is recorded and popped, and `pick(1)` ends. `pick(0)` runs line 8. What does `path` hold?"
+        options:
+          - id: none-left
+            text: "`[]`"
+            explanation: >-
+              `pick(1)` handed back `[4]`, as it found it. Now `pick(0)` pops its own 4 before it
+              tries 7.
+          - id: four-left
+            text: "`[4]`"
+            explanation: >-
+              That is what `pick(1)` handed back. Line 8 in `pick(0)` then removes the 4.
+          - id: four-two
+            text: "`[4, 2]`"
+            explanation: The 2 was popped inside `pick(1)` before that call ended.
+        correct: none-left
+
+  - id: pop-after-loop-review
+    heading: What does this record?
+    tags: [backtracking, recursion]
+    prompt: |-
+      The pop sits after the loop instead of inside it:
+
+      ```python
+      def spell(depth):
+          if depth == 2:
+              out.append("".join(path))
+              return
+          for ch in "pq":
+              path.append(ch)
+              spell(depth + 1)
+          path.pop()
+      ```
+
+      `spell(0)` runs with `path` and `out` empty. What is `out` afterwards?
+    options:
+      - id: piling
+        text: "`['pp', 'ppq', 'ppqp', 'ppqpq']`"
+        explanation: >-
+          Each call appends twice but pops once, after both letters. So the depth-1 call's `'p'`
+          is still there when it appends `'q'` (`'ppq'`), and the top call's `'q'` lands on top of
+          `['p', 'p']`. The undo has to follow each call, before the next sibling.
+      - id: fixed
+        text: "`['pp', 'pq', 'qp', 'qq']`"
+        explanation: >-
+          That needs one pop per letter, inside the loop. With one pop per call, the first letter
+          a loop appends is still there when its second one goes in.
+      - id: index-error
+        text: It raises IndexError when the top call pops an empty list
+        explanation: >-
+          `path` never runs empty here. Each call appends two letters and pops one, so items pile
+          up. The top call's pop removes one of them and returns.
+    correct: piling
+    followUps:
+      fixed:
+        prompt: How many items does one depth-1 call append, and how many does it pop?
+        options:
+          - id: two-one
+            text: It appends two and pops one, after both
+          - id: two-two
+            text: It appends two and pops two, one after each
+          - id: one-one
+            text: It appends one and pops one
+        correct: two-one
+        explanation: >-
+          The append is in the loop and the pop is after it. Every sibling after the first starts
+          with the earlier letter still in place.
+      index-error:
+        prompt: When the top call reaches its pop, what does `path` hold?
+        options:
+          - id: three
+            text: Four letters, `['p', 'p', 'q', 'p']`, so the pop has something to take
+          - id: empty
+            text: Nothing, since every letter was undone below it
+          - id: one
+            text: Only the top call's own `'q'`
+        correct: three
+        explanation: >-
+          Each call leaves one more item than it found. Before the top call pops, `path` is
+          `['p', 'p', 'q', 'p']`, and afterwards it is `['p', 'p', 'q']`.
+
+  - id: stale-item-review
+    format: tap-cell
+    heading: Which item leaked?
+    tags: [backtracking, recursion]
+    prompt: >-
+      The pop is missing. `items` is `[2, 6, 3]`. `explore(1)` has finished its take branch and
+      now makes its skip call, meant to leave 6 out. The cells show `path` as that call starts.
+      Tap the item this skip call was meant to leave out.
+    code: |
+      def explore(i):
+          if i == len(items):
+              out.append(path[:])
+              return
+          path.append(items[i])
+          explore(i + 1)
+          explore(i + 1)   # skip; pop missing
+    sequence:
+      kind: array
+      name: path
+      cells: [2, 6, 3]
+    correct: 1
+    explanation: >-
+      `explore(1)` appended 6 for its take branch and nothing removed it. Its skip call starts
+      with 6 still in `path`, so every list it records includes the item it was meant to leave
+      out.
+    misses:
+      - index: 0
+        explanation: >-
+          The 2 is the take choice of `explore(0)`, which is still running. It belongs in `path`
+          on this branch.
+      - index: 2
+        explanation: >-
+          The 3 is stale too, left behind by `explore(2)`. But it is `items[2]`. The item
+          `explore(1)` decides, and meant to skip, is `items[1]`.
+
+  - id: used-flag-review
+    heading: What does this return?
+    tags: [backtracking, recursion]
+    prompt: |-
+      This builds every ordering of the letters. It pops `path`, but never sets a flag back:
+
+      ```python
+      def orders(s):
+          out, path = [], []
+          used = [False] * len(s)
+          def go():
+              if len(path) == len(s):
+                  out.append("".join(path))
+                  return
+              for j in range(len(s)):
+                  if used[j]:
+                      continue
+                  used[j] = True
+                  path.append(s[j])
+                  go()
+                  path.pop()
+          go()
+          return out
+      ```
+
+      What does `orders("abc")` return?
+    options:
+      - id: one
+        text: "`['abc']`"
+        explanation: >-
+          The first leaf leaves every flag True. Each waiting loop then finds its remaining letters
+          marked used and skips them, so nothing else is recorded. Every piece of state a choice
+          changes, `used` as well as `path`, has to be undone before the next sibling.
+      - id: six
+        text: "`['abc', 'acb', 'bac', 'bca', 'cab', 'cba']`"
+        explanation: >-
+          That is the fixed version, which also runs `used[j] = False` after the pop. Popping
+          `path` does not touch `used`.
+      - id: two
+        text: "`['abc', 'acb']`"
+        explanation: >-
+          `'acb'` needs the call holding `['a']` to take `'c'` next. The flag for `'c'` is still
+          True from the first leaf, so that pass is skipped.
+      - id: none
+        text: "`[]`"
+        explanation: >-
+          The first path down meets no used flags, since each letter is marked only as it is
+          taken. That leaf records `'abc'`.
+    correct: one
+    followUps:
+      six:
+        prompt: Which state does `path.pop()` undo?
+        options:
+          - id: path-only
+            text: Only `path`. The flags set on the way down stay True
+          - id: both
+            text: Both `path` and the flag of the popped letter
+          - id: flags-only
+            text: Only the flags, since `path` is rebuilt at each leaf
+        correct: path-only
+        explanation: >-
+          A line undoes only what it touches. A choice that changes two things needs two undo
+          lines.
+      two:
+        prompt: After `'abc'` is recorded, which flags are True?
+        options:
+          - id: all
+            text: All three, since none was set back
+          - id: last
+            text: Only the flag for `'c'`, the last letter taken
+          - id: none
+            text: None, since `path` was popped back to empty
+        correct: all
+        explanation: >-
+          Three flags were set on the way down and nothing cleared them. Every loop that resumes
+          sees all three letters as used.
+      none:
+        prompt: When the first path goes down, when is each flag set?
+        options:
+          - id: on-take
+            text: Just as its letter is taken, so the first path finds every flag False
+          - id: at-start
+            text: All at once, before the first call
+          - id: at-leaf
+            text: Only at the leaf, after the letters are joined
+        correct: on-take
+        explanation: >-
+          Each flag goes True as its letter is chosen. The leak only shows once a loop resumes
+          after the first leaf.
+
+  - id: record-line-review
+    heading: Which line records it?
+    tags: [backtracking, python]
+    prompt: |-
+      ```python
+      def subsets(items):
+          out, path = [], []
+          def explore(i):
+              if i == len(items):
+                  ???
+                  return
+              path.append(items[i])
+              explore(i + 1)
+              path.pop()
+              explore(i + 1)
+          explore(0)
+          return out
+      ```
+
+      Which line in place of `???` makes `subsets([7, 2])` return `[[7, 2], [7], [2], []]`?
+    options:
+      - id: slice
+        text: "`out.append(path[:])`"
+        explanation: >-
+          The slice builds a new list holding what `path` holds right now. Later pops change
+          `path`, not the copies.
+      - id: alias
+        text: "`out.append(path)`"
+        explanation: >-
+          This stores `path` itself four times. Every append is matched by a pop, so `path` ends
+          empty and `subsets([7, 2])` returns `[[], [], [], []]`.
+      - id: method
+        text: "`out.append(path.copy)`"
+        explanation: >-
+          Without the parentheses, nothing is called. `out` gets four references to the
+          `copy` method of `path`, not four lists.
+      - id: extend
+        text: "`out.extend(path)`"
+        explanation: >-
+          `extend` adds the items one by one, not the list as one entry. `out` ends as
+          `[7, 2, 7, 2]`, with no sign of where one subset stops.
+    correct: slice
+    followUps:
+      alias:
+        prompt: How many different lists does `out` hold with `out.append(path)`?
+        options:
+          - id: one
+            text: One, stored four times, and it is empty when the search ends
+          - id: four
+            text: Four, one per leaf, each kept as it was
+          - id: zero
+            text: None, since `append` stores the items rather than a list
+        correct: one
+        explanation: >-
+          Appending the same name adds the same object. A snapshot needs a new list, such as
+          `path[:]` or `list(path)`.
+      method:
+        prompt: What is the difference between `path.copy` and `path.copy()`?
+        options:
+          - id: call
+            text: The first is the method itself. Only the second runs it and gives a new list
+          - id: same
+            text: None, Python calls a method whether or not it has parentheses
+          - id: lazy
+            text: The first copies later, when `out` is printed
+        correct: call
+        explanation: >-
+          A method name without `()` is a value like any other. Here that value is stored four
+          times and never run.
+      extend:
+        prompt: What does `out.extend([7])` do when `out` is `[]`?
+        options:
+          - id: items
+            text: It adds the item 7, so `out` becomes `[7]`
+          - id: list
+            text: It adds the list `[7]`, so `out` becomes `[[7]]`
+          - id: copy
+            text: It replaces `out` with a copy of `[7]`
+        correct: items
+        explanation: >-
+          `extend` adds each item of its argument. `append` adds its argument as one entry, which
+          is what recording a finished path needs.
+
+  - id: joined-record-review
+    heading: What does this return?
+    tags: [backtracking, python]
+    prompt: |-
+      This search records each finished path as a joined string, with no copy of `path`:
+
+      ```python
+      def picks(letters):
+          out, path = [], []
+          def explore(i):
+              if i == len(letters):
+                  out.append("".join(path))
+                  return
+              path.append(letters[i])
+              explore(i + 1)
+              path.pop()
+              explore(i + 1)
+          explore(0)
+          return out
+      ```
+
+      What does `picks("pq")` return?
+    options:
+      - id: kept
+        text: "`['pq', 'p', 'q', '']`"
+        explanation: >-
+          `"".join(path)` builds a new string from what `path` holds at the leaf. A string cannot
+          change after it is built, so the later pops leave every entry as it was.
+      - id: all-empty
+        text: "`['', '', '', '']`"
+        explanation: >-
+          The entries are not `path`. Each one is a new string, built at its leaf, that no pop can
+          reach.
+      - id: no-empty
+        text: "`['pq', 'p', 'q']`"
+        explanation: >-
+          The leaf that skips both letters still records. Joining an empty list gives `''`, and
+          that is appended like any other string.
+    correct: kept
+    followUps:
+      all-empty:
+        prompt: What does `out.append("".join(path))` store?
+        options:
+          - id: new-string
+            text: A new string, built from `path` at that moment
+          - id: path-itself
+            text: "`path` itself, joined again whenever `out` is read"
+          - id: view
+            text: A view of `path` that follows later changes
+        correct: new-string
+        explanation: >-
+          `join` returns a new string. It does not keep a link to the list it was built from, so
+          it is already a snapshot.
+      no-empty:
+        prompt: What is `"".join([])`?
+        options:
+          - id: empty-string
+            text: "`''`, a string with nothing in it"
+          - id: none
+            text: "`None`, since there was nothing to join"
+          - id: error
+            text: An error, since `join` needs at least one item
+        correct: empty-string
+        explanation: >-
+          Joining no items gives the empty string. The skip-everything leaf records it as the
+          empty selection.
+
+  - id: new-list-per-call-review
+    heading: Does it need a copy?
+    tags: [backtracking, python]
+    prompt: |-
+      Here each call gets `path` as an argument:
+
+      ```python
+      def subsets(items):
+          out = []
+          def explore(i, path):
+              if i == len(items):
+                  out.append(path)
+                  return
+              explore(i + 1, path + [items[i]])
+              explore(i + 1, path)
+          explore(0, [])
+          return out
+      ```
+
+      `subsets([3, 5])` returns `[[3, 5], [3], [5], []]`. Why does `out.append(path)` work here
+      without a copy?
+    options:
+      - id: never-changed
+        text: Each take builds a new list with `+`, and no line changes a list once built
+        explanation: >-
+          `path + [items[i]]` makes a new list, and nothing appends to or pops from any of them.
+          A saved entry can only change if some line changes its list, and none does.
+      - id: append-copies
+        text: "`append` stores a copy whenever its argument is a list"
+        explanation: >-
+          `append` always stores the object itself. The entries are safe because nothing changes
+          those objects later, not because they were copied.
+      - id: passed-copy
+        text: Passing `path` to the skip call gives that call a copy of the list
+        explanation: >-
+          Passing an argument does not copy it. The skip call gets the very list its caller
+          holds. That is safe here only because no line changes a list once it is built.
+    correct: never-changed
+    followUps:
+      append-copies:
+        prompt: "After `a = [1]` and `out.append(a)`, what does `a.append(2)` do to `out`?"
+        options:
+          - id: changes
+            text: "`out` shows `[[1, 2]]`, since its entry is `a` itself"
+          - id: unchanged
+            text: "`out` still shows `[[1]]`, since `append` copied the list"
+          - id: two-entries
+            text: "`out` gains a second entry"
+        correct: changes
+        explanation: >-
+          `append` stores a reference. In this search that is harmless only because no list is
+          changed after it is built.
+      passed-copy:
+        prompt: "What does `explore(i + 1, path)` hand to the skip call?"
+        options:
+          - id: same-object
+            text: The same list object the caller holds
+          - id: copy
+            text: A fresh copy of the caller's list
+          - id: empty
+            text: A new empty list
+        correct: same-object
+        explanation: >-
+          A call gets references to the objects it is passed. Sharing is harmless here because
+          `path + [x]` builds a new list for each take, and nothing changes a list afterwards.
