@@ -17,8 +17,8 @@ test.describe('deployment surface', () => {
 			name: 'Coding Drills',
 			display: 'standalone',
 			start_url: '/',
-			theme_color: '#f6f7fb',
-			color_scheme_dark: { theme_color: '#1c1c25', background_color: '#1c1c25' }
+			theme_color: '#070c18',
+			background_color: '#070c18'
 		});
 		expect(manifest.icons.length).toBeGreaterThanOrEqual(3);
 		for (const icon of manifest.icons) {
@@ -37,13 +37,9 @@ test.describe('deployment surface', () => {
 		expect(new URL(manifest).pathname).toBe('/manifest.webmanifest');
 		await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
 		await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
-		const themeColors = await page.locator('meta[name="theme-color"]').evaluateAll((nodes) =>
-			nodes.map((node) => ({ content: node.getAttribute('content'), media: node.getAttribute('media') }))
-		);
-		expect(themeColors).toEqual([
-			{ content: '#f6f7fb', media: '(prefers-color-scheme: light)' },
-			{ content: '#1c1c25', media: '(prefers-color-scheme: dark)' }
-		]);
+		await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'dark');
+		await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#070c18');
+		await expect(page.locator('html')).toHaveAttribute('data-effects', 'reduced');
 		await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
 	});
 

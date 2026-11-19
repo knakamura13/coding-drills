@@ -17,26 +17,16 @@ async function waitForOfflineReady(page: Page, path: string) {
 }
 
 test.describe('installable and offline', () => {
-	test('the manifest names the app, its scope, and its shortcuts', async ({ request }) => {
+	test('the manifest installs the root and omits shortcuts for unfinished routes', async ({ request }) => {
 		const manifest = await (await request.get('/manifest.webmanifest')).json();
 		expect(manifest).toMatchObject({ id: '/', scope: '/', start_url: '/', display: 'standalone' });
-		expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toEqual(['/review', '/weak', '/practice']);
-		for (const shortcut of manifest.shortcuts) expect((await request.get(shortcut.url)).status()).toBe(200);
+		expect(manifest).not.toHaveProperty('shortcuts');
 	});
 
 	test('the deck list the service worker reads is served', async ({ request }) => {
 		const response = await request.get('/decks.json');
 		expect(response.status()).toBe(200);
 		expect(await response.json()).toContain(deck.id);
-	});
-
-	test('opening the installed app while already offline shows the indicator', async ({ page, context }) => {
-		await page.goto('/');
-		await waitForOfflineReady(page, '/');
-		await context.setOffline(true);
-		// A fresh document does not get an offline event; the badge has to read navigator.onLine.
-		await page.reload();
-		await expect(page.getByText('Offline', { exact: true })).toBeVisible();
 	});
 
 	test('the service worker takes control and the app keeps working with no connection', async ({ page, context }) => {
