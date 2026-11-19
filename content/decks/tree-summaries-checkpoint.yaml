@@ -1,0 +1,304 @@
+id: tree-summaries-checkpoint
+title: 'Tree summaries: checkpoint'
+description: Complete a diameter walk and trace it on a fresh tree.
+heading: Complete and trace the diameter
+
+questions:
+  - id: tree-summaries-exam-edge-heights
+    heading: Which line records the path?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      Here `height` counts edges, not nodes: -1 for an empty subtree and 0 for a leaf. `diameter`
+      returns the largest number of edges on any path. Which line completes it?
+
+      ```python
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return -1
+              left = height(node.left)
+              right = height(node.right)
+              # ??? one line here
+              return 1 + max(left, right)
+          height(root)
+          return best
+      ```
+    options:
+      - id: plus-two
+        text: "`best = max(best, left + right + 2)`"
+        explanation: >-
+          Each child's height counts the edges below that child. The path also steps from the node to
+          each child, one more edge per side. A node with two leaf children gets `0 + 0 + 2`, the 2
+          edges of leaf, node, leaf.
+      - id: plain
+        text: "`best = max(best, left + right)`"
+        explanation: >-
+          That is right when heights count nodes. Here the node with two leaf children records 0,
+          though the path through it has 2 edges.
+      - id: plus-one
+        text: "`best = max(best, left + right + 1)`"
+        explanation: >-
+          Try a node with two leaf children: it records 1 for a path that has 2 edges.
+      - id: branch
+        text: "`best = max(best, 1 + max(left, right))`"
+        explanation: >-
+          That is the node's own height in edges, the value it returns. It never adds the two sides,
+          so a path that bends at a node is never measured.
+    correct: plus-two
+    followUps:
+      plain:
+        prompt: With heights in edges, a leaf child reports 0. How many edges does the path use between the node and that child?
+        options:
+          - { id: one-link, text: "1, the link from the node down to the child" }
+          - { id: no-link, text: "0, the same as the child's height" }
+          - { id: two-links, text: "2, one for each end of the link" }
+        correct: one-link
+        explanation: >-
+          A child's height in edges starts at the child. The step from the node to the child adds 1,
+          once on each side, so the bent path is `left + right + 2`.
+      plus-one:
+        prompt: A node has two leaf children, so `left` and `right` are both 0. Which statement is true?
+        options:
+          - { id: two-edges, text: "Leaf to node to leaf is 2 edges, but `left + right + 1` gives 1" }
+          - { id: one-edge, text: "The path has 1 edge, so this line is right" }
+          - { id: three-edges, text: "The path has 3 edges, one per node" }
+        correct: two-edges
+        explanation: >-
+          Each side contributes its height plus the link down to it. With edge heights, that is 1 more
+          per side, 2 in all.
+      branch:
+        prompt: What does `1 + max(left, right)` measure at a node, with heights in edges?
+        options:
+          - { id: own-height, text: "The node's own height: the longest one-sided chain down from it" }
+          - { id: bent-path, text: "The longest path that bends at the node" }
+          - { id: subtree-size, text: "The number of nodes in its subtree" }
+        correct: own-height
+        explanation: >-
+          A height takes the taller side only. A path that bends at the node uses both sides, so the
+          recorded value must add them.
+
+  - id: tree-summaries-exam-pair-return
+    heading: Which line completes the pair?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      This version returns a pair from each call: the subtree's height in nodes (0 when empty), and
+      the longest path, in edges, anywhere inside that subtree. Which line completes it?
+
+      ```python
+      def diameter(root):
+          def walk(node):
+              if node is None:
+                  return 0, 0
+              lh, lb = walk(node.left)
+              rh, rb = walk(node.right)
+              # ??? one line here
+          return walk(root)[1]
+      ```
+    options:
+      - id: right
+        text: "`return 1 + max(lh, rh), max(lb, rb, lh + rh)`"
+        explanation: >-
+          The height goes up one level on the taller side. The longest path inside the subtree either
+          bends at this node (`lh + rh`) or lies entirely in one child's subtree (`lb` or `rb`), so
+          the best is the largest of the three.
+      - id: no-child-best
+        text: "`return 1 + max(lh, rh), lh + rh`"
+        explanation: >-
+          This keeps only the path that bends at each node, so at the root it reports the path
+          through the root. A longer path that bends lower is lost.
+      - id: no-bend
+        text: "`return 1 + max(lh, rh), max(lb, rb)`"
+        explanation: >-
+          Every best here is a maximum of children's bests, which start at the empty case's 0. No
+          call ever measures a path, so it returns 0 on every tree.
+      - id: path-as-height
+        text: "`return lh + rh, max(lb, rb, lh + rh)`"
+        explanation: >-
+          The first value is used as a height by the parent. With this line a leaf reports `0 + 0`,
+          and every value above it is 0 too.
+    correct: right
+    followUps:
+      no-child-best:
+        prompt: Where can the longest path inside a node's subtree bend?
+        options:
+          - { id: anywhere, text: "At the node or at any node below it, so the children's results must be kept" }
+          - { id: only-here, text: "Only at the node, because the whole subtree hangs from it" }
+          - { id: only-leaf, text: "Only at a leaf, where the subtree ends" }
+        correct: anywhere
+        explanation: >-
+          A subtree's longest path does not have to pass through its root. The child's second value
+          already holds the best path below, so the parent compares it with its own bent path.
+      no-bend:
+        prompt: Every best starts as the empty case's 0. Where could a larger value come from?
+        options:
+          - { id: from-bend, text: "Only from `lh + rh`, which this line leaves out" }
+          - { id: from-max, text: "From `max(lb, rb)` once the tree is deep enough" }
+          - { id: from-height, text: "From the height in the first value" }
+        correct: from-bend
+        explanation: >-
+          The heights grow, but they never reach the second value unless the line adds them. The
+          path that bends at a node is the only new length a call can measure.
+      path-as-height:
+        prompt: What does a leaf report as its height with this line?
+        options:
+          - { id: leaf-zero, text: "0, so every height above it is 0 as well" }
+          - { id: leaf-one, text: "1, because a leaf is one node" }
+          - { id: leaf-two, text: "2, one for each empty side" }
+        correct: leaf-zero
+        explanation: >-
+          The parent extends a height by one branch, so the first value must be `1 + max(lh, rh)`.
+          The bent path `lh + rh` belongs only in the second value.
+
+  - id: tree-summaries-exam-trace
+    format: step-trace
+    heading: Trace the diameter
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `diameter(root)` runs on the tree below. `height` counts nodes. The cells list the nodes level
+      by level; they are not the visiting order. Predict each step.
+
+      ```text
+              5
+             / \
+            3   7
+           / \   \
+          9   1   2
+             / \
+            4   8
+      ```
+    code: |-
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = max(best, left + right)
+              return 1 + max(left, right)
+          height(root)
+          return best
+    sequence:
+      kind: array
+      name: nodes
+      cells: [5, 3, 7, 9, 1, 2, 4, 8]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 10
+        ask: Which real call is the first to return?
+        pointer: call
+        correct: 3
+        explanation: 5 calls 3, and 3 calls its left child 9 first. 9 is a leaf, so it returns before any other real call.
+        misses:
+          - index: 6
+            explanation: 4 is deeper, but it is in 3's right subtree. 3 finishes its left call on 9 first.
+          - index: 1
+            explanation: 3 waits for both of its children.
+          - index: 0
+            explanation: The root's call returns last.
+        elsewhere: Follow left links from the root until a node has no children.
+      - line: 9
+        ask: At the call on 3, what is `left + right`?
+        options:
+          - id: three
+            text: "3"
+            explanation: 9 reports 1 and 1 reports 2, so 3 offers `1 + 2`, a path such as 9, 3, 1, 4.
+          - id: four
+            text: "4"
+            explanation: 4 counts the nodes on 9, 3, 1, 4. With heights in nodes, `left + right` is the path's edge count.
+          - id: two
+            text: "2"
+            explanation: 2 is the right side alone. The path that bends at 3 uses both sides.
+        correct: three
+      - line: 9
+        ask: What is `best` after the call on 7 finishes line 9?
+        options:
+          - id: three
+            text: "3"
+            explanation: 7 offers `0 + 1`, which is 1. `max(3, 1)` keeps the 3 recorded at 3.
+          - id: one
+            text: "1"
+            explanation: 1 is 7's own candidate. `max` compares it with the 3 already stored and keeps the larger.
+          - id: four
+            text: "4"
+            explanation: Candidates are compared, not added. 7's 1 does not join 3's path.
+        correct: three
+      - line: 12
+        ask: What does `diameter(root)` return?
+        options:
+          - id: five
+            text: "5"
+            explanation: 3 reports 3 and 7 reports 2, so the root offers `3 + 2`, which is 5, a path such as 4, 1, 3, 5, 7, 2.
+          - id: three
+            text: "3"
+            explanation: 3 was the best before the root ran. The root's own candidate is larger.
+          - id: four
+            text: "4"
+            explanation: 4 is the height of the tree in nodes. The diameter adds the two sides at the root.
+          - id: six
+            text: "6"
+            explanation: 6 is the number of nodes on a path such as 4, 1, 3, 5, 7, 2. The diameter counts edges.
+        correct: five
+
+  - id: tree-summaries-exam-diameter-ends
+    format: drag-pointers
+    heading: Where does the diameter end?
+    tags: [tree, dfs]
+    prompt: |-
+      Find the diameter: the longest path in the tree, counted in edges. It bends at one node. Drag
+      `left` to the end in that node's left subtree, and `right` to the end in its right subtree. The
+      cells list the nodes level by level.
+
+      ```text
+            6
+           /
+          1
+         / \
+        8   4
+       /     \
+      2       7
+             /
+            3
+      ```
+    code: |
+      # height counts nodes; the longest path that
+      # bends at a node has height(left) + height(right) edges
+    sequence:
+      kind: array
+      name: nodes
+      cells: [6, 1, 8, 4, 2, 7, 3]
+    pointers:
+      - name: left
+        start: 0
+        correct: 4
+        explanation: >-
+          The diameter bends at 1: 8 reports 2 and 4 reports 3, so 1 offers 5, more than the root's 4.
+          Its left end is the bottom of 8's side, 2.
+        misses:
+          - index: 2
+            explanation: 8 has a child, 2, so the path goes one more link down.
+          - index: 6
+            explanation: >-
+              3 is the deepest node, but it is in 1's right subtree. The diameter bends at 1, and the
+              left end lies in 1's left subtree.
+          - index: 1
+            explanation: 1 is where the path bends. Both of its sides are used.
+        elsewhere: First find the node that offers the largest left + right, then go down its left side.
+      - name: right
+        start: 0
+        correct: 6
+        explanation: 1's right side runs 4, 7, 3, so the right end is 3. The diameter 2, 8, 1, 4, 7, 3 has 5 edges.
+        misses:
+          - index: 0
+            explanation: >-
+              A path that ends at the root, such as 3, 7, 4, 1, 6, has 4 edges. The root offers only
+              `4 + 0`, and the path that bends at 1 is longer.
+          - index: 5
+            explanation: 7 has a child, 3, so the path goes one more link down.
+          - index: 3
+            explanation: 4 has a child below it, 7, and 7 has 3.
+        elsewhere: The right end is at the bottom of the longest chain in 1's right subtree.

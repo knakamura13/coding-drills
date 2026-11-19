@@ -1,0 +1,652 @@
+id: tree-summaries-review
+title: 'Tree summaries: review'
+description: Fresh trees for child heights, the height a call returns versus the path that bends at it, and the longest path seen.
+heading: What does the call report?
+
+questions:
+  - id: tree-summaries-review-heights-trace
+    format: step-trace
+    heading: What does each call return?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `height(root)` runs on the tree below. It counts nodes: 0 for an empty subtree, 1 for a leaf.
+      The cells list the nodes level by level. Predict each step.
+
+      ```text
+          P
+         / \
+        Q   R
+         \   \
+          S   T
+             /
+            U
+      ```
+    code: |-
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          return 1 + max(left, right)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [P, Q, R, S, T, U]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 6
+        ask: Which real call is the first to return a value?
+        pointer: call
+        correct: 3
+        explanation: >-
+          P calls Q. Q's left call is on `None` and returns 0 at once, so Q calls S next. S is a leaf
+          and returns 1 before any other real call finishes.
+        misses:
+          - index: 1
+            explanation: Q has a right child, S. Q returns only after the call on S has returned.
+          - index: 5
+            explanation: U is the deepest node, but it sits in P's right subtree, which starts only after Q is done.
+        elsewhere: The first call to return is on a leaf, and the walk reaches the left side first.
+      - line: 6
+        ask: What does the call on Q return?
+        options:
+          - id: two
+            text: "2"
+            explanation: Q's left side is empty (0) and S returns 1, so Q returns `1 + max(0, 1)`, which is 2.
+          - id: one
+            text: "1"
+            explanation: An empty left side does not make Q a leaf. Its right child S adds a level.
+          - id: zero
+            text: "0"
+            explanation: "`max` takes the larger side, and the empty side's 0 is the smaller one."
+        correct: two
+      - line: 6
+        ask: What does the call on R return?
+        options:
+          - id: three
+            text: "3"
+            explanation: U returns 1, T returns 2, and R returns `1 + max(0, 2)`, which is 3.
+          - id: two
+            text: "2"
+            explanation: 2 is what T returned. R adds itself on top.
+          - id: four
+            text: "4"
+            explanation: 4 would be the height of P. R's longest downward path is R, T, U.
+        correct: three
+      - line: 6
+        ask: What does the call on P return?
+        options:
+          - id: four
+            text: "4"
+            explanation: Q reports 2 and R reports 3, so P returns `1 + 3`, which is 4.
+          - id: six
+            text: "6"
+            explanation: 6 is the node count. A downward path takes only one of P's sides.
+          - id: three
+            text: "3"
+            explanation: 3 is R's height. P adds itself on top of its taller side.
+        correct: four
+
+  - id: tree-summaries-review-base-one
+    heading: What does it return now?
+    tags: [tree, recursion]
+    prompt: |-
+      This `height` returns 1 for an empty subtree instead of 0. It should count the nodes on the
+      longest downward path.
+
+      ```python
+      def height(node):
+          if node is None:
+              return 1
+          return 1 + max(height(node.left), height(node.right))
+      ```
+
+      ```text
+        9
+       / \
+      7   3
+           \
+            5
+      ```
+
+      What does `height(root)` return?
+    options:
+      - id: four
+        text: "`4`"
+        explanation: >-
+          A leaf now returns `1 + max(1, 1)`, which is 2, one more than its node count. That extra 1
+          is carried up every level, so the root returns 4 instead of 3.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          3 is the right height. The base case is where every value starts, so a wrong base value
+          changes every height above it.
+      - id: five
+        text: "`5`"
+        explanation: >-
+          The extra 1 enters once, at the bottom of the path that wins. `max` passes it up; it does
+          not add another 1 at each level.
+    correct: four
+    followUps:
+      three:
+        prompt: With this base case, what does the call on the leaf 7 return?
+        options:
+          - { id: leaf-two, text: "2, because both empty sides now report 1" }
+          - { id: leaf-one, text: "1, because a leaf is one node" }
+          - { id: leaf-zero, text: "0, because it has no children" }
+        correct: leaf-two
+        explanation: >-
+          A leaf returns `1 + max(empty, empty)`. The empty case must return 0 for a leaf to come out
+          as 1.
+      five:
+        prompt: The leaf 5 reports one too many. How much too high is the root's answer?
+        options:
+          - { id: one-high, text: "One too high, since each level adds 1 to the same error" }
+          - { id: per-level, text: "One more for each level between the leaf and the root" }
+          - { id: per-leaf, text: "One more for each leaf in the tree" }
+        correct: one-high
+        explanation: >-
+          Every call adds exactly 1 to the larger child value, the same as before. The error comes
+          from the bottom and is passed up unchanged.
+
+  - id: tree-summaries-review-taller-child
+    format: tap-cell
+    heading: Which child decides it?
+    tags: [tree, recursion]
+    prompt: |-
+      `height` counts nodes: 0 for an empty subtree, 1 for a leaf, and `1 + max(left, right)` for any
+      other node. The call on L returns 4.
+
+      ```text
+            K
+           / \
+          L   M
+         / \
+        N   O
+           / \
+          Q   V
+           \
+            Y
+      ```
+
+      Tap the child of L whose returned value decided the 4.
+    code: |
+      left = height(node.left)
+      right = height(node.right)
+      return 1 + max(left, right)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [K, L, M, N, O, Q, V, Y]
+    correct: 4
+    explanation: >-
+      L's children are N, which returns 1, and O, which returns 3 (O, Q, Y). `max` picks O's 3, and L
+      adds itself to make 4.
+    misses:
+      - index: 0
+        explanation: K is L's parent. A call learns only from the calls on its own children.
+      - index: 1
+        explanation: That is L itself. The 4 is L plus the larger of its two children's values.
+      - index: 2
+        explanation: M is L's sibling, in K's right subtree. L never calls it.
+      - index: 3
+        explanation: N is a leaf and returns 1. `max` compares it with O's 3 and keeps 3.
+      - index: 5
+        explanation: Q is O's child, not L's. Its value reaches L only through the call on O.
+      - index: 6
+        explanation: V is O's child, a leaf. It reaches L only through O, and O's taller side is Q.
+      - index: 7
+        explanation: Y is the bottom of the winning path, but it is three links below L, not a child.
+
+  - id: tree-summaries-review-one-sided
+    heading: What leaves the call, and what bends at it?
+    tags: [tree, recursion]
+    prompt: |-
+      `height` counts nodes, and a path's length counts edges. The longest path with X as its highest
+      node goes down X's left side and down X's right side, as far as each side reaches.
+
+      ```text
+          W
+         /
+        X
+       /
+      P
+       \
+        R
+       /
+      T
+      ```
+
+      What does the call on X return to W, and how many edges does the longest path with X as its
+      highest node have?
+    options:
+      - id: right
+        text: Returns 4; that path has 3 edges
+        explanation: >-
+          X's left side reports 3 (P, R, T) and its right side reports 0. X returns `1 + 3`, which is
+          4. The path X, P, R, T has `3 + 0` edges, which is 3, and it ends at X.
+      - id: needs-two
+        text: Returns 4; that path has 0 edges
+        explanation: >-
+          A path can use one side only. With the right side empty, `left + right` is just the left
+          side, and the path's top end is X itself.
+      - id: no-self
+        text: Returns 3; that path has 3 edges
+        explanation: 3 is what P reports. X adds itself to the longest chain below it.
+      - id: count-nodes
+        text: Returns 4; that path has 4 edges
+        explanation: >-
+          X, P, R, T are 4 nodes joined by 3 links. With heights in nodes, `left + right` is already
+          an edge count.
+    correct: right
+    followUps:
+      needs-two:
+        prompt: Does a path have to go down both sides of its highest node?
+        options:
+          - { id: may-end, text: "No; it can end at that node and use only one side" }
+          - { id: must-bend, text: "Yes; otherwise the node is not its highest node" }
+          - { id: must-root, text: "Only when that node is the root" }
+        correct: may-end
+        explanation: >-
+          A path with an empty side simply stops at its top node. `left + right` still measures it,
+          because the empty side adds 0.
+      no-self:
+        prompt: Which nodes does the longest downward path from X hold?
+        options:
+          - { id: from-x, text: "X, P, R and T" }
+          - { id: below-x, text: "P, R and T" }
+          - { id: from-w, text: "W, X, P, R and T" }
+        correct: from-x
+        explanation: >-
+          A call's height is measured from its own node. X is the first node on that path.
+      count-nodes:
+        prompt: "`height(P)` is 3. How many edges are there from X down to T?"
+        options:
+          - { id: three, text: "3: X to P, P to R, R to T" }
+          - { id: four, text: "4: one for each node from X to T" }
+          - { id: two, text: "2: P to R and R to T" }
+        correct: three
+        explanation: >-
+          The child's height in nodes equals the edges from the parent to the bottom of that side.
+          No extra 1 is needed.
+
+  - id: tree-summaries-review-one-side-ends
+    format: drag-pointers
+    heading: Where does the path end?
+    tags: [tree, dfs]
+    prompt: |-
+      Find the longest path whose highest node is B. Drag `left` to its end in B's left subtree, and
+      `right` to its end in B's right subtree. If a side is empty, that end is B itself. The cells
+      list the nodes level by level.
+
+      ```text
+              A
+             / \
+            B   C
+           /     \
+          D       E
+         / \
+        F   G
+             \
+              H
+      ```
+    code: |
+      # height counts nodes; the longest path whose top
+      # is a node has height(left) + height(right) edges
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G, H]
+    pointers:
+      - name: left
+        start: 0
+        correct: 7
+        explanation: >-
+          D's taller side is G, then H, so `height(D)` is 3 and the left end is H. The path H, G, D, B
+          has 3 + 0 = 3 edges.
+        misses:
+          - index: 5
+            explanation: F is a leaf, but it gives D a side of 1. G and H give it 2, so H is farther.
+          - index: 6
+            explanation: G has a right child, H. The path keeps going while there is a node below.
+          - index: 3
+            explanation: D has two children. The path continues down D's taller side.
+        elsewhere: The left end stays in B's left subtree, at the bottom of its longest chain.
+      - name: right
+        start: 0
+        correct: 1
+        explanation: B's right side is empty, so the path ends at B. Its length is just the left side.
+        misses:
+          - index: 0
+            explanation: A is above B. A path whose highest node is B never goes up to A.
+          - index: 2
+            explanation: C is in A's right subtree. Reaching it means passing through A, above B.
+          - index: 4
+            explanation: E hangs below C, outside B's subtree.
+        elsewhere: B has no right child, so this end stays at B.
+
+  - id: tree-summaries-review-highest-node
+    format: tap-cell
+    heading: Where is the path recorded?
+    tags: [tree, dfs]
+    prompt: |-
+      In the diameter walk each call records `left + right`, the longest path whose highest node is
+      its own node. So every path is counted at its highest node.
+
+      ```text
+              M
+             / \
+            N   O
+           / \   \
+          P   Q   R
+         /     \
+        S       T
+      ```
+
+      Tap the node whose call counts the path S, P, N, Q, T.
+    code: |
+      left = height(node.left)
+      right = height(node.right)
+      best = max(best, left + right)
+      return 1 + max(left, right)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [M, N, O, P, Q, R, S, T]
+    correct: 1
+    explanation: >-
+      N is the highest node on the path. Its left side reports 2 (P, S) and its right side 2 (Q, T),
+      so N records `2 + 2`, which is 4, the path's edge count.
+    misses:
+      - index: 0
+        explanation: >-
+          M is not on this path. M's own candidate goes through M and is a different path, of 5
+          edges.
+      - index: 2
+        explanation: O is in M's right subtree, away from this path.
+      - index: 3
+        explanation: P is on the path, but N is above it. P's candidate is only S, P.
+      - index: 4
+        explanation: Q is on the path, but its call sees only Q and T, one side of it.
+      - index: 5
+        explanation: R is a leaf in M's right subtree and records 0.
+      - index: 6
+        explanation: S is an end of the path. An end is a leaf here and records 0.
+      - index: 7
+        explanation: T is the other end of the path, a leaf. Leaves record 0.
+
+  - id: tree-summaries-review-best-node
+    format: tap-cell
+    heading: Which call sets the answer?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `diameter(root)` runs on the tree below and returns 6. Tap the node whose call first raises `best` to 6.
+
+      ```text
+            A
+           / \
+          B   C
+             / \
+            D   E
+           /     \
+          F       G
+         /         \
+        H           J
+      ```
+    code: |
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = max(best, left + right)
+              return 1 + max(left, right)
+          height(root)
+          return best
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G, H, J]
+    correct: 2
+    explanation: >-
+      C's sides report 3 (D, F, H) and 3 (E, G, J), so C offers `3 + 3`, which is 6: the path H, F,
+      D, C, E, G, J. A offers `1 + 4`, which is 5, and `max` keeps 6.
+    misses:
+      - index: 0
+        explanation: >-
+          A offers 5: B reports 1 and C reports 4. The longest path bends at C, below the root.
+      - index: 1
+        explanation: B is a leaf and offers 0.
+      - index: 3
+        explanation: D's right side is empty, so D offers `2 + 0`, which is 2.
+      - index: 4
+        explanation: E's left side is empty, so E offers `0 + 2`, which is 2.
+      - index: 5
+        explanation: F offers `1 + 0`, which is 1.
+      - index: 6
+        explanation: G offers `0 + 1`, which is 1.
+      - index: 7
+        explanation: H is a leaf and an end of the longest path. It offers 0.
+      - index: 8
+        explanation: J is the other end of the longest path, a leaf. It offers 0.
+
+  - id: tree-summaries-review-no-nonlocal
+    heading: What happens without `nonlocal`?
+    tags: [tree, recursion, python]
+    prompt: |-
+      The `nonlocal best` line was left out, and `root` is a non-empty tree.
+
+      ```python
+      def diameter(root):
+          best = 0
+          def height(node):
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = max(best, left + right)
+              return 1 + max(left, right)
+          height(root)
+          return best
+      ```
+
+      What happens when `diameter(root)` runs (Python 3.12)?
+    options:
+      - id: unbound
+        text: It raises `UnboundLocalError` at the `best = max(...)` line
+        explanation: >-
+          An assignment anywhere in `height` makes `best` local to `height`. The first leaf reads that
+          local `best` before anything is assigned to it, and Python raises
+          `UnboundLocalError: cannot access local variable 'best'`.
+      - id: zero
+        text: It returns 0, because each call updates its own copy of `best`
+        explanation: >-
+          There is no copy to update. The local `best` is read on the right-hand side before it has a
+          value, so the call fails before anything is returned.
+      - id: works
+        text: It returns the right diameter, since inner functions see outer names
+        explanation: >-
+          An inner function can read an outer name, but assigning to it is different. The
+          assignment changes how every use of `best` inside `height` is resolved.
+    correct: unbound
+    followUps:
+      zero:
+        prompt: When `best = max(best, left + right)` runs in `height`, which `best` is read on the right?
+        options:
+          - { id: local-unset, text: "The local `best`, which has no value yet" }
+          - { id: outer-zero, text: "The outer `best`, which is 0" }
+          - { id: fresh-zero, text: "A fresh local `best` that starts at 0" }
+        correct: local-unset
+        explanation: >-
+          Python decides a name's scope for the whole function. Locals are not set to a default, so
+          reading one before assignment raises.
+      works:
+        prompt: What turns `best` into a name local to `height`?
+        options:
+          - { id: assignment, text: "Any assignment to `best` inside `height`" }
+          - { id: reading, text: "Reading `best` inside `height`" }
+          - { id: recursion, text: "Calling `height` recursively" }
+        correct: assignment
+        explanation: >-
+          Reading an outer name works. Rebinding it from the inner function needs `nonlocal best`;
+          otherwise the name is local to the inner function from its first line.
+
+  - id: tree-summaries-review-overwrite
+    heading: What does this version return?
+    tags: [tree, recursion]
+    prompt: |-
+      This version assigns `best` at every node instead of keeping the larger value. `height` counts
+      nodes.
+
+      ```python
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = left + right
+              return 1 + max(left, right)
+          height(root)
+          return best
+      ```
+
+      ```text
+        1
+         \
+          3
+         / \
+        4   5
+       /     \
+      6       7
+      ```
+    options:
+      - id: three
+        text: "`3`"
+        explanation: >-
+          The root's call runs its assignment last and sets `best` to `0 + 3`. The 4-edge path 6, 4,
+          3, 5, 7 was recorded at the node 3 and then overwritten.
+      - id: four
+        text: "`4`"
+        explanation: >-
+          4 is the longest path, recorded when the call on 3 finished. A later assignment replaces
+          it.
+      - id: zero
+        text: "`0`"
+        explanation: >-
+          Leaves record 0, but the calls run children first and the root last. The final assignment
+          comes from the root.
+    correct: three
+    followUps:
+      four:
+        prompt: The call on 3 sets `best` to 4. What does the call on 1 do to it afterward?
+        options:
+          - { id: replaces, text: "Replaces it with 1's own `0 + 3`" }
+          - { id: keeps, text: "Keeps 4, because 4 is larger" }
+          - { id: skips, text: "Nothing, because the root has one child" }
+        correct: replaces
+        explanation: >-
+          Plain assignment does not compare. `best = max(best, left + right)` is what keeps the
+          larger of the old and new values.
+      zero:
+        prompt: Which call runs its `best =` line last?
+        options:
+          - { id: root-last, text: "The call on the root, after both of its children return" }
+          - { id: leaf-last, text: "The call on the deepest leaf" }
+          - { id: right-last, text: "The call on the rightmost leaf" }
+        correct: root-last
+        explanation: >-
+          The line sits after both recursive calls, so each node runs it after its whole subtree.
+          The root's subtree is the whole tree.
+
+  - id: tree-summaries-review-best-trace
+    format: step-trace
+    heading: How does `best` change?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `diameter(root)` runs on the tree below. `height` counts nodes. The cells list the nodes level
+      by level. Predict each step.
+
+      ```text
+            A
+           /
+          B
+         / \
+        D   E
+       /     \
+      F       G
+      ```
+    code: |-
+      def diameter(root):
+          best = 0
+          def height(node):
+              nonlocal best
+              if node is None:
+                  return 0
+              left = height(node.left)
+              right = height(node.right)
+              best = max(best, left + right)
+              return 1 + max(left, right)
+          height(root)
+          return best
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, D, E, F, G]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 9
+        ask: Which call is the first to raise `best` above 0?
+        pointer: call
+        correct: 2
+        explanation: F is a leaf and offers 0. D runs next and offers `1 + 0`, which is 1.
+        misses:
+          - index: 4
+            explanation: F is the first call to reach line 9, but a leaf offers `0 + 0`.
+          - index: 1
+            explanation: B runs line 9 only after both of its subtrees are done, and D finishes first.
+        elsewhere: The calls finish children first, and the first call with a child is the one that offers more than 0.
+      - line: 9
+        ask: What is `best` after the call on E finishes line 9?
+        options:
+          - id: one
+            text: "1"
+            explanation: E offers `0 + 1`, which is 1, and `best` was already 1. `max` leaves it at 1.
+          - id: two
+            text: "2"
+            explanation: The candidates are compared, not added. D's 1 and E's 1 give a maximum of 1.
+          - id: zero
+            text: "0"
+            explanation: D already raised `best` to 1, and `max` never lowers it.
+        correct: one
+      - line: 9
+        ask: Which call raises `best` to 4?
+        pointer: call
+        correct: 1
+        explanation: B's sides each report 2, so B offers `2 + 2`, the path F, D, B, E, G.
+        misses:
+          - index: 0
+            explanation: A's left side reports 3 and its right side is empty, so A offers 3.
+          - index: 3
+            explanation: E offers 1. Its left side is empty.
+        elsewhere: The 4-edge path F, D, B, E, G has B as its highest node.
+      - line: 12
+        ask: What does `diameter(root)` return?
+        options:
+          - id: four
+            text: "4"
+            explanation: A offers `3 + 0`, which is 3, and `max(4, 3)` keeps 4.
+          - id: three
+            text: "3"
+            explanation: 3 is the path through the root. `max` keeps B's larger candidate.
+          - id: five
+            text: "5"
+            explanation: 5 is the number of nodes on the path F, D, B, E, G. The diameter counts its 4 edges.
+        correct: four
