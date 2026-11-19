@@ -1,0 +1,273 @@
+id: bst-order-checkpoint
+title: 'BST order: checkpoint'
+description: Validate a fresh tree against inherited bounds and find the lowest common ancestor of two values.
+heading: Use the order
+
+questions:
+  - id: bst-order-exam-deep-violation
+    format: tap-cell
+    heading: Which node breaks the rule?
+    tags: [tree, recursion]
+    prompt: |-
+      All values are distinct. Every left child below is smaller than its parent and every right child
+      is larger, but the tree is not a BST.
+
+      ```text
+                47
+              /    \
+            23      71
+           /  \    /  \
+          12  35  59   88
+             /  \
+            29   51
+      ```
+
+      Tap the node that does not fit one of its ancestors.
+    code: |
+      def valid(node, low, high):
+          if node is None:
+              return True
+          if not low < node.val < high:
+              return False
+          return (valid(node.left, low, node.val)
+                  and valid(node.right, node.val, high))
+    sequence:
+      kind: array
+      name: nodes
+      cells: [47, 23, 71, 12, 35, 59, 88, 29, 51]
+    correct: 8
+    explanation: >-
+      51 is larger than its parent 35 and larger than 23, so the nearer checks pass. It is also in 47's
+      left subtree, so it must be smaller than 47. Its call gets the range (35, 47), and 51 is outside it.
+    misses:
+      - index: 0
+        explanation: 47 is the root, so nothing limits it.
+      - index: 1
+        explanation: 23 is in 47's left subtree and smaller than 47. Its range is (-inf, 47), and 23 fits.
+      - index: 2
+        explanation: 71 is in 47's right subtree and larger than 47. Its range is (47, inf), and 71 fits.
+      - index: 3
+        explanation: 12 must be smaller than 23 and 47. Its range is (-inf, 23), and 12 fits.
+      - index: 4
+        explanation: 35 must be larger than 23 and smaller than 47. Its range is (23, 47), and 35 fits.
+      - index: 5
+        explanation: 59 must be larger than 47 and smaller than 71. Its range is (47, 71), and 59 fits.
+      - index: 6
+        explanation: 88 must be larger than 47 and 71. Its range is (71, inf), and 88 fits.
+      - index: 7
+        explanation: >-
+          29 is 35's left child, 23's right descendant and in 47's left subtree. Its range is (23, 35),
+          and 29 fits.
+
+  - id: bst-order-exam-dropped-bound
+    heading: Which tree slips through?
+    tags: [tree, recursion]
+    prompt: |-
+      This version is meant to check that a tree with distinct values is a BST. It is called as
+      `valid(root, float('-inf'), float('inf'))`.
+
+      ```python
+      def valid(node, low, high):
+          if node is None:
+              return True
+          if not low < node.val < high:
+              return False
+          return (valid(node.left, float('-inf'), node.val)
+                  and valid(node.right, node.val, high))
+      ```
+
+      Which tree does it wrongly accept?
+    options:
+      - id: right-then-left
+        text: "`TreeNode(20, None, TreeNode(40, TreeNode(10)))`"
+        explanation: >-
+          The left call passes `float('-inf')` instead of `low`, so the call on 10 gets (-inf, 40) and
+          10 fits. But 10 is in 20's right subtree and must exceed 20. The lower bound from 20 was
+          dropped on the way down.
+      - id: left-then-right
+        text: "`TreeNode(20, TreeNode(10, None, TreeNode(30)))`"
+        explanation: >-
+          The right call keeps `high`, so the call on 30 gets (10, 20). 30 is outside it, and the
+          function returns `False`, which is correct: 30 is in 20's left subtree.
+      - id: right-then-right
+        text: "`TreeNode(20, TreeNode(10), TreeNode(40, None, TreeNode(30)))`"
+        explanation: >-
+          The call on 30 is a right call from 40 and gets (40, inf). 30 is outside it, so the function
+          returns `False`, which is correct.
+      - id: real-bst
+        text: "`TreeNode(20, TreeNode(10), TreeNode(40, TreeNode(30)))`"
+        explanation: >-
+          This one is a BST: 30 is in 20's right subtree and 40's left subtree, and it lies between them.
+          The function accepts it, and that is right.
+    correct: right-then-left
+    followUps:
+      left-then-right:
+        prompt: Which bound does a right call in this version still inherit from above?
+        options:
+          - { id: keeps-high, text: "The upper one: `high` is passed down unchanged" }
+          - { id: keeps-none, text: "Neither; both bounds are reset on every call" }
+          - { id: keeps-low, text: "The lower one: `low` is passed down unchanged" }
+        correct: keeps-high
+        explanation: >-
+          Only the left call is broken. A right call sets `low` to the node and keeps `high`, so a value
+          that is too large is still caught. A value that is too small after a turn to the left is not.
+      right-then-right:
+        prompt: What range does the call on 30 receive here?
+        options:
+          - { id: forty-up, text: "Above 40, with no upper limit" }
+          - { id: twenty-forty, text: "Between 20 and 40" }
+          - { id: below-forty, text: "Below 40, with no lower limit" }
+        correct: forty-up
+        explanation: >-
+          30 is a right child, and right calls work correctly in this version. 30 is not above 40, so it
+          is rejected. The broken line only matters after a step to the left.
+      real-bst:
+        prompt: Is `TreeNode(20, TreeNode(10), TreeNode(40, TreeNode(30)))` a BST?
+        options:
+          - { id: yes, text: "Yes; 30 is above 20 and below 40, which is all its ancestors require" }
+          - { id: no-thirty, text: "No; 30 is smaller than its parent, 40" }
+          - { id: no-shape, text: "No; 40 has a left child but no right child" }
+        correct: yes
+        explanation: >-
+          Accepting a real BST is not a mistake. The question asks for a tree the function accepts even
+          though it breaks the rule.
+
+  - id: bst-order-exam-target-ancestor
+    format: tap-cell
+    heading: Which node is the lowest common ancestor?
+    tags: [tree, binary-search]
+    prompt: |-
+      The lowest common ancestor of two values is the lowest node with both of them in its subtree, and a
+      node counts as being in its own subtree.
+
+      ```text
+                58
+              /    \
+            31      74
+           /  \       \
+          19   44      90
+              /  \
+            37    50
+                 /
+               47
+      ```
+
+      Tap the lowest common ancestor of 47 and 44.
+    code: |
+      def lca(node, p, q):
+          while node is not None:
+              if p < node.val and q < node.val:
+                  node = node.left
+              elif p > node.val and q > node.val:
+                  node = node.right
+              else:
+                  return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [58, 31, 74, 19, 44, 90, 37, 50, 47]
+    correct: 4
+    explanation: >-
+      Both values are smaller than 58, so the walk goes left to 31. Both are larger than 31, so it goes
+      right to 44. 44 is one of the targets and 47 is below it, so 44 is the answer.
+    misses:
+      - index: 0
+        explanation: 58 holds both, but both values are smaller than 58, so a lower node holds both too.
+      - index: 1
+        explanation: 31 holds both, but both values are larger than 31, so both are in its right subtree.
+      - index: 2
+        explanation: 74 is in 58's right subtree. Both values are smaller than 58, so neither is there.
+      - index: 3
+        explanation: 19 is 31's left child. Both values are larger than 31, so neither is under 19.
+      - index: 5
+        explanation: 90 is in 58's right subtree, where neither value is.
+      - index: 6
+        explanation: 37 is 44's left child. 47 is larger than 44, so it is not under 37, and neither is 44.
+      - index: 7
+        explanation: 50 is 47's parent, but 44 is above 50. The answer has to hold 44 as well.
+      - index: 8
+        explanation: 47 is one target, but 44 is above it, not below. The answer has to hold both.
+
+  - id: bst-order-exam-or-split
+    heading: What does the faulty walk return?
+    tags: [tree, binary-search]
+    prompt: |-
+      This version uses `or` where the correct one uses `and`.
+
+      ```python
+      def lca(node, p, q):
+          while node is not None:
+              if p < node.val or q < node.val:
+                  node = node.left
+              elif p > node.val or q > node.val:
+                  node = node.right
+              else:
+                  return node
+          return None
+      ```
+
+      ```text
+                58
+              /    \
+            31      74
+           /  \       \
+          19   44      90
+              /  \
+            37    50
+      ```
+
+      What does `lca(root, 37, 74)` return, and what is the correct answer?
+    options:
+      - id: none-58
+        text: It returns `None`, but the answer is 58
+        explanation: >-
+          At 58, 37 is smaller, so the `or` sends the walk left even though 74 is on the right. From
+          there it goes right at 31, left at 44, and right at 37, falling off the tree. The answer is
+          58, where the two values part.
+      - id: same-58
+        text: It returns 58, which is also the answer
+        explanation: >-
+          The first test asks whether either value is smaller than 58. 37 is, so the walk leaves 58
+          before it can return it.
+      - id: thirty-seven
+        text: It returns 37, but the answer is 58
+        explanation: >-
+          The walk does reach 37, but 74 is larger, so the second test sends it right to 37's empty
+          slot. The loop ends and the function returns `None`.
+      - id: forty-four
+        text: It returns 44, but the answer is 58
+        explanation: >-
+          At 44, 37 is smaller, so the first test moves the walk left again. With `or`, one value on
+          either side of a node is enough to move past it.
+    correct: none-58
+    followUps:
+      same-58:
+        prompt: At 58, is `p < node.val or q < node.val` true?
+        options:
+          - { id: true-37, text: "Yes; 37 is below 58, and one true side is enough for `or`" }
+          - { id: false-74, text: "No; 74 is above 58, so the test fails" }
+          - { id: equal, text: "No; the test only matters when a value equals 58" }
+        correct: true-37
+        explanation: >-
+          `or` needs just one side. The correct version uses `and` so the walk moves only when both
+          values are on the same side, and stops where they split.
+      thirty-seven:
+        prompt: At 37, with `p = 37` and `q = 74`, which branch runs?
+        options:
+          - { id: elif-right, text: "The `elif`, since 74 is above 37, so the walk moves right" }
+          - { id: else-return, text: "The `else`, since `p` equals 37, so it returns 37" }
+          - { id: if-left, text: "The first `if`, since 37 is not above 37" }
+        correct: elif-right
+        explanation: >-
+          The `else` runs only when neither test holds. With `or`, any value on one side is enough to
+          move, so a node equal to `p` is passed by when `q` differs.
+      forty-four:
+        prompt: When can this version reach its `return node` line?
+        options:
+          - { id: both-equal, text: "Only at a node equal to both `p` and `q`" }
+          - { id: one-equal, text: "At any node equal to `p` or to `q`" }
+          - { id: split, text: "At the node where the two values go different ways" }
+        correct: both-equal
+        explanation: >-
+          With `or`, a node is left whenever either value differs from it. For two different values the
+          walk never stops on a node and ends at `None`.

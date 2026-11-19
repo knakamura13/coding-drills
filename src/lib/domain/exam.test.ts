@@ -175,6 +175,31 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('carries forward a validate-or-ancestor pass from the two-item pool and requires a full sitting now', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'bst-order')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const bounds = { ...attempt('bst-bounds-check', true), deckId: 'trees-traversals-bst', examRulesVersion: 6 };
+		const ancestor = { ...attempt('bst-lowest-common-ancestor', true), deckId: 'trees-traversals-bst', examRulesVersion: 6 };
+		expect(drills).toHaveLength(6);
+		expect(checkpoint.mix).toEqual(['validate', 'ancestor']);
+		// One item alone was never a pass of the two-item pool.
+		expect(examPassed(drills, checkpoint.mix, [bounds])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [bounds, { ...ancestor, day: '2026-02-02' }])).toBe(false);
+		// Both items on one day, with at most one miss, was a pass.
+		expect(examPassed(drills, checkpoint.mix, [bounds, ancestor])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [bounds, { ...ancestor, correct: false }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...bounds, correct: false }, { ...ancestor, correct: false }])).toBe(false);
+		const unversioned = ['bst-bounds-check', 'bst-lowest-common-ancestor'].map((id) => ({ ...attempt(id, true), deckId: 'trees-traversals-bst' }));
+		expect(examPassed(drills, checkpoint.mix, unversioned)).toBe(true);
+		// A current-version attempt is a new sitting, not the old pool.
+		expect(examPassed(drills, checkpoint.mix, [bounds, { ...ancestor, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		const sitting = drills.slice(0, 5).map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
 		const sitting = [attempt('a', true), attempt('b', true), attempt('c', false), attempt('d', true), attempt('e', true)];
 		expect(examPassed(pool, mix, sitting)).toBe(true);
