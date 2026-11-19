@@ -1,0 +1,349 @@
+id: tree-walks-checkpoint
+title: 'Tree walks: checkpoint'
+description: Trace a walk on a fresh tree and predict which calls are still on the stack.
+heading: Trace the walk
+
+questions:
+  - id: tree-walks-exam-waiting-calls
+    heading: Which calls are still active?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      ```python
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          walk(node.right, out)
+          out.append(node.val)
+      ```
+
+      ```text
+            J
+           / \
+          K   L
+         / \
+        M   N
+           / \
+          H   O
+      ```
+
+      `walk(root, [])` runs. At the moment the call on H runs its append, which other calls on real
+      nodes are still active (started and not yet returned)?
+    options:
+      - id: right
+        text: The calls on J, K and N
+        explanation: >-
+          The active calls are the path from the root down to H. J is waiting for its left call on K,
+          K for its right call on N, and N for its left call on H.
+      - id: with-m
+        text: The calls on J, K, M and N
+        explanation: >-
+          M was recorded before H, so its call has already returned. A finished call leaves the stack
+          as soon as it records its node.
+      - id: pending
+        text: The calls on J, K, N, O and L
+        explanation: >-
+          O and L are still to be recorded, but their calls have not started. Work that is still to come
+          is not on the stack. Only calls that have started and not returned are.
+      - id: parent-only
+        text: Only the call on N
+        explanation: >-
+          N is waiting for H, but N's own call was made by K, and K's by J. Neither can return until the
+          call it is waiting on returns.
+    correct: right
+    followUps:
+      with-m:
+        prompt: When the call on K starts its right call on N, where is the call on M?
+        options:
+          - { id: m-returned, text: "It has returned, after recording M" }
+          - { id: m-paused, text: "Paused, waiting for N to finish" }
+          - { id: m-not-started, text: "Not started yet" }
+        correct: m-returned
+        explanation: >-
+          K's left call must return before K runs its next line. Every call on the stack is waiting on
+          the call below it, so a sibling's finished subtree is never on it.
+      pending:
+        prompt: When the call on H runs its append, has the call on L started?
+        options:
+          - { id: l-not-started, text: "No; J calls L only after its call on K returns" }
+          - { id: l-started, text: "Yes; every call starts when the walk begins" }
+          - { id: l-done, text: "Yes, and it has already returned" }
+        correct: l-not-started
+        explanation: >-
+          A call starts only when its parent reaches that line. The stack holds the calls between the
+          root and the current node, not the nodes left to record.
+      parent-only:
+        prompt: Can the call on K return while the call on N is still running?
+        options:
+          - { id: k-waits, text: "No; K is paused at its right call until N's call returns" }
+          - { id: k-returns, text: "Yes; K already handed the work to N" }
+          - { id: k-never, text: "K's call ended when it called M" }
+        correct: k-waits
+        explanation: >-
+          A call that makes a call pauses until that call returns. So every ancestor of the running call
+          is still active.
+
+  - id: tree-walks-exam-inorder-depth
+    format: step-trace
+    heading: Trace the walk and its depth
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `walk(root, out)` walks the left subtree, records the node, then walks the right subtree. The
+      cells list the nodes level by level; they are not the visiting order. Count only calls on real
+      nodes. The first call is on 6. Predict each step.
+
+      ```text
+            6
+           / \
+          9   2
+         / \   \
+        4   7   8
+           /
+          1
+      ```
+    code: |-
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          out.append(node.val)
+          walk(node.right, out)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [6, 9, 2, 4, 7, 8, 1]
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 5
+        ask: Which node is recorded first?
+        pointer: call
+        correct: 3
+        explanation: >-
+          The calls go 6, 9, 4. 4 has no left child, so its left call returns at once and 4 is the first
+          node recorded.
+        misses:
+          - index: 0
+            explanation: 6's append waits for its whole left subtree.
+          - index: 1
+            explanation: 9 has a left child, 4. The call on 9 records 9 only after the call on 4 returns.
+          - index: 6
+            explanation: 1 is in 9's right subtree, which is walked only after 4 and 9 are recorded.
+        elsewhere: Follow left links from the root until a node has no left child.
+      - line: 5
+        ask: Which node is recorded after 4?
+        pointer: call
+        correct: 1
+        explanation: The call on 4 returns to 9, which was paused at its left call. Its next line is its append.
+        misses:
+          - index: 4
+            explanation: 7 is 9's right child. 9 records itself before its right call.
+          - index: 2
+            explanation: That is level order. 2 is in 6's right subtree, which comes after 6 is recorded.
+        elsewhere: The call on 4 returns to its parent, which is paused just before its append.
+      - line: 5
+        ask: Which node is recorded after 9?
+        pointer: call
+        correct: 6
+        explanation: 9 calls 7, and 7 first calls its left child 1. 1 has no left child, so it records next.
+        misses:
+          - index: 4
+            explanation: 7 has a left child, 1. 7's append waits until the call on 1 returns.
+          - index: 0
+            explanation: 6 waits until 9's right subtree, 7 and 1, is done.
+        elsewhere: 9's right call starts on 7, which walks its own left subtree first.
+      - line: 5
+        ask: While the call on 1 runs its append, how many real calls are active, counting it?
+        options:
+          - id: four
+            text: "4"
+            explanation: >-
+              6 is paused at its left call, 9 and 7 are paused too, and 1 is running: one call per node on
+              the path 6, 9, 7, 1.
+          - id: three
+            text: "3"
+            explanation: >-
+              The call on 1 counts as well. The path from the root to 1 has four nodes, and each has an
+              active call.
+          - id: five
+            text: "5"
+            explanation: >-
+              5 counts every call made so far, including the one on 4. That call returned before 9 was
+              recorded, so it is no longer active.
+        correct: four
+      - line: 5
+        ask: 1 and then 7 are recorded. Which node is recorded next?
+        pointer: call
+        correct: 0
+        explanation: >-
+          7 has no right child, so it returns to 9, and 9 has finished both calls. 9 returns to 6, whose
+          next line is its append.
+        misses:
+          - index: 2
+            explanation: 2 is 6's right child. 6 records itself between its left and right subtrees.
+          - index: 5
+            explanation: 8 is in 6's right subtree, which starts only after 6 is recorded.
+        elsewhere: When the left subtree is finished, the node that called it records itself.
+
+  - id: tree-walks-exam-third-group
+    heading: What is the third line printed?
+    tags: [tree, bfs, queue]
+    prompt: |-
+      ```python
+      queue = deque([root])
+      while queue:
+          n = len(queue)
+          group = []
+          for _ in range(n):
+              node = queue.popleft()
+              group.append(node.val)
+              if node.left:
+                  queue.append(node.left)
+              if node.right:
+                  queue.append(node.right)
+          print(group)
+      ```
+
+      ```text
+              a
+             / \
+            b   c
+           / \   \
+          d   e   f
+             / \   \
+            g   h   i
+      ```
+
+      What is the third line this prints?
+    options:
+      - id: right
+        text: "`['d', 'e', 'f']`"
+        explanation: >-
+          The first round prints `['a']` and the second `['b', 'c']`. The third begins with d, e and f
+          in the queue, so `n` is 3. The children g, h and i are appended during that round and wait for
+          a fourth.
+      - id: per-parent
+        text: "`['d', 'e']`"
+        explanation: >-
+          d and e share a parent, but f is at the same depth. All three are in the queue when the third
+          round begins, so they share a group.
+      - id: depth-first
+        text: "`['d', 'e', 'g', 'h']`"
+        explanation: >-
+          That finishes b's side before c's, which is how recursion moves. The queue serves nodes in the
+          order they were appended, and f was appended before g and h.
+      - id: grows
+        text: "`['d', 'e', 'f', 'g', 'h', 'i']`"
+        explanation: >-
+          `range(n)` was built when the round began, with `n = 3`. g, h and i are appended during the
+          round, but the round still ends after three pops.
+    correct: right
+    followUps:
+      per-parent:
+        prompt: When the third round starts, what is in the queue?
+        options:
+          - { id: d-e-f, text: "f along with d and e" }
+          - { id: d-e, text: "d and e only" }
+          - { id: d-only, text: "d only" }
+        correct: d-e-f
+        explanation: >-
+          The second round pops b, which appends d and e, then pops c, which appends f. A round's group
+          is everything at one depth, whatever the parents.
+      depth-first:
+        prompt: In what order were d, e, f, g and h appended to the queue?
+        options:
+          - { id: d-e-f-g-h, text: "d, e, f, then g and h" }
+          - { id: d-e-g-h-f, text: "d, e, g, h, then f" }
+          - { id: g-h-first, text: "g and h first, then d, e and f" }
+        correct: d-e-f-g-h
+        explanation: >-
+          g and h are appended only when e is popped, in the third round. f was appended earlier, when c
+          was popped, so it is ahead of them.
+      grows:
+        prompt: When e appends g and h during the third round, how many pops does the round still make?
+        options:
+          - { id: one-more, text: "One more, for f, because the round was fixed at three pops" }
+          - { id: three-more, text: "Three more, for f, g and h" }
+          - { id: until-empty, text: "Pops continue until the queue is empty" }
+        correct: one-more
+        explanation: >-
+          The number of pops is set by `n` before the round starts. Later appends make the queue longer,
+          but they do not change a `range` that has already been built.
+
+  - id: tree-walks-exam-right-subtree
+    heading: What is in `out` afterward?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      ```python
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          walk(node.right, out)
+          out.append(node.val)
+      ```
+
+      ```text
+            3
+           / \
+          8   5
+         /   / \
+        1   7   2
+             \
+              4
+      ```
+
+      `out = []`, then `walk(root.right, out)` runs. What is in `out`?
+    options:
+      - id: right
+        text: "`[4, 7, 2, 5]`"
+        explanation: >-
+          The call receives 5, so only the subtree under 5 is walked. 7's left link is
+          `None`, so it walks its right child 4 first, then records 7. Then 2, and last 5.
+      - id: preorder
+        text: "`[5, 7, 4, 2]`"
+        explanation: >-
+          That records each node before its children. This `walk` appends after both calls, so 5 comes
+          last.
+      - id: with-root
+        text: "`[4, 7, 2, 5, 3]`"
+        explanation: >-
+          The call starts at `root.right`, which is 5. Node 3 is the parent of 5, outside its subtree, so
+          this call never records it.
+      - id: one-child
+        text: "`[7, 4, 2, 5]`"
+        explanation: >-
+          7 has no left child, but it does have a right child. Its append runs after its right call, so
+          4 is recorded before 7.
+    correct: right
+    followUps:
+      preorder:
+        prompt: In this `walk`, which line comes right after the `None` check?
+        options:
+          - { id: left-call, text: "The left call, so the node is recorded after its subtrees" }
+          - { id: the-append, text: "The append, so the node is recorded first" }
+          - { id: right-call, text: "The right call, so right children come first" }
+        correct: left-call
+        explanation: >-
+          Both calls sit above the append. Every node is recorded after its whole left subtree and its
+          whole right subtree, so the call's own node comes last.
+      with-root:
+        prompt: Which node does `walk(root.right, out)` start at?
+        options:
+          - { id: five, text: "5, the root's right child" }
+          - { id: three, text: "3, the root" }
+          - { id: two, text: "2, the rightmost node" }
+        correct: five
+        explanation: >-
+          The argument is evaluated first, so the call receives 5. A call reaches only its node and that
+          node's descendants.
+      one-child:
+        prompt: For the call on 7, what runs before its append?
+        options:
+          - { id: both-calls, text: "A left call on `None` and a right call on 4" }
+          - { id: left-only, text: "Only the left call, since 7 has no left child" }
+          - { id: nothing, text: "Nothing, since one child is not a full subtree" }
+        correct: both-calls
+        explanation: >-
+          Both calls always run. A missing child makes its call return at once, but the other call still
+          walks the child it has before the node is recorded.
