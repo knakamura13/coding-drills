@@ -1,0 +1,302 @@
+id: enumerating-choices-checkpoint
+title: "Enumerating choices: checkpoint"
+description: Keep every valid output of a search you have not seen, and count what the output costs. Each item combines listing leaves, telling repeated siblings apart, and justifying a prune.
+heading: What does the search return?
+
+questions:
+  - id: checkpoint-repeat-sums
+    tags: [backtracking, sorting]
+    prompt: |-
+      Each value in `nums` may be used once, and every distinct set that adds up to `target`
+      must come out once.
+
+      ```python
+      def find(nums, target):
+          nums = sorted(nums)
+          out, path = [], []
+          def explore(start, left):
+              if left == 0:
+                  out.append(path[:])
+                  return
+              for i in range(start, len(nums)):
+                  if i > start and nums[i] == nums[i - 1]:
+                      continue
+                  if nums[i] > left:
+                      break
+                  path.append(nums[i])
+                  explore(i + 1, left - nums[i])
+                  path.pop()
+          explore(0, target)
+          return out
+      ```
+
+      What does `find([2, 4, 1, 3, 2], 5)` return?
+    options:
+      - id: all-three
+        text: "`[[1, 2, 2], [1, 4], [2, 3]]`"
+        explanation: >-
+          Sorted, the input is `[1, 2, 2, 3, 4]`. The call holding `[1, 2]` takes the second 2 on
+          its first pass, so `[1, 2, 2]` is found. The top loop skips the second 2, so `[2, 3]`
+          comes out once. Each `break` ends only its own call's loop, so `[1, 4]` is found too.
+      - id: no-repeat-path
+        text: "`[[1, 4], [2, 3]]`"
+        explanation: >-
+          The test is `i > start`, not `i > 0`. A repeat on a loop's first pass is taken.
+      - id: twice
+        text: "`[[1, 2, 2], [1, 4], [2, 3], [2, 3]]`"
+        explanation: >-
+          The top loop does not start a second branch with the other 2.
+      - id: lost-pair
+        text: "`[[1, 2, 2], [2, 3]]`"
+        explanation: >-
+          A `break` in a deeper call does not end the loop of the call above it.
+    correct: all-three
+    followUps:
+      no-repeat-path:
+        prompt: In the call holding `[1, 2]`, where `start == 2`, is the 2 at index 2 skipped?
+        options:
+          - id: taken
+            text: No, `i == start`, so it is taken
+          - id: equal
+            text: Yes, it equals the 2 before it
+          - id: just-taken
+            text: Yes, since 2 is the value just taken
+        correct: taken
+        explanation: >-
+          The test skips a repeat only after the same loop has tried an equal value. On the first
+          pass there is nothing to repeat, so one path can hold both 2s.
+      twice:
+        prompt: In the top call, why is the 2 at index 2 skipped?
+        options:
+          - id: same-sets
+            text: It would start the same sets the 2 at index 1 started
+          - id: in-path
+            text: It is already in `path`
+          - id: heavy
+            text: It is heavier than `left`
+        correct: same-sets
+        explanation: >-
+          The branch that opened with the first 2 already found every set that starts with a 2.
+          Opening another with an equal value would find `[2, 3]` again.
+      lost-pair:
+        prompt: The call holding `[1, 3]` breaks because 4 > 1. Which loop does that end?
+        options:
+          - id: own
+            text: Only that call's loop, so the caller then tries the 4
+          - id: all
+            text: Every loop up to the top call
+          - id: caller
+            text: The caller's loop too, since 4 is next there as well
+        correct: own
+        explanation: >-
+          `break` leaves the innermost loop, which belongs to the call that runs it. The call
+          holding `[1]` still has `left == 4`, so the 4 fits there exactly.
+
+  - id: checkpoint-ordering-cost
+    heading: What is the complexity?
+    tags: [backtracking, complexity]
+    prompt: |-
+      This search records every ordering of `n` distinct items. Each call loops over all `n`
+      indexes and skips the used ones, and each leaf records a copy of `path`.
+
+      ```python
+      def explore():
+          if len(path) == len(items):
+              out.append(path[:])
+              return
+          for i in range(len(items)):
+              if used[i]:
+                  continue
+              used[i] = True
+              path.append(items[i])
+              explore()
+              path.pop()
+              used[i] = False
+      ```
+
+      Counting the loops and the copies, what is the tightest bound on the total running time?
+    options:
+      - id: n-n-factorial
+        text: O(n · n!), since n! leaves each copy n items
+        explanation: >-
+          There are n! leaves and each copy writes n items, so the output alone is n · n! items
+          (96 for n = 4). The tree has about e · n! calls (65 for n = 4), and each call above the
+          leaves loops n times (164 passes in all), which is the same order.
+      - id: n-factorial
+        text: O(n!), since n! leaves are each recorded once
+        explanation: >-
+          A copy is not constant time. Each one writes n items.
+      - id: n-to-n
+        text: O(n^n), since each of n levels tries n items
+        explanation: >-
+          O(n^n) is a valid but loose upper bound. `used` leaves fewer choices at each level.
+      - id: n-two-to-n
+        text: O(n · 2^n), since each item is placed or not
+        explanation: >-
+          Placing each item or not is the subset tree. An ordering places every item.
+    correct: n-n-factorial
+    followUps:
+      n-factorial:
+        prompt: For n = 4, how many items do the `path[:]` copies write in total?
+        options:
+          - id: ninety-six
+            text: 96, from 24 leaves of 4 items each
+          - id: twenty-four
+            text: 24, one per leaf
+          - id: four
+            text: 4, one per item
+        correct: ninety-six
+        explanation: >-
+          Each leaf holds all n items, so recording n! leaves costs n · n! by itself.
+      n-to-n:
+        prompt: With `path` holding `d` items, how many indexes can the next level take?
+        options:
+          - id: n-minus-d
+            text: n − d, the unused ones
+          - id: n
+            text: n, every index
+          - id: d
+            text: d, the ones already placed
+        correct: n-minus-d
+        explanation: >-
+          The levels offer n, n − 1, ..., 1 choices, so there are n! leaves, not n^n. For n = 8
+          that is 40,320 leaves against 16,777,216.
+      n-two-to-n:
+        prompt: For n = 3, how many leaves does the ordering search have?
+        options:
+          - id: six
+            text: 6, one per order of the three items
+          - id: eight
+            text: 8, one per subset
+          - id: three
+            text: 3, one per item
+        correct: six
+        explanation: >-
+          Each leaf is a full ordering, and three items have 3! = 6 of them. n! grows much faster
+          than 2^n.
+
+  - id: checkpoint-unsorted-lost-set
+    format: tap-cell
+    heading: Which set is lost?
+    tags: [backtracking, sorting]
+    prompt: >-
+      This search should record every set of weights that adds up to 8, starting from
+      `explore(0, 8)` with `weights = [2, 1, 6, 3, 4, 5]`. It breaks on the first weight that is
+      too heavy, but the weights were never sorted. Without the `break`, it records the four sets
+      shown, in this order. With the `break` it records only three. Tap the set it never records.
+    code: |
+      def explore(start, left):
+          if left == 0:
+              out.append(path[:])
+              return
+          for i in range(start, len(weights)):
+              if weights[i] > left:
+                  break
+              path.append(weights[i])
+              explore(i + 1, left - weights[i])
+              path.pop()
+    sequence:
+      kind: array
+      name: sets
+      cells: ["[2, 1, 5]", "[2, 6]", "[1, 3, 4]", "[3, 5]"]
+    correct: 0
+    explanation: >-
+      The call holding `[2, 1]` has `left == 5`. Its loop meets the 6 first, and 6 > 5 breaks it,
+      so the 5 at the end is never tried. Sorted first, the 5 would come before the 6 and all four
+      sets would be found.
+    misses:
+      - index: 1
+        explanation: >-
+          The call holding `[2]` has `left == 6`, and 6 is not more than 6, so the 6 is taken. The
+          break fires only on a weight above `left`.
+      - index: 2
+        explanation: >-
+          The call holding `[1]` has `left == 7`. The 6 fits there, and the break below it ends
+          only that deeper loop. The loop then takes the 3, and the call below takes the 4.
+      - index: 3
+        explanation: >-
+          The call holding `[3]` has `left == 5`. The weights after the 3 are 4 and 5, neither above
+          5, so nothing breaks before the 5 is taken.
+
+  - id: checkpoint-dedupe-cost
+    heading: What does each version cost?
+    tags: [backtracking, complexity]
+    prompt: |-
+      `nums` is twenty 7s, `[7] * 20`. Two searches each return its 21 distinct subsets, from no
+      7s to twenty.
+
+      **A** uses the skip test:
+
+      ```python
+      def explore(start):
+          out.append(path[:])
+          for i in range(start, len(nums)):
+              if i > start and nums[i] == nums[i - 1]:
+                  continue
+              path.append(nums[i])
+              explore(i + 1)
+              path.pop()
+      ```
+
+      **B** runs the plain take-or-skip search over all 20 indexes and adds `tuple(path)` to a set
+      at each leaf. Which statement is right?
+    options:
+      - id: b-leaves
+        text: Both keep every subset, but B reaches 1,048,576 leaves first
+        explanation: >-
+          A opens each distinct subset once and makes 21 calls. B still visits all 2^20 =
+          1,048,576 leaves (2,097,151 calls) and builds a tuple at each, then keeps 21. The output
+          is small, and B's work is not.
+      - id: same-calls
+        text: Both make about the same calls, since equal values merge
+        explanation: >-
+          B branches on every index, whatever the values are.
+      - id: a-loses
+        text: A loses lists such as `[7, 7]`, so only B is right
+        explanation: >-
+          A never skips the first item a call's loop tries.
+      - id: b-faster
+        text: B is faster overall, since each set insert is O(1)
+        explanation: >-
+          Count how many inserts B makes.
+    correct: b-leaves
+    followUps:
+      same-calls:
+        prompt: How many leaves does the take-or-skip tree over 20 items have?
+        options:
+          - id: two-to-twenty
+            text: 2^20, one per pattern of take and skip
+          - id: twenty-one
+            text: 21, one per distinct subset
+          - id: twenty
+            text: 20, one per item
+        correct: two-to-twenty
+        explanation: >-
+          Each of the 20 indexes is taken or skipped, so there are 2^20 = 1,048,576 leaves. Equal
+          values make many of them hold the same list, but the search still visits each one.
+      a-loses:
+        prompt: In the call holding `[7]`, is the first item its loop tries skipped?
+        options:
+          - id: taken
+            text: No, `i == start`, so it is taken
+          - id: equal
+            text: Yes, it equals the 7 before it
+          - id: every
+            text: Yes, every repeat is skipped
+        correct: taken
+        explanation: >-
+          Each call's first pass takes the next 7, so A walks down to `[7] * 20` and records every
+          length on the way. Only siblings that would repeat a branch are skipped.
+      b-faster:
+        prompt: How many set inserts does B make?
+        options:
+          - id: million
+            text: 1,048,576, one per leaf
+          - id: twenty-one
+            text: 21, one per distinct subset
+          - id: twenty
+            text: 20, one per item
+        correct: million
+        explanation: >-
+          Each insert is cheap, but B makes one per leaf, each after building a tuple of up to 20
+          items. A records 21 lists in total.
