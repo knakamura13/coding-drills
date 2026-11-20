@@ -32,6 +32,7 @@ These are candidate treatments for adapting authored questions. Review the visua
 | Representation | What to show | What the learner can do |
 | --- | --- | --- |
 | Array or string | Values or characters with aligned indices. Show active pointers and any legal end position. | Tap the cell, move a pointer, or predict a named result. Use repeated values when checking whether the learner distinguishes value from index. |
+| 1D table for dynamic programming | The base cases, the meaning of each entry, and the entries the highlighted cell depends on. | Identify a dependency, fill an entry, or locate the result. |
 | 2D table for dynamic programming | The full row and column layout, including blank cells. Label axes and keep the layout fixed between steps. | Read a highlighted cell, fill one cell from visible prerequisites, then select the cell or value that answers the problem. |
 | Grid for traversal | Starting cell, bounds, barriers and the allowed movement rule. Visually distinguish blocked and visited cells. | Select a legal neighbor or the next cell to process. Keep state visible across moves. |
 | List references and mutation | Actual code names and one object per list. Arrows mean “refers to.” Use Python assignment in the snippet. | Predict what the named lists contain or which reference moves, then show the actual shared or separate objects. |
@@ -47,15 +48,18 @@ These are candidate treatments for adapting authored questions. Review the visua
 | Bits and masks | Bit positions and width, with any signedness rule that affects the answer. | Select a bit or predict one masked value. |
 | Code, math or problem statement | The relevant snippet or problem contract, with enough context to determine an answer. | Pick a line, predict a short result, choose a counterexample, or compare complete statements. Use text choices when the explanation itself is the skill. |
 
-For each type, review one first encounter, one likely miss, and one fresh example. Include the boundary conditions that change the rule, such as an empty stack, a grid edge, a tied priority or a duplicated value. Check what looks tappable, whether feedback points to the chosen item, and what happens after returning or using a keyboard. Then apply the agreed treatment to each mapped question as appropriate for teaching, review or a checkpoint.
+### Review every question type
 
-### Review starting points
+1. Inventory the current questions and planned formats. Record the deck and question ID, what the learner must reason about, how the state is shown, what they do to answer, and how the question responds. Map every question to a type and flag any that need a new one. Use the representation table as a starting point and extend it as needed.
+2. Give a type its own review entry whenever the reasoning, visual state, action, or feedback needs a different design. For example, picking one opener, choosing a whole stack, and finding the first mismatch in an input string each need their own prototype. Include teaching, review, and checkpoint variants where their differences change what the learner sees or does. Reuse a design across questions only after checking that it fits each one.
+3. Build a playable prototype from a real or planned question for every entry. Review the exact wording, terminology and notation, what looks clickable, answer options, and what happens after each answer. Try a likely miss, a fresh example, and any boundary case that changes the interaction. Check the same flow by touch and keyboard.
+4. Walk through each prototype with Kyle and record specific feedback, revisions, and the decision for that entry. Bring revised designs back for review. A treatment is ready to apply to the decks once Kyle approves that treatment. Track deferred treatments explicitly.
 
-Start with [2D table cells](decks/grid-tables.yaml), [list references](decks/names-and-objects.yaml), [bracket stacks](decks/stack-matching.yaml), and [queues](decks/traversal-layers.yaml). These cover four different decisions worth seeing side by side: fill a cell, predict named values, choose a whole stack or one opener, and remove the front item. Review the deque variant alongside queues so both ends can be exercised.
+### Source decks for the review
 
-Then sample [index and pointer moves](decks/exact-search.yaml), [grid traversal](decks/reachability.yaml), [heaps](decks/heap-operations.yaml), [linked lists](decks/link-rewrites.yaml), [trees](decks/tree-walks.yaml), [graphs](decks/dependency-order.yaml), [call frames](decks/recursive-calls.yaml), [maps](decks/hash-lookups.yaml), [intervals](decks/interval-merging.yaml), [bit positions](decks/bit-manipulation.yaml), and [problem statements](decks/problem-solving-routine.yaml).
+Source decks include [1D table entries](decks/one-dimensional-tables.yaml), [2D table cells](decks/grid-tables.yaml), [list references](decks/names-and-objects.yaml), [bracket stacks](decks/stack-matching.yaml), [queues](decks/traversal-layers.yaml), [index and pointer moves](decks/exact-search.yaml), [grid traversal](decks/reachability.yaml), [heaps](decks/heap-operations.yaml), [linked lists](decks/link-rewrites.yaml), [trees](decks/tree-walks.yaml), [graphs](decks/dependency-order.yaml), [call frames](decks/recursive-calls.yaml), [maps](decks/hash-lookups.yaml), [intervals](decks/interval-merging.yaml), [bit positions](decks/bit-manipulation.yaml), and [problem statements](decks/problem-solving-routine.yaml).
 
-The inventory at the start of this review contained 996 authored questions in 145 decks. It included 673 choices, 151 cell taps, 64 pointer placements, and 108 step traces. Review at both levels: exercise each answer format, then check each visual representation where the learner uses it. For each prototype, record the decision being tested, the action and feedback, and the relevant question IDs. Get the design reviewed before applying it across the corpus.
+The inventory at the start of this review contained 996 authored questions in 145 decks, including 673 choices, 151 cell taps, 64 pointer placements, and 108 step traces. Refresh the inventory as the curriculum changes and track coverage in [the question design review](https://github.com/knakamura13/coding-drills/issues/103).
 
 ## Shape
 
