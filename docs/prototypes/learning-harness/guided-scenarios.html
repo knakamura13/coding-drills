@@ -13,7 +13,8 @@ h1 { font: normal clamp(2rem, 6vw, 2.75rem)/1.12 Georgia, serif; margin: 23px 0 
 h2 { font-size: clamp(1.2rem, 4.75vw, 1.45rem); margin: 0 0 12px; line-height: 1.3; }
 p { margin: 8px 0; }
 button { font: inherit; min-height: 44px; color: #1a4937; background: #edf4eb; border: 1px solid #587767; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
-button:hover { background: #dcebdd; }
+button:hover:not(:disabled) { background: #dcebdd; }
+button:disabled { opacity: .64; cursor: default; }
 button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
 button[aria-pressed=true] { background: #225c45; color: #fff; }
 nav, .actions, .tokens { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -32,9 +33,6 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .reference-line { position: relative; height: 12px; }
 .reference-line::before { content: ""; position: absolute; top: 5px; left: 0; right: 3px; height: 2px; background: #477865; }
 .reference-line::after { content: ""; position: absolute; top: 2px; right: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #477865; }
-.reference-row.connected .reference-line { animation: connect-reference 260ms ease-out both; }
-@keyframes connect-reference { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-@media (prefers-reduced-motion: reduce) { .reference-row.connected .reference-line { animation: none; } }
 .list-target { display: grid; align-content: center; justify-items: start; min-height: 42px; padding: 7px 12px; background: #f4f7f0; border-left: 2px solid #6e8c77; }
 .list-value { display: block; font-size: 1.02rem; white-space: nowrap; }
 .bracket { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid #99ad9e; border-radius: 5px; padding: 3px 5px; background: #f2f5ee; }
@@ -46,6 +44,9 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .stack { display: grid; gap: 4px; width: max-content; min-width: 116px; padding: 0 10px 10px; margin: 12px 0; border: solid #879d8b; border-width: 0 2px 2px; }
 .stack .caption { margin: 2px 0; }
 .stack-entry { text-align: center; font-size: 1.23rem; }
+.stack-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 360px; }
+.stack-choice { display: grid; justify-items: center; padding: 10px 8px; }
+.stack-choice .stack { width: min(100%, 116px); min-width: 0; margin: 0; }
 .caption { color: #41564a; font-size: .88rem; }
 .feedback { min-height: 1.4em; margin-top: 12px; color: #274c39; }
 .feedback:empty { margin: 0; min-height: 0; }
@@ -68,7 +69,7 @@ footer { margin-top: 12px; }
 </main>
 <script>
 const lesson = document.getElementById("lesson");
-let scenario, step, completed, feedback;
+let scenario, step, feedback;
 
 function add(tag, text, parent=lesson, className=""){
  const element = document.createElement(tag);
@@ -101,12 +102,16 @@ function prompt(text){
  return heading;
 }
 function coach(right, message){
- if(right){completed=true;render(message);return}
+ if(right&&step<3){advance();return}
  writeCopy(feedback,message);
+ if(right){
+  for(const choice of lesson.querySelectorAll("button"))choice.disabled=true;
+  const actions=add("div","",lesson,"actions");
+  button("Try the other lesson",()=>start(scenario==="references"?"brackets":"references"),actions).focus();
+ }
 }
 function advance(){
  step++;
- completed=false;
  render();
 }
 function code(lines, active=-1){
@@ -116,14 +121,14 @@ function code(lines, active=-1){
   if(i===active)row.setAttribute("aria-current","step");
  }
 }
-function listItem(board, names, values, {newReference}={}){
+function listItem(board, names, values){
  const list=add("div","",board,"object");
  list.setAttribute("role","group");
  list.setAttribute("aria-label",names.length?"List referenced by "+names.join(" and "):"New list");
  const references=add("div","",list,"reference-names");
  references.setAttribute("aria-hidden","true");
  for(const name of names){
-  const row=add("div","",references,name===newReference?"reference-row connected":"reference-row");
+  const row=add("div","",references,"reference-row");
   add("code",name,row,"inline-code");
   add("span","",row,"reference-line");
  }
@@ -142,19 +147,17 @@ const listCode=["a = [4, 7]", "b = a", "b[0] = 9", "b = [6, 8]"];
 function lists(){
  const headings=["After `b = a`, what does `b` refer to?","What happens to `a` and `b` after `b[0] = 9`?","Which name should point to the new list?"];
  if(step===3){
-  const h=prompt(completed?"`x[0]` is 1":"What does the new example print?");
+  const h=prompt("What does the new example print?");
   code(["x = [1, 2]", "y = x", "y = [3, 4]", "y[0] = 6", "print(x[0])"]);
-  if(!completed){
-   const actions=add("div","",lesson,"actions");
-   for(const value of ["1","3","6"]){
-    button(value,()=>coach(value==="1",value==="1"
-     ?"`y` points at the new list before the write. `x` still points at `[1, 2]`."
-     :"Trace which list `y` points to when the write happens. Then follow `x`."),actions);
-   }
+  const actions=add("div","",lesson,"actions");
+  for(const value of ["1","3","6"]){
+   button(value,()=>coach(value==="1",value==="1"
+    ?"It prints `1`. `y` points to the new list before the write, and `x` still points to `[1, 2]`."
+    :"Trace which list `y` points to when the write happens. Then follow `x`."),actions);
   }
   return h;
  }
- const h=prompt(completed?"Correct":headings[step]);
+ const h=prompt(headings[step]);
  code(listCode.slice(0,step+2),step+1);
  if(step===0){
   answerChoices([
@@ -163,24 +166,22 @@ function lists(){
   ]);
   return h;
  }
- if(step===1&&!completed){
+ if(step===1){
   answerChoices([
    ["`a` → `[4, 7]`\n`b` → `[9, 7]`",
     ()=>coach(false,"`b[0] = 9` edits the list that `b` refers to. Check where `a` points before that edit."),
     "a refers to [4, 7]. b refers to [9, 7]."],
-   ["`a` → `[9, 7]`\n`b` → `[9, 7]`",()=>coach(true),"a refers to [9, 7]. b refers to [9, 7]."]
+   ["`a` → `[9, 7]`\n`b` → `[9, 7]`",advance,"a refers to [9, 7]. b refers to [9, 7]."]
   ]);
   return h;
  }
  const board=add("div","",lesson,"objects");
- listItem(board,step===2&&completed?["a"]:["a","b"],["9","7"]);
- if(step===2){
-  listItem(board,completed?["b"]:[],["6","8"],{newReference:completed?"b":undefined});
-  if(!completed)answerChoices([
-   ["Move `a` to the new list",()=>coach(false,"The left side of the assignment is `b`. `a` still points to its original list.")],
-   ["Move `b` to the new list",()=>coach(true)]
-  ]);
- }
+ listItem(board,["a","b"],["9","7"]);
+ listItem(board,[],["6","8"]);
+ answerChoices([
+  ["Move `a` to the new list",()=>coach(false,"The left side of the assignment is `b`. `a` still points to its original list.")],
+  ["Move `b` to the new list",advance]
+ ]);
  return h;
 }
 
@@ -204,47 +205,54 @@ function bracketRow(characters, opts={}){
   button(char,()=>opts.pick(i),row,{labelForReader:label,className:"bracket"});
  }
 }
-function stackLesson(){
- if(step===0)add("p","Brackets must close in reverse order. A stack stores the opening brackets that still need a match. The most recently added opener sits on top.");
- if(step===3){
-  const h=prompt(completed?"The closing parenthesis is the first mismatch":"Which character first breaks the matching rule?");
-  bracketRow(["(","[",")","]"],completed?{active:2}:{pick:index=>coach(index===2,
-   index===2?"When ) appears, [ is on top. ) can’t skip [ to match the earlier (."
-   :"Read the brackets from left to right. Which closer first meets an opener of the wrong type?")});
-  if(!completed){
-   const actions=add("div","",lesson,"actions");
-   button("All brackets match",()=>coach(false,"Each closing bracket has to match the opener currently on top."),actions);
+function stackPicture(parent, items, onPick){
+ const stack=add("span","",parent,"stack");
+ add("span","Top of stack",stack,"caption");
+ for(const [index,item] of items.entries()){
+  if(onPick){
+   button(item,()=>onPick(index),stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
+  }else{
+   add("code",item,stack,"stack-entry");
   }
+ }
+ if(items.length===0)add("span","Empty",stack,"caption");
+}
+function stackOptions(){
+ const choices=add("div","",lesson,"stack-options");
+ choices.setAttribute("role","group");
+ choices.setAttribute("aria-label","Possible stack states");
+ const options=[
+  {items:["[","("],label:"Stack with [ on top and ( below",choose:advance},
+  {items:["(","["],label:"Stack with ( on top and [ below",choose:()=>coach(false,"A new opening bracket goes on top of the stack.")}
+ ];
+ for(const {items,label,choose} of options){
+  const choice=button("",choose,choices,{labelForReader:label,className:"stack-choice"});
+  stackPicture(choice,items);
+ }
+}
+function stackLesson(){
+ if(step===0)add("p","Read from left to right. The stack holds opening brackets that still need a match.");
+ if(step===3){
+  const h=prompt("Which character first breaks the matching rule?");
+  bracketRow(["(","[",")","]"],{pick:index=>coach(index===2,
+   index===2?"The first mismatch is `)` at character 3. It can’t skip `[` to match the earlier `(`."
+   :"Read the brackets from left to right. Which closer first meets an opener of the wrong type?")});
+  const actions=add("div","",lesson,"actions");
+  button("All brackets match",()=>coach(false,"Each closing bracket has to match the opener currently on top."),actions);
   return h;
  }
- const headers=["Where should `[` go in the stack?","Which opener in the stack matches `]`?","Which opener in the stack matches `)`?"];
- const after=["`[` is now on top", "The square brackets are paired", "The stack is empty"];
- const h=prompt(completed?after[step]:headers[step]);
- if(!completed)writeCopy(add("p",""),step===0?"The first `(` is already on the stack.":"Select one opener in the stack.");
+ const headers=["What does the stack look like after reading `[`?","Which opener in the stack matches `]`?","Which opener in the stack matches `)`?"];
+ const h=prompt(headers[step]);
  bracketRow(guidedBrackets,{active:step+1});
- const stack=add("div","",lesson,"stack");
- add("strong","Top of stack",stack,"caption");
- const stackStates=[["("],["[","("],["("],[]];
- const items=stackStates[step+Number(completed)];
- for(const [index,item] of items.entries()){
-  if(step>0&&!completed){
-   button(item,()=>coach(index===0,index===0
-    ?step===1?"The top opener is [. It matches ], so remove it.":"The top opener is (. It matches ), so remove it."
-    :"] has to match the most recent opener. Compare it with the bracket on top."),
-    stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
-  }else add("code",item,stack,"stack-entry");
- }
- if(items.length===0)add("p","Empty",stack,"caption");
- if(step===0&&!completed){
-  answerChoices([
-   ["Put `[` above `(`",()=>coach(true,"The newest opener goes above the earlier one.")],
-   ["Put `[` below `(`",()=>coach(false,"The stack puts the newest opener on top.")]
-  ]);
- }
+ const stackStates=[["("],["[","("],["("]];
+ if(step===0)add("p","Current stack",lesson,"caption");
+ const pickOpener=step>0?index=>coach(index===0,"`]` has to match the most recent opener. Compare it with the bracket on top."):null;
+ stackPicture(lesson,stackStates[step],pickOpener);
+ if(step===0)stackOptions();
  return h;
 }
 
-function render(message="", focus=true){
+function render(focus=true){
  lesson.replaceChildren();
  for(const name of ["references","brackets"]){
   document.getElementById(name).setAttribute("aria-pressed",name===scenario);
@@ -252,20 +260,13 @@ function render(message="", focus=true){
  add("p",step===3?"Fresh example":"Step "+(step+1)+" of 3",lesson,"caption");
  const heading=scenario==="references"?lists():stackLesson();
  feedback=add("p","",lesson,"feedback");
- writeCopy(feedback,message);
  feedback.setAttribute("role","status");
- if(completed){
-  button(step===2?"Try a fresh example":step===3?"Try the other lesson":"Continue",
-   step===3?()=>start(scenario==="references"?"brackets":"references"):advance,
-   add("div","",lesson,"actions"));
- }
  if(focus)heading.focus();
 }
 function start(name, focus=true){
  scenario=name;
  step=0;
- completed=false;
- render("",focus);
+ render(focus);
 }
 document.getElementById("references").onclick=()=>start("references");
 document.getElementById("brackets").onclick=()=>start("brackets");
