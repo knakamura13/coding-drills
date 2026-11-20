@@ -13,6 +13,7 @@
  */
 
 import { FALLBACK_BRANCH_COLOR, hexA, ROLE } from './palette';
+import { FONT } from './tokens';
 
 const TAU = Math.PI * 2;
 
@@ -298,7 +299,7 @@ export function drawShapes(g: CanvasRenderingContext2D, shapes: readonly Shape[]
 	for (const shape of shapes) {
 		if (shape.kind === 'text') {
 			g.fillStyle = shape.fill;
-			g.font = `${shape.weight} ${shape.size}px Geist, ui-sans-serif, system-ui, sans-serif`;
+			g.font = `${shape.weight} ${shape.size}px ${FONT.sans}`;
 			g.textAlign = 'center';
 			g.textBaseline = 'middle';
 			g.fillText(shape.text, shape.x, shape.y);

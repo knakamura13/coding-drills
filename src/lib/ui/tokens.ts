@@ -224,3 +224,8 @@ export const MOTION = {
 	},
 	"toast-distance": 16
 } as const;
+
+export const FONT = {
+	"sans": "'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+	"mono": "'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+} as const;

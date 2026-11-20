@@ -98,7 +98,7 @@ export function toCss(t: TokenFile): string {
 		push(`branch-${id}-glow`, b.glow);
 		push(`branch-${id}-soft-glow`, b.softGlow);
 	}
-	lines.push('\t/* the current screen\'s branch: set data-branch on a container; none by default */');
+	lines.push('\t/* the current screen\'s branch: set data-branch on <html> so the page ambient follows it (a container can set its own); none by default */');
 	const accent = (a: Accent, base: string) => {
 		push('accent', base);
 		push('accent-tint', a.tint);
@@ -183,6 +183,8 @@ export function toTs(t: TokenFile): string {
 		`export const RADIUS = ${json(t.radius)} as const;`,
 		'',
 		`export const MOTION = ${json(Object.fromEntries(visible(t.motion)))} as const;`,
+		'',
+		`export const FONT = ${json(t.font)} as const;`,
 		''
 	].join('\n');
 }
