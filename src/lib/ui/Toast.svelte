@@ -14,25 +14,29 @@
 		left: 50%;
 		top: calc(env(safe-area-inset-top) + 64px);
 		z-index: 10;
-		max-width: calc(100% - 40px);
-		padding: 11px 16px;
-		border-radius: var(--radius-m);
-		background: rgba(16, 24, 42, 0.94);
-		border: 1px solid rgba(246, 200, 96, 0.35);
-		box-shadow: var(--shadow-float);
-		font-size: 13.5px;
-		font-weight: 550;
+		max-width: calc(100% - 2 * var(--space-screen-edge));
+		padding: 10px var(--space-3);
+		border-radius: var(--radius-card);
+		background: var(--color-surface-card);
+		border: 1px solid var(--accent-border);
+		/* One of the two places glow is allowed (the other is celebrations). */
+		box-shadow: 0 0 32px var(--accent-soft-glow);
+		font-size: var(--text-label-size);
+		line-height: var(--text-label-line);
+		font-weight: var(--text-label-weight);
 		text-align: center;
 		opacity: 0;
 		pointer-events: none;
-		transform: translate(-50%, -14px) scale(0.96);
+		/* Drops in from above; with Reduce effects --shift is 0, so it only fades. */
+		transform: translate(-50%, calc(-1 * var(--toast-distance) * var(--shift)));
 		transition:
-			opacity calc(300ms * var(--motion)),
-			transform calc(500ms * var(--motion)) var(--ease-spring);
+			opacity var(--dur-toast-out) var(--ease),
+			transform var(--dur-toast-out) var(--ease);
 	}
 
 	.show {
 		opacity: 1;
-		transform: translate(-50%, 0) scale(1);
+		transform: translate(-50%, 0);
+		transition-duration: var(--dur-toast-in);
 	}
 </style>

@@ -5,13 +5,13 @@
 -->
 <script lang="ts">
 	import { glyphShapes, statusLabel, type CheckpointState, type GlyphKind, type NodeState } from './glyphs';
-	import { COLORS } from './palette';
+	import { FALLBACK_BRANCH_COLOR } from './palette';
 	import Shapes from './Shapes.svelte';
 
 	let {
 		kind,
 		state,
-		color = COLORS.gold,
+		color = FALLBACK_BRANCH_COLOR,
 		size = 30,
 		due = 0,
 		mastered = 0,

@@ -1,18 +1,20 @@
 /**
- * The one "Reduce effects" setting. Ambient game effects (moving motes, flowing dashes, pulsing
- * glows, rotating rings) are multiplied by `effects.factor`; durations of camera moves and other
- * motion by `effects.motion`. CSS reads the same values as `--fx` and `--motion` (theme.css).
+ * The one "Reduce effects" setting. Reduced keeps motion but drops anything that might annoy:
+ * slides become fades (movement is multiplied by `effects.shift`), loops and ambient game effects
+ * stop (`effects.factor`), and celebrations become a glow that fades in and holds. Durations never
+ * change. CSS reads the same values as `--shift` and `--fx` (tokens.css).
+ *
+ * Svelte `in:`/`out:` transitions run on the Web Animations API, which CSS cannot override, so a
+ * transition that moves must scale its distance by `effects.shift` in code.
  *
  * The choice is kept in localStorage under `cd-reduce-effects` ('1' or '0'). With no stored choice
  * it follows the OS reduced-motion preference. `static/effects.js` applies it before first paint;
  * keep the two in step.
  */
 
+import { MOTION } from './tokens';
+
 export const STORAGE_KEY = 'cd-reduce-effects';
-/** Ambient effects run at this strength normally, and not at all when reduced. */
-export const FX_FACTOR = 0.5;
-/** Durations are multiplied by this when effects are reduced. */
-export const REDUCED_MOTION = 0.4;
 
 const OS_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -39,14 +41,14 @@ function apply(reduced: boolean): void {
 class Effects {
 	reduced = $state(false);
 
-	/** Multiplies every ambient effect: 0.5, or 0 when reduced. */
+	/** Multiplies every ambient effect and loop: 0.5, or 0 when reduced. */
 	get factor(): number {
-		return this.reduced ? 0 : FX_FACTOR;
+		return this.reduced ? MOTION.fx.reduced : MOTION.fx.full;
 	}
 
-	/** Multiplies every motion duration: 1, or 0.4 when reduced. */
-	get motion(): number {
-		return this.reduced ? REDUCED_MOTION : 1;
+	/** Multiplies every movement distance: 1, or 0 when reduced, so slides become fades. */
+	get shift(): number {
+		return this.reduced ? MOTION.shift.reduced : MOTION.shift.full;
 	}
 
 	/** Reads the setting. The root layout calls it once on mount. */

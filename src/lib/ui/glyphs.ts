@@ -5,13 +5,14 @@
  *
  * Standard shapes, no legend: empty circle = not started, half-filled = started, filled with a check
  * = done, rose with "!" = missed, lock = locked. A checkpoint is a diamond with a flag when its exam is
- * ready, filled with a check when passed, rose with an "x" when failed.
+ * ready, filled with a check when passed, rose with an "x" when failed. A checkpoint takes its path's
+ * branch color, like the skills around it.
  *
  * Clean at any zoom: closed outlines have no line caps (so a translucent stroke never doubles where it
  * starts), the lock's shackle ends exactly at its body, and nothing translucent overlaps itself.
  */
 
-import { COLORS, hexA } from './palette';
+import { FALLBACK_BRANCH_COLOR, hexA, ROLE } from './palette';
 
 const TAU = Math.PI * 2;
 
@@ -82,12 +83,14 @@ export function statusLabel(kind: GlyphKind, state: NodeState | CheckpointState)
 	return kind === 'checkpoint' ? CHECKPOINT_LABEL[state as CheckpointState] : NODE_LABEL[state as NodeState];
 }
 
-const LOCK_TONE = 'rgba(148,163,184,.7)';
-const SEALED_TONE = 'rgba(148,163,184,.5)';
-const ON_FILL = '#0a1220';
-const BODY = '#0d1526';
-const LOCKED_BODY = '#0a101c';
-const DIAMOND_BODY = '#0c1424';
+// Every tone below is a role token, so the tree follows design/tokens.json.
+const MUTED = ROLE['icon-muted'];
+const ON_FILL = ROLE['action-on-primary'];
+const BODY = ROLE['surface-card'];
+const LOCKED_BODY = ROLE['surface-page'];
+const OPEN_TONE = ROLE['text-secondary'];
+const LOCKED_TONE = ROLE['border-strong'];
+const MISSED = ROLE['status-missed'];
 
 const circle = (cx: number, cy: number, r: number): Seg[] => [{ k: 'A', cx, cy, r, a0: 0, a1: TAU }, { k: 'Z' }];
 
@@ -186,29 +189,29 @@ export function dueShapes(x: number, y: number, r: number, due: number): Shape[]
 	const by = y - r * 0.78;
 	const br = badgeRadius(r);
 	const shapes: Shape[] = [
-		{ kind: 'path', segs: circle(bx, by, br + 1.5), fill: COLORS.bg },
-		{ kind: 'path', segs: circle(bx, by, br), fill: COLORS.rose }
+		{ kind: 'path', segs: circle(bx, by, br + 1.5), fill: ROLE['surface-page'] },
+		{ kind: 'path', segs: circle(bx, by, br), fill: MISSED }
 	];
-	if (br >= 6.5) shapes.push({ kind: 'text', text: String(due), x: bx, y: by + 0.5, size: Math.round(br * 1.25), weight: 700, fill: '#fff' });
+	if (br >= 6.5) shapes.push({ kind: 'text', text: String(due), x: bx, y: by + 0.5, size: Math.round(br * 1.25), weight: 700, fill: ON_FILL });
 	return shapes;
 }
 
-function checkpointShapes(x: number, y: number, r: number, state: CheckpointState): Shape[] {
+function checkpointShapes(x: number, y: number, r: number, state: CheckpointState, color: string): Shape[] {
 	const s = r * 1.15;
 	const diamond = roundRect(x - s, y - s, s * 2, s * 2, s * 0.25, Math.PI / 4, x, y);
-	const tone = state === 'passed' || state === 'available' ? COLORS.gold : state === 'failed' ? COLORS.rose : SEALED_TONE;
+	const tone = state === 'passed' || state === 'available' ? color : state === 'failed' ? MISSED : MUTED;
 	const body: Shape =
 		state === 'passed'
-			? { kind: 'path', segs: diamond, fill: COLORS.gold }
-			: { kind: 'path', segs: diamond, fill: DIAMOND_BODY, stroke: tone, width: Math.max(1.4, r * 0.2) };
+			? { kind: 'path', segs: diamond, fill: color }
+			: { kind: 'path', segs: diamond, fill: BODY, stroke: tone, width: Math.max(1.4, r * 0.2) };
 	const mark =
 		state === 'passed'
-			? checkShapes(x, y, r * 0.7, '#1a1406')
+			? checkShapes(x, y, r * 0.7, ON_FILL)
 			: state === 'available'
-				? flagShapes(x, y, r * 0.62, COLORS.gold)
+				? flagShapes(x, y, r * 0.62, color)
 				: state === 'failed'
-					? crossShapes(x, y, r * 0.62, COLORS.rose)
-					: lockShapes(x, y + r * 0.05, r * 0.55, 'rgba(148,163,184,.75)');
+					? crossShapes(x, y, r * 0.62, MISSED)
+					: lockShapes(x, y + r * 0.05, r * 0.55, MUTED);
 	return [body, ...mark];
 }
 
@@ -218,14 +221,14 @@ function nodeShapes(kind: Exclude<GlyphKind, 'checkpoint'>, x: number, y: number
 	const stroke = filled
 		? hexA(color, 0.95)
 		: alert
-			? COLORS.rose
+			? MISSED
 			: state === 'practicing'
 				? color
 				: state === 'open'
-					? 'rgba(214,224,240,.7)'
+					? OPEN_TONE
 					: state === 'planned'
 						? hexA(color, 0.5)
-						: 'rgba(148,163,184,.4)';
+						: LOCKED_TONE;
 	const shapes: Shape[] = [
 		{
 			kind: 'path',
@@ -243,14 +246,14 @@ function nodeShapes(kind: Exclude<GlyphKind, 'checkpoint'>, x: number, y: number
 		shapes.push({
 			kind: 'path',
 			segs: [{ k: 'A', cx: x, cy: y, r: r + Math.max(3, r * 0.28), a0, a1: a0 + TAU * Math.min(1, mastered / total) }],
-			stroke: alert ? COLORS.rose : color,
+			stroke: alert ? MISSED : color,
 			width: Math.max(2, r * 0.16),
 			cap: 'round'
 		});
 	}
 	if (filled) shapes.push(...checkShapes(x, y, r * 0.5, ON_FILL));
-	else if (alert) shapes.push(...bangShapes(x, y, r * 0.55, COLORS.rose));
-	else if (state === 'locked') shapes.push(...lockShapes(x, y + r * 0.05, r * 0.5, LOCK_TONE));
+	else if (alert) shapes.push(...bangShapes(x, y, r * 0.55, MISSED));
+	else if (state === 'locked') shapes.push(...lockShapes(x, y + r * 0.05, r * 0.5, MUTED));
 	else if (state === 'practicing' && kind !== 'path') {
 		shapes.push({
 			kind: 'path',
@@ -263,13 +266,14 @@ function nodeShapes(kind: Exclude<GlyphKind, 'checkpoint'>, x: number, y: number
 
 /**
  * The shapes for one node glyph centred on (`x`, `y`) with body radius `r`. `color` is the branch
- * color as `#rrggbb`. A checkpoint takes a `CheckpointState`, every other kind a `NodeState`.
+ * color as `#rrggbb` (a checkpoint without one gets the neutral accent). A checkpoint takes a
+ * `CheckpointState`, every other kind a `NodeState`.
  */
 export function glyphShapes(kind: 'checkpoint', x: number, y: number, r: number, state: CheckpointState, color?: string, options?: GlyphOptions): Shape[];
 export function glyphShapes(kind: Exclude<GlyphKind, 'checkpoint'>, x: number, y: number, r: number, state: NodeState, color: string, options?: GlyphOptions): Shape[];
-export function glyphShapes(kind: GlyphKind, x: number, y: number, r: number, state: NodeState | CheckpointState, color = COLORS.gold, options: GlyphOptions = {}): Shape[] {
+export function glyphShapes(kind: GlyphKind, x: number, y: number, r: number, state: NodeState | CheckpointState, color = FALLBACK_BRANCH_COLOR, options: GlyphOptions = {}): Shape[] {
 	const shapes =
-		kind === 'checkpoint' ? checkpointShapes(x, y, r, state as CheckpointState) : nodeShapes(kind, x, y, r, state as NodeState, color, options);
+		kind === 'checkpoint' ? checkpointShapes(x, y, r, state as CheckpointState, color) : nodeShapes(kind, x, y, r, state as NodeState, color, options);
 	if (options.due) shapes.push(...dueShapes(x, y, r, options.due));
 	return shapes;
 }
@@ -294,7 +298,7 @@ export function drawShapes(g: CanvasRenderingContext2D, shapes: readonly Shape[]
 	for (const shape of shapes) {
 		if (shape.kind === 'text') {
 			g.fillStyle = shape.fill;
-			g.font = `${shape.weight} ${shape.size}px Inter, ui-sans-serif, system-ui, sans-serif`;
+			g.font = `${shape.weight} ${shape.size}px Geist, ui-sans-serif, system-ui, sans-serif`;
 			g.textAlign = 'center';
 			g.textBaseline = 'middle';
 			g.fillText(shape.text, shape.x, shape.y);

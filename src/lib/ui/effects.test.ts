@@ -28,7 +28,7 @@ describe('Reduce effects', () => {
 		expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
 		expect(effects.reduced).toBe(reduced);
 		expect(effects.factor).toBe(reduced ? 0 : 0.5);
-		expect(effects.motion).toBe(reduced ? 0.4 : 1);
+		expect(effects.shift).toBe(reduced ? 0 : 1);
 		expect(dataset.effects).toBe(reduced ? 'reduced' : 'full');
 		expect(stored.size).toBe(0);
 	});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { glyphShapes, statusLabel, svgPath, type CheckpointState, type NodeState } from './glyphs';
+import { BRANCH_COLORS, FALLBACK_BRANCH_COLOR } from './palette';
 
 describe('status glyphs', () => {
 	it.each<[NodeState, string]>([
@@ -22,6 +23,15 @@ describe('status glyphs', () => {
 		['locked', 'Locked']
 	])('labels the %s checkpoint', (state, label) => {
 		expect(statusLabel('checkpoint', state)).toBe(label);
+	});
+
+	it('draws a ready or passed checkpoint in its branch color, and the neutral accent without one', () => {
+		const [ready] = glyphShapes('checkpoint', 10, 10, 5, 'available', BRANCH_COLORS.foundations);
+		const [passed] = glyphShapes('checkpoint', 10, 10, 5, 'passed', BRANCH_COLORS['data-structures']);
+		const [plain] = glyphShapes('checkpoint', 10, 10, 5, 'available');
+		expect(ready.kind === 'path' && ready.stroke).toBe(BRANCH_COLORS.foundations);
+		expect(passed.kind === 'path' && passed.fill).toBe(BRANCH_COLORS['data-structures']);
+		expect(plain.kind === 'path' && plain.stroke).toBe(FALLBACK_BRANCH_COLOR);
 	});
 
 	it('renders an open node outline as two arcs, then closes it', () => {

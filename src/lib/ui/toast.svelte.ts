@@ -3,7 +3,9 @@
  * announces each message politely to screen readers.
  */
 
-export const TOAST_MS = 2400;
+import { MOTION } from './tokens';
+
+export const TOAST_MS = MOTION.duration['toast-hold'];
 
 export const toastState = $state({ message: '', visible: false });
 
