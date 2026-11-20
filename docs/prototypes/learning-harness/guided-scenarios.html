@@ -19,7 +19,7 @@ button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
 button[aria-pressed=true] { background: #225c45; color: #fff; }
 nav, .actions, .tokens { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; margin: 15px 0; padding: clamp(13px, 3vw, 21px); }
-code, .code, .bracket { font-family: ui-monospace, "SFMono-Regular", monospace; }
+code, .code, .bracket, .stack-cell { font-family: ui-monospace, "SFMono-Regular", monospace; }
 code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padding: .08em .28em; white-space: nowrap; }
 .code { display: grid; gap: 2px; background: #f4f7f0; padding: 9px 8px; margin: 12px 0; border-radius: 5px; font-size: .9rem; }
 .code code { display: block; padding: 3px 8px; }
@@ -41,13 +41,13 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .input-brackets { font-size: 1.23rem; }
 .input-brackets span { padding: 2px 3px; }
 .input-brackets .current { background: #d2e9ce; border-bottom: 2px solid #28775c; }
-.stack { display: grid; gap: 4px; width: max-content; min-width: 116px; padding: 0 10px 10px; margin: 12px 0; border: solid #879d8b; border-width: 0 2px 2px; }
-.stack .caption { margin: 2px 0; }
+.stack { display: grid; width: max-content; justify-items: center; }
+.stack .stack-top { margin-bottom: 5px; }
 .stack-options { display: grid; width: max-content; grid-template-columns: repeat(2, max-content); gap: 5px 18px; }
 .stack-top { grid-column: 1 / -1; text-align: center; border-bottom: 1px dashed #6e8c77; margin: 0; padding-bottom: 3px; }
 .stack-choice { display: grid; min-height: 0; border: 0; border-radius: 0; padding: 0; }
-.stack-choice .stack-cell { display: grid; place-items: center; width: 56px; height: 56px; border: 1px solid #587767; font-size: 1.25rem; }
-.stack-choice .stack-cell + .stack-cell { border-top: 0; }
+.stack-cell { display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border: 1px solid #587767; border-radius: 0; font-size: 1.25rem; }
+.stack-cell + .stack-cell { border-top: 0; }
 .caption { color: #41564a; font-size: .88rem; }
 .feedback { min-height: 1.4em; margin-top: 12px; color: #274c39; }
 .feedback:empty { margin: 0; min-height: 0; }
@@ -206,19 +206,22 @@ function bracketRow(characters, opts={}){
   button(char,()=>opts.pick(i),row,{labelForReader:label,className:"bracket"});
  }
 }
+function stackGroup(className, label){
+ const group=add("div","",lesson,className);
+ group.setAttribute("role","group");
+ group.setAttribute("aria-label",label);
+ add("p","Top of stack",group,"caption stack-top");
+ return group;
+}
 function stackOpeners(items){
- const stack=add("div","",lesson,"stack");
- add("span","Top of stack",stack,"caption");
+ const stack=stackGroup("stack","Opening brackets in the stack");
  for(const [index,item] of items.entries()){
   button(item,()=>coach(index===0,"`]` has to match the most recent opener. Compare it with the bracket on top."),
-   stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
+   stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"stack-cell"});
  }
 }
 function stackOptions(){
- const choices=add("div","",lesson,"stack-options");
- choices.setAttribute("role","group");
- choices.setAttribute("aria-label","Possible stack states");
- add("p","Top of stack",choices,"caption stack-top");
+ const choices=stackGroup("stack-options","Possible stack states");
  const options=[
   {items:["[","("],label:"Stack with [ on top and ( below",choose:advance},
   {items:["(","["],label:"Stack with ( on top and [ below",choose:()=>coach(false,"A new opening bracket goes on top of the stack.")}
