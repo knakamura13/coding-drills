@@ -18,7 +18,8 @@ button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
 button[aria-pressed=true] { background: #225c45; color: #fff; }
 nav, .actions, .tokens { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; margin: 15px 0; padding: clamp(13px, 3vw, 21px); }
-code, .code, .slot, .bracket { font-family: ui-monospace, "SFMono-Regular", monospace; }
+code, .code, .slot, .bracket, .name { font-family: ui-monospace, "SFMono-Regular", monospace; }
+code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padding: .08em .28em; white-space: nowrap; }
 .code { display: grid; gap: 2px; background: #f4f7f0; padding: 9px 8px; margin: 12px 0; border-radius: 5px; font-size: .9rem; }
 .code code { display: block; padding: 3px 8px; }
 .code .current { background: #e1efde; border-left: 3px solid #28775c; padding-left: 5px; }
@@ -65,21 +66,32 @@ function add(tag, text, parent=lesson, className=""){
  parent.append(element);
  return element;
 }
+function writeCopy(element, text){
+ element.replaceChildren();
+ const parts = text.split("`");
+ for(const [index, part] of parts.entries()){
+  if(!part)continue;
+  if(index%2===0)element.append(part);
+  else add("code",part,element,"inline-code");
+ }
+}
 function button(label, action, parent, {labelForReader, className}={}){
- const control = add("button",label,parent,className);
+ const control = add("button","",parent,className);
+ writeCopy(control,label);
  control.type = "button";
  if(labelForReader)control.setAttribute("aria-label",labelForReader);
  control.onclick = action;
  return control;
 }
 function prompt(text){
- const heading = add("h2",text);
+ const heading = add("h2","");
+ writeCopy(heading,text);
  heading.tabIndex = -1;
  return heading;
 }
 function coach(right, message){
  if(right){completed=true;render(message);return}
- feedback.textContent=message;
+ writeCopy(feedback,message);
 }
 function advance(){
  step++;
@@ -96,7 +108,7 @@ function code(lines, active=-1){
 function listItem(board, names, values, {onSlot, onName, changed, movedName, ghost}={}){
  const list=add("div","",board,ghost?"object ghost":"object");
  const title=add("strong",names.length?"List ":ghost?"Separate copy":"New list",list);
- if(names.length)add("code",names[0],title);
+ if(names.length)add("code",names[0],title,"inline-code");
  const nameRow=add("div","",list,"names");
  if(names.length===0)add("span","No name points here yet",nameRow,"caption");
  for(const name of names){
@@ -119,22 +131,18 @@ function listItem(board, names, values, {onSlot, onName, changed, movedName, gho
 
 const listCode=["a = [4, 7]", "b = a", "b[0] = 9", "b = [6, 8]"];
 function lists(){
- if(step===0){
-  const intro=add("p","The first line creates list ");
-  add("code","a",intro);
-  intro.append(" with the values 4 and 7.");
- }
- const headings=["Which list should b point to?","Which cell gets the 9?","Which name moves to the new list?"];
- const summaries=["Both names now point to the same list.","The first cell changed to 9.","The name b now points to the new list."];
+ if(step===0)writeCopy(add("p",""),"The first line creates list `a` with the values 4 and 7.");
+ const headings=["Which list should `b` point to?","Which cell gets the 9?","Which name moves to the new list?"];
+ const summaries=["Both names now point to the same list.","The first cell changed to 9.","The name `b` now points to the new list."];
  if(step===3){
-  const h=prompt(completed?"x[0] is 1":"What does the new example print?");
+  const h=prompt(completed?"`x[0]` is 1":"What does the new example print?");
   code(["x = [1, 2]", "y = x", "y = [3, 4]", "y[0] = 6", "print(x[0])"]);
   if(!completed){
    const actions=add("div","",lesson,"actions");
    for(const value of ["1","3","6"]){
     button(value,()=>coach(value==="1",value==="1"
-     ?"y points at the new list before the write. x still points at [1, 2]."
-     :"Trace which list y points to when the write happens. Then follow x."),actions);
+     ?"`y` points at the new list before the write. `x` still points at `[1, 2]`."
+     :"Trace which list `y` points to when the write happens. Then follow `x`."),actions);
    }
   }
   return h;
@@ -149,16 +157,16 @@ function lists(){
   changed:step===1&&completed?0:undefined,
   movedName:step===0&&completed?"b":undefined,
   onSlot:step===1&&!completed?index=>coach(index===0,index===0
-   ?"b[0] changes the existing list. a reads the same 9."
+   ?"`b[0]` changes the existing list. `a` reads the same 9."
    :"The number in brackets selects an index. Index 0 is the first cell."):null,
   onName:step===2&&!completed?name=>coach(name==="b",name==="b"
-   ?"The assignment changes where b points. a still points to its original list."
-   :"The left side of the assignment is b. a still points to its original list."):null
+   ?"The assignment changes where `b` points. `a` still points to its original list."
+   :"The left side of the assignment is `b`. `a` still points to its original list."):null
  });
  if(step===0&&!completed){
-  button("Point b here",()=>coach(true,"b = a makes b point to the list a already names."),first,{labelForReader:"Point b to list a"});
+  button("Point `b` here",()=>coach(true,"`b = a` makes `b` point to the list `a` already names."),first,{labelForReader:"Point b to list a"});
   const copy=listItem(board,[],["4","7"],{ghost:true});
-  button("Point b here",()=>coach(false,"b = a has no copy operation. Use the existing list."),copy,{labelForReader:"Point b to a separate copy"});
+  button("Point `b` here",()=>coach(false,"`b = a` has no copy operation. Use the existing list."),copy,{labelForReader:"Point b to a separate copy"});
  }
  if(step===2)listItem(board,completed?["b"]:[],["6","8"],{movedName:"b"});
  return h;
@@ -223,7 +231,8 @@ function render(message="", focus=true){
  }
  add("p",step===3?"Fresh example":"Step "+(step+1)+" of 3",lesson,"caption");
  const heading=scenario==="references"?lists():stackLesson();
- feedback=add("p",message,lesson,"feedback");
+ feedback=add("p","",lesson,"feedback");
+ writeCopy(feedback,message);
  feedback.setAttribute("role","status");
  if(completed){
   button(step===2?"Try a fresh example":step===3?"Try the other lesson":"Continue",
