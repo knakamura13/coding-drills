@@ -93,9 +93,10 @@ function code(lines, active=-1){
   if(i===active)row.setAttribute("aria-current","step");
  }
 }
-function listItem(board, title, names, values, {onSlot, onName, changed, movedName, ghost}={}){
+function listItem(board, names, values, {onSlot, onName, changed, movedName, ghost}={}){
  const list=add("div","",board,ghost?"object ghost":"object");
- add("strong",title,list);
+ const title=add("strong",names.length?"List ":ghost?"Separate copy":"New list",list);
+ if(names.length)add("code",names[0],title);
  const nameRow=add("div","",list,"names");
  if(names.length===0)add("span","No name points here yet",nameRow,"caption");
  for(const name of names){
@@ -118,9 +119,13 @@ function listItem(board, title, names, values, {onSlot, onName, changed, movedNa
 
 const listCode=["a = [4, 7]", "b = a", "b[0] = 9", "b = [6, 8]"];
 function lists(){
- if(step===0)add("p","In Python, a name points to a list. The line a = [4, 7] made List A and attached the name a.");
+ if(step===0){
+  const intro=add("p","The first line creates list ");
+  add("code","a",intro);
+  intro.append(" with the values 4 and 7.");
+ }
  const headings=["Which list should b point to?","Which cell gets the 9?","Which name moves to the new list?"];
- const summaries=["Both names now point to List A.","The first cell changed to 9.","The name b now points to List B."];
+ const summaries=["Both names now point to the same list.","The first cell changed to 9.","The name b now points to the new list."];
  if(step===3){
   const h=prompt(completed?"x[0] is 1":"What does the new example print?");
   code(["x = [1, 2]", "y = x", "y = [3, 4]", "y[0] = 6", "print(x[0])"]);
@@ -140,22 +145,22 @@ function lists(){
  const applied=step+Number(completed);
  const names=applied===0||applied===3?["a"]:["a","b"];
  const values=applied<2?["4","7"]:["9","7"];
- const first=listItem(board,"List A",names,values,{
+ const first=listItem(board,names,values,{
   changed:step===1&&completed?0:undefined,
   movedName:step===0&&completed?"b":undefined,
   onSlot:step===1&&!completed?index=>coach(index===0,index===0
    ?"b[0] changes the existing list. a reads the same 9."
    :"The number in brackets selects an index. Index 0 is the first cell."):null,
   onName:step===2&&!completed?name=>coach(name==="b",name==="b"
-   ?"The assignment changes where b points. a still points to List A."
-   :"The left side of the assignment is b. a keeps pointing to List A."):null
+   ?"The assignment changes where b points. a still points to its original list."
+   :"The left side of the assignment is b. a still points to its original list."):null
  });
  if(step===0&&!completed){
-  button("Point b here",()=>coach(true,"b = a makes b point to the list a already names."),first,{labelForReader:"Point b to List A"});
-  const copy=listItem(board,"Separate copy",[],["4","7"],{ghost:true});
+  button("Point b here",()=>coach(true,"b = a makes b point to the list a already names."),first,{labelForReader:"Point b to list a"});
+  const copy=listItem(board,[],["4","7"],{ghost:true});
   button("Point b here",()=>coach(false,"b = a has no copy operation. Use the existing list."),copy,{labelForReader:"Point b to a separate copy"});
  }
- if(step===2)listItem(board,"List B",completed?["b"]:[],["6","8"],{movedName:"b"});
+ if(step===2)listItem(board,completed?["b"]:[],["6","8"],{movedName:"b"});
  return h;
 }
 
