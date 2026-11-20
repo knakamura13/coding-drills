@@ -2,6 +2,61 @@
 
 A deck is one YAML file in `content/decks/`. The file name must equal the deck `id`. `pnpm dev`, `pnpm build`, and `pnpm test` all validate every deck and fail with the file and path of the first problem.
 
+## Question design
+
+### Prompt and worked setup
+
+- Use the established name of the problem or concept. Define a new term once in plain language, then keep using the established name. Use the exact variable names from the snippet and render names, expressions, and literal values as monospace code. Give inline code a visible background in the lesson UI.
+- Use plain headings and labels. Avoid the middle dot character in all learner-facing copy.
+- Before the first question, establish the goal, show the state the learner is working with, and illustrate the rule or representation they need. For example, show a labeled table and one worked cell before asking a learner to read a diagonal cell. A later question can rely on an established rule and the state still visible on screen.
+- In a first encounter, ask for one new inference or operation at a time. State which line ran or which moment the learner is predicting. Use the prompt to name that decision and point to the relevant cell, line, or item. Use fresh review to check recall and checkpoints to combine skills.
+- If a learner needs a prerequisite to make sense of the question, supply it or teach it first. To review a teaching card, finish this sentence: “Given what the learner knows, this question asks them to infer ___.”
+
+### Actions and answer options
+
+- Use a direct action when the action gives evidence of the skill: tap the cell, move the pointer, enter the value, or pick the first failing character. When the decision is which whole state will result, show the candidate states as two clearly bounded answer controls or use a short set of complete alternatives. Keep all states at the same scale and use the same notation in every option.
+- Keep read-only diagrams distinct from controls. Use one visible affordance per available action. When an entire stack preview is one answer, the whole preview is one button. When choosing an opener inside a stack, each selectable cell is its own button. Indicate valid targets without exposing the right answer. Use color together with a border, label, underline, or position.
+- Single-answer questions can show the options directly. For a question that accepts multiple selections, say “Select one or more answers” and let the learner submit after selecting. State an exact count when the task requires one. In move or order questions, provide tap and keyboard alternatives to dragging.
+- Give every option the same level of detail and a consistent form. Make each wrong option represent a plausible error. Run snippets and work through every option, including ties, index boundaries, and alternate interpretations of the prompt.
+
+### Feedback and continuity
+
+- On a correct intermediate answer, carry the resulting state into the next question immediately. Let the changed state show what happened. Give any finished result or substantive explanation inline on the question, without a standalone success screen or a Continue step.
+- On a miss, keep the relevant state in view and explain the specific mistake where it happened. If a prerequisite is missing, give a small worked example and a fresh retry of that inference, then return to the original step. Avoid a wrong-answer path that resets unrelated progress.
+- Review and checkpoint cues depend on the purpose of the exercise. Preserve the relevant visual context, remove any scaffolding that would reveal the decision being assessed, and keep checkpoint results until the sitting ends. A fresh input should give the learner a chance to apply the rule independently.
+
+### Review each representation
+
+These are candidate treatments for adapting authored questions. Review the visual representation separately from the answer format. A tap can select an index, a stack item, or a node. A stack can ask the learner to select an item or choose an entire resulting state. Verify each treatment with an actual question before adding a renderer.
+
+| Representation | What to show | What the learner can do |
+| --- | --- | --- |
+| Array or string | Values or characters with aligned indices. Show active pointers and any legal end position. | Tap the cell, move a pointer, or predict a named result. Use repeated values when checking whether the learner distinguishes value from index. |
+| 2D table for dynamic programming | The full row and column layout, including blank cells. Label axes and keep the layout fixed between steps. | Read a highlighted cell, fill one cell from visible prerequisites, then select the cell or value that answers the problem. |
+| Grid for traversal | Starting cell, bounds, barriers and the allowed movement rule. Visually distinguish blocked and visited cells. | Select a legal neighbor or the next cell to process. Keep state visible across moves. |
+| List references and mutation | Actual code names and one object per list. Arrows mean “refers to.” Use Python assignment in the snippet. | Predict what the named lists contain or which reference moves, then show the actual shared or separate objects. |
+| Stack | Square cells in one vertical column with one dashed top guide. Keep a bracket input separate from its stack. | Select a whole candidate stack, select an opener within a stack, or identify the first closing bracket that fails the stack check. |
+| Queue or deque | A row with named ends. Use **Front** and **Back**, and keep their positions stable. | Select the item removed or the end where an item is added. For a deque, show which ends the operation permits. |
+| Heap or priority queue | The item and its priority, plus the heap order or tree when the shape matters. State any tie rule. | Pick the next item or select the child for a swap. |
+| Linked list | The current node and its actual links. Label named pointers and show where the list ends. | Follow a link, select the new destination, or redirect a link. Keep the unaffected links in view. |
+| Tree | Parent and child relationships with left and right positions where they matter. Identify the current node. | Select the next node or predict which subtree the rule visits. |
+| Graph | The relevant neighborhood, edge direction, and the meaning of any labels or weights. Identify the current node. | Select a legal destination, the next node to visit, or the edge that changes state. |
+| Call frames and backtracking | The active call, the saved state and the point of return. Keep call depth visible. | Select the returning frame, the value passed back, or the next choice to undo. |
+| Map or set | Named keys and values, or set members. Keep repeated input separate from distinct keys. | Choose the lookup key, predict a value, or identify one membership change. |
+| Intervals and event sweeps | A common number line with inclusive or exclusive endpoints and any tie rule. | Select the next event, tell whether intervals overlap, or choose the resulting interval. |
+| Bits and masks | Bit positions and width, with any signedness rule that affects the answer. | Select a bit or predict one masked value. |
+| Code, math or problem statement | The relevant snippet or problem contract, with enough context to determine an answer. | Pick a line, predict a short result, choose a counterexample, or compare complete statements. Use text choices when the explanation itself is the skill. |
+
+For each type, review one first encounter, one likely miss, and one fresh example. Include the boundary conditions that change the rule, such as an empty stack, a grid edge, a tied priority or a duplicated value. Check what looks tappable, whether feedback points to the chosen item, and what happens after returning or using a keyboard. Then apply the agreed treatment to each mapped question as appropriate for teaching, review or a checkpoint.
+
+### Review starting points
+
+Start with [2D table cells](decks/grid-tables.yaml), [list references](decks/names-and-objects.yaml), [bracket stacks](decks/stack-matching.yaml), and [queues](decks/traversal-layers.yaml). These cover four different decisions worth seeing side by side: fill a cell, predict named values, choose a whole stack or one opener, and remove the front item. Review the deque variant alongside queues so both ends can be exercised.
+
+Then sample [index and pointer moves](decks/exact-search.yaml), [grid traversal](decks/reachability.yaml), [heaps](decks/heap-operations.yaml), [linked lists](decks/link-rewrites.yaml), [trees](decks/tree-walks.yaml), [graphs](decks/dependency-order.yaml), [call frames](decks/recursive-calls.yaml), [maps](decks/hash-lookups.yaml), [intervals](decks/interval-merging.yaml), [bit positions](decks/bit-manipulation.yaml), and [problem statements](decks/problem-solving-routine.yaml).
+
+The inventory at the start of this review contained 996 authored questions in 145 decks. It included 673 choices, 151 cell taps, 64 pointer placements, and 108 step traces. Review at both levels: exercise each answer format, then check each visual representation where the learner uses it. For each prototype, record the decision being tested, the action and feedback, and the relevant question IDs. Get the design reviewed before applying it across the corpus.
+
 ## Shape
 
 ```yaml
