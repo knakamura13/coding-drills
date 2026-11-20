@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guided lesson scenarios | Coding Drills</title>
+<style>
+:root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; background: #f4f4ed; color: #1a312b; }
+* { box-sizing: border-box; }
+main { max-width: 690px; margin: auto; padding: 26px 16px 44px; }
+header { border-bottom: 1px solid #a8b7aa; padding-bottom: 10px; font-weight: 650; }
+h1 { font: normal clamp(2rem, 6vw, 2.75rem)/1.12 Georgia, serif; margin: 23px 0 12px; }
+h2 { font-size: clamp(1.2rem, 4.75vw, 1.45rem); margin: 0 0 12px; line-height: 1.3; }
+p { margin: 8px 0; }
+button { font: inherit; min-height: 44px; color: #1a4937; background: #edf4eb; border: 1px solid #587767; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button:hover { background: #dcebdd; }
+button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
+button[aria-pressed=true] { background: #225c45; color: #fff; }
+nav, .actions, .tokens { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; margin: 15px 0; padding: clamp(13px, 3vw, 21px); }
+code, .code, .slot, .bracket { font-family: ui-monospace, "SFMono-Regular", monospace; }
+.code { display: grid; gap: 2px; background: #f4f7f0; padding: 9px 8px; margin: 12px 0; border-radius: 5px; font-size: .9rem; }
+.code code { display: block; padding: 3px 8px; }
+.code .current { background: #e1efde; border-left: 3px solid #28775c; padding-left: 5px; }
+.objects { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px),1fr)); gap: 10px; margin: 14px 0; }
+.object { border: 1px solid #a5b7aa; border-radius: 8px; padding: 10px; min-width: 0; }
+.object.ghost { border-style: dashed; background: #fafbf7; }
+.object strong { display: block; font-size: .89rem; }
+.names, .values { display: flex; gap: 5px; flex-wrap: wrap; margin: 7px 0; align-items: center; }
+.object button, .stack button { padding: 4px 8px; }
+.slot, .bracket, .name { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid #99ad9e; border-radius: 5px; padding: 3px 5px; background: #f2f5ee; }
+.name { min-width: 28px; min-height: 26px; border: none; background: #dcebd8; }
+button.name { min-height: 44px; min-width: 44px; background: #edf4eb; border: 1px solid #587767; }
+.name.selected, .slot.selected, .bracket.current { background: #d2e9ce; box-shadow: inset 0 0 0 2px #28775c; }
+.bracket.done { background: #eef1eb; color: #41564a; }
+.bracket { font-size: 1.23rem; }
+.stack { display: grid; gap: 4px; width: max-content; min-width: 116px; padding: 0 10px 10px; margin: 12px 0; border: solid #879d8b; border-width: 0 2px 2px; }
+.stack .caption { margin: 2px 0; }
+.caption { color: #41564a; font-size: .88rem; }
+.feedback { min-height: 1.4em; margin-top: 12px; color: #274c39; }
+.feedback:empty { margin: 0; min-height: 0; }
+.actions { margin-top: 12px; }
+footer { margin-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+<header>Coding Drills lesson review</header>
+<h1>One step at a time</h1>
+<nav aria-label="Scenario">
+ <button id="references" type="button">Python list references</button>
+ <button id="brackets" type="button">Bracket matching</button>
+</nav>
+<article id="lesson" aria-label="Guided lesson"></article>
+<footer><button id="restart" type="button">Start over</button></footer>
+</main>
+<script>
+const lesson = document.getElementById("lesson");
+let scenario, step, completed, feedback;
+
+function add(tag, text, parent=lesson, className=""){
+ const element = document.createElement(tag);
+ element.textContent = text;
+ if(className)element.className = className;
+ parent.append(element);
+ return element;
+}
+function button(label, action, parent, {labelForReader, className}={}){
+ const control = add("button",label,parent,className);
+ control.type = "button";
+ if(labelForReader)control.setAttribute("aria-label",labelForReader);
+ control.onclick = action;
+ return control;
+}
+function prompt(text){
+ const heading = add("h2",text);
+ heading.tabIndex = -1;
+ return heading;
+}
+function coach(right, message){
+ if(right){completed=true;render(message);return}
+ feedback.textContent=message;
+}
+function advance(){
+ step++;
+ completed=false;
+ render();
+}
+function code(lines, active=-1){
+ const block = add("div","",lesson,"code");
+ for(const [i,line] of lines.entries()){
+  const row=add("code",line,block,i===active?"current":"");
+  if(i===active)row.setAttribute("aria-current","step");
+ }
+}
+function listItem(board, title, names, values, {onSlot, onName, changed, movedName, ghost}={}){
+ const list=add("div","",board,ghost?"object ghost":"object");
+ add("strong",title,list);
+ const nameRow=add("div","",list,"names");
+ if(names.length===0)add("span","No name points here yet",nameRow,"caption");
+ for(const name of names){
+  if(onName){
+   button(name,()=>onName(name),nameRow,{labelForReader:"Move "+name+" to the new list",className:"name"});
+  }else{
+   add("code",name,nameRow,name===movedName?"name selected":"name");
+  }
+ }
+ const valueRow=add("div","",list,"values");
+ for(const [i,value] of values.entries()){
+  if(onSlot){
+   button(value,()=>onSlot(i),valueRow,{labelForReader:"Index "+i+", value "+value,className:"slot"});
+  }else{
+   add("code",value,valueRow,i===changed?"slot selected":"slot");
+  }
+ }
+ return list;
+}
+
+const listCode=["a = [4, 7]", "b = a", "b[0] = 9", "b = [6, 8]"];
+function lists(){
+ if(step===0)add("p","In Python, a name points to a list. The line a = [4, 7] made List A and attached the name a.");
+ const headings=["Which list should b point to?","Which cell gets the 9?","Which name moves to the new list?"];
+ const summaries=["Both names now point to List A.","The first cell changed to 9.","The name b now points to List B."];
+ if(step===3){
+  const h=prompt(completed?"x[0] is 1":"What does the new example print?");
+  code(["x = [1, 2]", "y = x", "y = [3, 4]", "y[0] = 6", "print(x[0])"]);
+  if(!completed){
+   const actions=add("div","",lesson,"actions");
+   for(const value of ["1","3","6"]){
+    button(value,()=>coach(value==="1",value==="1"
+     ?"y points at the new list before the write. x still points at [1, 2]."
+     :"Trace which list y points to when the write happens. Then follow x."),actions);
+   }
+  }
+  return h;
+ }
+ const h=prompt(completed?summaries[step]:headings[step]);
+ code(listCode.slice(0,step+2),step+1);
+ const board=add("div","",lesson,"objects");
+ const applied=step+Number(completed);
+ const names=applied===0||applied===3?["a"]:["a","b"];
+ const values=applied<2?["4","7"]:["9","7"];
+ const first=listItem(board,"List A",names,values,{
+  changed:step===1&&completed?0:undefined,
+  movedName:step===0&&completed?"b":undefined,
+  onSlot:step===1&&!completed?index=>coach(index===0,index===0
+   ?"b[0] changes the existing list. a reads the same 9."
+   :"The number in brackets selects an index. Index 0 is the first cell."):null,
+  onName:step===2&&!completed?name=>coach(name==="b",name==="b"
+   ?"The assignment changes where b points. a still points to List A."
+   :"The left side of the assignment is b. a keeps pointing to List A."):null
+ });
+ if(step===0&&!completed){
+  button("Point b here",()=>coach(true,"b = a makes b point to the list a already names."),first,{labelForReader:"Point b to List A"});
+  const copy=listItem(board,"Separate copy",[],["4","7"],{ghost:true});
+  button("Point b here",()=>coach(false,"b = a has no copy operation. Use the existing list."),copy,{labelForReader:"Point b to a separate copy"});
+ }
+ if(step===2)listItem(board,"List B",completed?["b"]:[],["6","8"],{movedName:"b"});
+ return h;
+}
+
+const guidedBrackets=["(","[","]",")"];
+function bracketRow(characters, opts={}){
+ const row=add("div","",lesson,"tokens");
+ for(const [i,char] of characters.entries()){
+  const label="Character "+(i+1)+", "+char;
+  if(opts.pick){
+   button(char,()=>opts.pick(i),row,{labelForReader:label,className:"bracket"});
+  }else{
+   const box=add("code",char,row,i===opts.active?"bracket current":i<opts.active?"bracket done":"bracket");
+   if(i===opts.active)box.setAttribute("aria-current","step");
+  }
+ }
+}
+function stackLesson(){
+ if(step===0)add("p","Brackets must close in reverse order. A stack stores the opening brackets that still need a match. The most recently added opener sits on top.");
+ if(step===3){
+  const h=prompt(completed?"The closing parenthesis is the first mismatch":"Which character first breaks the matching rule?");
+  bracketRow(["(","[",")","]"],completed?{active:2}:{pick:index=>coach(index===2,
+   index===2?"When ) appears, [ is on top. ) can’t skip [ to match the earlier (."
+   :"Read the brackets from left to right. Which closer first meets an opener of the wrong type?")});
+  if(!completed){
+   const actions=add("div","",lesson,"actions");
+   button("All brackets match",()=>coach(false,"Each closing bracket has to match the opener currently on top."),actions);
+  }
+  return h;
+ }
+ const headers=["Where does [ go on the stack?","Which opener should ] match?","Which opener should ) match?"];
+ const after=["[ is now on top", "The square brackets are paired", "The stack is empty"];
+ const h=prompt(completed?after[step]:headers[step]);
+ if(!completed)add("p",step===0?"The first ( is already on the stack.":"Select an opener in the stack.");
+ bracketRow(guidedBrackets,{active:step+1});
+ const stack=add("div","",lesson,"stack");
+ add("strong","Top of stack",stack,"caption");
+ const stackStates=[["("],["[","("],["("],[]];
+ const items=stackStates[step+Number(completed)];
+ for(const [index,item] of items.entries()){
+  if(step>0&&!completed){
+   button(item,()=>coach(index===0,index===0
+    ?step===1?"The top opener is [. It matches ], so remove it.":"The top opener is (. It matches ), so remove it."
+    :"] has to match the most recent opener. Compare it with the bracket on top."),
+    stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
+  }else add("code",item,stack,"bracket");
+ }
+ if(items.length===0)add("p","Empty",stack,"caption");
+ if(step===0&&!completed){
+  const actions=add("div","",lesson,"actions");
+  button("Put [ on top",()=>coach(true,"The newest opener goes above the earlier one."),actions);
+  button("Put [ below (",()=>coach(false,"The stack puts the newest opener on top."),actions);
+ }
+ return h;
+}
+
+function render(message="", focus=true){
+ lesson.replaceChildren();
+ for(const name of ["references","brackets"]){
+  document.getElementById(name).setAttribute("aria-pressed",name===scenario);
+ }
+ add("p",step===3?"Fresh example":"Step "+(step+1)+" of 3",lesson,"caption");
+ const heading=scenario==="references"?lists():stackLesson();
+ feedback=add("p",message,lesson,"feedback");
+ feedback.setAttribute("role","status");
+ if(completed){
+  button(step===2?"Try a fresh example":step===3?"Try the other lesson":"Continue",
+   step===3?()=>start(scenario==="references"?"brackets":"references"):advance,
+   add("div","",lesson,"actions"));
+ }
+ if(focus)heading.focus();
+}
+function start(name, focus=true){
+ scenario=name;
+ step=0;
+ completed=false;
+ render("",focus);
+}
+document.getElementById("references").onclick=()=>start("references");
+document.getElementById("brackets").onclick=()=>start("brackets");
+document.getElementById("restart").onclick=()=>start(scenario);
+start(location.hash==="#brackets"?"brackets":"references",false);
+</script>
+</body>
+</html>
