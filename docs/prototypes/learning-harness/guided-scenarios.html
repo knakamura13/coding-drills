@@ -43,10 +43,10 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .input-brackets .current { background: #d2e9ce; border-bottom: 2px solid #28775c; }
 .stack { display: grid; gap: 4px; width: max-content; min-width: 116px; padding: 0 10px 10px; margin: 12px 0; border: solid #879d8b; border-width: 0 2px 2px; }
 .stack .caption { margin: 2px 0; }
-.stack-entry { text-align: center; font-size: 1.23rem; }
-.stack-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 360px; }
-.stack-choice { display: grid; justify-items: center; padding: 10px 8px; }
-.stack-choice .stack { width: min(100%, 116px); min-width: 0; margin: 0; }
+.stack-options { display: flex; gap: 18px; }
+.stack-choice { display: grid; min-height: 0; border: 0; border-radius: 0; padding: 0; }
+.stack-choice .stack-cell { display: grid; place-items: center; width: 56px; height: 56px; border: 1px solid #587767; font-size: 1.25rem; }
+.stack-choice .stack-cell + .stack-cell { border-top: 0; }
 .caption { color: #41564a; font-size: .88rem; }
 .feedback { min-height: 1.4em; margin-top: 12px; color: #274c39; }
 .feedback:empty { margin: 0; min-height: 0; }
@@ -205,17 +205,13 @@ function bracketRow(characters, opts={}){
   button(char,()=>opts.pick(i),row,{labelForReader:label,className:"bracket"});
  }
 }
-function stackPicture(parent, items, onPick){
- const stack=add("span","",parent,"stack");
+function stackOpeners(items){
+ const stack=add("div","",lesson,"stack");
  add("span","Top of stack",stack,"caption");
  for(const [index,item] of items.entries()){
-  if(onPick){
-   button(item,()=>onPick(index),stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
-  }else{
-   add("code",item,stack,"stack-entry");
-  }
+  button(item,()=>coach(index===0,"`]` has to match the most recent opener. Compare it with the bracket on top."),
+   stack,{labelForReader:index===0?"Top opener "+item:"Earlier opener "+item,className:"bracket"});
  }
- if(items.length===0)add("span","Empty",stack,"caption");
 }
 function stackOptions(){
  const choices=add("div","",lesson,"stack-options");
@@ -227,7 +223,7 @@ function stackOptions(){
  ];
  for(const {items,label,choose} of options){
   const choice=button("",choose,choices,{labelForReader:label,className:"stack-choice"});
-  stackPicture(choice,items);
+  for(const item of items)add("code",item,choice,"stack-cell");
  }
 }
 function stackLesson(){
@@ -244,11 +240,8 @@ function stackLesson(){
  const headers=["What does the stack look like after reading `[`?","Which opener in the stack matches `]`?","Which opener in the stack matches `)`?"];
  const h=prompt(headers[step]);
  bracketRow(guidedBrackets,{active:step+1});
- const stackStates=[["("],["[","("],["("]];
- if(step===0)add("p","Current stack",lesson,"caption");
- const pickOpener=step>0?index=>coach(index===0,"`]` has to match the most recent opener. Compare it with the bracket on top."):null;
- stackPicture(lesson,stackStates[step],pickOpener);
  if(step===0)stackOptions();
+ else stackOpeners(step===1?["[","("]:["("]);
  return h;
 }
 
