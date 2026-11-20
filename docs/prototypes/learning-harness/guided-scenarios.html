@@ -24,10 +24,20 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .code code { display: block; padding: 3px 8px; }
 .code .current { background: #e1efde; border-left: 3px solid #28775c; padding-left: 5px; }
 .objects { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px),1fr)); gap: 10px; margin: 14px 0; }
-.object { border: 1px solid #a5b7aa; border-radius: 8px; padding: 10px; min-width: 0; }
-.object strong { display: block; font-size: .89rem; }
-.list-value { display: block; margin-top: 7px; font-size: 1.02rem; }
-.values { display: flex; gap: 8px; flex-wrap: wrap; margin: 7px 0; align-items: center; }
+.object { display: grid; grid-template-columns: auto minmax(0, 1fr); justify-self: start; align-items: stretch; }
+.reference-names { width: 5.5rem; display: grid; align-content: center; gap: 5px; }
+.reference-names:empty { width: 0; }
+.reference-row { display: grid; grid-template-columns: 1.9rem 1fr; align-items: center; }
+.reference-row code { justify-self: start; }
+.reference-line { position: relative; height: 12px; }
+.reference-line::before { content: ""; position: absolute; top: 5px; left: 0; right: 3px; height: 2px; background: #477865; }
+.reference-line::after { content: ""; position: absolute; top: 2px; right: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #477865; }
+.reference-row.connected .reference-line { animation: connect-reference 260ms ease-out both; }
+@keyframes connect-reference { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@media (prefers-reduced-motion: reduce) { .reference-row.connected .reference-line { animation: none; } }
+.list-target { display: grid; align-content: center; justify-items: start; min-height: 42px; padding: 7px 12px; background: #f4f7f0; border-left: 2px solid #6e8c77; }
+.list-value { display: block; font-size: 1.02rem; white-space: nowrap; }
+.values { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .object button, .stack button { padding: 4px 8px; }
 .slot, .bracket { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid #99ad9e; border-radius: 5px; padding: 3px 5px; background: #f2f5ee; }
 .bracket { font-size: 1.23rem; }
@@ -108,14 +118,24 @@ function code(lines, active=-1){
   if(i===active)row.setAttribute("aria-current","step");
  }
 }
-function listItem(board, label, values, onSlot){
+function listItem(board, names, values, {onSlot, newReference}={}){
  const list=add("div","",board,"object");
- writeCopy(add("strong","",list),label);
+ list.setAttribute("role","group");
+ list.setAttribute("aria-label",names.length?"List referenced by "+names.join(" and "):"New list");
+ const references=add("div","",list,"reference-names");
+ references.setAttribute("aria-hidden","true");
+ for(const name of names){
+  const row=add("div","",references,name===newReference?"reference-row connected":"reference-row");
+  add("code",name,row,"inline-code");
+  add("span","",row,"reference-line");
+ }
+ const target=add("div","",list,"list-target");
+ if(!names.length)add("span","New list",target,"caption");
  if(!onSlot){
-  add("code","["+values.join(", ")+"]",list,"list-value");
+  add("code","["+values.join(", ")+"]",target,"list-value");
   return;
  }
- const valueRow=add("div","",list,"values");
+ const valueRow=add("div","",target,"values");
  for(const [i,value] of values.entries()){
   button(value,()=>onSlot(i),valueRow,{labelForReader:"Index "+i+", value "+value,className:"slot"});
  }
@@ -130,7 +150,7 @@ function answerChoices(options){
 const listCode=["a = [4, 7]", "b = a", "b[0] = 9", "b = [6, 8]"];
 function lists(){
  const headings=["After `b = a`, what does `b` refer to?","Which value does `b[0] = 9` replace?","Which name should point to the new list?"];
- const summaries=["Both names now point to the same list.","The first cell changed to 9.","The name `b` now points to the new list."];
+ const summaries=["Correct","The first cell changed to 9.","Correct"];
  if(step===3){
   const h=prompt(completed?"`x[0]` is 1":"What does the new example print?");
   code(["x = [1, 2]", "y = x", "y = [3, 4]", "y[0] = 6", "print(x[0])"]);
@@ -148,23 +168,26 @@ function lists(){
  code(listCode.slice(0,step+2),step+1);
  if(step===0&&!completed){
   answerChoices([
-   ["The same list as `a`",()=>coach(true,"`b` and `a` now refer to the same list.")],
+   ["The same list as `a`",()=>coach(true)],
    ["A separate copy of list `a`",()=>coach(false,"`b = a` assigns the same list to `b`. Creating a copy would take a separate operation.")]
   ]);
   return h;
  }
  const board=add("div","",lesson,"objects");
  const applied=step+Number(completed);
- const label=applied===3?"List `a`":"List referenced by `a` and `b`";
+ const names=applied===3?["a"]:["a","b"];
  const values=applied<2?["4","7"]:["9","7"];
- listItem(board,label,values,step===1&&!completed?index=>coach(index===0,index===0
+ listItem(board,names,values,{
+  newReference:step===0&&completed?"b":undefined,
+  onSlot:step===1&&!completed?index=>coach(index===0,index===0
    ?"`b[0]` changes the existing list. `a` reads the same 9."
-   :"The number in brackets selects an index. Index 0 is the first cell."):null);
+   :"The number in brackets selects an index. Index 0 is the first cell."):null
+ });
  if(step===2){
-  listItem(board,completed?"List `b`":"New list",["6","8"]);
+  listItem(board,completed?["b"]:[],["6","8"],{newReference:completed?"b":undefined});
   if(!completed)answerChoices([
    ["Move `a` to the new list",()=>coach(false,"The left side of the assignment is `b`. `a` still points to its original list.")],
-   ["Move `b` to the new list",()=>coach(true,"The assignment changes where `b` points. `a` still points to its original list.")]
+   ["Move `b` to the new list",()=>coach(true)]
   ]);
  }
  return h;
