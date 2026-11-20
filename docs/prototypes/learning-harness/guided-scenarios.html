@@ -37,6 +37,8 @@ code.inline-code { color: #214d39; background: #e1efde; border-radius: 4px; padd
 .list-value { display: block; font-size: 1.02rem; white-space: nowrap; }
 .bracket { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid #99ad9e; border-radius: 5px; padding: 3px 5px; background: #f2f5ee; }
 .bracket { font-size: 1.23rem; }
+.input-symbol { display: inline-grid; place-items: center; min-width: 36px; font-size: 1.23rem; }
+.bracket.mismatch { border-color: #9c4c2a; background: #fff0e7; color: #77341b; opacity: 1; }
 .input-line { display: flex; align-items: baseline; gap: 12px; margin: 12px 0; }
 .input-brackets { font-size: 1.23rem; }
 .input-brackets span { padding: 2px 3px; }
@@ -200,10 +202,14 @@ function bracketRow(characters, opts={}){
  }
  const row=add("div","",lesson,"tokens");
  row.setAttribute("role","group");
- row.setAttribute("aria-label","Choose the first mismatched character");
+ row.setAttribute("aria-label","Closing brackets in the input");
  for(const [i,char] of characters.entries()){
+  if(char==="("||char==="["){
+   add("code",char,row,"input-symbol");
+   continue;
+  }
   const label="Character "+(i+1)+", "+char;
-  button(char,()=>opts.pick(i),row,{labelForReader:label,className:"bracket"});
+  const closer=button(char,()=>opts.pick(i,closer),row,{labelForReader:label,className:"bracket"});
  }
 }
 function stackGroup(className, label){
@@ -234,10 +240,21 @@ function stackOptions(){
 function stackLesson(){
  if(step===0)add("p","Read from left to right. The stack holds opening brackets that still need a match.");
  if(step===3){
-  const h=prompt("Which character first breaks the matching rule?");
-  bracketRow(["(","[",")","]"],{pick:index=>coach(index===2,
-   index===2?"The first mismatch is `)` at character 3. It can’t skip `[` to match the earlier `(`."
-   :"Read the brackets from left to right. Which closer first meets an opener of the wrong type?")});
+  const h=prompt("Where does the stack check first fail?");
+  add("p","Read from left to right. Select the first closing bracket that doesn’t match the opener on top of the stack.");
+  add("p","Input",lesson,"caption");
+  bracketRow(["(","[",")","]"],{pick:(index,closer)=>{
+   if(index!==2){
+    coach(false,"Check the earlier closing bracket first. What is on top of the stack when you reach it?");
+    return;
+   }
+   closer.classList.add("mismatch");
+   const label=add("p","Stack just before the mismatch",lesson,"caption");
+   const stack=stackGroup("stack","Stack just before the mismatch");
+   for(const opener of ["[","("])add("code",opener,stack,"stack-cell");
+   feedback.before(label,stack);
+   coach(true,"At character 3, `)` meets `[` on top of the stack.");
+  }});
   const actions=add("div","",lesson,"actions");
   button("All brackets match",()=>coach(false,"Each closing bracket has to match the opener currently on top."),actions);
   return h;
