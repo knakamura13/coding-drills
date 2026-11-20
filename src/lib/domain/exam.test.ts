@@ -355,6 +355,35 @@ describe('examPassed', () => {
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 	});
 
+	it('carries forward a trace-LCS pass from the two-item pool and requires a full sitting now', () => {
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'subsequence-tables')!;
+		const checkpoint = path.checkpoints[0];
+		const drills = examDrills(path, curriculum.drills).get(checkpoint.id)!;
+		const original = { ...attempt('lcs-recurrence', true), deckId: 'two-dimensional-dp-greedy', examRulesVersion: 6 };
+		const other = { ...attempt('dp-table-costs', true), deckId: 'two-dimensional-dp-greedy', examRulesVersion: 6 };
+		expect(drills).toHaveLength(6);
+		expect(checkpoint.mix).toEqual(['table', 'costs']);
+		// One item alone was never a pass of the two-item pool.
+		expect(examPassed(drills, checkpoint.mix, [original])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, day: '2026-02-02' }])).toBe(false);
+		// Both items on one day, with at most one miss, was a pass.
+		expect(examPassed(drills, checkpoint.mix, [original, other])).toBe(true);
+		const previousRules = [original, other].map((item) => ({ ...item, examRulesVersion: 14 }));
+		expect(examPassed(drills, checkpoint.mix, previousRules)).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, correct: false }])).toBe(true);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, correct: false }, { ...other, correct: false }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [{ ...original, examRulesVersion: 1 }, { ...other, examRulesVersion: 1 }])).toBe(true);
+		// The same two items answered under the current rules are not a legacy sitting.
+		expect(examPassed(drills, checkpoint.mix, [original, { ...other, examRulesVersion: EXAM_RULES_VERSION }])).toBe(false);
+		expect(examPassed(drills, checkpoint.mix, [
+			{ ...original, examRulesVersion: EXAM_RULES_VERSION }, { ...other, examRulesVersion: EXAM_RULES_VERSION }
+		])).toBe(false);
+		const sitting = drills.map((drill) => ({
+			...attempt(drill.questionId, true), deckId: drill.deckId, examRulesVersion: EXAM_RULES_VERSION
+		}));
+		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
+	});
+
 	it('passes a full sitting with one first-try miss and the mix answered right', () => {
 		const sitting = [attempt('a', true), attempt('b', true), attempt('c', false), attempt('d', true), attempt('e', true)];
 		expect(examPassed(pool, mix, sitting)).toBe(true);

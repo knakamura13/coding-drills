@@ -1,0 +1,488 @@
+id: subsequence-tables
+title: Subsequence tables
+description: Tell a subsequence from a substring, read what a cell's two indexes cover, and fill or walk back an LCS table. Each card opens with a worked example.
+heading: What does the table hold?
+
+questions:
+  - id: run-or-gaps
+    heading: Which length does the task want?
+    tags: [dp, arrays-strings]
+    prompt: |-
+      **Worked example:** `tram` and `team` share the unbroken stretch `am`, two letters. If
+      letters may be skipped, they share `tam`: `t`, `a` and `m` appear in that order in both
+      words. An unbroken stretch is a *substring*, and an in-order pick that may skip letters is a
+      *subsequence*.
+
+      A task asks for the longest stretch of letters that appears **unbroken** in both `wander`
+      and `warden`. What is the answer?
+    options:
+      - id: two
+        text: "2, such as `wa` or `de`"
+        explanation: >-
+          `wa` and `de` each appear with no gap in both words, and no stretch of three does. This
+          is the longest common substring.
+      - id: four
+        text: "4, `wade`"
+        explanation: >-
+          `wade` keeps its order in both words, but it skips the `n` of `wander` and the `r` of
+          `warden`. That is the longest common subsequence, which allows gaps. The task asked for
+          an unbroken stretch.
+      - id: three
+        text: "3, `ard`"
+        explanation: >-
+          `ard` is unbroken in `warden`, but `wander` has no `r` between its `a` and `d`, so `ard`
+          does not appear there at all.
+      - id: six
+        text: 6, since both words use the same six letters
+        explanation: >-
+          The words do use the same letters, but not in the same order: `n` comes before `d` in
+          `wander` and after it in `warden`. Neither word appears inside the other.
+    correct: two
+    followUps:
+      four:
+        prompt: "`wade` skips one letter in each word. What does the word *unbroken* rule out?"
+        options:
+          - { id: gaps, text: "Any skipped letter, so `wade` is not an unbroken stretch" }
+          - { id: order, text: "Only a change of order, so `wade` still counts" }
+          - { id: ends, text: "Only gaps at the ends, so a gap in the middle is allowed" }
+        correct: gaps
+        explanation: >-
+          A substring takes adjacent letters only. A subsequence keeps the order but may skip
+          letters, which is how `wade` fits both words.
+      three:
+        prompt: For the answer to count `ard`, where does it have to appear?
+        options:
+          - { id: both, text: "Unbroken in both words, and `wander` has no `r` between `a` and `d`" }
+          - { id: either, text: "Unbroken in either word, and it is unbroken in `warden`" }
+          - { id: longer, text: "In the longer word only, and the two words are the same length" }
+        correct: both
+        explanation: >-
+          A common stretch has to appear in every word being compared. `ard` appears only in
+          `warden`.
+      six:
+        prompt: "`wander` and `warden` use the same six letters. Why is the answer not 6?"
+        options:
+          - { id: order, text: "The order differs, so no six-letter stretch is in both words" }
+          - { id: repeats, text: "Each letter may be counted only once per word" }
+          - { id: length, text: "Two words of the same length can never share all their letters" }
+        correct: order
+        explanation: >-
+          Substrings and subsequences both keep letters in order. `n` comes before `d` in `wander`
+          and after it in `warden`, which breaks any stretch that holds both.
+
+  - id: substring-table-rule
+    heading: Which rule fits the task?
+    tags: [dp]
+    prompt: |-
+      **Worked example:** for the longest common *substring*, `dp[i][j]` is the length of the
+      shared run that ends exactly at `a[i-1]` and `b[j-1]`. For `stamp` and `tamer`, the run `tam`
+      ends at `dp[4][3] = 3`. The last letters, `p` and `r`, differ, so the corner `dp[5][5]` is 0.
+
+      The same task is run on `a = "parcel"` and `b = "pancake"`. On a match a cell is the
+      diagonal plus 1. Which mismatch rule and answer cell give the longest common substring?
+    options:
+      - id: reset-largest
+        text: "Mismatch: 0. Answer: the largest cell anywhere in the table"
+        explanation: >-
+          A mismatch breaks the run, so the cell is 0. The longest run can end anywhere, so the
+          answer is the largest cell: 2, for `pa`.
+      - id: skip-corner
+        text: "Mismatch: `max(up, left)`. Answer: the corner cell"
+        explanation: >-
+          That is the subsequence table. It carries counts across gaps and ends at 4, for `pace`,
+          which skips the `r` of `parcel` and three letters of `pancake`.
+      - id: reset-corner
+        text: "Mismatch: 0. Answer: the corner cell"
+        explanation: >-
+          The corner compares `l` with `e`. They differ, so it holds 0, though the two words share
+          the run `pa` earlier on.
+      - id: diagonal-largest
+        text: "Mismatch: the diagonal. Answer: the largest cell anywhere"
+        explanation: >-
+          Copying the diagonal carries a run across a mismatch. It reaches 3 at the two `c`s,
+          counting `p`, `a` and `c` as one run, though `r` and `n` sit between `a` and `c`.
+    correct: reset-largest
+    followUps:
+      skip-corner:
+        prompt: >-
+          On a mismatch, `max(up, left)` keeps the count from before the gap. What does that make
+          the table measure?
+        options:
+          - { id: subseq, text: "The longest common subsequence, where gaps are allowed" }
+          - { id: substr, text: "The longest common substring, where gaps are not allowed" }
+          - { id: prefix, text: "The longest prefix the two words share" }
+        correct: subseq
+        explanation: >-
+          Carrying the best count past a mismatch is what lets letters with gaps between them add
+          up. A substring count has to restart after every mismatch.
+      reset-corner:
+        prompt: In this substring table, which runs does the corner `dp[6][7]` describe?
+        options:
+          - { id: end-both, text: "Only a run that ends at the last letter of both words" }
+          - { id: any-run, text: "The longest run found anywhere in the two words" }
+          - { id: start-both, text: "Only a run that starts at the first letter of both words" }
+        correct: end-both
+        explanation: >-
+          Each cell describes the run that ends exactly at its two letters. The best run can end
+          earlier, so the answer is the largest cell in the table.
+      diagonal-largest:
+        prompt: "`r` and `n` do not match. How long is the shared run that ends at that pair?"
+        options:
+          - { id: zero, text: "0, since no shared run can end at two different letters" }
+          - { id: two, text: "2, the run `pa` just before the pair" }
+          - { id: one, text: "1, since one of the two letters may be skipped" }
+        correct: zero
+        explanation: >-
+          A run that ends at a pair needs those two letters to be equal. Copying the diagonal
+          pretends the run goes on, so `p`, `a` and `c` are counted as one run across the gap.
+
+  - id: prefix-letter-tap
+    format: tap-cell
+    heading: Which letter does the row compare?
+    tags: [dp, arrays-strings]
+    prompt: |-
+      **Worked example:** `dp[2][1]` covers the prefixes `a[:2]` and `b[:1]`. Their last letters
+      are `a[1]` and `b[0]`, and those are the two letters the cell compares.
+
+      Below, `a = "orchid"`. Tap the letter of `a` that every cell in row 4, `dp[4][j]`, compares.
+    code: |
+      for i in range(1, len(a) + 1):
+          for j in range(1, len(b) + 1):
+              if a[i - 1] == b[j - 1]:
+                  dp[i][j] = dp[i - 1][j - 1] + 1
+              else:
+                  dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    sequence: { kind: string, name: a, cells: [o, r, c, h, i, d] }
+    correct: 3
+    explanation: >-
+      Row 4 covers the prefix `orch`, four letters. Its last letter is `a[3]`, the `h`, which the
+      code reads as `a[i - 1]`.
+    misses:
+      - index: 4
+        explanation: >-
+          That is `a[4]`. Row 4 covers four letters, `a[0]` to `a[3]`, and the code reads
+          `a[i - 1]`, not `a[i]`.
+      - index: 0
+        explanation: >-
+          `o` is the first letter of the prefix `orch`. A cell compares only the last letter of its
+          prefix.
+      - index: 1
+        explanation: >-
+          `r` is inside the prefix `orch`, but row 2 is the one that compares it. Each row adds one
+          letter.
+      - index: 2
+        explanation: "`c` is compared by row 3, which covers `orc`. Row 4 covers one more letter."
+      - index: 5
+        explanation: "`d` is the last letter of `a`. Only row 6, the whole word, compares it."
+
+  - id: cell-covers-prefixes
+    heading: Which prefixes does the cell cover?
+    tags: [dp, arrays-strings]
+    prompt: |-
+      **Worked example:** for `a = "dog"` and `b = "go"`, the table has 4 rows and 3 columns, one
+      for each prefix length from 0 up. `dp[2][1]` covers `a[:2]`, which is `do`, and `b[:1]`,
+      which is `g`.
+
+      For `a = "candle"` and `b = "lend"`, which two prefixes does `dp[3][2]` cover?
+    options:
+      - id: prefixes
+        text: "`can` and `le`"
+        explanation: >-
+          Row 3 covers the first three letters of `a`, and column 2 the first two of `b`. The
+          indexes count letters kept, so `dp[3][2]` covers `a[:3]` and `b[:2]`.
+      - id: through-index
+        text: "`cand` and `len`"
+        explanation: >-
+          That reads 3 and 2 as the positions of the last letters kept, `a[3]` and `b[2]`. The cell
+          keeps 3 and 2 letters, so its last letters are `a[2]` and `b[1]`.
+      - id: letters-only
+        text: "`n` and `e` on their own"
+        explanation: >-
+          Those are the two letters the cell compares, `a[2]` and `b[1]`. Its value is about the
+          whole prefixes, so earlier letters can count too.
+      - id: suffixes
+        text: "`dle` and `nd`"
+        explanation: >-
+          Those are the last three letters of `a` and the last two of `b`. This table grows
+          prefixes from the front, so row 3 is the start of `a`, not its end.
+    correct: prefixes
+    followUps:
+      through-index:
+        prompt: How many letters of `a` does row 0 cover?
+        options:
+          - { id: none, text: "None: row 0 is the empty prefix" }
+          - { id: one, text: "One: row 0 holds `a[0]`" }
+          - { id: all, text: "All of them: row 0 is where the walk back starts" }
+        correct: none
+        explanation: >-
+          Row `i` covers `a[:i]`, the first `i` letters. Row 0 is empty and row 3 ends at `a[2]`,
+          which is why the code compares `a[i - 1]`.
+      letters-only:
+        prompt: Which letters can the value in `dp[3][2]` count?
+        options:
+          - { id: any, text: "Any letters of `can` and `le`, matched in order" }
+          - { id: last, text: "Only `n` and `e`, the pair the cell compares" }
+          - { id: flag, text: "None: the cell only records whether `n` equals `e`" }
+        correct: any
+        explanation: >-
+          The cell stores the longest common subsequence of the whole prefixes. Comparing the last
+          pair only decides which earlier cell it builds on.
+      suffixes:
+        prompt: In this table, how does row 4 differ from row 3?
+        options:
+          - { id: adds, text: "It adds the next letter of `a`, the `d`, to the end of the prefix" }
+          - { id: drops, text: "It drops the first letter of `a`, leaving a shorter suffix" }
+          - { id: same, text: "It covers the same letters, compared with a later letter of `b`" }
+        correct: adds
+        explanation: >-
+          Rows grow the prefix of `a` one letter at a time: row 3 is `can` and row 4 is `cand`.
+          Columns grow the prefix of `b` the same way.
+
+  - id: fill-row-trace
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      **Worked example:** in a row where `a[i - 1]` is `m`, a pass where `b[j - 1]` is also `m`
+      stores `prev[j - 1] + 1`, the diagonal plus 1. Every other pass stores the larger of
+      `prev[j]`, the cell above, and `cur[j - 1]`, the cell to the left. Here `a = "garden"`,
+      `b = "lament"` and `i = 6`, so `a[i - 1]` is `n`. The board is `prev`, row 5 of the table.
+      The passes with `j` at 1 to 3 have run, so `cur` starts `[0, 0, 1, 1]`. Predict each step.
+    code: |
+      cur = [0] * (len(b) + 1)
+      for j in range(1, len(b) + 1):
+          if a[i - 1] == b[j - 1]:
+              cur[j] = prev[j - 1] + 1
+          else:
+              cur[j] = max(prev[j], cur[j - 1])
+    sequence: { kind: array, name: prev, cells: [0, 0, 1, 1, 2, 2, 2] }
+    start:
+      - { name: j, at: 3 }
+    steps:
+      - line: 3
+        ask: On the pass with `j` at 4, `b[3]` is `e`. What is `cur[4]`?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              `e` is not `n`, so the cell takes the larger of `prev[4]`, 2, and `cur[3]`, 1.
+          - id: one
+            text: '1'
+            explanation: >-
+              1 is `prev[3]`, the diagonal. A mismatch drops one of the two letters, not both, so
+              it compares the cell above with the cell to the left.
+          - id: three
+            text: '3'
+            explanation: Adding 1 needs a match. `e` and `n` differ, so nothing new is matched.
+        correct: two
+        also:
+          - { name: j, at: 4 }
+      - line: 3
+        ask: Tap where `j` is on the pass where `a[i - 1]` first equals `b[j - 1]`.
+        pointer: j
+        correct: 5
+        explanation: >-
+          The `n` of `lament` is `b[4]`, and the code compares `b[j - 1]`, so the match comes on
+          the pass with `j` at 5.
+        misses:
+          - index: 4
+            explanation: >-
+              On this pass the code compares `b[3]`, the `e`. The `n` sits at `b[4]`, one pass
+              later.
+          - index: 6
+            explanation: >-
+              On this pass the code compares `b[5]`, the `t`. The `n` came one pass earlier.
+        elsewhere: The code compares `b[j - 1]`, and the `n` sits at `b[4]`.
+      - line: 3
+        ask: What does the pass with `j` at 5 store in `cur[5]`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              The letters match, so the cell is `prev[4] + 1`: the best for `garde` and `lame`, 2,
+              plus the matched `n`.
+          - id: two
+            text: '2'
+            explanation: >-
+              2 is the larger of `prev[5]` and `cur[4]`, the mismatch rule. A match extends the
+              diagonal instead, which adds the `n`.
+          - id: one
+            text: '1'
+            explanation: >-
+              A match does not restart the count at 1. It adds 1 to the diagonal, which already
+              holds 2.
+        correct: three
+      - line: 3
+        ask: The pass with `j` at 6 compares `n` with `t`. What is `cur[6]`?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              No match, so the cell is the larger of `prev[6]`, 2, and `cur[5]`, 3. That 3 is
+              `dp[6][6]`, for the common subsequence `aen`.
+          - id: two
+            text: '2'
+            explanation: >-
+              2 is `prev[6]`, the cell above. The cell to the left, `cur[5]`, holds 3, and the
+              larger of the two wins.
+          - id: four
+            text: '4'
+            explanation: >-
+              Adding 1 needs a match. `n` and `t` differ, so the 3 to the left is carried over.
+        correct: three
+        also:
+          - { name: j, at: 6 }
+
+  - id: match-uses-diagonal
+    heading: What does the match cell hold?
+    tags: [dp]
+    prompt: |-
+      **Worked example:** for `tram` and `team`, `dp[4][4]` compares `m` with `m`. The diagonal
+      `dp[3][3]` is 2, for `tra` and `tea`, so the cell is 3.
+
+      For `a = "hello"` and `b = "yellow"`, `dp[4][3]` compares `a[3]` and `b[2]`, both `l`. The
+      diagonal `dp[3][2]` is 1, the cell above, `dp[3][3]`, is 2, and the cell to the left,
+      `dp[4][2]`, is 1. What does `dp[4][3]` hold?
+    options:
+      - id: diagonal
+        text: "2: the diagonal, 1, plus 1 for the matched `l`"
+        explanation: >-
+          Reaching `dp[3][2]` drops both `l`s, so neither is counted there. Adding 1 for the pair
+          gives 2, for `el`.
+      - id: up-plus-one
+        text: "3: the cell above, 2, plus 1 for the matched `l`"
+        explanation: >-
+          `dp[3][3]` covers `hel` and `yel`, and its 2 already uses the `l` of `yel`. Adding 1
+          counts that `l` twice, but `hell` and `yel` share only `el`.
+      - id: diagonal-copy
+        text: "1: the diagonal, 1, carried over unchanged"
+        explanation: >-
+          Carrying the diagonal over leaves out the pair being compared. A match adds that pair,
+          so the cell is one more than the diagonal.
+    correct: diagonal
+    followUps:
+      up-plus-one:
+        prompt: "`dp[3][3] = 2` matches `el` in `hel` and `yel`. Which `l` of `yellow` does that 2 already use?"
+        options:
+          - { id: same, text: "`b[2]`, the same `l` this cell wants to match" }
+          - { id: other, text: "`b[3]`, the second `l`, which this cell does not reach" }
+          - { id: neither, text: "The cell above never uses the last letter of its prefix of `b`" }
+        correct: same
+        explanation: >-
+          Column 3 covers `yel`, whose only `l` is `b[2]`. The diagonal is the one neighbor where
+          neither compared letter has been used yet.
+      diagonal-copy:
+        prompt: The diagonal, 1, counts the `e` of `hel` and `ye`. What does matching the two `l`s add?
+        options:
+          - { id: one-more, text: "One more letter, so `e` becomes `el`" }
+          - { id: nothing, text: "Nothing, since the diagonal already counts them" }
+          - { id: two, text: "Two, one for the `l` of each word" }
+        correct: one-more
+        explanation: >-
+          The diagonal leaves out both compared letters. A matching pair adds one letter to the
+          common subsequence, and that letter appears once in each word.
+
+  - id: walk-back-trace
+    format: step-trace
+    heading: Predict each step of the walk back
+    tags: [dp, python]
+    prompt: |-
+      **Worked example:** a walk back starts at the corner. Where the two letters match, it
+      records the letter and steps diagonally. Otherwise it steps to the larger of the cell above
+      and the cell to the left. Below is the table for `a = "crate"` and `b = "cart"`. The board
+      shows its rows, each labelled by the last letter of its prefix of `a`. `j` starts at 4.
+
+      ```
+           -  c  a  r  t
+      -    0  0  0  0  0
+      c    0  1  1  1  1
+      r    0  1  1  2  2
+      a    0  1  2  2  2
+      t    0  1  2  2  3
+      e    0  1  2  2  3
+      ```
+    code: |
+      def walk_back(a, b, dp):
+          i, j = len(a), len(b)
+          out = []
+          while i > 0 and j > 0:
+              if a[i - 1] == b[j - 1]:
+                  out.append(a[i - 1])
+                  i -= 1
+                  j -= 1
+              elif dp[i - 1][j] >= dp[i][j - 1]:
+                  i -= 1
+              else:
+                  j -= 1
+          return ''.join(reversed(out))
+    sequence: { kind: array, name: rows, cells: ['-', c, r, a, t, e] }
+    start:
+      - { name: i, at: 5 }
+    steps:
+      - line: 5
+        ask: At `(5, 4)`, `e` and `t` differ. Where is `i` after this pass?
+        pointer: i
+        correct: 4
+        explanation: >-
+          The cell above, `dp[4][4]`, is 3 and the cell to the left, `dp[5][3]`, is 2. The walk
+          goes up, so `i` drops to 4 and `j` stays 4.
+        misses:
+          - index: 5
+            explanation: >-
+              Staying in row 5 means stepping left to `dp[5][3]`, which is 2. The cell above holds
+              3, so the walk goes up.
+        elsewhere: A mismatch moves one step, up or left, and going up lowers `i` by 1.
+      - line: 5
+        ask: At `(4, 4)` both letters are `t`. What does this pass do?
+        options:
+          - id: record-diagonal
+            text: Records `t` and moves to `(3, 3)`
+            explanation: >-
+              A match records the letter and drops the last letter of both prefixes, so `i` and
+              `j` both fall by 1.
+          - id: record-up
+            text: Records `t` and moves to `(3, 4)`
+            explanation: >-
+              Moving only up keeps the `t` of `cart` in play after it was just matched. A match
+              lowers both `i` and `j`.
+          - id: move-up
+            text: Moves up to `(3, 4)` without recording
+            explanation: >-
+              The larger-neighbor rule is for mismatches. A cell whose letters match took its value
+              from the diagonal plus 1, so the walk records the letter.
+        correct: record-diagonal
+        also:
+          - { name: i, at: 3 }
+      - line: 5
+        ask: At `(3, 3)`, `a` and `r` differ, and both neighbors hold 2. Where is `i` after this pass?
+        pointer: i
+        correct: 2
+        explanation: >-
+          On a tie the `>=` on line 9 sends the walk up, so `i` drops to 2 and `j` stays 3.
+        misses:
+          - index: 3
+            explanation: >-
+              Staying in row 3 means stepping left. Both neighbors hold 2, and the `>=` sends a tie
+              up.
+        elsewhere: A mismatch moves one step, and this tie goes up.
+      - line: 13
+        ask: The passes at `(2, 3)`, `(1, 2)` and `(1, 1)` run next. What does the call return?
+        options:
+          - id: crt
+            text: "`crt`"
+            explanation: >-
+              `(2, 3)` records `r`. At `(1, 2)`, `c` and `a` differ and the cell to the left is
+              larger, so `(1, 1)` records `c`. Reversed, `t`, `r`, `c` read `crt`.
+          - id: trc
+            text: "`trc`"
+            explanation: >-
+              `trc` is the order the letters were recorded in, from the ends of the words. The walk
+              reverses `out` before returning it.
+          - id: cat
+            text: "`cat`"
+            explanation: >-
+              `cat` is also a longest common subsequence, but this walk never records the `a`. It
+              would have to step left at the tie in `(3, 3)`.
+        correct: crt
+        also:
+          - { name: i, at: 0 }
