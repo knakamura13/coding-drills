@@ -1,11 +1,15 @@
 <script lang="ts">
 	import Markdown from './Markdown.svelte';
 
-	let { prompt }: { prompt: string } = $props();
+	let { prompt, workedExample = null }: { prompt: string; workedExample?: string | null } = $props();
+
+	// The /play screen shows the worked example inline, above the question, as decks did before it
+	// became its own field.
+	const source = $derived(workedExample ? `**Worked example:** ${workedExample}\n\n${prompt}` : prompt);
 </script>
 
 <section class="card" aria-label="Problem">
-	<Markdown source={prompt} />
+	<Markdown {source} />
 </section>
 
 <style>

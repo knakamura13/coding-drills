@@ -20,6 +20,12 @@ const id = z
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 
+/**
+ * Markdown. A short solved example the learner can open from the question. Kept apart from the
+ * prompt so the prompt is only the question. Optional: not every question has one.
+ */
+const workedExample = text(800).optional();
+
 const optionSchema = z
 	.object({
 		id,
@@ -117,6 +123,7 @@ const choiceQuestionSchema = z
 		id,
 		/** The instruction above the problem card. Overrides the deck's heading. */
 		heading: text(80).optional(),
+		workedExample,
 		/** Markdown. Rendered inside the pinned problem card. */
 		prompt: text(800),
 		/** Topics, from the fixed list in tags.ts. */
@@ -257,6 +264,7 @@ const tapCellQuestionSchema = z
 		format: z.literal('tap-cell'),
 		id,
 		heading: text(80).optional(),
+		workedExample,
 		/** Markdown. The question, pinned above the code and the sequence. */
 		prompt: text(800),
 		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
@@ -340,6 +348,7 @@ const dragPointersQuestionSchema = z
 		format: z.literal('drag-pointers'),
 		id,
 		heading: text(80).optional(),
+		workedExample,
 		prompt: text(800),
 		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
 		/** Plain text of the snippet. Not Markdown, so indentation is preserved. */
@@ -451,6 +460,7 @@ const stepTraceQuestionSchema = z
 		format: z.literal('step-trace'),
 		id,
 		heading: text(80).optional(),
+		workedExample,
 		prompt: text(800),
 		tags: z.array(z.enum(TOPIC_TAGS)).min(1).max(3).optional(),
 		/** Plain text of the snippet. Lines are numbered from 1. */

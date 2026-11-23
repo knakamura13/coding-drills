@@ -73,6 +73,7 @@ questions:
   - id: window-max-sum-k
     heading: Which pattern best fits? # overrides the deck heading (optional)
     tags: [sliding-window] # optional
+    workedExample: A short solved case of the same idea. # optional
     prompt: Find the maximum sum of any contiguous subarray of exactly size `k`.
     options:
       - id: two-pointers
@@ -95,6 +96,8 @@ questions:
 ```
 
 Prompts and explanations are Markdown: paragraphs, `` `inline code` ``, **bold**, *italics*, and fenced code blocks. Option text is inline Markdown. Quote any YAML value that starts with a backtick or contains `: `.
+
+`workedExample` is optional on every question format. It holds the solved case that sets up the question, in Markdown, without a label. Keep it out of `prompt`, which holds only the question. `/play` shows it above the prompt, and the new lesson screen will offer it from a link under the prompt.
 
 ## Tap the cell
 
