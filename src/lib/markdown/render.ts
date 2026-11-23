@@ -43,22 +43,25 @@ function renderCode(language: string, lines: string[]): string {
 	return `<pre tabindex="0"><code${className}>${escapeHtml(lines.join('\n'))}</code></pre>`;
 }
 
-/** Block rendering: paragraphs and fenced code. Soft-wrapped lines join with a space. */
-export function renderMarkdown(source: string): string {
-	const output: string[] = [];
+/** A block of deck Markdown: a paragraph (inline Markdown, unrendered) or a fenced code block. */
+export type MarkdownBlock = { kind: 'paragraph'; text: string } | { kind: 'code'; language: string; code: string };
+
+/** Splits Markdown into paragraphs and fenced code blocks. Soft-wrapped lines join with a space. */
+export function markdownBlocks(source: string): MarkdownBlock[] {
+	const blocks: MarkdownBlock[] = [];
 	let paragraph: string[] = [];
 	let fence: { language: string; lines: string[] } | null = null;
 
 	const flushParagraph = () => {
 		if (paragraph.length === 0) return;
-		output.push(`<p>${renderInline(paragraph.join(' '))}</p>`);
+		blocks.push({ kind: 'paragraph', text: paragraph.join(' ') });
 		paragraph = [];
 	};
 
 	for (const line of source.replace(/\r\n/g, '\n').trim().split('\n')) {
 		if (fence) {
 			if (/^```\s*$/.test(line)) {
-				output.push(renderCode(fence.language, fence.lines));
+				blocks.push({ kind: 'code', language: fence.language, code: fence.lines.join('\n') });
 				fence = null;
 			} else {
 				fence.lines.push(line);
@@ -75,9 +78,18 @@ export function renderMarkdown(source: string): string {
 			paragraph.push(line.trim());
 		}
 	}
-	if (fence) output.push(renderCode(fence.language, fence.lines));
+	if (fence) blocks.push({ kind: 'code', language: fence.language, code: fence.lines.join('\n') });
 	flushParagraph();
-	return output.join('');
+	return blocks;
+}
+
+/** Block rendering: paragraphs and fenced code. */
+export function renderMarkdown(source: string): string {
+	return markdownBlocks(source)
+		.map((block) =>
+			block.kind === 'paragraph' ? `<p>${renderInline(block.text)}</p>` : renderCode(block.language, block.code.split('\n'))
+		)
+		.join('');
 }
 
 /** Markdown reduced to one line of plain text, for lists and summaries. */

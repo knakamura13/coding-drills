@@ -6,6 +6,9 @@ import { expect, test } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
 	await page.goto('/ui');
 	await expect(page.getByRole('heading', { name: 'UI pieces', level: 1 })).toBeVisible();
+	// The page is prerendered, so its buttons exist before they work. The branch is set only once
+	// the page has hydrated.
+	await expect.poll(() => page.evaluate(() => document.documentElement.dataset.branch)).toBe('sequences-and-search');
 });
 
 test('has no accessibility violations, closed and with a sheet open', async ({ page }) => {
