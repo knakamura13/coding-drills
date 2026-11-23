@@ -38,9 +38,12 @@
 		tab-size: 4;
 	}
 
+	/* Set here, not inherited: theme.css lets inline code wrap, and a parent's inline-code rules
+	   must never reach a block. Indentation is meaning in Python. */
 	code {
 		display: grid;
 		min-width: max-content;
+		white-space: pre;
 	}
 
 	.line {

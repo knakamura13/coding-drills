@@ -35,7 +35,8 @@
 		text-wrap: pretty;
 	}
 
-	.prose :global(code) {
+	/* Inline code only: a CodeBlock's <code> keeps its own whitespace rules. */
+	p :global(code) {
 		font-family: var(--font-mono);
 		font-size: 0.9375em;
 		color: var(--neutral-frost);
@@ -43,12 +44,12 @@
 	}
 
 	/* Long expressions may wrap, so one cannot push the page wider than a phone. */
-	.prose :global(code.long) {
+	p :global(code.long) {
 		white-space: normal;
 		overflow-wrap: anywhere;
 	}
 
-	.prose :global(strong) {
+	p :global(strong) {
 		font-weight: 600;
 	}
 </style>

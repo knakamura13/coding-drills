@@ -348,6 +348,8 @@ export interface LessonView {
 	board: BoardView | null;
 	/** The follow-up question, when in the follow-up stage. */
 	followUpPrompt: string | null;
+	/** In the follow-up: the wrong answer picked on the main question, for the recap card. */
+	mainPickText: string | null;
 	options: OptionView[];
 	canCheck: boolean;
 	/** Set only for a step-trace question. */
@@ -396,6 +398,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 			code: question.code,
 			board: boardView(question, state.selected, state.checked),
 			followUpPrompt: null,
+		mainPickText: null,
 			options: [],
 			verdict: result
 				? {
@@ -418,6 +421,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 			code: question.code,
 			board: dragBoardView(question, state.selected, result),
 			followUpPrompt: null,
+		mainPickText: null,
 			options: [],
 			verdict: result
 				? {
@@ -458,7 +462,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 				};
 			}
 		}
-		return { ...base, format: 'choice', code: null, board: null, followUpPrompt: null, options, verdict, seeWhy };
+		return { ...base, format: 'choice', code: null, board: null, followUpPrompt: null, mainPickText: null, options, verdict, seeWhy };
 	}
 
 	const followUp = currentFollowUp(state)!;
@@ -474,7 +478,8 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 					explanation: followUp.explanation
 				}
 			: null;
-	return { ...base, format: 'choice', code: null, board: null, followUpPrompt: followUp.prompt, options, verdict, seeWhy: null };
+	const mainPickText = question.options.find((option) => option.id === state.mainPick)?.text ?? null;
+	return { ...base, format: 'choice', code: null, board: null, followUpPrompt: followUp.prompt, mainPickText, options, verdict, seeWhy: null };
 }
 
 function boardView(question: TapCellQuestion, selected: string | null, checked: boolean): BoardView {
@@ -512,7 +517,7 @@ function traceView(
 	state: LessonState,
 	stepOrders: readonly (readonly string[])[],
 	question: StepTraceQuestion,
-	base: Omit<LessonView, 'format' | 'code' | 'board' | 'followUpPrompt' | 'options' | 'verdict' | 'seeWhy'>
+	base: Omit<LessonView, 'format' | 'code' | 'board' | 'followUpPrompt' | 'mainPickText' | 'options' | 'verdict' | 'seeWhy'>
 ): LessonView {
 	const index = Math.min(state.picks.length, question.steps.length - 1);
 	const step = question.steps[index]!;
@@ -563,6 +568,7 @@ function traceView(
 		code: question.code,
 		board,
 		followUpPrompt: null,
+		mainPickText: null,
 		options,
 		canCheck: false,
 		trace: { step: index + 1, total: question.steps.length, line: step.line ?? null, kind: onCells ? 'cell' : 'choice' },
