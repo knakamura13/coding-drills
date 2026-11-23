@@ -42,14 +42,15 @@ questions:
         prompt: Which neighbors can't share a session at limit 10?
         options:
           - id: seven-five
-            text: The 7 and the 5 right after it, since 7 + 5 = 12
+            text: The 7 and the 5 after it
           - id: six-four
-            text: The 6 and the 4
+            text: The 6 and the 4 after it
           - id: two-fives
-            text: The two 5s
+            text: The 5 and the 5 after it
         correct: seven-five
         explanation: >-
-          A total gives only a lower bound on the count. The pass decides it, because files stay
+          7 + 5 = 12 is over 10, so the 7 sits alone, while 6 + 4 and 5 + 5 are exactly 10. A
+          total gives only a lower bound on the count. The pass decides it, because files stay
           whole and in order.
       five:
         prompt: At limit 10, does a session with a load of exactly 10 fit?
@@ -93,15 +94,15 @@ questions:
         prompt: When the pass reaches a file larger than `x`, what does it do?
         options:
           - id: counts-it
-            text: Starts a session for it and counts it, without checking its size
+            text: Counts it in its own session
           - id: raises
-            text: Raises an error
+            text: Stops the pass with an error
           - id: skips-it
             text: Leaves it out of every session
         correct: counts-it
         explanation: >-
-          `load = 0` and then `load += s` admit the file whatever its size. So the count is
-          trustworthy only when `x` is at least the largest file.
+          `load = 0` and then `load += s` admit the file without comparing it with `x`. So the count
+          is trustworthy only when `x` is at least the largest file.
       true-total:
         prompt: Can part of the 15 go in one session and the rest in the next?
         options:
@@ -344,8 +345,8 @@ questions:
     heading: Which `lo` is safe?
     tags: [binary-search]
     prompt: |-
-      `sessions` puts a file that is larger than `x` in a session of its own and counts it, without
-      checking it. Which start for `lo` keeps this search right for every list? For
+      `sessions` never compares a single file with `x`, so a file larger than `x` is admitted and
+      counted anyway. Which start for `lo` keeps this search right for every list? For
       `sizes = [3, 10, 2, 4]` and `d = 3` the answer is 10.
 
       ```python
@@ -380,14 +381,15 @@ questions:
         prompt: What does `sessions([3, 10, 2, 4], 6)` return?
         options:
           - id: three-passes
-            text: 3, which passes, although the 10 can't fit under 6
+            text: 3, so the probe passes
           - id: four-fails
-            text: 4, which fails
+            text: 4, so the probe fails
           - id: error
-            text: It raises an error
+            text: It stops with an error
         correct: three-passes
         explanation: >-
-          The pass never compares a single file with `x`. Starting at `max(sizes)` keeps every
+          It returns 3, with sessions [3], [10] and [2, 4], so 6 passes although the 10 can't fit
+          under 6. The pass never compares a single file with `x`. Starting at `max(sizes)` keeps every
           probe in the range where its count is right.
       largest-plus-one:
         prompt: Can the smallest feasible limit equal the largest file?
@@ -471,7 +473,7 @@ questions:
       - { name: lo, at: 0 }
       - { name: hi, at: 7 }
     steps:
-      - line: 8
+      - line: 4
         ask: Where does `lo` sit after the first pass?
         pointer: lo
         correct: 4
@@ -482,7 +484,7 @@ questions:
           - index: 0
             explanation: 23 fails, so `lo` moves past it.
         elsewhere: 23 needs two sessions, so it fails and `lo = mid + 1 = 24`.
-      - line: 8
+      - line: 4
         ask: Where does `lo` sit after the second pass?
         pointer: lo
         correct: 6
@@ -493,7 +495,7 @@ questions:
           - index: 4
             explanation: 25 fails too, so `lo` moves again.
         elsewhere: 25 fails, so `lo = 26`.
-      - line: 8
+      - line: 4
         ask: Where does `lo` sit after the third pass?
         pointer: lo
         correct: 7

@@ -63,14 +63,15 @@ questions:
           `hi = 4`). What does it return?
         options:
           - id: four-still
-            text: 4, the same wrong answer, because the `<=` test still moves `lo` past the 9s
+            text: 4, past the 9s
           - id: one
             text: 1, the first 9
           - id: three-last
             text: 3, the last 9
         correct: four-still
         explanation: >-
-          The bug is which side keeps an equal value. Changing the other branch leaves `<=` in
+          It returns 4, the same wrong answer, because the `<=` test still moves `lo` past the
+          9s. The bug is which side keeps an equal value. Changing the other branch leaves `<=` in
           place, and it also lets `hi` drop a value that could be the answer.
       closed-hi:
         prompt: With `hi = len(a) - 1`, what can the function no longer return?
@@ -128,7 +129,7 @@ questions:
         prompt: With `return lo + 1`, what does `first_greater([4, 10, 10, 13, 21, 26], 13)` return?
         options:
           - id: five
-            text: 5, though the first value above 13 is 21, at index 4
+            text: 5, the index of 26
           - id: four
             text: 4, the index of 21
           - id: three
@@ -136,7 +137,7 @@ questions:
         correct: five
         explanation: >-
           The buggy loop already returns 4 here, because no probe drops the answer. Adding 1
-          breaks that call. Patching the return hides one symptom instead of keeping every
+          gives 5, though the first value above 13 is 21, at index 4. Patching the return hides one symptom instead of keeping every
           candidate.
       le:
         prompt: With `while lo <= hi`, what happens on `first_greater([4, 10, 10, 13, 21, 26], 30)`?
@@ -155,15 +156,15 @@ questions:
         prompt: With `mid = (lo + hi + 1) // 2`, which cell does the first probe read on `first_greater([5], 3)`?
         options:
           - id: past-end
-            text: Index 1, past the end, so it raises `IndexError`
+            text: Index 1, past the end
           - id: zero
-            text: Index 0, the 5
+            text: Index 0, which holds 5
           - id: none
-            text: None, the loop doesn't run
+            text: No cell, it never probes
         correct: past-end
         explanation: >-
-          With `lo = 0` and `hi = 1`, rounding up gives 1, and `hi` is outside the list. A
-          half-open loop has to round down so that `mid` stays below `hi`.
+          With `lo = 0` and `hi = 1`, rounding up gives 1, and `hi` is outside the list, so
+          reading `a[1]` raises `IndexError`. A half-open loop has to round down so that `mid` stays below `hi`.
 
   - id: checkpoint-rotated-trace
     format: step-trace
@@ -308,7 +309,7 @@ questions:
         explanation: Trace the two-cell range. Which cell does the second probe read?
       - id: thirty-nine
         text: "`search(a, 39)`"
-        explanation: Trace the first probe. Does the search ever reach a range where `lo == mid`?
+        explanation: Trace the first probe. Does the search ever reach a range where `lo == mid` and the probe misses?
       - id: ten
         text: "`search(a, 10)`"
         explanation: Work out what a correct search returns for this call first.
@@ -331,15 +332,16 @@ questions:
         prompt: The first probe reads 15, and 15 to 39 is the sorted part. Where does the search go for 39?
         options:
           - id: right-only
-            text: Right, to 22 to 39, a range with no drop, where the strict test does no harm
+            text: Right, to the 22, 30 and 39
           - id: left
             text: Left, to the 48 and the 7
           - id: stuck
-            text: Nowhere, the strict test stops it
+            text: Nowhere, the `<` test stops it
         correct: right-only
         explanation: >-
-          The strict test is wrong only on a one-cell left part. A search that never probes
-          with `mid == lo` on a miss never hits the bug.
+          It goes right, to 22 to 39, a range with no drop. The strict test is wrong only on a
+          one-cell left part, and the only pass here with `mid == lo` finds the 39. A search that
+          never probes with `mid == lo` on a miss never hits the bug.
       ten:
         prompt: 10 is not in `[48, 7, 15, 22, 30, 39]`. What do a correct search and this one return?
         options:
@@ -393,14 +395,15 @@ questions:
         prompt: On the unrotated `[4, 11, 19]`, what does the `a[lo]` version return?
         options:
           - id: two
-            text: 2, the largest value, because every probe is at least `a[lo]`
+            text: 2, the largest value
           - id: zero
             text: 0, the smallest value
           - id: one
             text: 1, the middle value
         correct: two
         explanation: >-
-          `a[mid] >= a[lo]` is true in any ascending part, so it can't tell "the drop is to the
+          Every probe is at least `a[lo]`, so `lo` climbs to 2. `a[mid] >= a[lo]` is true in any
+          ascending part, so it can't tell "the drop is to the
           right" from "there is no drop". Comparing with `a[hi]` can: an ascending range has
           `a[mid] <= a[hi]`.
       hi-minus:
