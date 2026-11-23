@@ -31,8 +31,8 @@ questions:
         text: 0, because no range is ever requested twice
         explanation: >-
           The halves of a range do not overlap, and each range has exactly one parent, so every
-          `(lo, hi)` comes up once. `largest.cache_info()` reports `hits=0, misses=15` in Python
-          3.12. Disjoint calls give a cache nothing to reuse.
+          `(lo, hi)` comes up once. `largest.cache_info()` reports `hits=0, misses=15`.
+          Disjoint calls give a cache nothing to reuse.
       - id: seven
         text: 7, one for each call that combines two halves
         explanation: >-
@@ -67,14 +67,15 @@ questions:
         prompt: How many calls ask for `largest(3, 4)`?
         options:
           - id: one
-            text: One, `largest(2, 4)`, since only its range contains index 3 at that level
+            text: One, the size-2 range that starts at index 2
           - id: two
-            text: Two, `largest(2, 4)` and `largest(3, 5)`
+            text: Two, the size-2 ranges that hold index 3
           - id: four
-            text: Four, one from each call on the level above
+            text: Four, one from each range on the level above
         correct: one
         explanation: >-
-          The splits are fixed by `mid`, so ranges such as `(3, 5)` never occur. Each range sits
+          Only `largest(2, 4)` asks for it. The splits are fixed by `mid`, so ranges such as
+          `(3, 5)` never occur. Each range sits
           in exactly one parent, which is what makes the calls disjoint.
       fifteen:
         prompt: When does `@cache` read a stored value back?
@@ -117,7 +118,7 @@ questions:
         text: Only `trim`, since its two calls both reach `(lo + 1, hi - 1)`
         explanation: >-
           `trim`'s two calls take from opposite ends, and each of them then reaches the same
-          `(lo + 1, hi - 1)`. In Python 3.12, `trim(0, 16)` runs its body 131,071 times without a
+          `(lo + 1, hi - 1)`. `trim(0, 16)` runs its body 131,071 times without a
           cache and 153 times with one. `split` hands out disjoint halves, so it runs 31 times
           either way.
       - id: only-split
@@ -141,15 +142,16 @@ questions:
         prompt: Which calls ask for `split(4, 8)`?
         options:
           - id: one-parent
-            text: Only `split(0, 8)`, since `mid` fixes every split
+            text: "`split(0, 8)` and no other call"
           - id: two-parents
             text: "`split(0, 8)` and `split(4, 12)`"
           - id: every-level
-            text: One call on every level above it
+            text: "`split(0, 8)` and `split(0, 16)`"
         correct: one-parent
         explanation: >-
-          `split` only cuts at midpoints, so each range has one parent and is solved once. A
-          cache stores 31 ranges and never reads one back.
+          `mid` fixes every split, so each range has one parent and is solved once. `(4, 12)` is
+          never a range, and `split(0, 16)` asks for `split(0, 8)`, not `split(4, 8)`. A cache
+          stores 31 ranges and never reads one back.
       both:
         prompt: What makes the plain `trim(0, 16)` run its body 131,071 times?
         options:
@@ -207,7 +209,7 @@ questions:
     explanation: >-
       The first calls run `steps(8)` down to `steps(2)`. `steps(2)` and then `steps(3)` store
       their answers. `steps(4)` then makes its second call, `steps(4 // 2)`, and 2 is in `memo`.
-      Python 3.12 prints 3, after 15 calls instead of 35 without the cache.
+      It prints 3, after 15 calls instead of 35 without the cache.
     misses:
       - index: 0
         explanation: >-
@@ -258,7 +260,7 @@ questions:
         text: Pass only the last digit, as `count(i, last)`, so equal states meet
         explanation: >-
           The rest of the string depends only on how many digits are left and whether the last
-          one is a 1. With `count(i, last)` the answer stays 144, and Python 3.12 reports
+          one is a 1. With `count(i, last)` the answer stays 144, and `cache_info()` reports
           `hits=9, misses=21`. Keeping the whole prefix made every call a different state.
       - id: i-only
         text: Key the cache on `i` alone, and keep passing the prefix
@@ -316,4 +318,4 @@ questions:
         correct: i-last
         explanation: >-
           Renaming the state to what the rest truly depends on turns disjoint calls into
-          overlapping ones: Python 3.12 stores 21 states instead of 375 prefixes.
+          overlapping ones: the cache stores 21 states instead of 375 prefixes.
