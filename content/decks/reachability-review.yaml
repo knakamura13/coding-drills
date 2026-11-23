@@ -13,7 +13,8 @@ questions:
         explanation: The last legal column is 4. An index equal to the length is already outside the row.
       - id: mistake
         text: Read column 5 before testing for land
-        explanation: The last legal column is 4. An index equal to the length is already outside the row.
+        explanation: A five-column row has no column 5, so reading it raises `IndexError`. The bounds check has
+          to run before the read.
     correct: valid
     followUps:
       mistake:
@@ -38,8 +39,8 @@ questions:
           column in Python.
       - id: mistake
         text: (1, 0)
-        explanation: A left step subtracts one from the column. The negative column would wrap to the last
-          column in Python.
+        explanation: This changes the row, so it is the upward step, and row 1 is inside the grid. The left step
+          is (2, −1).
     correct: valid
     followUps:
       mistake:
@@ -70,8 +71,8 @@ questions:
           and land.
       - id: mistake
         text: (1, 0) and (1, 1)
-        explanation: The cell to the right is water and (1, 1) is diagonal. Only the cell below is both adjacent
-          and land.
+        explanation: (1, 1) changes both the row and the column, so it is a diagonal, not a neighbor. It is land,
+          but no single move reaches it.
     correct: valid
     followUps:
       mistake:
@@ -95,7 +96,8 @@ questions:
         explanation: Rows run from 0 to 2. The proposed row 3 is outside the grid.
       - id: mistake
         text: Right to (2, 2)
-        explanation: Rows run from 0 to 2. The proposed row 3 is outside the grid.
+        explanation: Column 2 is inside a four-column row, so this step stays in bounds. The step down to row 3
+          is past the last row, 2.
     correct: valid
     followUps:
       mistake:
@@ -111,15 +113,17 @@ questions:
     tags:
       - bfs
       - dfs
-    prompt: B and C are queued. Neither has been processed. Both have an edge to D. B is popped first and queues
-      D. What should C do when it checks D?
+    prompt: This search marks a node seen when it queues it. B and C are queued. Neither has been processed.
+      Both have an edge to D. B is popped first and queues D. What should C do when it checks D?
     options:
       - id: valid
-        text: Skip D, which was marked by B
-        explanation: Marking on discovery lets the second parent tell that D already has a place in the queue.
+        text: Do not queue D
+        explanation: B marked D when it queued it. Marking on discovery lets the second parent tell that D already
+          has a place in the queue.
       - id: mistake
-        text: Queue D again, since C found a different edge
-        explanation: Marking on discovery lets the second parent tell that D already has a place in the queue.
+        text: Queue D again
+        explanation: C did find D by a different edge, but D is already marked and waiting. A second entry gives D
+          two turns, and its edges are scanned twice.
     correct: valid
     followUps:
       mistake:
@@ -135,17 +139,17 @@ questions:
     tags:
       - bfs
       - dfs
-    prompt: In a stack-based flood fill, T is already on the stack but has not been popped. A second neighbor
-      offers T. Should it be pushed?
+    prompt: A stack-based flood fill marks a cell seen when it pushes it. T is already on the stack but has not
+      been popped. A second neighbor offers T. What should it do?
     options:
       - id: valid
-        text: Skip it because T was marked on push
-        explanation: Discovery happens when the cell joins the frontier. Stack order only changes which pending
-          cell comes off next.
+        text: Do not push T
+        explanation: T was marked when it was pushed. Discovery happens when the cell joins the frontier. Stack
+          order only changes which pending cell comes off next.
       - id: mistake
-        text: Push it because T is still waiting
-        explanation: Discovery happens when the cell joins the frontier. Stack order only changes which pending
-          cell comes off next.
+        text: Push T again
+        explanation: T is still waiting, but it is already marked and has a turn coming. A second push makes the
+          fill process T twice.
     correct: valid
     followUps:
       mistake:
@@ -171,8 +175,8 @@ questions:
           A.
       - id: mistake
         text: A was removed from the queue earlier
-        explanation: Seeding the queue and marking the start go together. B can then ignore the edge back to
-          A.
+        explanation: Leaving the queue records nothing. Only the seen mark stops B, so an unmarked start would be
+          queued again.
     correct: valid
     followUps:
       mistake:
@@ -202,7 +206,8 @@ questions:
         explanation: Water blocks the direct route. The bottom row connects the two top cells by a valid path.
       - id: mistake
         text: No, because the top row contains water
-        explanation: Water blocks the direct route. The bottom row connects the two top cells by a valid path.
+        explanation: The water blocks only the straight route along row 0. The fill can step down, cross row 1
+          and step up to (0, 2).
     correct: valid
     followUps:
       mistake:
@@ -231,7 +236,8 @@ questions:
         explanation: The only other land is on the diagonal. There is no land step connecting it to the start.
       - id: mistake
         text: Two cells
-        explanation: The only other land is on the diagonal. There is no land step connecting it to the start.
+        explanation: (1, 1) touches (0, 0) only at a corner. Its edge neighbors, (0, 1) and (1, 0), are water, so
+          the fill never reaches it.
     correct: valid
     followUps:
       mistake:
