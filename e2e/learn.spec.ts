@@ -23,10 +23,10 @@ async function violations(page: Page) {
 }
 
 /** Which deck question is on screen, from its answer labels. */
-async function current(page: Page): Promise<ChoiceQuestion> {
+async function current(page: Page, pool: ChoiceQuestion[] = questions): Promise<ChoiceQuestion> {
 	await page.getByRole('radio').first().waitFor();
 	const shown = (await tiles(page).allInnerTexts()).map((label) => label.trim()).sort();
-	const match = questions.find(
+	const match = pool.find(
 		(question) =>
 			JSON.stringify(question.options.map((option) => plainText(option.text, 1000)).sort()) === JSON.stringify(shown)
 	);
@@ -219,4 +219,24 @@ test('the feedback panel rises in 150 ms, and only fades with reduced motion', a
 		expect(style.name).toMatch(/rise$/);
 		expect({ duration: style.duration, shift: style.shift }).toEqual({ duration: '0.15s', shift: motion === 'reduce' ? '0' : '1' });
 	}
+});
+
+test('a long code pick wraps in the recap instead of widening the card', async ({ page }) => {
+	const heaps = loadDecks('content/decks').find((candidate) => candidate.id === 'bounded-heaps-checkpoint')!;
+	const pool = heaps.questions.filter(isChoiceQuestion);
+	await page.goto(`/learn/${heaps.id}`);
+	// Right answers skip their follow-ups, so answer right until the question with the long pick.
+	for (let step = 0; step < pool.length; step++) {
+		const question = await current(page, pool);
+		const long = question.options.find((option) => option.id === 'guard-on-heap');
+		await pick(page, optionLabel(question, long ? long.id : question.correct));
+		await primary(page).click();
+		await primary(page).click();
+		if (long) break;
+	}
+	const summary = page.locator('details summary');
+	await expect(summary).toContainText('You picked');
+	const fits = await summary.evaluate((node) => node.scrollWidth <= node.clientWidth);
+	expect(fits).toBe(true);
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

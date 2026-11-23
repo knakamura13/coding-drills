@@ -68,6 +68,12 @@
 		white-space: nowrap;
 	}
 
+	/* Long expressions may wrap, so one cannot push the card wider than a phone. */
+	.pick :global(code.long) {
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
 	.chevron {
 		display: grid;
 		transition: transform var(--dur-state) var(--ease);
