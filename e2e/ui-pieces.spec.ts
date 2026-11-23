@@ -15,6 +15,15 @@ test('has no accessibility violations, closed and with a sheet open', async ({ p
 	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
+test('the sheet, outside the page content, still takes the page branch accent', async ({ page }) => {
+	await page.getByRole('button', { name: 'Open the quit sheet' }).click();
+	const button = page.getByRole('dialog', { name: 'Quit this lesson?' }).getByRole('button', { name: 'Continue' });
+	await expect(button).toBeVisible();
+	const accent = await button.evaluate((node) => getComputedStyle(node).getPropertyValue('--color-focus-ring').trim().toUpperCase());
+	expect(accent).toBe('#F3B957');
+	expect(await page.evaluate(() => document.documentElement.dataset.branch)).toBe('sequences-and-search');
+});
+
 test('the sheet traps focus, closes on Escape and returns focus to its opener', async ({ page }) => {
 	const opener = page.getByRole('button', { name: 'Open the quit sheet' });
 	await opener.focus();

@@ -1,7 +1,7 @@
 <!--
 	The new UI pieces on one page, for review against the FigCraft Components page and for the
-	end-to-end and accessibility checks. Not linked from the app and not indexed. It sets its own
-	branch, because the old app.css also defines --accent until the new screens replace it.
+	end-to-end and accessibility checks. Not linked from the app and not indexed. It sets its branch
+	on <html> (applyBranch), so the sheets, which render outside <main>, follow it too.
 -->
 <script lang="ts">
 	import '$lib/ui/theme.css';
@@ -11,6 +11,7 @@
 	import LessonFooter from '$lib/ui/LessonFooter.svelte';
 	import LessonTopBar from '$lib/ui/LessonTopBar.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import { applyBranch } from '$lib/ui/branch';
 
 	const searchCode = `def search(a, t):
     lo, hi = 0, len(a) - 1
@@ -31,6 +32,8 @@
 	let quitOpen = $state(false);
 	let exampleOpen = $state(false);
 	let quitCount = $state(0);
+
+	$effect(() => applyBranch('sequences-and-search'));
 </script>
 
 <svelte:head>
@@ -38,7 +41,7 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<main class="gallery" data-branch="sequences-and-search">
+<main class="gallery">
 	<h1>UI pieces</h1>
 	<p class="note">The lesson building blocks from the FigCraft Components page. Branch: Sequences and search.</p>
 

@@ -22,6 +22,14 @@ describe('codeLines', () => {
 		expect(codeLines('a = 1\n\nb = 2\n')[1]).toEqual([]);
 	});
 
+	it('marks async and await', () => {
+		expect(keywords('async def fetch(url):\n    async with session as s:\n        return await s.get(url)')).toEqual([
+			['async', 'def'],
+			['async', 'with', 'as'],
+			['return', 'await']
+		]);
+	});
+
 	it('marks for, in and True on one line', () => {
 		expect(keywords('for j in range(3): ok = True')).toEqual([['for', 'in', 'True']]);
 	});
