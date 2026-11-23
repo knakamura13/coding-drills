@@ -144,10 +144,22 @@ questions:
       `len(x) // 2 - 1`, and moving left to the root. In `[5, 3, 1]` the only parent is index 0,
       and the 5 swaps with its smaller child, the 1, giving `[1, 3, 5]`.
     prompt: >-
-      Below, `sift_down` swaps
-      an item with its smaller child until no child is smaller. The cells show `x` before the
-      build and do not change. `i` follows the item being sifted. Predict each step.
+      Below, `sift_down` swaps an item with its smaller child until no child is smaller. The cells
+      show `x` before the build and do not change. `i` stays where the last step left it, and each
+      step names the item it asks about and the index that item starts from. Predict each step.
     code: |
+      def sift_down(h, i):
+          n = len(h)
+          while True:
+              small = i
+              for c in (2 * i + 1, 2 * i + 2):
+                  if c < n and h[c] < h[small]:
+                      small = c
+              if small == i:
+                  return
+              h[i], h[small] = h[small], h[i]
+              i = small
+
       def build(x):
           for p in range(len(x) // 2 - 1, -1, -1):
               sift_down(x, p)
@@ -162,7 +174,7 @@ questions:
     start:
       - { name: i, at: 0 }
     steps:
-      - line: 2
+      - line: 14
         ask: Which index does `build` sift first? Move `i` there.
         pointer: i
         correct: 2
@@ -181,7 +193,7 @@ questions:
           - index: 3
             explanation: '`len(x) // 2 = 3` is one past the last parent. Index 3 would have children at 7 and 8, past the end.'
         elsewhere: The first sift is at the last parent, `6 // 2 - 1 = 2`.
-      - line: 3
+      - line: 15
         ask: Where does the 7 come to rest?
         pointer: i
         correct: 5
@@ -190,8 +202,8 @@ questions:
           - index: 2
             explanation: The 1 at index 5 is a child of index 2 and smaller than 7, so the 7 has to move down.
         elsewhere: Index 2's only child is index 5. The 7 swaps with the 1 there.
-      - line: 3
-        ask: Now `p` is 1. Where does the 6 come to rest?
+      - line: 15
+        ask: Now `p` is 1. Where does the 6 (index 1) come to rest?
         pointer: i
         correct: 3
         explanation: Index 1's children are indices 3 and 4, holding 2 and 9. The 6 swaps with the smaller, the 2.
@@ -201,8 +213,8 @@ questions:
           - index: 1
             explanation: The 2 at index 3 is smaller than 6, so the 6 has to move down.
         elsewhere: Index 1's children hold 2 and 9. The 6 swaps with the 2 at index 3.
-      - line: 3
-        ask: Now `p` is 0. Where does the 8 come to rest?
+      - line: 15
+        ask: Now `p` is 0. Where does the 8 (index 0) come to rest?
         pointer: i
         correct: 5
         explanation: >-
@@ -219,7 +231,7 @@ questions:
               Index 1 has held 2 since the second sift, and index 2 has held 1 since the first. The
               8 swaps with the smaller, the 1 at index 2.
         elsewhere: The 8 swaps with the 1 at index 2, then with the 7 at index 5.
-      - line: 7
+      - line: 19
         ask: What does `print(x)` show?
         options:
           - id: heap
@@ -308,19 +320,20 @@ questions:
           After `heapify` the list is a heap, not a sorted list. Each pop sends the last item from
           the root down to its place, which can take every level of the tree.
       both-n-log-n:
-        prompt: A heap of 1,023 items has 512 leaves. How far does a leaf move during `heapify`?
+        prompt: A heap of 1,023 items has 512 leaves. How many sift-downs does `heapify` start at a leaf?
         options:
           - id: not-at-all
-            text: Not at all, since only parents are sifted, and most parents sit near the bottom
+            text: None, only parents are sifted
           - id: to-root
-            text: Up to the root, about 10 levels
+            text: One for each leaf, 512 in all
           - id: one-level
-            text: One level, like every other item
+            text: Only one, at the last leaf
         correct: not-at-all
         explanation: >-
-          The build starts at the last parent. 512 leaves never sift, 256 items can move at most
-          one level, 128 at most two, and so on. That sum stays below a small multiple of `n`, which
-          makes `heapify` O(n).
+          The build starts at the last parent, so the 512 leaf positions never start a sift. A leaf
+          item can still move up when a parent sifts past it, but each sift walks down at most the
+          height of its start: 256 sifts at most one level, 128 at most two, and so on. That sum
+          stays below a small multiple of `n`, which makes `heapify` O(n).
 
   - id: equal-priority-payloads
     heading: What does this print?
@@ -392,16 +405,16 @@ questions:
         prompt: When does comparing two tuples raise `TypeError`?
         options:
           - id: reaches-unorderable
-            text: When every earlier field ties and the next pair has no `<`, such as two different dicts
+            text: When a tie reaches a pair with no order
           - id: any-tie
             text: Whenever the first fields are equal
           - id: mixed-types
-            text: Whenever the tuples hold more than one type
+            text: Whenever the tuples hold mixed types
         correct: reaches-unorderable
         explanation: >-
           A tie only moves the comparison one field to the right. Strings have an order, so tied
           priorities are settled by the names here. The error needs a tie on every field before a
-          pair that cannot be ordered.
+          pair that cannot be ordered, such as two different dicts.
 
   - format: tap-cell
     id: tied-tuple-pop
@@ -516,12 +529,13 @@ questions:
         prompt: Two tasks with priority 2 are added 0.2 seconds apart, inside the same second. What happens when `heapq` compares their entries?
         options:
           - id: reaches-tasks
-            text: The middle fields tie too, so Python compares the two `Task` objects and raises `TypeError`
+            text: It compares the tasks and raises `TypeError`
           - id: later-wins
-            text: The later one is larger, since the clock moved on
+            text: The later one is larger and pops second
           - id: never-repeats
-            text: Nothing goes wrong, since whole seconds never repeat
+            text: Nothing, as whole seconds never repeat
         correct: reaches-tasks
         explanation: >-
           Rounding to the second throws away the 0.2-second gap, so both entries carry the same
-          number. Any clock can repeat a reading for quick adds. A counter cannot.
+          number. With the middle fields tied too, Python compares the two `Task` objects, which
+          define no `<`. Any clock can repeat a reading for quick adds. A counter cannot.
