@@ -7,9 +7,11 @@
  * Svelte `in:`/`out:` transitions run on the Web Animations API, which CSS cannot override, so a
  * transition that moves must scale its distance by `effects.shift` in code.
  *
- * The choice is kept in localStorage under `cd-reduce-effects` ('1' or '0'). With no stored choice
- * it follows the OS reduced-motion preference. `static/effects.js` applies it before first paint;
- * keep the two in step.
+ * A saved choice is kept in localStorage under `cd-reduce-effects` ('1' or '0') and marked on
+ * <html> as `data-effects`. With no saved choice there is no attribute: tokens.css then follows the
+ * OS reduced-motion setting through its media query, live, and this store follows the same setting
+ * through a change listener. `static/effects.js` marks a saved choice before first paint; keep the
+ * two in step.
  */
 
 import { MOTION } from './tokens';
@@ -18,28 +20,43 @@ export const STORAGE_KEY = 'cd-reduce-effects';
 
 const OS_QUERY = '(prefers-reduced-motion: reduce)';
 
-function prefersReducedMotion(): boolean {
-	return typeof matchMedia === 'function' && matchMedia(OS_QUERY).matches;
+function osQuery(): MediaQueryList | null {
+	return typeof matchMedia === 'function' ? matchMedia(OS_QUERY) : null;
 }
 
-/** The stored choice, or the OS preference when nothing is stored or storage is blocked. */
-export function readReduceEffects(): boolean {
+/** The saved choice, or null when nothing is saved or storage is blocked. */
+export function readSavedChoice(): boolean | null {
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
 		if (stored === '1' || stored === '0') return stored === '1';
 	} catch {
-		// Blocked storage: fall through to the OS preference.
+		// Blocked storage: no saved choice.
 	}
-	return prefersReducedMotion();
+	return null;
 }
 
-function apply(reduced: boolean): void {
+/** Whether effects are reduced now: the saved choice, else the OS preference. */
+export function readReduceEffects(): boolean {
+	return readSavedChoice() ?? osQuery()?.matches ?? false;
+}
+
+/** Marks a saved choice on <html>; with none, removes the mark so CSS follows the OS. */
+function mark(choice: boolean | null): void {
 	if (typeof document === 'undefined') return;
-	document.documentElement.dataset.effects = reduced ? 'reduced' : 'full';
+	const { dataset } = document.documentElement;
+	if (choice === null) delete dataset.effects;
+	else dataset.effects = choice ? 'reduced' : 'full';
 }
 
 class Effects {
 	reduced = $state(false);
+
+	#query: MediaQueryList | null = null;
+
+	/** With no saved choice, an OS change applies at once, as it does in CSS. */
+	#onOsChange = (event: MediaQueryListEvent) => {
+		if (readSavedChoice() === null) this.reduced = event.matches;
+	};
 
 	/** Multiplies every ambient effect and loop: 0.5, or 0 when reduced. */
 	get factor(): number {
@@ -51,16 +68,21 @@ class Effects {
 		return this.reduced ? MOTION.shift.reduced : MOTION.shift.full;
 	}
 
-	/** Reads the setting. The root layout calls it once on mount. */
+	/** Reads the setting and starts following the OS. The root layout calls it once on mount. */
 	init(): void {
-		this.reduced = readReduceEffects();
-		apply(this.reduced);
+		const choice = readSavedChoice();
+		const query = osQuery();
+		this.reduced = choice ?? query?.matches ?? false;
+		mark(choice);
+		this.#query?.removeEventListener?.('change', this.#onOsChange);
+		this.#query = query;
+		query?.addEventListener?.('change', this.#onOsChange);
 	}
 
-	/** Changes and saves the setting. */
+	/** Changes and saves the setting. From then on the OS setting no longer applies. */
 	set(reduced: boolean): void {
 		this.reduced = reduced;
-		apply(reduced);
+		mark(reduced);
 		try {
 			localStorage.setItem(STORAGE_KEY, reduced ? '1' : '0');
 		} catch {
