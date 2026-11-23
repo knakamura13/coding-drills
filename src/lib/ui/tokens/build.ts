@@ -152,7 +152,7 @@ export function toCss(t: TokenFile): string {
 	const reduced = [`\t--shift: ${t.motion.shift.reduced};`, `\t--fx: ${t.motion.fx.reduced};`];
 	lines.push("/* Reduce effects: slides become fades, loops and ambient effects stop. Durations stay. */");
 	lines.push(":root[data-effects='reduced'] {", ...reduced, '}', '');
-	lines.push('/* Before the setting is read, follow the OS. */');
+	lines.push('/* With no saved choice there is no data-effects mark: follow the OS, live. */');
 	lines.push('@media (prefers-reduced-motion: reduce) {', "\t:root:not([data-effects]) {", ...reduced.map((l) => '\t' + l), '\t}', '}', '');
 	return lines.join('\n');
 }
