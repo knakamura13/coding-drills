@@ -1,8 +1,9 @@
 <!--
 	The new lesson screen (FigCraft "Lesson screen" page), on the existing lesson controller. This
-	version runs multiple-choice questions: top bar with progress, heading and prompt, answer tiles,
-	and Check. After Check the footer becomes the feedback panel, and a follow-up opens with a
-	recap of the question. The quit control asks first once anything has been answered. Phone first; from 1024px the same parts sit in a 640px column.
+	version runs multiple-choice and tap-the-cell questions: top bar with progress, heading and
+	prompt, then answer tiles, or a code snippet and a strip of cells (screen 5), and Check. With
+	"Immediate feedback" on, a pick is the answer and there is no Check. After Check the footer
+	becomes the feedback panel, and a follow-up opens with a recap of the question. The quit control asks first once anything has been answered. Phone first; from 1024px the same parts sit in a 640px column.
 -->
 <script lang="ts">
 	import './theme.css';
@@ -11,8 +12,11 @@
 	import { tick, untrack } from 'svelte';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
+	import { preferences } from '$lib/preferences/store.svelte';
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
+	import CellStrip from './CellStrip.svelte';
+	import CodeBlock from './CodeBlock.svelte';
 	import FeedbackPanel from './FeedbackPanel.svelte';
 	import LessonFooter from './LessonFooter.svelte';
 	import LessonTopBar from './LessonTopBar.svelte';
@@ -27,15 +31,13 @@
 	const lesson = createLessonController(untrack(() => source));
 	const view = $derived(lesson.screen);
 
-	// The panel explains the pick (lesson Round 5 dropped the separate Why? step): a right answer's
-	// explanation, a wrong pick's own explanation, or the follow-up's explanation.
-	const explanation = $derived(
-		!view?.verdict
-			? ''
-			: view.stage === 'followUp' || view.verdict.correct
-				? view.verdict.explanation
-				: (view.seeWhy?.pickedExplanation ?? '')
-	);
+	// The panel explains the pick (lesson Round 5 dropped the separate Why? step). A wrong
+	// multiple-choice pick carries its own explanation in seeWhy; every other verdict, a missed cell
+	// included, carries it directly.
+	const explanation = $derived(!view?.verdict ? '' : (view.seeWhy?.pickedExplanation ?? view.verdict.explanation));
+
+	// The "Immediate feedback" setting: a picked answer or a tapped cell is the answer.
+	const atOnce = $derived(preferences.immediateFeedback && (view?.format === 'choice' || view?.format === 'tap-cell'));
 
 	// Spoken as soon as the panel appears. The panel moves focus to Continue, which on its own would
 	// only announce the button.
@@ -104,21 +106,34 @@
 				{/if}
 				<Prose source={view.prompt} />
 			{/if}
-			<AnswerTiles
-				name="answer-{lesson.stepKey}"
-				label={view.stage === 'followUp' ? (view.followUpPrompt ?? 'Follow-up') : (view.heading ?? 'Answers')}
-				options={view.options}
-				selectedId={lesson.selectedId}
-				checked={Boolean(view.verdict)}
-				onselect={(id) => lesson.select(id)}
-			/>
+			{#if view.format === 'tap-cell' && view.board}
+				{#if view.code}<CodeBlock code={view.code} />{/if}
+				<CellStrip
+					board={view.board}
+					name="cell-{lesson.stepKey}"
+					selectedId={lesson.selectedId}
+					checked={Boolean(view.verdict)}
+					{atOnce}
+					onselect={(id) => lesson.select(id, atOnce)}
+				/>
+			{:else}
+				<AnswerTiles
+					name="answer-{lesson.stepKey}"
+					label={view.stage === 'followUp' ? (view.followUpPrompt ?? 'Follow-up') : (view.heading ?? 'Answers')}
+					options={view.options}
+					selectedId={lesson.selectedId}
+					checked={Boolean(view.verdict)}
+					{atOnce}
+					onselect={(id) => lesson.select(id, atOnce)}
+				/>
+			{/if}
 		</main>
 
 		<p class="visually-hidden" role="status">{announcement}</p>
 
 		{#if view.verdict}
 			<FeedbackPanel correct={view.verdict.correct} {explanation} oncontinue={() => lesson.advance()} />
-		{:else}
+		{:else if !atOnce}
 			<LessonFooter>
 				<Button disabled={!view.canCheck} onclick={() => lesson.check()}>Check</Button>
 			</LessonFooter>
