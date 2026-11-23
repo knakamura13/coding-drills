@@ -617,6 +617,8 @@ function dragBoardView(question: DragPointersQuestion, selected: string | null, 
 
 export interface MissedQuestion {
 	questionId: string;
+	/** The question's heading, or its deck's default. Null when neither has one. */
+	heading: string | null;
 	prompt: string;
 	pickedText: string;
 	correctText: string;
@@ -629,6 +631,8 @@ export interface MissedQuestion {
 
 export interface Summary {
 	total: number;
+	/** Whether each question was right the first time, in the order they were answered. */
+	results: boolean[];
 	correctFirstTry: number;
 	followUpsAttempted: number;
 	followUpsCorrect: number;
@@ -636,9 +640,7 @@ export interface Summary {
 }
 
 export function summarize(state: LessonState): Summary {
-	const byQuestion = new Map(
-		state.plan.map((planned) => [`${planned.deckId}/${planned.question.id}`, planned.question])
-	);
+	const byQuestion = new Map(state.plan.map((planned) => [`${planned.deckId}/${planned.question.id}`, planned]));
 	const missed: MissedQuestion[] = [];
 	let correctFirstTry = 0;
 	let followUpsAttempted = 0;
@@ -648,12 +650,15 @@ export function summarize(state: LessonState): Summary {
 			correctFirstTry += 1;
 			continue;
 		}
-		const question = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
+		const planned = byQuestion.get(`${done.deckId}/${done.questionId}`)!;
+		const { question } = planned;
+		const heading = question.heading ?? planned.heading ?? null;
 		if (isStepTraceQuestion(question)) {
 			const run = parsePicks(question, done.pickedId);
 			const step = Math.max(0, run ? run.right.indexOf(false) : 0);
 			missed.push({
 				questionId: question.id,
+				heading,
 				prompt: question.prompt,
 				pickedText: `Step ${step + 1}: ${stepPickLabel(question, step, run?.picks[step] ?? '')}`,
 				correctText: `Step ${step + 1}: ${stepPickLabel(question, step, stepCorrectPick(question.steps[step]!))}`,
@@ -665,6 +670,7 @@ export function summarize(state: LessonState): Summary {
 			const placement = parsePlacement(question, done.pickedId) ?? startPlacement(question);
 			missed.push({
 				questionId: question.id,
+				heading,
 				prompt: question.prompt,
 				pickedText: placementLabel(question, placement),
 				correctText: placementLabel(question, correctPlacement(question)),
@@ -675,6 +681,7 @@ export function summarize(state: LessonState): Summary {
 		if (isTapCellQuestion(question)) {
 			missed.push({
 				questionId: question.id,
+				heading,
 				prompt: question.prompt,
 				pickedText: cellLabel(question, Number(done.pickedId)),
 				correctText: cellLabel(question, question.correct),
@@ -686,6 +693,7 @@ export function summarize(state: LessonState): Summary {
 		if (done.followUp) followUpsAttempted += 1;
 		missed.push({
 			questionId: question.id,
+			heading,
 			prompt: question.prompt,
 			pickedText: question.options.find((option) => option.id === done.pickedId)!.text,
 			correctText: question.options.find((option) => option.id === question.correct)!.text,
@@ -694,6 +702,7 @@ export function summarize(state: LessonState): Summary {
 	}
 	return {
 		total: state.completed.length,
+		results: state.completed.map((done) => done.correct),
 		correctFirstTry,
 		followUpsAttempted,
 		followUpsCorrect,

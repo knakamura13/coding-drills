@@ -1,95 +1,32 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { loadDecks } from '../src/lib/content/loadDecks.ts';
-import {
-	isChoiceQuestion,
-	isTapCellQuestion,
-	type ChoiceQuestion,
-	type Question,
-	type TapCellQuestion
-} from '../src/lib/content/schema.ts';
+import { isChoiceQuestion, type TapCellQuestion } from '../src/lib/content/schema.ts';
 import { cellLabel } from '../src/lib/domain/tap.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
 import { PREFERENCES_KEY } from '../src/lib/preferences/preferences.ts';
+import {
+	URL,
+	answerRight,
+	answerWrong,
+	cell,
+	cellQuestions,
+	cellsDeck,
+	deck,
+	decks,
+	firstChoice,
+	labelledCells,
+	onScreen,
+	optionLabel,
+	panel,
+	pick,
+	questions,
+	primary,
+	runs,
+	shown,
+	violations
+} from './learn-helpers.ts';
 
 // The new lesson screen on /learn/<deck>: multiple-choice and tap-the-cell questions on the
 // FigCraft design. Drag-pointers and step-trace questions are left out until they land.
-
-const decks = loadDecks('content/decks');
-const runs = (question: Question) => isChoiceQuestion(question) || isTapCellQuestion(question);
-const deck = decks.find((candidate) => candidate.id === 'boundary-search')!;
-const questions = deck.questions.filter(isChoiceQuestion);
-const shown = deck.questions.filter(runs);
-const URL = `/learn/${deck.id}`;
-const cellsDeck = decks.find((candidate) => candidate.id === 'tap-the-cell')!;
-const cellQuestions = cellsDeck.questions.filter(isTapCellQuestion);
-
-const tiles = (page: Page) => page.getByRole('group', { name: /./ }).locator('label, button');
-const cell = (page: Page, index: number) => page.getByRole('radio', { name: new RegExp(`^Index ${index},`) });
-const labelledCells = (page: Page) => page.locator('[aria-label^="Index "]');
-// Check in the footer, or Continue in the feedback panel that replaces it.
-const primary = (page: Page) => page.getByRole('button', { name: /^(Check|Continue)$/ });
-const panel = (page: Page) => page.getByRole('region', { name: /^(Correct|Not quite)$/ });
-
-// The new UI keeps its fades under reduced motion, so axe waits for them: mid-fade, text shows
-// through a half-transparent sheet or panel and fails contrast it passes once settled.
-async function violations(page: Page) {
-	await page.evaluate(() => Promise.all(document.getAnimations().map((animation) => animation.finished)));
-	return (await new AxeBuilder({ page }).analyze()).violations;
-}
-
-/** Which deck question is on screen, from its answer labels. */
-async function current(page: Page, pool: ChoiceQuestion[] = questions): Promise<ChoiceQuestion> {
-	await tiles(page).first().waitFor();
-	const answers = (await tiles(page).allInnerTexts()).map((label) => label.trim()).sort();
-	const match = pool.find(
-		(question) =>
-			JSON.stringify(question.options.map((option) => plainText(option.text, 1000)).sort()) === JSON.stringify(answers)
-	);
-	if (!match) throw new Error(`no question has these answers: ${answers.join(' | ')}`);
-	return match;
-}
-
-/** The values a tap question's cells show, as their accessible names spell them. */
-const cellValues = (question: TapCellQuestion) => [
-	...question.sequence.cells.map((value) => (value === '' ? 'empty' : value)),
-	...(question.sequence.pastEnd ? ['past the end'] : [])
-];
-
-/** Which question is on screen, of either format: cells by their values, tiles by their answers. */
-async function onScreen(page: Page, pool: Question[] = shown): Promise<Question> {
-	await page.locator('fieldset').first().waitFor();
-	const names = await labelledCells(page).evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')!));
-	if (names.length === 0) return current(page, pool.filter(isChoiceQuestion));
-	const values = names.map((name) => name.match(/^Index \d+, (.*?)(, marked .*)?$/)![1]);
-	const match = pool.filter(isTapCellQuestion).find((question) => JSON.stringify(cellValues(question)) === JSON.stringify(values));
-	if (!match) throw new Error(`no question has these cells: ${values.join(' | ')}`);
-	return match;
-}
-
-/** A multiple-choice question first: the lesson order is random, so reload until one leads. */
-async function firstChoice(page: Page): Promise<ChoiceQuestion> {
-	for (let attempt = 0; attempt < 30; attempt++) {
-		await page.locator('fieldset').first().waitFor();
-		if ((await labelledCells(page).count()) === 0) return current(page);
-		await page.goto(URL);
-	}
-	throw new Error('a multiple-choice question never came first');
-}
-
-/** Answers right with Check, then Continues. A right answer never opens a follow-up. */
-async function answerRight(page: Page, question: Question) {
-	if (isTapCellQuestion(question)) await cell(page, question.correct).check();
-	else if (isChoiceQuestion(question)) await pick(page, optionLabel(question, question.correct));
-	await primary(page).click();
-	await primary(page).click();
-}
-
-const optionLabel = (question: ChoiceQuestion, id: string) => plainText(question.options.find((o) => o.id === id)!.text, 1000);
-
-async function pick(page: Page, label: string) {
-	await page.getByRole('radio', { name: label, exact: true }).check();
-}
 
 test.beforeEach(async ({ page }) => {
 	await page.goto(URL);
@@ -179,11 +116,182 @@ test('quitting before any answer leaves at once; after one it asks first', async
 	await expect(page).toHaveURL(/\/$/);
 });
 
-test('every question answered right reaches the end, with Done and Retry', async ({ page }) => {
-	for (let index = 0; index < shown.length; index++) await answerRight(page, await onScreen(page));
-	await expect(page.getByRole('heading', { name: `${shown.length} of ${shown.length} right the first time` })).toBeVisible();
-	await page.getByRole('button', { name: 'Retry' }).click();
-	await expect(page.getByRole('progressbar', { name: 'Lesson progress' })).toHaveAttribute('aria-valuenow', '0');
+test.describe('the summary', () => {
+	const misses = (page: Page) => page.getByRole('list', { name: 'Missed questions' });
+	const grab = (page: Page) => page.getByRole('button', { name: 'Missed questions' });
+
+	test('all right: the score is the heading, the path leads to this lesson, and there are no misses', async ({ page }) => {
+		for (let index = 0; index < shown.length; index++) await answerRight(page, await onScreen(page));
+		const heading = page.getByRole('heading', { name: `${shown.length} of ${shown.length} right the first time` });
+		await expect(heading).toBeFocused();
+		await expect(page.getByRole('banner').getByText('Lesson complete')).toBeVisible();
+		await expect(page.getByRole('progressbar')).toHaveCount(0);
+		await expect(page.getByRole('img', { name: /^Sequences and search, then Exact search, (mastered|not mastered yet), then Boundary search$/ })).toBeVisible();
+		await expect(misses(page)).toHaveCount(0);
+		expect(await violations(page)).toEqual([]);
+		await page.getByRole('button', { name: 'Retry' }).click();
+		await expect(page.getByRole('progressbar', { name: 'Lesson progress' })).toHaveAttribute('aria-valuenow', '0');
+	});
+
+	test('a miss lists the pick, the answer and how its follow-up went', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		const first = await firstChoice(page);
+		await answerWrong(page, first, false);
+		for (let index = 1; index < shown.length; index++) await answerRight(page, await onScreen(page));
+		await expect(page.getByRole('heading', { name: `${shown.length - 1} of ${shown.length} right the first time` })).toBeFocused();
+		const row = misses(page).getByRole('listitem');
+		await expect(row).toHaveCount(1);
+		const wrong = first.options.find((option) => option.id !== first.correct)!;
+		await expect(row).toContainText(first.heading ?? deck.heading!);
+		await expect(row).toContainText(`You picked: ${plainText(wrong.text, 1000)}`);
+		await expect(row).toContainText(`The answer: ${optionLabel(first, first.correct)}`);
+		await expect(row).toContainText('Follow-up question, missed');
+		await expect(grab(page)).toHaveCount(0);
+		expect(await violations(page)).toEqual([]);
+		await page.getByRole('button', { name: 'Done' }).click();
+		await expect(page).toHaveURL(/\/$/);
+	});
+
+	test('desktop splits the tree and the misses: every miss in the card, no drawer, buttons side by side', async ({ page, isMobile }) => {
+		test.skip(isMobile, 'desktop layout only');
+		await page.setViewportSize({ width: 1440, height: 900 });
+		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+		await expect(page.getByRole('heading', { name: `0 of ${shown.length} right the first time` })).toBeFocused();
+		await expect(grab(page)).toHaveCount(0);
+		await expect(misses(page).getByRole('listitem')).toHaveCount(shown.length);
+		const tree = (await page.getByRole('img', { name: /then Boundary search$/ }).boundingBox())!;
+		const card = (await page.getByRole('region', { name: 'Missed questions' }).boundingBox())!;
+		expect(tree.x).toBe(0);
+		expect(card.x).toBeGreaterThan(tree.x + 600);
+		const done = (await page.getByRole('button', { name: 'Done' }).boundingBox())!;
+		const retry = (await page.getByRole('button', { name: 'Retry' }).boundingBox())!;
+		expect(Math.round(done.y)).toBe(Math.round(retry.y));
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+		expect(await violations(page)).toEqual([]);
+	});
+
+	test('the tree holds on a real render: edges meet node centers, labels clear nodes, edges, each other and the screen edge, and no box cuts the glow', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+		const check = () =>
+			page.evaluate(() => {
+				const problems: string[] = [];
+				const svg = document.querySelector<SVGSVGElement>('[role="img"] svg')!;
+				const matrix = svg.getScreenCTM()!;
+				const toScreen = (x: number, y: number) => new DOMPoint(x, y).matrixTransform(matrix);
+				const nodes = [...svg.querySelectorAll<SVGCircleElement>('circle.hollow, circle.filled, circle.ring-base')].map((circle) => {
+					const box = circle.getBoundingClientRect();
+					return { x: box.x + box.width / 2, y: box.y + box.height / 2, r: box.width / 2 };
+				});
+				const paths = [...svg.querySelectorAll<SVGPathElement>('path.edge, path.trunk')];
+				for (const path of paths) {
+					const length = path.getTotalLength();
+					const end = path.getPointAtLength(length);
+					const endOnScreen = toScreen(end.x, end.y);
+					if (!nodes.some((node) => Math.hypot(node.x - endOnScreen.x, node.y - endOnScreen.y) < 1)) problems.push('an edge ends away from every node center');
+				}
+				const points = paths.flatMap((path) => {
+					const length = path.getTotalLength();
+					return Array.from({ length: Math.ceil(length / 2) + 1 }, (_, i) => {
+						const at = path.getPointAtLength(Math.min(length, i * 2));
+						return toScreen(at.x, at.y);
+					});
+				});
+				const labels = [...document.querySelectorAll<HTMLElement>('[role="img"] .label:not(.measure)')].map((label) => ({
+					text: label.textContent,
+					box: label.getBoundingClientRect()
+				}));
+				const near = (box: DOMRect, x: number, y: number, r: number) =>
+					Math.hypot(x - Math.max(box.left, Math.min(x, box.right)), y - Math.max(box.top, Math.min(y, box.bottom))) < r;
+				for (const { text, box } of labels) {
+					if (box.left < 8 || box.right > window.innerWidth - 8) problems.push(`${text} is within 8px of the screen edge`);
+					if (nodes.some((node) => near(box, node.x, node.y, node.r + 6))) problems.push(`${text} touches a node`);
+					if (points.some((point) => near(box, point.x, point.y, 4))) problems.push(`${text} touches an edge`);
+					for (const other of labels) {
+						if (other.box === box) continue;
+						if (box.left < other.box.right && other.box.left < box.right && box.top < other.box.bottom && other.box.top < box.bottom) problems.push(`${text} overlaps ${other.text}`);
+					}
+				}
+				// Decoration may run off the screen, but no box inside the page may cut it: every clipping
+				// ancestor smaller than the screen must hold the whole glow.
+				const glow = svg.querySelector<SVGCircleElement>('circle[fill^="url"]')!.getBoundingClientRect();
+				for (let element = svg.parentElement; element && element !== document.documentElement; element = element.parentElement) {
+					const style = getComputedStyle(element);
+					// A box with display: contents draws no box, so it clips nothing.
+					if (style.display === 'contents' || (style.overflowX === 'visible' && style.overflowY === 'visible')) continue;
+					const box = element.getBoundingClientRect();
+					const screenSized = box.left <= 0 && box.top <= 0 && box.right >= window.innerWidth && box.bottom >= window.innerHeight;
+					if (screenSized) continue;
+					const cut =
+						(box.top > Math.max(0, glow.top) + 0.5 && 'top') ||
+						(box.left > Math.max(0, glow.left) + 0.5 && 'left') ||
+						(box.right < Math.min(window.innerWidth, glow.right) - 0.5 && 'right');
+					if (cut) problems.push(`the glow is cut at the ${cut} by ${element.tagName.toLowerCase()}.${element.className}`);
+				}
+				return { problems, labels: labels.length };
+			});
+		for (const size of [
+			{ width: 390, height: 844 },
+			{ width: 320, height: 700 }
+		]) {
+			await page.setViewportSize(size);
+			await page.waitForTimeout(200);
+			expect(await check()).toEqual({ problems: [], labels: 3 });
+		}
+		await page.setViewportSize({ width: 390, height: 844 });
+		await grab(page).click();
+		await page.waitForTimeout(200);
+		expect(await check()).toEqual({ problems: [], labels: 3 });
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.waitForTimeout(200);
+		expect(await check()).toEqual({ problems: [], labels: 3 });
+	});
+
+	test('misses that would scroll become a drawer: tap, Enter and a drag open it, Escape closes it', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+		await expect(page.getByRole('heading', { name: `0 of ${shown.length} right the first time` })).toBeFocused();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		const tree = page.getByRole('img', { name: /then Boundary search$/ });
+		const curved = (await tree.boundingBox())!.height;
+
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
+		// Open, the tree lies flat, so it takes far less height (its labels keep room for four lines).
+		await expect.poll(async () => (await tree.boundingBox())!.height).toBeLessThan(curved * 0.6);
+		expect(await violations(page)).toEqual([]);
+		await page.keyboard.press('Escape');
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		await expect(grab(page)).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+
+		const box = (await grab(page).boundingBox())!;
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(box.x + box.width / 2, box.y - 250, { steps: 8 });
+		await page.mouse.up();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
+		await expect(misses(page).getByRole('listitem')).toHaveCount(shown.length);
+
+		// A drag the system cancels snaps back, and the next tap still works.
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		await grab(page).evaluate((button) => {
+			const at = button.getBoundingClientRect();
+			const event = (type: string, y: number) => new PointerEvent(type, { pointerId: 9, clientX: at.x + 10, clientY: y, bubbles: true });
+			button.dispatchEvent(event('pointerdown', at.y + 10));
+			window.dispatchEvent(event('pointermove', at.y - 120));
+			window.dispatchEvent(event('pointercancel', at.y - 120));
+		});
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
+	});
 });
 
 test('desktop keeps the lesson in a 640px column', async ({ page, isMobile }) => {
