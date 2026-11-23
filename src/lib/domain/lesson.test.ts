@@ -755,6 +755,8 @@ describe('step-trace lessons', () => {
 		]);
 		expect(wrong.board?.note).toBe('l never jumps to r.');
 		expect(wrong.verdict).toMatchObject({ correct: false, correctText: 'index 1, `4`' });
+		// The checked step already shows where it leaves the pointers.
+		expect(wrong.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], [], ['r']]);
 
 		state = advance(state);
 		expect(state.completed).toEqual([]);
@@ -783,6 +785,17 @@ describe('step-trace lessons', () => {
 				followUpCorrect: null
 			}
 		]);
+	});
+
+	it('shows the last step\'s pointer moves once it is checked', () => {
+		const deck = traceLesson();
+		const question = deck.questions[0] as StepTraceQuestion;
+		const last = question.steps[1]!;
+		question.steps[1] = { ...last, also: [{ name: 'r', at: 2 }] };
+		const second = advance(select(start(deck), '1', true));
+		expect(view(second)!.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], [], ['r']]);
+		const checked = view(select(second, 'twelve', true))!;
+		expect(checked.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], ['r'], []]);
 	});
 
 	it('explains a wrong value in the verdict, and ignores a pick the step does not offer', () => {

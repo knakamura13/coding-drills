@@ -527,7 +527,9 @@ function traceView(
 	const onCells = isCellStep(step);
 	const picked = state.selected;
 	const result = state.checked && picked !== null ? checkStep(question, index, picked) : null;
-	const positions = positionsBefore(question, index);
+	// Once a step is checked, the board shows where its moves leave the pointers. Otherwise the
+	// last step's moves would never be shown, because no later step opens to show them.
+	const positions = positionsBefore(question, result ? index + 1 : index);
 	const model = sequenceModel({
 		presentation: question.sequence.kind,
 		name: question.sequence.name,
