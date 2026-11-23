@@ -365,12 +365,14 @@ describe('finishing', () => {
 	it('summarizes first-try results and follow-ups', () => {
 		expect(summarize(finishedState())).toEqual({
 			total: 2,
+			results: [false, false],
 			correctFirstTry: 0,
 			followUpsAttempted: 2,
 			followUpsCorrect: 1,
 			missed: [
 				{
 					questionId: 'q1',
+					heading: 'Deck heading',
 					prompt: 'First problem.',
 					pickedText: 'Wrong A',
 					correctText: 'Right',
@@ -378,6 +380,7 @@ describe('finishing', () => {
 				},
 				{
 					questionId: 'q2',
+					heading: 'Question heading',
 					prompt: 'Second problem.',
 					pickedText: 'No',
 					correctText: 'Yes',
@@ -393,6 +396,7 @@ describe('finishing', () => {
 		state = advance(answer(state, 'yes'));
 		expect(summarize(state)).toEqual({
 			total: 2,
+			results: [true, true],
 			correctFirstTry: 2,
 			followUpsAttempted: 0,
 			followUpsCorrect: 0,
@@ -681,6 +685,7 @@ describe('drag-pointers lessons', () => {
 		expect(summarize(done).missed).toEqual([
 			{
 				questionId: 'move-ends',
+				heading: 'Place the pointers',
 				prompt: 'Where do `l` and `r` sit after one step?',
 				pickedText: '`l` at 2, `r` at 3',
 				correctText: '`l` at 1, `r` at 3',
@@ -771,6 +776,7 @@ describe('step-trace lessons', () => {
 		expect(summarize(oneWrong).missed).toEqual([
 			{
 				questionId: 'trace-sum',
+				heading: 'Trace it',
 				prompt: 'Trace the scan.',
 				pickedText: 'Step 2: 10',
 				correctText: 'Step 2: 12',

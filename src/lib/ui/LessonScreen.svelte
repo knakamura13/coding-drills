@@ -10,6 +10,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { tick, untrack } from 'svelte';
+	import type { LessonTrail } from '$lib/domain/trail';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
 	import { preferences } from '$lib/preferences/store.svelte';
@@ -19,13 +20,25 @@
 	import CodeBlock from './CodeBlock.svelte';
 	import FeedbackPanel from './FeedbackPanel.svelte';
 	import LessonFooter from './LessonFooter.svelte';
+	import LessonSummary from './LessonSummary.svelte';
 	import LessonTopBar from './LessonTopBar.svelte';
 	import Prose from './Prose.svelte';
 	import RecapCard from './RecapCard.svelte';
 	import Sheet from './Sheet.svelte';
 	import { applyBranch, type BranchId } from './branch';
 
-	let { title, branch, source }: { title: string; branch: BranchId | null; source: LessonSource } = $props();
+	let {
+		title,
+		branch,
+		source,
+		trail
+	}: {
+		title: string;
+		branch: BranchId | null;
+		source: LessonSource;
+		/** The summary's tree piece, read from saved attempts when the lesson ends. */
+		trail: () => LessonTrail;
+	} = $props();
 
 	// The route re-creates this component per lesson, so the initial value is the one that matters.
 	const lesson = createLessonController(untrack(() => source));
@@ -139,17 +152,8 @@
 			</LessonFooter>
 		{/if}
 	{:else if lesson.summary}
-		<!-- Temporary end state until the summary screen lands (lesson build, summary PR). -->
-		<div class="top">
-			<div class="column"><LessonTopBar title="Lesson complete" quitLabel="Close" onquit={leave} /></div>
-		</div>
-		<main class="column content">
-			<h1 class="heading" tabindex="-1">{lesson.summary.correctFirstTry} of {lesson.summary.total} right the first time</h1>
-		</main>
-		<LessonFooter>
-			<Button onclick={leave}>Done</Button>
-			<Button variant="secondary" onclick={() => lesson.restart()}>Retry</Button>
-		</LessonFooter>
+		<!-- Read when the summary appears, so the lesson just saved counts toward the path's mastery. -->
+		<LessonSummary summary={lesson.summary} trail={trail()} ondone={leave} onretry={() => lesson.restart()} />
 	{/if}
 </div>
 
