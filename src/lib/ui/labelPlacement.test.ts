@@ -35,6 +35,19 @@ describe('placeLabels', () => {
 		expect(b?.side).toBe('below');
 	});
 
+	it('wraps a label before it drops a neighbor to the staggered row', () => {
+		// Two nodes 100px apart: both wide one-liners cannot sit side by side, but a wrapped first one can.
+		const row = (x: number, single: number, wrapped: number): LabelRequest => ({
+			node: { x, y: 30, r: 10 },
+			forms: [form(single, 16), form(wrapped, 32, 96)],
+			sides: ['below', 'lower'],
+			sideFirst: true
+		});
+		const [first, second] = placeLabels([row(60, 130, 70), row(160, 60, 60)], [], { w: 300, h: 160 });
+		expect(first).toMatchObject({ side: 'below', wrap: 96 });
+		expect(second).toMatchObject({ side: 'below', wrap: null });
+	});
+
 	it('keeps every label 8px inside the box', () => {
 		const [place] = placeLabels([label(10, 100, [form(80, 20)], ['below'])], [], box);
 		expect(place?.x).toBe(8);

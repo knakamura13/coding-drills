@@ -10,7 +10,7 @@
 <script lang="ts">
 	import type { LessonTrail } from '$lib/domain/trail';
 	import { placeLabels, type Side } from './labelPlacement';
-	import { LABEL_FORMS, TREE_HEIGHT, TREE_WIDTH, curvePath, labelScene, ringArcs, trailLayout, treeBoxHeight } from './trailGeometry';
+	import { LABEL_FORMS, TREE_HEIGHT, TREE_WIDTH, curvePath, fitLeaf, labelScene, ringArcs, trailLayout, treeBoxHeight } from './trailGeometry';
 
 	let {
 		trail,
@@ -31,8 +31,8 @@
 		t?: number;
 	} = $props();
 
-	const layout = $derived(trailLayout(trail.earlier.length, t));
 	const right = $derived(results.filter(Boolean).length);
+	const layout = $derived(fitLeaf(trailLayout(trail.earlier.length, t), scale * nodeScale, `${right} of ${results.length}`));
 	const arcs = $derived(ringArcs(layout.leaf.r - layout.leaf.ring / 2, results.length));
 	const flat = $derived(t > 0.5);
 	// The score is the summary's heading, so the drawing names only the path.
@@ -249,6 +249,27 @@
 	.label.current.small {
 		font-size: calc(var(--trail-current-size, 16px) - 1px);
 		line-height: calc(var(--trail-current-line, 24px) - 2px);
+	}
+
+	/* Flat, under the open drawer, the labels are a size smaller so they fit under their nodes. */
+	.flat .label {
+		font-size: 12px;
+		line-height: 16px;
+	}
+
+	.flat .label.current {
+		font-size: 13px;
+		line-height: 18px;
+	}
+
+	.flat .label.small {
+		font-size: 11px;
+		line-height: 14px;
+	}
+
+	.flat .label.current.small {
+		font-size: 12px;
+		line-height: 16px;
 	}
 
 	.label.measure {

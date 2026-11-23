@@ -9,11 +9,11 @@ export const TREE_WIDTH = 390;
 export const TREE_HEIGHT = 368;
 /**
  * The tree box's height in px. Flat, the labels hang below the nodes in text that does not scale
- * with the drawing, so the box is the drawing's part plus room for four lines of labels (three
- * lines, or a staggered row of two).
+ * with the drawing, so the box is the drawing's part (with room for the largest fitted leaf) plus
+ * four 18px lines of labels (three lines, or a staggered row of two).
  */
 export function treeBoxHeight(flat: boolean, scale: number): number {
-	return flat ? (FLAT_Y + LEAF_R.flat) * scale + 8 + 4 * 24 + 8 : TREE_HEIGHT * scale;
+	return flat ? (FLAT_Y + FLAT_LEAF_MAX) * scale + 8 + 4 * 18 + 8 : TREE_HEIGHT * scale;
 }
 
 import type { Circle, LabelForm, LabelRequest, Side, Size } from './labelPlacement';
@@ -60,7 +60,7 @@ const CURVE: Record<0 | 1 | 2, Shape> = {
 	0: { nodes: [], leaf: [285, 78], controls: [], trunk: [[0, 0], [0, 0]] }
 };
 
-const FLAT_Y = 44;
+const FLAT_Y = 52;
 const FLAT: Record<0 | 1 | 2, { nodes: readonly Point[]; leaf: Point }> = {
 	2: {
 		nodes: [
@@ -74,7 +74,9 @@ const FLAT: Record<0 | 1 | 2, { nodes: readonly Point[]; leaf: Point }> = {
 };
 
 /** Node sizes: earlier nodes and the leaf are drawn 1.3x on the curve, smaller when flat. */
-const LEAF_R = { curve: 44, flat: 28 };
+const LEAF_R = { curve: 44, flat: 32 };
+/** The flat leaf's radius once fitted to a "10 of 10" score at the smallest scale. */
+const FLAT_LEAF_MAX = 48;
 const NODE_SCALE = { curve: 1.3, flat: [0.85, 0.8] };
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -144,6 +146,26 @@ export function trailLayout(earlierCount: number, t: number): TrailLayout {
 	};
 }
 
+/** The score never shrinks below this; the ring grows to hold it instead. */
+export const SCORE_MIN_PX = 13;
+
+/**
+ * Sizes the leaf for its score: the score is at least 13px on screen, and the ring's inner circle
+ * holds it with 6px clear on each side, growing when it must. `unitPx` is screen px per drawing
+ * unit at the leaf (the screen scale times any node scale). Text width is estimated on the wide
+ * side for Geist SemiBold: digits 0.6em, spaces 0.28em, "o" 0.58em, "f" 0.36em.
+ */
+export function scoreWidthEm(text: string): number {
+	return [...text].reduce((sum, char) => sum + (char === ' ' ? 0.28 : char === 'o' ? 0.58 : char === 'f' ? 0.36 : 0.6), 0);
+}
+
+export function fitLeaf(layout: TrailLayout, unitPx: number, scoreText: string): TrailLayout {
+	const scorePx = Math.max(SCORE_MIN_PX, layout.leaf.score * unitPx);
+	const inner = (scoreWidthEm(scoreText) * scorePx) / 2 + 6;
+	const r = Math.max(layout.leaf.r, inner / unitPx + layout.leaf.ring);
+	return { ...layout, leaf: { ...layout.leaf, r, score: scorePx / unitPx } };
+}
+
 export function curvePath({ from, control, to }: Curve): string {
 	return `M${from[0]} ${from[1]} Q${control[0]} ${control[1]} ${to[0]} ${to[1]}`;
 }
@@ -210,7 +232,9 @@ export function labelScene(
 		requests: nodes.map((node, index) => ({
 			node,
 			forms: formOrder(flat).map((form) => ({ ...form, ...measure(index, form) })),
-			sides: sides(index === nodes.length - 1)
+			sides: sides(index === nodes.length - 1),
+			// Flat, a label wraps or shrinks under its node before it drops to the staggered row.
+			sideFirst: flat
 		})),
 		obstacles: [...nodes, ...samples],
 		box: { w: width, h: treeBoxHeight(flat, scale) }

@@ -3,7 +3,7 @@ import { loadCurriculum } from '../content/loadCurriculum.ts';
 import { loadDecks } from '../content/loadDecks.ts';
 import { lessonTrail } from '../domain/trail.ts';
 import { placeLabels } from './labelPlacement.ts';
-import { LABEL_FORMS, NODE_R, TREE_HEIGHT, TREE_WIDTH, labelScene, trailLayout, treeBoxHeight } from './trailGeometry.ts';
+import { LABEL_FORMS, NODE_R, TREE_HEIGHT, TREE_WIDTH, fitLeaf, labelScene, trailLayout, treeBoxHeight } from './trailGeometry.ts';
 
 // Every trail the curriculum can produce, placed at every screen size the summary supports. The
 // component measures real text; here widths are estimated on the wide side (0.62em per character,
@@ -36,7 +36,14 @@ interface View {
 }
 
 const phones: View[] = [320, 360, 375, 390, 414, 430, 768, 1023].flatMap((width) =>
-	[false, true].map((flat) => ({ name: `phone ${width}${flat ? ' flat' : ''}`, width, scale: Math.min(width / TREE_WIDTH, 1.25), nodeScale: 1, flat, fonts: [14, 20, 16, 24] as View['fonts'] }))
+	[false, true].map((flat) => ({
+		name: `phone ${width}${flat ? ' flat' : ''}`,
+		width,
+		scale: Math.min(width / TREE_WIDTH, 1.25),
+		nodeScale: 1,
+		flat,
+		fonts: (flat ? [12, 16, 13, 18] : [14, 20, 16, 24]) as View['fonts']
+	}))
 );
 const desktops: View[] = [
 	[560, 640],
@@ -61,7 +68,8 @@ describe('summary tree labels across the curriculum', () => {
 			const misses: string[] = [];
 			for (const trail of trails) {
 				const texts = [...trail.earlier.map((node) => node.title), trail.title];
-				const layout = trailLayout(trail.earlier.length, view.flat ? 1 : 0);
+				// The widest score a lesson shows, so its ring is the largest the leaf gets.
+				const layout = fitLeaf(trailLayout(trail.earlier.length, view.flat ? 1 : 0), view.scale * view.nodeScale, '10 of 10');
 				const scene = labelScene(layout, view, (index, form) => {
 					const current = index === texts.length - 1;
 					const [size, line] = current ? [view.fonts[2], view.fonts[3]] : [view.fonts[0], view.fonts[1]];
@@ -79,7 +87,7 @@ describe('summary tree labels across the curriculum', () => {
 	it('keeps every node fully on screen, at every size and both layouts', () => {
 		for (const view of [...phones, ...desktops]) {
 			for (const count of [0, 1, 2]) {
-				const layout = trailLayout(count, view.flat ? 1 : 0);
+				const layout = fitLeaf(trailLayout(count, view.flat ? 1 : 0), view.scale * view.nodeScale, '10 of 10');
 				const height = treeBoxHeight(view.flat, view.scale);
 				const circles = [
 					...layout.earlier.map((node) => ({ x: node.x, y: node.y, r: NODE_R * node.scale * view.nodeScale })),

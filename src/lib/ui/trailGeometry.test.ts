@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TREE_HEIGHT, ringArcs, sampleCurve, trailLayout } from './trailGeometry';
+import { TREE_HEIGHT, fitLeaf, ringArcs, sampleCurve, scoreWidthEm, trailLayout } from './trailGeometry';
 
 describe('trailLayout', () => {
 	it('rises from the branch to the leaf, with the trunk starting past the left and bottom edges', () => {
@@ -53,5 +53,20 @@ describe('ringArcs', () => {
 		expect(ringArcs(31, 8)).toHaveLength(8);
 		expect(ringArcs(31, 0)).toEqual([]);
 		expect(ringArcs(31, 1)[0]).toContain(' 1 1 ');
+	});
+});
+
+describe('fitLeaf', () => {
+	it('keeps the score at least 13px and grows the ring to hold it with room inside', () => {
+		for (const scale of [0.82, 1, 1.32]) {
+			for (const t of [0, 1]) {
+				for (const text of ['5 of 5', '10 of 10']) {
+					const { leaf } = fitLeaf(trailLayout(2, t), scale, text);
+					expect(leaf.score * scale).toBeGreaterThanOrEqual(13);
+					const innerPx = (leaf.r - leaf.ring) * scale;
+					expect(innerPx * 2).toBeGreaterThanOrEqual(scoreWidthEm(text) * leaf.score * scale + 12 - 1e-6);
+				}
+			}
+		}
 	});
 });

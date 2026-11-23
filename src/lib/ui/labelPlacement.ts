@@ -34,6 +34,8 @@ export interface LabelRequest {
 	forms: readonly LabelForm[];
 	/** Sides to try, best first, for each form. */
 	sides: readonly Side[];
+	/** Try every form on the first side before the next side, rather than every side per form. */
+	sideFirst?: boolean;
 }
 
 export interface Placement extends LabelForm {
@@ -84,10 +86,8 @@ function candidate(node: Circle, size: Size, side: Side, gap: number, box: Size,
 
 /**
  * `obstacles` are everything a label must clear: every node and points along every edge, each with
- * its radius. The search is joint: it tries each label's spots in preference order and backtracks
- * when a later label would find none, so one label's best spot never crowds out another label. It
- * returns the first arrangement, in preference order, that places every label; failing that, the
- * one that places the most.
+ * its radius. The search is joint: it weighs whole arrangements, so one label's best spot never
+ * crowds out another label.
  */
 export function placeLabels(labels: readonly LabelRequest[], obstacles: readonly Circle[], box: Size, options: PlacementOptions = {}): (Placement | null)[] {
 	const gap = options.gap ?? 8;
@@ -99,43 +99,48 @@ export function placeLabels(labels: readonly LabelRequest[], obstacles: readonly
 	// Every spot each label could take on its own, best first.
 	const options_ = labels.map((label) => {
 		const spots: Placement[] = [];
-		for (const form of label.forms) {
+		const order = label.sideFirst
+			? label.sides.flatMap((side) => label.forms.map((form) => [form, side] as const))
+			: label.forms.flatMap((form) => label.sides.map((side) => [form, side] as const));
+		for (const [form, side] of order) {
 			if (form.w <= 0 || form.h <= 0) continue;
-			for (const side of label.sides) {
-				const rect = candidate(label.node, form, side, gap, box, inset);
-				// Its own node is cleared by the gap; every other obstacle needs the margin.
-				const clear =
-					inBox(rect) &&
-					!hitsCircle(rect, { ...label.node, r: label.node.r + gap - 0.5 }) &&
-					padded.every((obstacle) => (obstacle.x === label.node.x && obstacle.y === label.node.y ? true : !hitsCircle(rect, obstacle)));
-				if (clear) spots.push({ ...form, ...rect, side });
-			}
+			const rect = candidate(label.node, form, side, gap, box, inset);
+			// Its own node is cleared by the gap; every other obstacle needs the margin.
+			const clear =
+				inBox(rect) &&
+				!hitsCircle(rect, { ...label.node, r: label.node.r + gap - 0.5 }) &&
+				padded.every((obstacle) => (obstacle.x === label.node.x && obstacle.y === label.node.y ? true : !hitsCircle(rect, obstacle)));
+			if (clear) spots.push({ ...form, ...rect, side });
 		}
 		return spots;
 	});
 
+	// The best arrangement places the most labels; among those, the lowest cost, where a label's
+	// cost is how far down its own list of spots it had to go. So wrapping one label (a step or two
+	// down) beats dropping its neighbor to a staggered row (past all its spots under the node).
 	let best: (Placement | null)[] = labels.map(() => null);
 	let bestCount = -1;
+	let bestCost = Infinity;
 	const chosen: (Placement | null)[] = [];
-	const search = (index: number, count: number): boolean => {
-		if (count + (labels.length - index) <= bestCount) return false;
+	const search = (index: number, count: number, cost: number): void => {
+		const reachable = count + (labels.length - index);
+		if (reachable < bestCount || (reachable === bestCount && cost >= bestCost)) return;
 		if (index === labels.length) {
 			best = [...chosen];
 			bestCount = count;
-			return count === labels.length;
+			bestCost = cost;
+			return;
 		}
-		for (const spot of options_[index]!) {
-			if (chosen.some((other) => other && hitsRect(spot, other, margin))) continue;
+		options_[index]!.forEach((spot, rank) => {
+			if (chosen.some((other) => other && hitsRect(spot, other, margin))) return;
 			chosen.push(spot);
-			const done = search(index + 1, count + 1);
+			search(index + 1, count + 1, cost + rank);
 			chosen.pop();
-			if (done) return true;
-		}
+		});
 		chosen.push(null);
-		const done = search(index + 1, count);
+		search(index + 1, count, cost);
 		chosen.pop();
-		return done;
 	};
-	search(0, 0);
+	search(0, 0, 0);
 	return best;
 }

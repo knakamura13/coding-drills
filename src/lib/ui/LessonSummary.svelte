@@ -49,8 +49,11 @@
 		desktop ? Math.max(0.5, Math.min(cellWidth / TREE_WIDTH, cellHeight / TREE_HEIGHT, 2.2)) : Math.min(innerWidth / TREE_WIDTH, 1.25)
 	);
 	// The tree sits 8px below the body's top edge on a phone.
-	const closedTop = $derived(8 + treeBoxHeight(false, scale));
-	const openTop = $derived(8 + treeBoxHeight(true, scale));
+	// The body starts at the top of the screen, under the header, so the leaf's glow is never cut by
+	// a box edge; its content starts below the header, and the tree 8px below that.
+	let headerHeight = $state(0);
+	const closedTop = $derived(headerHeight + 8 + treeBoxHeight(false, scale));
+	const openTop = $derived(headerHeight + 8 + treeBoxHeight(true, scale));
 	// The card adds 28px above the list and 16px below it. A drawer needs room to show a row closed;
 	// a phone shorter than that scrolls the body instead.
 	const cardNeeds = $derived(listHeight + 44);
@@ -129,12 +132,12 @@
 <svelte:window onkeydown={drawerKey} bind:innerWidth />
 
 <div class="summary" class:desktop>
-	<div class="top">
+	<div class="top" bind:offsetHeight={headerHeight}>
 		<div class="column"><LessonTopBar title="Lesson complete" quitLabel="Close" onquit={ondone} /></div>
 	</div>
 
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-	<main class="column body" class:drawer bind:clientHeight={bodyHeight} tabindex={bodyScrolls ? 0 : undefined}>
+	<main class="body" class:drawer bind:clientHeight={bodyHeight} tabindex={bodyScrolls ? 0 : undefined} style:padding-top="{desktop ? 0 : headerHeight}px">
 		<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>{summary.correctFirstTry} of {summary.total} right the first time</h1>
 		<div class="tree-wrap" bind:clientWidth={cellWidth} bind:clientHeight={cellHeight}>
 			<!-- On desktop the path spreads over the left half while the nodes stay near their 1.5x design size. -->
@@ -186,6 +189,7 @@
 <style>
 	/* The screen fits the viewport, so the misses either fit under the tree or move into the drawer. */
 	.summary {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		height: 100dvh;
@@ -202,10 +206,21 @@
 		padding: 0 var(--space-screen-edge);
 	}
 
+	/* The header lies over the top of the body, transparent, so the tree's glow can rise behind it;
+	   only the screen edge ever cuts the drawing. */
 	.top {
-		flex: none;
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 2;
 		padding-top: max(var(--space-4), env(safe-area-inset-top));
 		padding-bottom: var(--space-2);
+		pointer-events: none;
+	}
+
+	.top :global(button) {
+		pointer-events: auto;
 	}
 
 	.body {
@@ -228,13 +243,12 @@
 		outline-offset: -2px;
 	}
 
-	/* Full bleed: the tree reaches the screen's left edge, and the drawing runs past it. */
+	/* Full bleed: the body spans the screen, so the tree reaches the screen's edges and the drawing
+	   runs past them. Nothing between the tree and the screen clips it. */
 	.tree-wrap {
 		flex: none;
-		width: 100vw;
-		margin-left: calc(50% - 50vw);
+		width: 100%;
 		padding-top: var(--space-2);
-		overflow: hidden;
 	}
 
 	/* Every misses list sits on the drawer's raised card, reaching down to the footer and out to the
@@ -243,7 +257,9 @@
 		flex: 1 0 auto;
 		display: flex;
 		flex-direction: column;
-		margin: 0 calc(-1 * var(--space-screen-edge));
+		width: 100%;
+		max-width: 672px;
+		margin: 0 auto;
 		padding: 28px var(--space-screen-edge) var(--space-4);
 		background: var(--color-surface-card);
 		border: 1px solid var(--color-border-default);
@@ -253,9 +269,9 @@
 
 	.sheet {
 		position: absolute;
-		left: 0;
-		right: 0;
+		left: 50%;
 		bottom: 0;
+		transform: translateX(-50%);
 		margin: 0;
 		padding-top: 0;
 		padding-bottom: 0;
@@ -326,6 +342,7 @@
 	}
 
 	.desktop .top {
+		position: relative;
 		grid-column: 1 / -1;
 		padding: 40px 0 var(--space-6) 40px;
 	}
@@ -354,6 +371,7 @@
 		grid-column: 2;
 		grid-row: 2;
 		min-height: 0;
+		max-width: none;
 		margin: 0;
 		padding: var(--space-3) var(--space-6);
 		border-bottom: 1px solid var(--color-border-default);

@@ -170,7 +170,7 @@ test.describe('the summary', () => {
 		expect(await violations(page)).toEqual([]);
 	});
 
-	test('the tree holds on a real render: edges meet node centers, and labels clear nodes, edges, each other and the screen edge', async ({
+	test('the tree holds on a real render: edges meet node centers, labels clear nodes, edges, each other and the screen edge, and no box cuts the glow', async ({
 		page
 	}) => {
 		await page.setViewportSize({ width: 390, height: 844 });
@@ -213,6 +213,22 @@ test.describe('the summary', () => {
 						if (other.box === box) continue;
 						if (box.left < other.box.right && other.box.left < box.right && box.top < other.box.bottom && other.box.top < box.bottom) problems.push(`${text} overlaps ${other.text}`);
 					}
+				}
+				// Decoration may run off the screen, but no box inside the page may cut it: every clipping
+				// ancestor smaller than the screen must hold the whole glow.
+				const glow = svg.querySelector<SVGCircleElement>('circle[fill^="url"]')!.getBoundingClientRect();
+				for (let element = svg.parentElement; element && element !== document.documentElement; element = element.parentElement) {
+					const style = getComputedStyle(element);
+					// A box with display: contents draws no box, so it clips nothing.
+					if (style.display === 'contents' || (style.overflowX === 'visible' && style.overflowY === 'visible')) continue;
+					const box = element.getBoundingClientRect();
+					const screenSized = box.left <= 0 && box.top <= 0 && box.right >= window.innerWidth && box.bottom >= window.innerHeight;
+					if (screenSized) continue;
+					const cut =
+						(box.top > Math.max(0, glow.top) + 0.5 && 'top') ||
+						(box.left > Math.max(0, glow.left) + 0.5 && 'left') ||
+						(box.right < Math.min(window.innerWidth, glow.right) - 0.5 && 'right');
+					if (cut) problems.push(`the glow is cut at the ${cut} by ${element.tagName.toLowerCase()}.${element.className}`);
 				}
 				return { problems, labels: labels.length };
 			});
