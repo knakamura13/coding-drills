@@ -10,6 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { tick, untrack } from 'svelte';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
+	import { plainText } from '$lib/markdown/render';
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
 	import LessonFooter from './LessonFooter.svelte';
@@ -23,6 +24,16 @@
 	// The route re-creates this component per lesson, so the initial value is the one that matters.
 	const lesson = createLessonController(untrack(() => source));
 	const view = $derived(lesson.screen);
+
+	// Spoken once the answer is checked, since focus stays on the button. The feedback panel takes
+	// this over when it lands.
+	const announcement = $derived(
+		view?.verdict
+			? view.verdict.correct
+				? 'Correct.'
+				: `Not quite. The right answer: ${plainText(view.verdict.correctText, 300)}.`
+			: ''
+	);
 
 	$effect(() => applyBranch(branch));
 
@@ -72,6 +83,10 @@
 			{:else}
 				{#if view.heading}
 					<h1 class="heading" tabindex="-1" bind:this={heading}>{view.heading}</h1>
+				{:else}
+					<!-- Some decks have no heading: the prompt is the question. Screen readers still get a
+					     heading to land on, and the progress the screen shows only as segments. -->
+					<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>Question {view.position} of {view.total}</h1>
 				{/if}
 				<Prose source={view.prompt} />
 			{/if}
@@ -84,6 +99,8 @@
 				onselect={(id) => lesson.select(id)}
 			/>
 		</main>
+
+		<p class="visually-hidden" role="status">{announcement}</p>
 
 		<LessonFooter>
 			<Button disabled={!view.verdict && !view.canCheck} onclick={primary}>{view.verdict ? 'Continue' : 'Check'}</Button>

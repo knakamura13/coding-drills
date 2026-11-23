@@ -55,6 +55,7 @@ test('a right answer: the tile shows it, Continue moves on and focus goes to the
 	await primary(page).click();
 	await expect(primary(page)).toHaveText('Continue');
 	await expect(page.getByText(', the right answer')).toHaveCount(1);
+	await expect(page.getByRole('status')).toHaveText('Correct.');
 	await expect(page.getByRole('radio').first()).toBeDisabled();
 	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 	await primary(page).click();
@@ -69,6 +70,7 @@ test('a wrong answer: rose pick, right answer marked, then its follow-up', async
 	await primary(page).click();
 	await expect(page.getByText(', your answer, not right')).toHaveCount(1);
 	await expect(page.getByText(', the right answer')).toHaveCount(1);
+	await expect(page.getByRole('status')).toHaveText(`Not quite. The right answer: ${optionLabel(question, question.correct)}.`);
 	await primary(page).click();
 	await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
 	await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
@@ -146,4 +148,23 @@ test('a prompt with a code block meets contrast and does not wrap code lines', a
 		await primary(page).click();
 	}
 	throw new Error('the code block question never came up');
+});
+
+test('a deck without headings still gives each question a heading to land on', async ({ page }) => {
+	const headingless = loadDecks('content/decks').find(
+		(candidate) =>
+			!candidate.heading &&
+			candidate.questions.some(isChoiceQuestion) &&
+			candidate.questions.filter(isChoiceQuestion).every((question) => !question.heading)
+	);
+	test.skip(!headingless, 'every deck has a heading');
+	const own = headingless!.questions.filter(isChoiceQuestion);
+	await page.goto(`/learn/${headingless!.id}`);
+	const h1 = page.getByRole('heading', { level: 1 });
+	await expect(h1).toHaveText(`Question 1 of ${own.length}`);
+	await page.getByRole('radio').first().check();
+	await primary(page).click();
+	await primary(page).click();
+	await expect(h1).toBeFocused();
+	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
