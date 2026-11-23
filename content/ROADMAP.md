@@ -61,7 +61,7 @@ Topic 3 is partial because the deck covers grids. Graph traversal on adjacency l
 | 011 linked lists | Linked lists | `linked-lists` | done |
 | 011 trees | Trees | `trees-traversals-bst` | partial |
 | 012 recursion and backtracking | Recursion and backtracking | `recursion-backtracking` | done |
-| 013 bit manipulation | Bit manipulation | `bit-manipulation` | in review |
+| 013 bit manipulation | Bit manipulation | `bit-manipulation` | done |
 
 Bit manipulation was out of scope (the source curriculum gives it one cheat-sheet page). It came into the mastery tree as the Bit manipulation path on #64.
 
@@ -109,137 +109,137 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 
 | Source | Topic | Deck | Status |
 | --- | --- | --- | --- |
-| Foundations #10 | Arrays and strings: teaching levels | `arrays-and-strings` | in review |
-| Foundations #10 | Arrays and strings: review variants | `arrays-and-strings-review` | in review |
-| Foundations #10 | Arrays and strings: checkpoint | `arrays-and-strings-checkpoint` | in review |
-| Foundations #10 | Names and objects: teaching levels | `names-and-objects` | in review |
-| Foundations #10 | Names and objects: review variants | `names-and-objects-review` | in review |
-| Foundations #10 | Names and objects: checkpoint | `names-and-objects-checkpoint` | in review |
-| Foundations #10 | Problem-solving routine: teaching levels | `problem-solving-routine` | in review |
-| Foundations #10 | Problem-solving routine: review variants | `problem-solving-routine-review` | in review |
-| Foundations #10 | Problem-solving routine: checkpoint | `problem-solving-routine-checkpoint` | in review |
-| Foundations #10 | Growth rates: teaching levels | `growth-rates` | in review |
-| Foundations #10 | Growth rates: review variants | `growth-rates-review` | in review |
-| Foundations #10 | Growth rates: checkpoint | `growth-rates-checkpoint` | in review |
-| Foundations #10 | Operation costs: teaching levels | `operation-costs` | in review |
-| Foundations #10 | Operation costs: review variants | `operation-costs-review` | in review |
-| Foundations #10 | Operation costs: checkpoint | `operation-costs-checkpoint` | in review |
-| Foundations #10 | Hidden work: teaching levels | `hidden-work` | in review |
-| Foundations #10 | Hidden work: review variants | `hidden-work-review` | in review |
-| Foundations #10 | Hidden work: checkpoint | `hidden-work-checkpoint` | in review |
-| Foundations #10 | Bit manipulation: teaching levels | `bit-manipulation` | in review |
-| Foundations #10 | Bit manipulation: review variants | `bit-manipulation-review` | in review |
-| Foundations #10 | Bit manipulation: checkpoint | `bit-manipulation-checkpoint` | in review |
-| Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | in review |
-| Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | in review |
-| Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | in review |
+| Foundations #10 | Arrays and strings: teaching levels | `arrays-and-strings` | done |
+| Foundations #10 | Arrays and strings: review variants | `arrays-and-strings-review` | done |
+| Foundations #10 | Arrays and strings: checkpoint | `arrays-and-strings-checkpoint` | done |
+| Foundations #10 | Names and objects: teaching levels | `names-and-objects` | done |
+| Foundations #10 | Names and objects: review variants | `names-and-objects-review` | done |
+| Foundations #10 | Names and objects: checkpoint | `names-and-objects-checkpoint` | done |
+| Foundations #10 | Problem-solving routine: teaching levels | `problem-solving-routine` | done |
+| Foundations #10 | Problem-solving routine: review variants | `problem-solving-routine-review` | done |
+| Foundations #10 | Problem-solving routine: checkpoint | `problem-solving-routine-checkpoint` | done |
+| Foundations #10 | Growth rates: teaching levels | `growth-rates` | done |
+| Foundations #10 | Growth rates: review variants | `growth-rates-review` | done |
+| Foundations #10 | Growth rates: checkpoint | `growth-rates-checkpoint` | done |
+| Foundations #10 | Operation costs: teaching levels | `operation-costs` | done |
+| Foundations #10 | Operation costs: review variants | `operation-costs-review` | done |
+| Foundations #10 | Operation costs: checkpoint | `operation-costs-checkpoint` | done |
+| Foundations #10 | Hidden work: teaching levels | `hidden-work` | done |
+| Foundations #10 | Hidden work: review variants | `hidden-work-review` | done |
+| Foundations #10 | Hidden work: checkpoint | `hidden-work-checkpoint` | done |
+| Foundations #10 | Bit manipulation: teaching levels | `bit-manipulation` | done |
+| Foundations #10 | Bit manipulation: review variants | `bit-manipulation-review` | done |
+| Foundations #10 | Bit manipulation: checkpoint | `bit-manipulation-checkpoint` | done |
+| Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | done |
+| Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | done |
+| Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | done |
 | Sequences and search #11 | Pointer scans: dragging the pointers through one step | `drag-the-pointers` | in review |
-| Sequences and search #11 | Exact search: teaching levels | `exact-search` | in review |
-| Sequences and search #11 | Exact search: review variants | `exact-search-review` | in review |
-| Sequences and search #11 | Exact search: checkpoint | `exact-search-checkpoint` | in review |
+| Sequences and search #11 | Exact search: teaching levels | `exact-search` | done |
+| Sequences and search #11 | Exact search: review variants | `exact-search-review` | done |
+| Sequences and search #11 | Exact search: checkpoint | `exact-search-checkpoint` | done |
 | Sequences and search #11 | Pointer scans: predicting each step of a scan | `trace-the-scan` | in review |
-| Sequences and search #11 | Hash lookups: teaching levels | `hash-lookups` | in review |
-| Sequences and search #11 | Hash lookups: review variants | `hash-lookups-review` | in review |
-| Sequences and search #11 | Hash lookups: checkpoint | `hash-lookups-checkpoint` | in review |
-| Sequences and search #11 | Sort order: teaching levels | `sort-order` | in review |
-| Sequences and search #11 | Sort order: review variants | `sort-order-review` | in review |
-| Sequences and search #11 | Sort order: checkpoint | `sort-order-checkpoint` | in review |
-| Sequences and search #11 | Prefix counts: teaching levels | `prefix-counts` | in review |
-| Sequences and search #11 | Prefix counts: review variants | `prefix-counts-review` | in review |
-| Sequences and search #11 | Prefix counts: checkpoint | `prefix-counts-checkpoint` | in review |
-| Sequences and search #11 | Boundary search: teaching levels | `boundary-search` | in review |
-| Sequences and search #11 | Boundary search: review variants | `boundary-search-review` | in review |
-| Sequences and search #11 | Boundary search: checkpoint | `boundary-search-checkpoint` | in review |
-| Sequences and search #11 | Interval merging: teaching levels | `interval-merging` | in review |
-| Sequences and search #11 | Interval merging: review variants | `interval-merging-review` | in review |
-| Sequences and search #11 | Interval merging: checkpoint | `interval-merging-checkpoint` | in review |
-| Sequences and search #11 | Event sweeps: teaching levels | `event-sweeps` | in review |
-| Sequences and search #11 | Event sweeps: review variants | `event-sweeps-review` | in review |
-| Sequences and search #11 | Event sweeps: checkpoint | `event-sweeps-checkpoint` | in review |
-| Sequences and search #11 | Feasible limits: teaching levels | `feasible-limits` | in review |
-| Sequences and search #11 | Feasible limits: review variants | `feasible-limits-review` | in review |
-| Sequences and search #11 | Feasible limits: checkpoint | `feasible-limits-checkpoint` | in review |
-| Sequences and search #11 | Variable windows: teaching levels | `variable-windows` | in review |
-| Sequences and search #11 | Variable windows: review variants | `variable-windows-review` | in review |
-| Sequences and search #11 | Variable windows: checkpoint | `variable-windows-checkpoint` | in review |
-| Sequences and search #11 | Window limits: teaching levels | `window-limits` | in review |
-| Sequences and search #11 | Window limits: review variants | `window-limits-review` | in review |
-| Sequences and search #11 | Window limits: checkpoint | `window-limits-checkpoint` | in review |
-| Data structures #12 | Stack matching: teaching levels | `stack-matching` | in review |
-| Data structures #12 | Stack matching: review variants | `stack-matching-review` | in review |
-| Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | in review |
-| Data structures #12 | Link rewrites: teaching levels | `link-rewrites` | in review |
-| Data structures #12 | Link rewrites: review variants | `link-rewrites-review` | in review |
-| Data structures #12 | Link rewrites: checkpoint | `link-rewrites-checkpoint` | in review |
-| Problem-solving patterns #14 | Recursive calls: teaching levels | `recursive-calls` | in review |
-| Problem-solving patterns #14 | Recursive calls: review variants | `recursive-calls-review` | in review |
-| Problem-solving patterns #14 | Recursive calls: checkpoint | `recursive-calls-checkpoint` | in review |
-| Problem-solving patterns #14 | Search state: teaching levels | `search-state` | in review |
-| Problem-solving patterns #14 | Search state: review variants | `search-state-review` | in review |
-| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | in review |
-| Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | in review |
-| Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | in review |
-| Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | in review |
-| Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | in review |
-| Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | in review |
-| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | in review |
-| Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | in review |
-| Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | in review |
-| Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | in review |
-| Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | in review |
-| Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | in review |
-| Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | in review |
-| Problem-solving patterns #14 | Grid tables: teaching levels | `grid-tables` | in review |
-| Problem-solving patterns #14 | Grid tables: review variants | `grid-tables-review` | in review |
-| Problem-solving patterns #14 | Grid tables: checkpoint | `grid-tables-checkpoint` | in review |
-| Problem-solving patterns #14 | Greedy scheduling: teaching levels | `greedy-scheduling` | in review |
-| Problem-solving patterns #14 | Greedy scheduling: review variants | `greedy-scheduling-review` | in review |
-| Problem-solving patterns #14 | Greedy scheduling: checkpoint | `greedy-scheduling-checkpoint` | in review |
-| Problem-solving patterns #14 | One-dimensional tables: teaching levels | `one-dimensional-tables` | in review |
-| Problem-solving patterns #14 | One-dimensional tables: review variants | `one-dimensional-tables-review` | in review |
-| Problem-solving patterns #14 | One-dimensional tables: checkpoint | `one-dimensional-tables-checkpoint` | in review |
-| Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | in review |
-| Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | in review |
-| Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | in review |
-| Problem-solving patterns #14 | Enumerating choices: teaching levels | `enumerating-choices` | in review |
-| Problem-solving patterns #14 | Enumerating choices: review variants | `enumerating-choices-review` | in review |
-| Problem-solving patterns #14 | Enumerating choices: checkpoint | `enumerating-choices-checkpoint` | in review |
-| Data structures #12 | Priority order: teaching levels | `priority-order` | in review |
-| Data structures #12 | Priority order: review variants | `priority-order-review` | in review |
-| Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | in review |
+| Sequences and search #11 | Hash lookups: teaching levels | `hash-lookups` | done |
+| Sequences and search #11 | Hash lookups: review variants | `hash-lookups-review` | done |
+| Sequences and search #11 | Hash lookups: checkpoint | `hash-lookups-checkpoint` | done |
+| Sequences and search #11 | Sort order: teaching levels | `sort-order` | done |
+| Sequences and search #11 | Sort order: review variants | `sort-order-review` | done |
+| Sequences and search #11 | Sort order: checkpoint | `sort-order-checkpoint` | done |
+| Sequences and search #11 | Prefix counts: teaching levels | `prefix-counts` | done |
+| Sequences and search #11 | Prefix counts: review variants | `prefix-counts-review` | done |
+| Sequences and search #11 | Prefix counts: checkpoint | `prefix-counts-checkpoint` | done |
+| Sequences and search #11 | Boundary search: teaching levels | `boundary-search` | done |
+| Sequences and search #11 | Boundary search: review variants | `boundary-search-review` | done |
+| Sequences and search #11 | Boundary search: checkpoint | `boundary-search-checkpoint` | done |
+| Sequences and search #11 | Interval merging: teaching levels | `interval-merging` | done |
+| Sequences and search #11 | Interval merging: review variants | `interval-merging-review` | done |
+| Sequences and search #11 | Interval merging: checkpoint | `interval-merging-checkpoint` | done |
+| Sequences and search #11 | Event sweeps: teaching levels | `event-sweeps` | done |
+| Sequences and search #11 | Event sweeps: review variants | `event-sweeps-review` | done |
+| Sequences and search #11 | Event sweeps: checkpoint | `event-sweeps-checkpoint` | done |
+| Sequences and search #11 | Feasible limits: teaching levels | `feasible-limits` | done |
+| Sequences and search #11 | Feasible limits: review variants | `feasible-limits-review` | done |
+| Sequences and search #11 | Feasible limits: checkpoint | `feasible-limits-checkpoint` | done |
+| Sequences and search #11 | Variable windows: teaching levels | `variable-windows` | done |
+| Sequences and search #11 | Variable windows: review variants | `variable-windows-review` | done |
+| Sequences and search #11 | Variable windows: checkpoint | `variable-windows-checkpoint` | done |
+| Sequences and search #11 | Window limits: teaching levels | `window-limits` | done |
+| Sequences and search #11 | Window limits: review variants | `window-limits-review` | done |
+| Sequences and search #11 | Window limits: checkpoint | `window-limits-checkpoint` | done |
+| Data structures #12 | Stack matching: teaching levels | `stack-matching` | done |
+| Data structures #12 | Stack matching: review variants | `stack-matching-review` | done |
+| Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | done |
+| Data structures #12 | Link rewrites: teaching levels | `link-rewrites` | done |
+| Data structures #12 | Link rewrites: review variants | `link-rewrites-review` | done |
+| Data structures #12 | Link rewrites: checkpoint | `link-rewrites-checkpoint` | done |
+| Problem-solving patterns #14 | Recursive calls: teaching levels | `recursive-calls` | done |
+| Problem-solving patterns #14 | Recursive calls: review variants | `recursive-calls-review` | done |
+| Problem-solving patterns #14 | Recursive calls: checkpoint | `recursive-calls-checkpoint` | done |
+| Problem-solving patterns #14 | Search state: teaching levels | `search-state` | done |
+| Problem-solving patterns #14 | Search state: review variants | `search-state-review` | done |
+| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | done |
+| Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | done |
+| Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | done |
+| Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | done |
+| Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | done |
+| Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | done |
+| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | done |
+| Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | done |
+| Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | done |
+| Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | done |
+| Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | done |
+| Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | done |
+| Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | done |
+| Problem-solving patterns #14 | Grid tables: teaching levels | `grid-tables` | done |
+| Problem-solving patterns #14 | Grid tables: review variants | `grid-tables-review` | done |
+| Problem-solving patterns #14 | Grid tables: checkpoint | `grid-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Greedy scheduling: teaching levels | `greedy-scheduling` | done |
+| Problem-solving patterns #14 | Greedy scheduling: review variants | `greedy-scheduling-review` | done |
+| Problem-solving patterns #14 | Greedy scheduling: checkpoint | `greedy-scheduling-checkpoint` | done |
+| Problem-solving patterns #14 | One-dimensional tables: teaching levels | `one-dimensional-tables` | done |
+| Problem-solving patterns #14 | One-dimensional tables: review variants | `one-dimensional-tables-review` | done |
+| Problem-solving patterns #14 | One-dimensional tables: checkpoint | `one-dimensional-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | done |
+| Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | done |
+| Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Enumerating choices: teaching levels | `enumerating-choices` | done |
+| Problem-solving patterns #14 | Enumerating choices: review variants | `enumerating-choices-review` | done |
+| Problem-solving patterns #14 | Enumerating choices: checkpoint | `enumerating-choices-checkpoint` | done |
+| Data structures #12 | Priority order: teaching levels | `priority-order` | done |
+| Data structures #12 | Priority order: review variants | `priority-order-review` | done |
+| Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | done |
 | Data structures #12 | Monotonic stack: teaching levels | `monotonic-stack-drills` | in review |
-| Data structures #12 | Monotonic stack: review variants | `monotonic-stack-review` | in review |
-| Data structures #12 | Monotonic stack: checkpoint | `monotonic-stack-checkpoint` | in review |
-| Data structures #12 | Pointer walks: teaching levels | `pointer-walks` | in review |
-| Data structures #12 | Pointer walks: review variants | `pointer-walks-review` | in review |
-| Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | in review |
-| Data structures #12 | Heap operations: teaching levels | `heap-operations` | in review |
-| Data structures #12 | Heap operations: review variants | `heap-operations-review` | in review |
-| Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | in review |
-| Data structures #12 | Bounded heaps: teaching levels | `bounded-heaps` | in review |
-| Data structures #12 | Bounded heaps: review variants | `bounded-heaps-review` | in review |
-| Data structures #12 | Bounded heaps: checkpoint | `bounded-heaps-checkpoint` | in review |
-| Trees and graphs #13 | Reachability | `reachability` | in review |
-| Trees and graphs #13 | Reachability: review | `reachability-review` | in review |
-| Trees and graphs #13 | Reachability: checkpoint | `reachability-checkpoint` | in review |
-| Trees and graphs #13 | Traversal layers | `traversal-layers` | in review |
-| Trees and graphs #13 | Traversal layers: review | `traversal-layers-review` | in review |
-| Trees and graphs #13 | Traversal layers: checkpoint | `traversal-layers-checkpoint` | in review |
-| Trees and graphs #13 | Dependency order | `dependency-order` | in review |
-| Trees and graphs #13 | Dependency order: review | `dependency-order-review` | in review |
-| Trees and graphs #13 | Dependency order: checkpoint | `dependency-order-checkpoint` | in review |
-| Trees and graphs #13 | Connectivity | `connectivity` | in review |
-| Trees and graphs #13 | Connectivity: review | `connectivity-review` | in review |
-| Trees and graphs #13 | Connectivity: checkpoint | `connectivity-checkpoint` | in review |
-| Trees and graphs #13 | Tree walks | `tree-walks` | in review |
-| Trees and graphs #13 | Tree walks: review | `tree-walks-review` | in review |
-| Trees and graphs #13 | Tree walks: checkpoint | `tree-walks-checkpoint` | in review |
-| Trees and graphs #13 | BST order | `bst-order` | in review |
-| Trees and graphs #13 | BST order: review | `bst-order-review` | in review |
-| Trees and graphs #13 | BST order: checkpoint | `bst-order-checkpoint` | in review |
-| Trees and graphs #13 | Tree summaries | `tree-summaries` | in review |
-| Trees and graphs #13 | Tree summaries: review | `tree-summaries-review` | in review |
-| Trees and graphs #13 | Tree summaries: checkpoint | `tree-summaries-checkpoint` | in review |
-| Trees and graphs #13 | Weighted paths | `weighted-paths` | in review |
-| Trees and graphs #13 | Weighted paths: review | `weighted-paths-review` | in review |
-| Trees and graphs #13 | Weighted paths: checkpoint | `weighted-paths-checkpoint` | in review |
+| Data structures #12 | Monotonic stack: review variants | `monotonic-stack-review` | done |
+| Data structures #12 | Monotonic stack: checkpoint | `monotonic-stack-checkpoint` | done |
+| Data structures #12 | Pointer walks: teaching levels | `pointer-walks` | done |
+| Data structures #12 | Pointer walks: review variants | `pointer-walks-review` | done |
+| Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | done |
+| Data structures #12 | Heap operations: teaching levels | `heap-operations` | done |
+| Data structures #12 | Heap operations: review variants | `heap-operations-review` | done |
+| Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | done |
+| Data structures #12 | Bounded heaps: teaching levels | `bounded-heaps` | done |
+| Data structures #12 | Bounded heaps: review variants | `bounded-heaps-review` | done |
+| Data structures #12 | Bounded heaps: checkpoint | `bounded-heaps-checkpoint` | done |
+| Trees and graphs #13 | Reachability | `reachability` | done |
+| Trees and graphs #13 | Reachability: review | `reachability-review` | done |
+| Trees and graphs #13 | Reachability: checkpoint | `reachability-checkpoint` | done |
+| Trees and graphs #13 | Traversal layers | `traversal-layers` | done |
+| Trees and graphs #13 | Traversal layers: review | `traversal-layers-review` | done |
+| Trees and graphs #13 | Traversal layers: checkpoint | `traversal-layers-checkpoint` | done |
+| Trees and graphs #13 | Dependency order | `dependency-order` | done |
+| Trees and graphs #13 | Dependency order: review | `dependency-order-review` | done |
+| Trees and graphs #13 | Dependency order: checkpoint | `dependency-order-checkpoint` | done |
+| Trees and graphs #13 | Connectivity | `connectivity` | done |
+| Trees and graphs #13 | Connectivity: review | `connectivity-review` | done |
+| Trees and graphs #13 | Connectivity: checkpoint | `connectivity-checkpoint` | done |
+| Trees and graphs #13 | Tree walks | `tree-walks` | done |
+| Trees and graphs #13 | Tree walks: review | `tree-walks-review` | done |
+| Trees and graphs #13 | Tree walks: checkpoint | `tree-walks-checkpoint` | done |
+| Trees and graphs #13 | BST order | `bst-order` | done |
+| Trees and graphs #13 | BST order: review | `bst-order-review` | done |
+| Trees and graphs #13 | BST order: checkpoint | `bst-order-checkpoint` | done |
+| Trees and graphs #13 | Tree summaries | `tree-summaries` | done |
+| Trees and graphs #13 | Tree summaries: review | `tree-summaries-review` | done |
+| Trees and graphs #13 | Tree summaries: checkpoint | `tree-summaries-checkpoint` | done |
+| Trees and graphs #13 | Weighted paths | `weighted-paths` | done |
+| Trees and graphs #13 | Weighted paths: review | `weighted-paths-review` | done |
+| Trees and graphs #13 | Weighted paths: checkpoint | `weighted-paths-checkpoint` | done |
