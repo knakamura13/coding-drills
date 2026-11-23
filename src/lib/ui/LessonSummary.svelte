@@ -30,9 +30,11 @@
 	const closedTop = $derived(8 + TREE_HEIGHT * scale);
 	const openTop = $derived(8 + FLAT_HEIGHT * scale);
 	// A drawer needs room to show at least a row closed; a screen shorter than that just scrolls.
-	const drawer = $derived(summary.missed.length > 0 && listHeight > bodyHeight - closedTop && bodyHeight - closedTop >= 96);
+	// The card adds 28px above the list and 16px below it.
+	const cardHeight = $derived(listHeight + 44);
+	const drawer = $derived(summary.missed.length > 0 && cardHeight > bodyHeight - closedTop && bodyHeight - closedTop >= 96);
 	// Too short for the drawer, the body scrolls instead, and takes focus so the keyboard can scroll it.
-	const scrolls = $derived(!drawer && closedTop + listHeight + 16 > bodyHeight);
+	const scrolls = $derived(!drawer && closedTop + cardHeight > bodyHeight);
 
 	let open = $state(false);
 	let dragTop = $state<number | null>(null);
@@ -121,7 +123,8 @@
 			<SummaryTree {trail} results={summary.results} width={treeWidth} t={drawer && open ? 1 : 0} />
 		</div>
 		{#if summary.missed.length > 0}
-			<!-- One list in both modes, so its measured height never drops out when the drawer turns on. -->
+			<!-- One list in both modes, so its measured height never drops out when the drawer turns on.
+		     The handle shows only when the card can open further. -->
 			<section class="misses" class:sheet={drawer} class:open={drawer && open} style:top={drawer ? `${top}px` : null} aria-label="Missed questions">
 				{#if drawer}
 					<button
@@ -178,6 +181,8 @@
 
 	.body {
 		position: relative;
+		display: flex;
+		flex-direction: column;
 		flex: 1;
 		min-height: 0;
 		overflow: hidden auto;
@@ -194,11 +199,22 @@
 	}
 
 	.tree-wrap {
+		flex: none;
 		padding-top: var(--space-2);
 	}
 
+	/* The misses always sit on the drawer's raised card, reaching down to the footer and out to the
+	   column's edges. Without the handle, the same 28px stays above the first row. */
 	.misses {
-		padding-bottom: var(--space-4);
+		flex: 1 0 auto;
+		display: flex;
+		flex-direction: column;
+		margin: 0 calc(-1 * var(--space-screen-edge));
+		padding: 28px var(--space-screen-edge) var(--space-4);
+		background: var(--color-surface-card);
+		border: 1px solid var(--color-border-default);
+		border-bottom: 0;
+		border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
 	}
 
 	.sheet {
@@ -206,13 +222,9 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		display: flex;
-		flex-direction: column;
-		background: var(--color-surface-card);
-		border: 1px solid var(--color-border-default);
-		border-bottom: 0;
-		border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-		padding: 0 var(--space-screen-edge);
+		margin: 0;
+		padding-top: 0;
+		padding-bottom: 0;
 	}
 
 	.grab {
