@@ -57,13 +57,16 @@ export function model(t: TokenFile) {
 	const branches = Object.fromEntries(
 		Object.entries(t.branch as Record<string, string>).map(([id, hue]) => [id, { hue, ...accentFor(t.hue[hue]) }])
 	) as Record<string, Accent & { hue: string }>;
+	const none = accentFor(color(t.accent.none));
+	// A role set to `accent` follows the screen's branch; its static value is the no-branch accent.
+	const roleHex = (v: string) => (v === 'accent' ? none.base : color(v));
 	const wb = t.feedback['wrong-border'];
 	return {
 		neutral: n as Record<string, string>,
 		hue: t.hue as Record<string, string>,
 		neutralNames: n as Record<string, string>,
-		roles: Object.fromEntries(Object.entries(t.role as Record<string, string>).map(([k, v]) => [k, { ref: v, hex: color(v) }])) as Record<string, { ref: string; hex: string }>,
-		none: accentFor(color(t.accent.none)),
+		roles: Object.fromEntries(Object.entries(t.role as Record<string, string>).map(([k, v]) => [k, { ref: v, hex: roleHex(v) }])) as Record<string, { ref: string; hex: string }>,
+		none,
 		branches,
 		wrongBorder: mix(n[wb.over], t.hue[wb.hue], wb.amount),
 		scrim: rgba(color(t.overlay.scrim.color), t.overlay.scrim.alpha),
@@ -83,8 +86,9 @@ export function toCss(t: TokenFile): string {
 	for (const [k, v] of Object.entries(m.neutral)) push(`neutral-${k}`, v);
 	for (const [k, v] of Object.entries(m.hue)) push(`hue-${k}`, v);
 	lines.push('\t/* roles: screens use these, never the raw values above */');
+	const accentRoles = Object.entries(m.roles).filter(([, v]) => v.ref === 'accent');
 	for (const [k, v] of Object.entries(m.roles)) {
-		push(`color-${k}`, `var(--${m.neutral[v.ref] ? 'neutral' : 'hue'}-${v.ref})`);
+		push(`color-${k}`, v.ref === 'accent' ? 'var(--accent)' : `var(--${m.neutral[v.ref] ? 'neutral' : 'hue'}-${v.ref})`);
 	}
 	push('color-feedback-wrong-border', m.wrongBorder);
 	push('color-scrim', m.scrim);
@@ -132,6 +136,8 @@ export function toCss(t: TokenFile): string {
 		lines.push(`[data-branch='${id}'] {`);
 		push('accent', `var(--branch-${id})`);
 		for (const part of ['tint', 'border', 'ambient', 'glow', 'soft-glow']) push(`accent-${part}`, `var(--branch-${id}-${part})`);
+		// custom properties resolve where they are declared, so accent roles are declared again here
+		for (const [k] of accentRoles) push(`color-${k}`, 'var(--accent)');
 		lines.push('}', '');
 	}
 
@@ -224,6 +230,7 @@ export function toFigcraft(t: TokenFile) {
 			codeSyntax: web ? { WEB: `var(--${web})` } : {}
 		};
 		collections[c.id].variableIds.push(id);
+		return id;
 	};
 	const one = (v: string | number) => ({ Value: v });
 
@@ -232,9 +239,11 @@ export function toFigcraft(t: TokenFile) {
 	for (const [k, v] of Object.entries(m.hue)) variable(prim, `hue/${k}`, 'COLOR', one(v), `hue-${k}`);
 
 	const color = collection('Color', ['Value']);
+	const accentRoleIds: string[] = [];
 	for (const [k, v] of Object.entries(m.roles)) {
 		const [group, ...rest] = k.split('-');
-		variable(color, `${group}/${rest.join('-')}`, 'COLOR', one(v.hex), `color-${k}`);
+		const id = variable(color, `${group}/${rest.join('-')}`, 'COLOR', one(v.hex), `color-${k}`);
+		if (v.ref === 'accent') accentRoleIds.push(id);
 	}
 	variable(color, 'feedback/wrong-border', 'COLOR', one(m.wrongBorder), 'color-feedback-wrong-border');
 	variable(color, 'overlay/scrim', 'COLOR', one(m.scrim), 'color-scrim');
@@ -253,7 +262,9 @@ export function toFigcraft(t: TokenFile) {
 	const parts: [keyof Accent, string][] = [['base', 'accent'], ['tint', 'accent-tint'], ['border', 'accent-border'], ['ambient', 'accent-ambient'], ['glow', 'accent-glow'], ['softGlow', 'accent-soft-glow']];
 	for (const [part, web] of parts) {
 		const values = Object.fromEntries(Object.entries(sets).map(([k, s]) => [modeNames[k], s[part]]));
-		variable(accent, `accent/${part === 'softGlow' ? 'soft-glow' : part}`, 'COLOR', values, web);
+		const id = variable(accent, `accent/${part === 'softGlow' ? 'soft-glow' : part}`, 'COLOR', values, web);
+		// roles that follow the accent alias it, so they change with the frame's Accent mode
+		if (part === 'base') for (const roleId of accentRoleIds) variables[roleId].valuesByMode = { [color.modeIds.Value]: { type: 'VARIABLE_ALIAS', id } };
 	}
 
 	const type = collection('Type', ['Phone', 'Desktop']);

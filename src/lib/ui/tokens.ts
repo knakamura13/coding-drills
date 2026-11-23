@@ -206,6 +206,7 @@ export const MOTION = {
 		"state": 150,
 		"toast-out": 200,
 		"toast-in": 250,
+		"morph": 250,
 		"sheet": 300,
 		"caption": 400,
 		"bloom": 900,
