@@ -133,7 +133,8 @@ export function toCss(t: TokenFile): string {
 	lines.push('}', '');
 
 	for (const [id] of Object.entries(m.branches)) {
-		lines.push(`[data-branch='${id}'] {`);
+		// :root[data-branch] outranks a bare :root, so a branch on <html> wins over any other root accent.
+		lines.push(`:root[data-branch='${id}'],\n[data-branch='${id}'] {`);
 		push('accent', `var(--branch-${id})`);
 		for (const part of ['tint', 'border', 'ambient', 'glow', 'soft-glow']) push(`accent-${part}`, `var(--branch-${id}-${part})`);
 		// custom properties resolve where they are declared, so accent roles are declared again here
