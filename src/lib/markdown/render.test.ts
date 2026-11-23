@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadDecks } from '../content/loadDecks.ts';
 import { isChoiceQuestion } from '../content/schema.ts';
-import { LONG_CODE_CHARS, escapeHtml, plainText, renderInline, renderMarkdown } from './render';
+import { LONG_CODE_CHARS, escapeHtml, plainText, renderInline, renderMarkdown, markdownBlocks } from './render';
 
 describe('escapeHtml', () => {
 	it('escapes the five HTML-significant characters', () => {
@@ -136,5 +136,20 @@ describe('long inline code', () => {
 		const long = 'x'.repeat(LONG_CODE_CHARS + 1);
 		expect(renderInline(`\`${long}\``)).toBe(`<code class="long">${long}</code>`);
 		expect(renderInline(`\`${'x'.repeat(LONG_CODE_CHARS)}\``)).toBe(`<code>${'x'.repeat(LONG_CODE_CHARS)}</code>`);
+	});
+});
+
+describe('markdownBlocks', () => {
+	it('splits paragraphs and fenced code, keeping code lines and indentation', () => {
+		const blocks = markdownBlocks('The list is\nsorted.\n\n```python\ndef f(a):\n    return a\n```\n\nWhat does it return?');
+		expect(blocks).toEqual([
+			{ kind: 'paragraph', text: 'The list is sorted.' },
+			{ kind: 'code', language: 'python', code: 'def f(a):\n    return a' },
+			{ kind: 'paragraph', text: 'What does it return?' }
+		]);
+	});
+
+	it('closes an unterminated fence at the end', () => {
+		expect(markdownBlocks('```\nx = 1')).toEqual([{ kind: 'code', language: '', code: 'x = 1' }]);
 	});
 });

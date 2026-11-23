@@ -1,6 +1,7 @@
 <!--
-	A code snippet (lesson Round 2, Code C): Void inset, Twilight border, dim line numbers, code in
-	Mist, keywords bright and SemiBold, no syntax colors. Long lines scroll sideways instead of
+	A code snippet (lesson Round 2, Code C): Void inset, Twilight border, line numbers in Mist, code
+	in Frost, keywords Starlight and SemiBold, no syntax colors. (Code C had Haze numbers and Mist code;
+	Haze fails WCAG AA for text, so both moved up a step on 2026-11-23, keeping the hierarchy.) Long lines scroll sideways instead of
 	wrapping. `current` (1-based) bands the running line in Dusk with a branch-color left edge
 	(step-trace).
 -->
@@ -29,7 +30,7 @@
 		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-control);
 		background: var(--color-surface-inset);
-		color: var(--color-text-secondary);
+		color: var(--neutral-frost);
 		font-size: var(--text-code-size);
 		line-height: var(--text-code-line);
 		text-wrap: nowrap;
@@ -60,7 +61,7 @@
 		flex: none;
 		min-width: 2ch;
 		text-align: right;
-		color: var(--color-icon-muted);
+		color: var(--color-text-secondary);
 		user-select: none;
 	}
 

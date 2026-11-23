@@ -639,3 +639,13 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		followUps
 	};
 }
+
+/** The branch a deck's drills belong to, for the screen's accent. Null when no drill maps the deck. */
+export function branchOfDeck(curriculum: Curriculum, deckId: string): string | null {
+	const pathId = curriculum.drills.find((drill) => drill.deckId === deckId)?.pathId;
+	if (!pathId) return null;
+	for (const branch of curriculum.branches) {
+		if (branch.paths.some((path) => path.id === pathId)) return branch.id;
+	}
+	return null;
+}
