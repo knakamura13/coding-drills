@@ -224,6 +224,14 @@ describe('a wrong answer', () => {
 		expect(view(afterB)!.followUpPrompt).toBe('Follow-up for B?');
 	});
 
+	it('names the wrong pick in the follow-up, for its recap card, and nowhere else', () => {
+		const question = start().plan[0].question;
+		if (!isChoiceQuestion(question)) throw new Error('fixture is multiple choice');
+		expect(view(advance(answer(start(), 'a')))!.mainPickText).toBe(question.options.find((option) => option.id === 'a')!.text);
+		expect(view(start())!.mainPickText).toBeNull();
+		expect(view(answer(start(), 'a'))!.mainPickText).toBeNull();
+	});
+
 	it('hides the explanation behind See why again and names both options', () => {
 		const wrong = view(answer(start(), 'a'))!;
 		expect(wrong.verdict).toEqual({ correct: false, correctText: 'Right', explanation: '' });

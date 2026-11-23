@@ -41,6 +41,7 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
+<div class="new-ui" data-new-ui>
 <main class="gallery">
 	<h1>UI pieces</h1>
 	<p class="note">The lesson building blocks from the FigCraft Components page. Branch: Sequences and search.</p>
@@ -128,8 +129,13 @@
 		<Button onclick={() => (exampleOpen = false)}>Close</Button>
 	{/snippet}
 </Sheet>
+</div>
 
 <style>
+	.new-ui {
+		display: contents;
+	}
+
 	.gallery {
 		display: flex;
 		flex-direction: column;

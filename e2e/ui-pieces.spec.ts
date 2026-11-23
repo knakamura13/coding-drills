@@ -1,7 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // The new lesson building blocks on /ui (FigCraft Components page).
+
+// The new UI keeps its fades under reduced motion, so axe waits for them: mid-fade, text shows
+// through a half-transparent sheet or panel and fails contrast it passes once settled.
+async function violations(page: Page) {
+	await page.evaluate(() => Promise.all(document.getAnimations().map((animation) => animation.finished)));
+	return (await new AxeBuilder({ page }).analyze()).violations;
+}
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/ui');
@@ -12,10 +19,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('has no accessibility violations, closed and with a sheet open', async ({ page }) => {
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	expect(await violations(page)).toEqual([]);
 	await page.getByRole('button', { name: 'Open the worked example' }).click();
 	await expect(page.getByRole('dialog', { name: 'Worked example' })).toBeVisible();
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	expect(await violations(page)).toEqual([]);
 });
 
 test('the sheet, outside the page content, still takes the page branch accent', async ({ page }) => {
