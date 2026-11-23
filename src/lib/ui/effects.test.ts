@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { effects, STORAGE_KEY } from './effects.svelte';
+import { readFileSync } from 'node:fs';
+import { effects, readReduceEffects, STORAGE_KEY } from './effects.svelte';
 
 const matchMedia = vi.fn();
 let stored: Map<string, string>;
@@ -60,6 +61,34 @@ describe('Reduce effects', () => {
 		effects.set(false);
 		expect(effects.reduced).toBe(false);
 		expect(dataset.effects).toBe('full');
+	});
+
+	// static/effects.js sets the attribute before the app loads, so the first frame never animates
+	// at full strength. It must reach the same answer as the store for every stored value and OS.
+	it.each([
+		{ value: null, os: false },
+		{ value: null, os: true },
+		{ value: '1', os: false },
+		{ value: '0', os: true },
+		{ value: 'junk', os: true },
+		{ value: 'blocked', os: true }
+	])('applies the same choice before first paint (stored $value, OS reduced $os)', ({ value, os }) => {
+		matchMedia.mockReturnValue({ matches: os });
+		if (value === 'blocked') {
+			vi.stubGlobal('localStorage', { getItem: () => { throw new Error('blocked'); } });
+		} else if (value !== null) {
+			stored.set(STORAGE_KEY, value);
+		}
+		new Function(readFileSync('static/effects.js', 'utf8'))();
+
+		expect(dataset.effects).toBe(readReduceEffects() ? 'reduced' : 'full');
+	});
+
+	it('loads the pre-paint script from the page head', () => {
+		const html = readFileSync('src/app.html', 'utf8');
+		const head = html.slice(0, html.indexOf('</head>'));
+		expect(head).toContain('<script src="%sveltekit.assets%/effects.js"></script>');
+		expect(head.indexOf('effects.js')).toBeLessThan(head.indexOf('%sveltekit.head%'));
 	});
 
 	it('defaults to full effects outside the browser', () => {
