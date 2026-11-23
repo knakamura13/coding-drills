@@ -8,81 +8,85 @@ questions:
     heading: What does this print?
     tags: [linked-list, two-pointers, python]
     prompt: |-
-      `values(n)` lists the values a walk from `n` reaches.
+      This version opens a gap of `n + 1` and loops `while fast`. `values(n)` lists the values a
+      walk from `n` reaches.
 
       ```python
       def remove_nth(head, n):
           dummy = Node(0, head)
           slow = fast = dummy
-          for _ in range(n):
+          for _ in range(n + 1):
               fast = fast.next
-          while fast.next:
+          while fast:
               slow = slow.next
               fast = fast.next
           slow.next = slow.next.next
           return dummy.next
 
-      print(values(remove_nth(Node(2, Node(7, Node(5, Node(9)))), 4)))
+      head = Node(4, Node(1, Node(8, Node(6, Node(3)))))
+      head = remove_nth(head, 5)
+      print(values(remove_nth(head, 4)))
       ```
 
       What does this print?
     options:
       - id: right
-        text: "`[7, 5, 9]`"
+        text: "`[8, 6, 3]`"
         explanation: >-
-          Four hops from the dummy put `fast` on the 9, the tail, so the `while` loop never runs.
-          `slow` is still on the dummy, line 9 points the dummy past the 2, and `dummy.next` is now
-          the 7.
+          Six hops from the dummy take `fast` past the 3 onto `None`, so the `while` loop never
+          runs and line 9 points the dummy past the 4. The list is now `[1, 8, 6, 3]`, four long,
+          so `n = 4` is its length again and the second call drops the 1 the same way.
       - id: unchanged
-        text: "`[2, 7, 5, 9]`"
-        explanation: Look at which node's link line 9 rewrites, and what `dummy.next` is afterwards.
+        text: "`[4, 8, 6, 3]`"
+        explanation: Look at which node's link line 9 rewrites in the first call.
       - id: second
-        text: "`[2, 5, 9]`"
-        explanation: Count the rounds the `while` loop runs once `fast` has made its four hops.
+        text: "`[4, 6, 3]`"
+        explanation: Count the rounds the `while` loop runs once `fast` has made its six hops.
       - id: raises
         text: It raises `AttributeError`
-        explanation: Look at where `fast` lands after four hops from the dummy.
+        explanation: Look at what the sixth hop reads, and from which node.
     correct: right
     followUps:
       unchanged:
-        prompt: When line 9 runs, which node's link changes?
+        prompt: In the first call `slow` is still on the dummy when line 9 runs. What does that line do?
         options:
           - id: dummy-link
-            text: The dummy's, which now skips the 2
+            text: The dummy's link now skips the 4, so the caller gets the 1
           - id: head-link
-            text: The 2's, which now skips the 7
+            text: It points the 4 past the 1, so the 1 goes
           - id: none-changes
-            text: None, because the head has no predecessor
+            text: Nothing the caller sees, since the dummy is thrown away
         correct: dummy-link
         explanation: >-
           The dummy is the predecessor the head lacks. Rewriting its link removes the head, and
-          returning `dummy.next` hands back the new first node.
+          returning `dummy.next` hands the caller the new first node, so the second call starts
+          from the 1.
       second:
-        prompt: After the `for` loop, `fast` is on the 9. How many times does the `while` loop run?
+        prompt: After the first call's `for` loop, `fast` is `None`. How many times does `while fast` run?
         options:
           - id: zero-rounds
-            text: Zero, because the 9 has no `next`
+            text: Zero, because `fast` is already `None`
           - id: one-round
-            text: Once, to move `slow` onto the 2
-          - id: four-rounds
-            text: Four times, once per hop of `fast`
+            text: Once, to move `slow` onto the 4
+          - id: five-rounds
+            text: Five times, once per node
         correct: zero-rounds
         explanation: >-
-          A gap of `n` from the dummy leaves `fast` on the tail when `n` is the length. `slow` stays
-          on the dummy, one node before the head.
+          A gap of `n + 1` from the dummy runs `fast` off the end when `n` is the length. `slow`
+          stays on the dummy, one node before the head, in both calls.
       raises:
-        prompt: The list has 4 nodes. Where is `fast` after four hops from the dummy?
+        prompt: The first call's sixth hop starts from the 3, the tail. What does `fast = fast.next` do there?
         options:
-          - id: on-tail
-            text: On the tail, the 9
-          - id: on-none
-            text: On the `None` after the tail
-          - id: on-five
-            text: On the 5
-        correct: on-tail
+          - id: to-none
+            text: It sets `fast` to `None`, and the loop ends
+          - id: error
+            text: It raises, because the tail has no next node
+          - id: wraps
+            text: It goes back to the dummy
+        correct: to-none
         explanation: >-
-          The dummy adds one node in front, so `n` hops from it reach the `n`-th node. With `n`
-          equal to the length, that is the tail, and `fast.next` is safe to read.
+          Reading `.next` from a real node is always safe, even when it holds `None`. Only reading
+          `.next` from `None` raises, and nothing does that here: the `while` test stops first.
 
   - id: walk-exam-while-fast
     heading: What does this print?

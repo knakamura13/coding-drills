@@ -160,66 +160,68 @@ questions:
               else:
                   hi = mid - 1
           return -1
+
+      a = [3, 8, 11, 17, 20, 26, 31]
       ```
 
       Which call returns a wrong answer?
     options:
       - id: t-nineteen
-        text: "`search([12, 19], 19)`"
+        text: "`search(a, 3)`"
         explanation: >-
-          The only probe is index 0, which reads 12, too small, so `lo = 1`. Now `lo == hi`, the
-          loop stops, and the call returns -1 though 19 is at index 1. The last candidate was
-          never compared.
+          The probes read 17 at index 3 and then 8 at index 1, both too big, so `hi` drops to 0.
+          Now `lo == hi`, the loop stops, and the call returns -1 though 3 is at index 0. The
+          one cell the range shrinks to is never compared, and here that is the first cell.
       - id: t-twelve
-        text: "`search([12, 19], 12)`"
-        explanation: Trace the first probe. Which cell does `mid` name in a two-cell range?
+        text: "`search(a, 8)`"
+        explanation: Trace the probes. Which cells does `mid` name on the way down?
       - id: t-fifteen
-        text: "`search([12, 19], 15)`"
+        text: "`search(a, 15)`"
         explanation: Work out what a correct search returns for this call first.
       - id: t-thirty
-        text: "`search([12, 19], 30)`"
-        explanation: Find the cell this version leaves unchecked, and what it holds.
+        text: "`search(a, 40)`"
+        explanation: Find the cell this call leaves unchecked, and what it holds.
     correct: t-nineteen
     followUps:
       t-twelve:
-        prompt: On `[12, 19]`, the first probe is `(0 + 1) // 2`. What does it read when the target is 12?
+        prompt: For 8, the first probe reads 17 at index 3, so `hi = 2`. What does the next probe read?
         options:
           - id: match
-            text: 12 at index 0, a match, so it returns 0 correctly
-          - id: nineteen
-            text: 19 at index 1, so it misses the 12
-          - id: none
-            text: Nothing, the loop never runs
+            text: 8 at index 1, a match, so it returns 1 correctly
+          - id: skipped
+            text: Nothing, since the loop stops before index 1
+          - id: eleven
+            text: 11 at index 2, so it misses the 8
         correct: match
         explanation: >-
-          `mid` rounds down to the left cell, so a target in that cell is found on the first
-          probe. The bug hides in the cell the loop never reaches.
+          `(0 + 2) // 2` is 1, so the second probe lands on the 8. A target that a probe reaches is
+          found. The bug hides in the one cell the range shrinks to without a probe.
       t-fifteen:
-        prompt: 15 is not in `[12, 19]`. What should a correct search return, and what does this one return?
+        prompt: 15 is not in `a`. What should a correct search return, and what does this one return?
         options:
           - id: both-minus-one
             text: Both return `-1`, so the answers agree
-          - id: zero
-            text: A correct search returns 0, this one returns -1
-          - id: one
-            text: A correct search returns 1, this one returns -1
+          - id: three
+            text: A correct search returns 3, this one returns -1
+          - id: two
+            text: A correct search returns 2, this one returns -1
         correct: both-minus-one
         explanation: >-
-          A missing target gives -1 either way, so skipping the last cell changes nothing. A bug
-          shows only when the skipped cell holds the target.
+          A missing target gives -1 either way, so skipping a cell changes nothing. A bug shows
+          only when the skipped cell holds the target.
       t-thirty:
-        prompt: After the probe reads 12, `lo = hi = 1` and the loop stops. Which cell went unchecked, and does skipping it matter for 30?
+        prompt: For 40, the probes read 17 and 26, and the loop stops with `lo = hi = 6`. Does skipping index 6 matter?
         options:
           - id: no-matter
-            text: Index 1, and it doesn't matter
+            text: No, it holds 31, so -1 is still right
           - id: matters
-            text: Index 1, and it hides the 30
+            text: Yes, it hides the 40
           - id: none
-            text: No cell, both were compared
+            text: No cell was skipped, both ends were compared
         correct: no-matter
         explanation: >-
-          The unchecked cell, index 1, holds 19, not 30, so skipping it still gives the right -1. The call has to put the
-          target in that last cell to show the bug.
+          The unchecked cell holds 31, not 40, so the call still returns the right -1. The
+          target has to sit in the cell the loop leaves unchecked to show the bug.
 
   - id: checkpoint-repair-hang
     heading: Which fix works?

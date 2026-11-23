@@ -85,72 +85,72 @@ questions:
       ```python
       from heapq import heappush
 
-      def submit(h, job):  # job is a dict with "name", "urgency" and "folder"
-          heappush(h, (-job["urgency"], job["name"], job))
+      def post(h, story):  # story is a dict with "headline", "tier" and "section"
+          heappush(h, (story["tier"], story["headline"], story))
       ```
 
-      Higher urgency must pop first, and equal urgencies in the order submitted. Names can repeat.
-      Submitting two urgency-4 jobs both named `"sync"`, for different folders, raised
-      `TypeError`. An urgency-4 `"report"` submitted before an urgency-4 `"backup"` also popped
-      after it. With
-      `seq = itertools.count()` made once, which entry fixes both?
+      A lower tier must pop first (tier 1 is the front page), and within a tier the newest story
+      first. Headlines can repeat. Posting two tier-1 stories both headlined `"Storm"`, for
+      different sections, raised `TypeError`. A tier-2 `"Rates"` posted after a tier-2
+      `"Budget"` also popped after it. With `seq = itertools.count()` made once, which entry
+      fixes both?
     options:
       - id: counter
-        text: '`(-job["urgency"], next(seq), job)`'
+        text: '`(story["tier"], -next(seq), story)`'
         explanation: >-
-          The negated urgency still sends the most urgent job out first. The counter replaces the
-          name: it never repeats, so the dicts are never compared, and it grows with each submit,
-          so ties pop in submission order.
+          The tier stays as it is, since `heapq` already pops the smallest. The negated counter
+          replaces the headline: it never repeats, so the dicts are never compared, and it
+          shrinks with each post, so the newest story in a tier pops first.
       - id: name-then-counter
-        text: '`(-job["urgency"], job["name"], next(seq), job)`'
-        explanation: Check what decides between `"report"` and `"backup"`.
+        text: '`(story["tier"], story["headline"], -next(seq), story)`'
+        explanation: Check what decides between `"Rates"` and `"Budget"`.
       - id: no-negate
-        text: '`(job["urgency"], next(seq), job)`'
-        explanation: Check which urgency `heapq` pops first.
+        text: '`(story["tier"], next(seq), story)`'
+        explanation: Check which of two stories in one tier gets the smaller counter.
       - id: identity
-        text: '`(-job["urgency"], id(job), job)`'
-        explanation: Check whether ids follow the order of submission.
+        text: '`(-story["tier"], -next(seq), story)`'
+        explanation: Check which tier `heapq` pops first with this entry.
     correct: counter
     followUps:
       name-then-counter:
-        prompt: 'With the name before the counter, what decides between urgency-4 `"report"` and `"backup"`?'
+        prompt: 'With the headline before the counter, what decides between tier-2 `"Rates"` and `"Budget"`?'
         options:
           - id: names
-            text: The names, so `"backup"` pops first despite coming later
+            text: The headlines, so `"Budget"` pops first despite being older
           - id: counter
-            text: The counter, so `"report"` pops first
+            text: The counter, so `"Rates"` pops first
           - id: raises
             text: Nothing, since the comparison raises `TypeError`
         correct: names
         explanation: >-
-          The counter only matters when the names tie too. It fixes the crash for two `"sync"`
-          jobs but leaves equal urgencies in alphabetical order, not submission order.
+          The counter only matters when the headlines tie too. It fixes the crash for two
+          `"Storm"` stories but leaves each tier in alphabetical order, not newest first.
       no-negate:
-        prompt: '`heapq` pops the smallest entry. With `(job["urgency"], ...)`, which job comes out first?'
+        prompt: 'Tier-2 `"Budget"` draws 0 from `next(seq)` and `"Rates"` draws 1. Which pops first?'
         options:
-          - id: lowest
-            text: The least urgent job
-          - id: highest
-            text: The most urgent job
-          - id: oldest
-            text: The oldest job, since the counter decides
-        correct: lowest
+          - id: older
+            text: '`"Budget"`, the older story, since 0 < 1'
+          - id: newer
+            text: '`"Rates"`, since a later post wins a tie'
+          - id: either
+            text: Either one, since the counter only stops the crash
+        correct: older
         explanation: >-
-          A `heapq` heap is a min-heap, so the smallest urgency comes out first. The original code
-          negated it for that reason, and the repair has to keep the minus sign.
+          A min-heap pops the smaller counter, which belongs to the earlier post. Negating it
+          makes each later post smaller, so the newest story in a tier comes out first.
       identity:
-        prompt: Two urgency-4 jobs are submitted, `"report"` first. With `id(job)` in the middle, which pops first?
+        prompt: '`heapq` pops the smallest entry. With `-story["tier"]` first, which tier comes out first?'
         options:
-          - id: smaller-id
-            text: Whichever dict has the smaller id, which need not be `"report"`
-          - id: report
-            text: "`\"report\"`, since ids grow with each new object"
-          - id: raises
-            text: Neither, since equal urgencies raise `TypeError`
-        correct: smaller-id
+          - id: highest
+            text: The highest tier number, the least prominent stories
+          - id: lowest
+            text: Tier 1, the front page
+          - id: newest
+            text: The newest story, since the counter decides
+        correct: highest
         explanation: >-
-          An id is unique while the dict is alive, so it does stop the crash. In CPython it is a
-          memory address, and freed memory is reused, so a later dict can have a smaller id.
+          Negating turns the largest tier number into the smallest value. Tier 1 is already the
+          smallest number, so the tier has to stay as it is.
 
   - format: tap-cell
     id: checkpoint-heapify-index-one

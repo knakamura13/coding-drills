@@ -124,57 +124,58 @@ questions:
     heading: Which method fits?
     tags: [sliding-window, prefix-sum, hash-map]
     prompt: >-
-      A list of `n` daily balance changes holds positive, zero and negative values. You need to
-      know whether any stretch of consecutive days totals exactly `k`. Which method answers in
-      O(n) expected time?
+      An elevator logs the floor change of each of `n` trips: `+3` for three floors up, `-2` for
+      two down. You need to know whether any run of consecutive trips ends exactly `k` floors
+      above where it started. Which method answers in O(n) expected time?
     options:
       - id: right
-        text: Keep each running total in a set, starting with 0, and look for `total - k`
+        text: Walk once with a set of the net changes so far, starting at 0, and look up `net - k`
         explanation: >-
-          A stretch that ends here totals `k` exactly when an earlier running total equals
-          `total - k`. The starting 0 stands for the empty prefix, so a stretch from the first
-          day counts. Each lookup is O(1) expected, whatever the signs.
+          A run that ends at this trip nets `k` exactly when an earlier net change equals
+          `net - k`. The 0 stands for the start, before any trip, so a run from the first trip
+          counts. Each lookup is O(1) expected, and trips down cause no trouble.
       - id: window
-        text: Grow a window on the right and drop from the left while its total exceeds `k`
-        explanation: Can dropping a day from the left raise the total here?
+        text: Grow a run trip by trip, and drop its first trip while its net change passes `k`
+        explanation: Can dropping a trip from the front raise the net change here?
       - id: shift
-        text: Add the size of the smallest value to every change, then use the window
-        explanation: How much does that add to a stretch of 4 days, and to one of 1 day?
+        text: Binary-search the earlier net changes for `net - k`, since they are in order
+        explanation: Are the net changes so far in order when the elevator also goes down?
       - id: every
-        text: Compute every stretch's total from running totals and compare it with `k`
-        explanation: How many stretches does a list of `n` days have?
+        text: Track the largest net change of a run ending at each trip, and compare it with `k`
+        explanation: Does a run that nets exactly `k` have to be the largest one ending there?
     correct: right
     followUps:
       window:
-        prompt: The window `6, -4` totals 2 with `k = 5`. A 4 arrives and the total is 6, so the 6 is dropped. Next a -1 arrives. What is lost?
+        prompt: With `k = 2`, the first trip, `+5`, already passes 2, so it is dropped. Then come `-4`, `+3` and `-2`. What is lost?
         options:
-          - { id: lost, text: '`6, -4, 4, -1`, which totals 5, since the 6 has already gone' }
-          - { id: none, text: 'Nothing, since `-4, 4, -1` totals 5' }
-          - { id: fine, text: 'Nothing, since the window can move `left` back' }
+          - { id: lost, text: '`+5, -4, +3, -2`, which nets 2, since the `+5` has gone' }
+          - { id: none, text: 'Nothing, since no run of this log nets 2' }
+          - { id: fine, text: 'Nothing, since the run can take the `+5` back' }
         correct: lost
         explanation: >-
-          With negative values, a window total that is too large now can come back down later.
-          The drop rule throws the 6 away for good, so a valid stretch that needs it is lost.
+          With trips down still to come, a run that is too high now can come back to `k` later.
+          The drop throws the `+5` away for good, so the one run that nets 2 is lost.
       shift:
-        prompt: Every change gains 4. How much do a 4-day stretch and a 1-day stretch gain?
+        prompt: The log `+4, -6, +3` gives net changes `0, 4, -2, 1`. Can a binary search look them up?
         options:
-          - { id: diff, text: '16 and 4, so they no longer compare with `k` the same way' }
-          - { id: same, text: '4 each, so the target just becomes `k + 4`' }
-          - { id: none, text: 'Nothing, since the shift is undone at the end' }
-        correct: diff
+          - { id: unsorted, text: 'No, a trip down lowers the net change, so they are out of order' }
+          - { id: sorted, text: 'Yes, net changes only grow as trips are added' }
+          - { id: fast, text: 'Yes, and it takes O(n) time in all' }
+        correct: unsorted
         explanation: >-
-          A shift adds the constant once per day. The target would need to depend on each
-          stretch's length, which no single `k` can do.
+          Net changes are in order only when no trip goes down. Here they are not, so a binary
+          search can miss a value that is there. Even on sorted values, `n` searches would take
+          O(n log n) time.
       every:
-        prompt: How many stretches does a list of `n` days have?
+        prompt: On the log `+3, +1` with `k = 1`, the largest run ending at the second trip nets 4. Is a run that nets 1 missed?
         options:
-          - { id: quad, text: '`n * (n + 1) / 2`, which is O(n²)' }
-          - { id: lin, text: '`n`, one for each day' }
-          - { id: twice, text: '`2n`, one starting and one ending at each day' }
-        correct: quad
+          - { id: missed, text: 'Yes, `+1` alone nets 1 but is not the largest run' }
+          - { id: none, text: 'No, no run of this log nets 1' }
+          - { id: found, text: 'No, the check at the first trip finds it' }
+        correct: missed
         explanation: >-
-          Every pair of a start and an end at or after it is a stretch. Checking them all is
-          correct but quadratic, not O(n).
+          The largest run ending at a trip is only one of the runs ending there. A run that nets
+          exactly `k` can be smaller, so this check misses it even when no trip goes down.
 
   - id: limit-exam-nonneg-longest
     heading: Which method fits?
