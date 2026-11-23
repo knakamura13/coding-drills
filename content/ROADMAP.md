@@ -111,7 +111,7 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | --- | --- | --- | --- |
 | Foundations #10 | Arrays and strings: teaching levels | `arrays-and-strings` | done |
 | Foundations #10 | Arrays and strings: review variants | `arrays-and-strings-review` | done |
-| Foundations #10 | Arrays and strings: checkpoint | `arrays-and-strings-checkpoint` | done |
+| Foundations #10 | Arrays and strings: checkpoint | `arrays-and-strings-checkpoint` | in review |
 | Foundations #10 | Names and objects: teaching levels | `names-and-objects` | done |
 | Foundations #10 | Names and objects: review variants | `names-and-objects-review` | done |
 | Foundations #10 | Names and objects: checkpoint | `names-and-objects-checkpoint` | done |
@@ -136,7 +136,7 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Pointer scans: dragging the pointers through one step | `drag-the-pointers` | in review |
 | Sequences and search #11 | Exact search: teaching levels | `exact-search` | done |
 | Sequences and search #11 | Exact search: review variants | `exact-search-review` | done |
-| Sequences and search #11 | Exact search: checkpoint | `exact-search-checkpoint` | done |
+| Sequences and search #11 | Exact search: checkpoint | `exact-search-checkpoint` | in review |
 | Sequences and search #11 | Pointer scans: predicting each step of a scan | `trace-the-scan` | in review |
 | Sequences and search #11 | Hash lookups: teaching levels | `hash-lookups` | done |
 | Sequences and search #11 | Hash lookups: review variants | `hash-lookups-review` | done |
@@ -164,7 +164,7 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Variable windows: checkpoint | `variable-windows-checkpoint` | done |
 | Sequences and search #11 | Window limits: teaching levels | `window-limits` | done |
 | Sequences and search #11 | Window limits: review variants | `window-limits-review` | done |
-| Sequences and search #11 | Window limits: checkpoint | `window-limits-checkpoint` | done |
+| Sequences and search #11 | Window limits: checkpoint | `window-limits-checkpoint` | in review |
 | Data structures #12 | Stack matching: teaching levels | `stack-matching` | done |
 | Data structures #12 | Stack matching: review variants | `stack-matching-review` | done |
 | Data structures #12 | Stack matching: checkpoint | `stack-matching-checkpoint` | done |
@@ -176,13 +176,13 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Recursive calls: checkpoint | `recursive-calls-checkpoint` | done |
 | Problem-solving patterns #14 | Search state: teaching levels | `search-state` | done |
 | Problem-solving patterns #14 | Search state: review variants | `search-state-review` | done |
-| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | done |
+| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | in review |
 | Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | done |
 | Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | done |
 | Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | done |
 | Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | done |
 | Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | done |
-| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | done |
+| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | in review |
 | Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | done |
 | Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | done |
 | Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | done |
@@ -212,10 +212,10 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Monotonic stack: checkpoint | `monotonic-stack-checkpoint` | done |
 | Data structures #12 | Pointer walks: teaching levels | `pointer-walks` | done |
 | Data structures #12 | Pointer walks: review variants | `pointer-walks-review` | done |
-| Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | done |
+| Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | in review |
 | Data structures #12 | Heap operations: teaching levels | `heap-operations` | done |
 | Data structures #12 | Heap operations: review variants | `heap-operations-review` | done |
-| Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | done |
+| Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | in review |
 | Data structures #12 | Bounded heaps: teaching levels | `bounded-heaps` | done |
 | Data structures #12 | Bounded heaps: review variants | `bounded-heaps-review` | done |
 | Data structures #12 | Bounded heaps: checkpoint | `bounded-heaps-checkpoint` | done |
