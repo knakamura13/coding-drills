@@ -25,6 +25,7 @@ function tinyDeck(): Deck {
 		questions: [
 			{
 				id: 'q1',
+				workedExample: 'A solved case.',
 				prompt: 'First problem.',
 				options: [
 					{ id: 'right', text: 'Right', explanation: 'Why right.' },
@@ -130,6 +131,13 @@ describe('createLesson', () => {
 		expect(isPristine(state)).toBe(true);
 		expect(progress(state)).toBe(0);
 		expect(state.completed).toEqual([]);
+	});
+
+	it('keeps the worked example apart from the prompt, and null when there is none', () => {
+		const first = view(start())!;
+		expect(first.prompt).toBe('First problem.');
+		expect(first.workedExample).toBe('A solved case.');
+		expect(view(advance(answer(start(), 'right')))!.workedExample).toBeNull();
 	});
 });
 

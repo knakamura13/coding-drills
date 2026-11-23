@@ -172,7 +172,7 @@
 
 			{#if screen.stage === 'followUp'}
 				<p class="followup-label"><Icon name="book" size={24} /> Follow-up</p>
-				<div class="pinned followup-pinned"><ProblemCard prompt={screen.prompt} /></div>
+				<div class="pinned followup-pinned"><ProblemCard prompt={screen.prompt} workedExample={screen.workedExample} /></div>
 				<h2 class="question" tabindex="-1" bind:this={heading}>
 					<Markdown source={screen.followUpPrompt ?? ''} inline />
 				</h2>
@@ -181,12 +181,12 @@
 				<h2 class="question" tabindex="-1" bind:this={heading}>
 					<Markdown source={screen.heading ?? ''} inline />
 				</h2>
-				<div class="pinned"><ProblemCard prompt={screen.prompt} /></div>
+				<div class="pinned"><ProblemCard prompt={screen.prompt} workedExample={screen.workedExample} /></div>
 			{:else}
 				<h2 class="question" tabindex="-1" bind:this={heading}>
 					{screen.heading ?? 'Choose the best answer'}
 				</h2>
-				<div class="pinned"><ProblemCard prompt={screen.prompt} /></div>
+				<div class="pinned"><ProblemCard prompt={screen.prompt} workedExample={screen.workedExample} /></div>
 			{/if}
 
 			{#if screen.board}

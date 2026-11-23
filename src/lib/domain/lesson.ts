@@ -342,6 +342,8 @@ export interface LessonView {
 	heading: string | undefined;
 	/** The original problem. Pinned above the follow-up too. */
 	prompt: string;
+	/** Markdown. A solved example the learner can open. Null when the question has none. */
+	workedExample: string | null;
 	/** The snippet beside a tap-cell or drag-pointers sequence. Null for multiple choice. */
 	code: string | null;
 	/** The sequence to tap or to move pointers along. Null for multiple choice. */
@@ -384,6 +386,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 		total: state.plan.length,
 		heading: question.heading ?? planned.heading ?? deckHeading,
 		prompt: question.prompt,
+		workedExample: question.workedExample ?? null,
 		canCheck: !state.checked && state.selected !== null,
 		trace: null as TraceView | null
 	};
