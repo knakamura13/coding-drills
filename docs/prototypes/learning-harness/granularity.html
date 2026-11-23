@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longest common substring | Coding Drills</title>
+<style>
+:root { color-scheme: light; font: 16px/1.5 "DM Sans", system-ui, sans-serif; background: #f4f4ed; color: #1a312b; }
+* { box-sizing: border-box; }
+main { max-width: 660px; margin: auto; padding: 28px 18px 52px; }
+header { border-bottom: 1px solid #a8b7aa; padding-bottom: 11px; font-weight: 650; }
+h1 { margin: 23px 0 14px; font: normal clamp(30px, 6vw, 45px)/1.06 Georgia, serif; }
+h2 { margin: 0 0 12px; font-size: 23px; line-height: 1.26; }
+button { font: inherit; min-height: 44px; border: 1px solid #587767; border-radius: 6px; background: #edf4eb; color: #1a4937; padding: 8px 13px; text-align: left; cursor: pointer; }
+button:hover { background: #dcebdd; }
+button:focus-visible { outline: 3px solid #246f9c; outline-offset: 2px; }
+button[aria-pressed=true] { background: #225c45; color: white; }
+nav { display: flex; gap: 8px; flex-wrap: wrap; }
+article { background: white; border: 1px solid #9fb3a4; border-top: 4px solid #28775c; border-radius: 8px; padding: 19px; margin: 17px 0; }
+table { border-collapse: collapse; margin: 14px 0; }
+caption { text-align: left; font-size: .88rem; color: #41564a; padding-bottom: 6px; }
+th, td { border: 1px solid #9fb3a4; width: 45px; height: 45px; padding: 0; text-align: center; }
+th { background: #f4f4ed; }
+th.axis { background: #e4f0df; }
+td.marked { background: #f4f7f0; font-weight: 650; }
+td.active, td.answer, td.target { background: #d2e9ce; outline: 2px solid #28775c; outline-offset: -2px; }
+td.selectable button[aria-pressed=true] { background: #fff0e7; color: #1a4937; box-shadow: inset 0 0 0 2px #a24d2d; }
+td input, td button { width: 44px; height: 44px; text-align: center; color: #1a4937; font: inherit; padding: 0; border: 0; border-radius: 0; background: transparent; }
+td input:focus-visible { outline: 2px solid #246f9c; outline-offset: -2px; }
+td input[aria-invalid=true] { background: #fff0e7; }
+.choices { display: grid; gap: 7px; margin-top: 14px; }
+.feedback { margin-top: 14px; background: #f1f4ed; border-left: 3px solid #567d63; padding: 10px 12px; }
+.feedback p { margin: 5px 0; }
+.step, .small { color: #41564a; font-size: .88rem; }
+article .step { margin: 0 0 9px; }
+footer { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+[hidden] { display: none; }
+</style>
+</head>
+<body>
+<main>
+<header>Coding Drills lesson review</header>
+<h1>Longest common substring</h1>
+<nav aria-label="Lesson version" id="versions" hidden>
+<button id="combined" aria-pressed="true">Combined card</button>
+<button id="guided" aria-pressed="false">One step at a time</button>
+</nav>
+<article id="card" aria-label="Lesson card"></article>
+<footer id="lesson-actions" hidden><button id="setup">Review the setup</button><button id="restart">Start over</button></footer>
+</main>
+<script>
+const openingCells = ["1", "0", "", "0", "2", "", "", "", ""];
+const board = ["cat", "cac"];
+const solution = ["1", "0", "0", "0", "2", "0", "1", "0", "0"];
+const longestCell = 4;
+const fillOrder = [8, 2, 5, 6, 7];
+const retryBoard = ["bat", "bag", ["1", "0", "", "0", "2", "", "", "", ""]];
+
+const combined = {
+ title: "Which rule gives the right result?",
+ context: 'Compare “cat” and “cac.” The top-left four cells are filled. The question mark shows where the last letters meet.',
+ grid: [...board, openingCells.map((value, index) => index === 8 ? "?" : value)],
+ question: "What value goes in the question mark, and where will we find the length of the longest common substring?",
+ options: ["Use zero. Take the largest cell anywhere.", "Use the larger of the cells above and to the left. Take the bottom-right cell.", "Use zero. Take the bottom-right cell.", "Copy the cell one row up and one column left. Take the largest cell anywhere."],
+ feedback: [
+  "The mismatch gives zero. The longest common substring may end at an earlier pair, so look for the largest value in the whole table.",
+  "Keeping the larger neighbor would let the count carry across a gap. A substring uses consecutive characters.",
+  "Zero is right for the mismatch. The bottom-right cell measures only the longest common substring ending at the last pair.",
+  "The largest cell is right for the answer. The last letters differ, so no common substring ends at that pair. Its value is zero."
+ ],
+ right: 0
+};
+
+const cellMeaning = {
+  title: "What does the highlighted cell measure?",
+  grid: [...board, openingCells],
+  highlightIndex: longestCell,
+  options: ['The length of the longest common substring anywhere in the words', 'The length of the longest common substring ending at this pair'],
+  right: 1,
+  feedback: 'The 2 counts the two matching letters that end at the highlighted pair. A different pair can have a different length.',
+  retry: {
+   grid: ["pen", "pet", openingCells],
+   options: ['The length of the longest common substring ending at this pair', 'The length of the longest common substring anywhere in the words'],
+   right: 0
+  }
+};
+
+const card = document.getElementById("card");
+const versions = document.getElementById("versions");
+const lessonActions = document.getElementById("lesson-actions");
+let mode, stage, retry, cells, filled, boardRetry, solved;
+function add(tag, text, parent=card, className=""){
+ const node=document.createElement(tag);
+ node.textContent=text;
+ if(className)node.className=className;
+ parent.append(node);
+ return node;
+}
+function control(label, action, parent){
+ const button=add("button",label,parent);
+ button.type="button";
+ button.addEventListener("click",action);
+ return button;
+}
+function heading(text){
+ const h=add("h2",text);
+ h.tabIndex=-1;
+ return h;
+}
+function boardCaption([across, down]){
+ return "“"+across+"” across, “"+down+"” down";
+}
+function showGrid([across, down, values], label, {parent=card, activeIndex, onChoose, answerIndex, highlightIndex}={}){
+ const pointedIndex = activeIndex ?? answerIndex ?? highlightIndex ?? -1;
+ const table = add("table", "", parent);
+ add("caption", label, table);
+ const header = add("tr", "", add("thead", "", table));
+ add("td", "", header);
+ for(const [column, letter] of [...across].entries()){
+  const columnHeader = add("th", letter, header, column === pointedIndex%across.length ? "axis" : "");
+  columnHeader.scope = "col";
+ }
+ const rows = add("tbody", "", table);
+ for(const [row, letter] of [...down].entries()){
+  const line = add("tr", "", rows);
+  const rowHeader = add("th", letter, line, row === Math.floor(pointedIndex/across.length) ? "axis" : "");
+  rowHeader.scope = "row";
+  for(let column=0;column<across.length;column++){
+   const index = row*across.length+column;
+   const value = values[index];
+   const cell = add("td", "", line, value ? "marked" : "");
+   const coordinate = "Row "+(row+1)+" ("+letter+"), column "+(column+1)+" ("+across[column]+")";
+   if(index===activeIndex){
+    cell.classList.add("active");
+    const input = add("input", "", cell);
+    input.inputMode = "numeric";
+    input.maxLength = 1;
+    input.pattern = "[0-9]";
+    input.required = true;
+    input.setAttribute("aria-label",coordinate);
+   }else if(onChoose){
+    cell.classList.add("selectable");
+    const button = control(value,()=>onChoose(index, button),cell);
+    button.setAttribute("aria-label",coordinate+", value "+value);
+    button.setAttribute("aria-pressed","false");
+   }else{
+    cell.textContent = value || "-";
+    if(!value)cell.setAttribute("aria-label","Not filled in yet");
+    if(value==="?")cell.setAttribute("aria-label","Cell to predict");
+   }
+   if(index===highlightIndex){
+    cell.classList.add("target");
+    cell.setAttribute("aria-label","Highlighted cell at index ("+row+", "+column+"), value "+value);
+   }
+   if(index===answerIndex)cell.classList.add("answer");
+  }
+ }
+ return table;
+}
+function showSetup(focus=true){
+ versions.hidden = true;
+ lessonActions.hidden = true;
+ const savedCard = document.createDocumentFragment();
+ if(mode)savedCard.append(...card.childNodes);
+ card.replaceChildren();
+ const h = heading("Find the longest common substring");
+ add("p", 'A substring is a sequence of consecutive characters. The longest common substring is the longest one that appears in both words. For example, “ap” is the longest common substring of “nap” and “map.” Its length is 2.');
+ add("h3", "Use a table to remember shorter matches");
+ add("p", 'Put one word across the top and the other down the left. Each cell stores the length of the longest common substring ending at those two letters. Dashes mark cells we haven’t filled.');
+ showGrid(["sh","sh",["1","","","2"]], "“ship” across, “shin” down");
+ add("p", 'At s / s the common substring is “s,” so the cell is 1. The two h’s extend “s” to “sh,” so the cell for h / h is 2. The 1 is one row up and one column left. That’s the diagonal cell.');
+ add("p", 'Reusing a smaller answer that we’ve already saved is the idea behind dynamic programming here. Now work out what happens when two letters differ and how to read the final answer.');
+ const choices = add("div", "", card, "choices");
+ if(mode)control("Return to the lesson",()=>{
+  card.replaceChildren(savedCard);
+  versions.hidden = false;
+  lessonActions.hidden = false;
+  card.querySelector("h2").focus();
+ },choices);
+ else {
+  control("Start with the combined card",()=>start("combined"),choices);
+  control("Go one step at a time",()=>start("guided"),choices);
+ }
+ if(focus)h.focus();
+}
+function completeBoard(){
+ return showGrid([...board, solution], boardCaption(board), {answerIndex:longestCell});
+}
+function chooseResult(){
+ const h=heading(solved ? "Longest common substring found" : "Find the result");
+ if(solved){
+  completeBoard();
+  add("p", 'The largest value is 2 at a / a. The longest common substring is “ca”.');
+  control("Compare the combined card",()=>start("combined"),card);
+ }else{
+  add("p","Select the cell that holds the length of the longest common substring.");
+  const feedback=add("p","");
+  feedback.id="result-feedback";
+  feedback.setAttribute("role","status");
+  const table=showGrid([...board,cells],boardCaption(board),{
+   onChoose:(index, picked)=>{
+    if(index===longestCell){solved=true;render();return}
+    table.querySelector('[aria-pressed="true"]')?.setAttribute("aria-pressed","false");
+    picked.setAttribute("aria-pressed","true");
+    feedback.textContent="That cell measures the longest common substring ending at its pair of letters. Compare its value with the rest of the table.";
+   }
+  });
+  card.append(feedback);
+  table.setAttribute("aria-describedby",feedback.id);
+ }
+ h.focus();
+}
+function fillTable(){
+ const activeIndex=fillOrder[filled];
+ const [across,down,values]=boardRetry ? retryBoard : [...board,cells];
+ const row=down[Math.floor(activeIndex/across.length)];
+ const column=across[activeIndex%across.length];
+ heading(boardRetry ? "Try a fresh mismatch" : "Fill in the table");
+ add("p",boardRetry
+  ? 'In “bat” and “bag,” both words start with “ba.” What belongs in the cell for t / g?'
+  : "Enter the length of the longest common substring ending at "+column+" / "+row+".");
+ if(!boardRetry)add("p",filled+" of "+fillOrder.length+" cells filled",card,"small");
+ const form=add("form","");
+ const table=showGrid([across,down,values],boardCaption([across,down]), {parent:form,activeIndex});
+ const input=table.querySelector("input");
+ const check=add("button","Check cell",form);
+ check.type="submit";
+ const feedback=add("p","",form);
+ feedback.id="cell-feedback";
+ feedback.setAttribute("role","status");
+ input.setAttribute("aria-describedby",feedback.id);
+ form.addEventListener("submit",event=>{
+  event.preventDefault();
+  const expected=boardRetry ? "0" : solution[activeIndex];
+  if(input.value===expected){
+   if(boardRetry){boardRetry=false;render();return}
+   cells[activeIndex]=expected;
+   filled++;
+   if(filled===fillOrder.length)stage=2;
+   render();
+   return;
+  }
+  feedback.textContent=expected==="0"
+   ? "These two letters differ. No common substring ends at this pair."
+   : "The two letters match. The top word starts here, so there’s no earlier pair to extend.";
+  input.setAttribute("aria-invalid","true");
+  if(!boardRetry&&filled===0&&!form.querySelector("#fresh-mismatch")){
+   control("Try a fresh example",()=>{boardRetry=true;render()},form).id="fresh-mismatch";
+  }
+  input.focus();
+  input.select();
+ });
+ input.focus();
+}
+function render(){
+ versions.hidden = false;
+ lessonActions.hidden = false;
+ document.getElementById("combined").setAttribute("aria-pressed",mode==="combined");
+ document.getElementById("guided").setAttribute("aria-pressed",mode==="guided");
+ card.replaceChildren();
+ if(mode==="guided"){
+  add("p","Step "+(stage+1)+" of 3"+(retry||boardRetry ? " (retry)" : ""),card,"step");
+  if(stage===1)return fillTable();
+  if(stage===2)return chooseResult();
+ }
+ const step = mode==="guided" ? cellMeaning : combined;
+ const prompt = retry ? step.retry : step;
+ const h=heading(step.title);
+ if(step.context)add("p",step.context);
+ const table=showGrid(prompt.grid,boardCaption(prompt.grid),{highlightIndex:step.highlightIndex});
+ if(prompt.question)add("p",prompt.question);
+ const choices=add("div","",card,"choices");
+ prompt.options.forEach((option,index)=>control(option,()=>{
+  for (const button of choices.children)button.disabled=true;
+  const correct=prompt.right===index;
+  const result=add("div","",card,"feedback");
+  const verdict=add("p",correct?"Correct": "Try this reasoning",result);
+  verdict.tabIndex=-1;
+  add("p",mode==="guided"?step.feedback:step.feedback[index],result);
+  if(mode==="combined"){
+   if(correct){
+    table.replaceWith(completeBoard());
+    add("p", 'The highlighted 2 gives the length of the longest common substring, “ca”.',result);
+   }else{
+    control("Try again",render,result);
+   }
+   control("Try one step at a time",()=>start("guided"),result);
+  }else if(correct){
+   control("Continue",()=>{stage++;retry=false;render()},result);
+  }else{
+   control(retry?"Retry this example":"Try a fresh example",()=>{retry=true;render()},result);
+  }
+  verdict.focus();
+ },choices));
+ h.focus();
+}
+function start(version){
+ mode=version;
+ stage=0;
+ retry=false;
+ cells=openingCells.slice();
+ filled=0;
+ boardRetry=false;
+ solved=false;
+ render();
+}
+document.getElementById("combined").onclick=()=>start("combined");
+document.getElementById("guided").onclick=()=>start("guided");
+document.getElementById("restart").onclick=()=>start(mode);
+document.getElementById("setup").onclick=()=>showSetup();
+showSetup(false);
+</script>
+</body>
+</html>
