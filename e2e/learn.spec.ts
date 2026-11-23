@@ -152,6 +152,24 @@ test.describe('the summary', () => {
 		await expect(page).toHaveURL(/\/$/);
 	});
 
+	test('desktop splits the tree and the misses: every miss in the card, no drawer, buttons side by side', async ({ page, isMobile }) => {
+		test.skip(isMobile, 'desktop layout only');
+		await page.setViewportSize({ width: 1440, height: 900 });
+		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+		await expect(page.getByRole('heading', { name: `0 of ${shown.length} right the first time` })).toBeFocused();
+		await expect(grab(page)).toHaveCount(0);
+		await expect(misses(page).getByRole('listitem')).toHaveCount(shown.length);
+		const tree = (await page.getByRole('img', { name: /then Boundary search$/ }).boundingBox())!;
+		const card = (await page.getByRole('region', { name: 'Missed questions' }).boundingBox())!;
+		expect(tree.x).toBe(0);
+		expect(card.x).toBeGreaterThan(tree.x + 600);
+		const done = (await page.getByRole('button', { name: 'Done' }).boundingBox())!;
+		const retry = (await page.getByRole('button', { name: 'Retry' }).boundingBox())!;
+		expect(Math.round(done.y)).toBe(Math.round(retry.y));
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+		expect(await violations(page)).toEqual([]);
+	});
+
 	test('misses that would scroll become a drawer: tap, Enter and a drag open it, Escape closes it', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
