@@ -153,8 +153,8 @@ questions:
       recently.
     code: |
       import heapq
-      graph = {"S": [("A", 1), ("C", 9)], "A": [("B", 2), ("C", 7)],
-               "B": [("C", 3), ("D", 8)], "C": [("D", 1)], "D": []}
+      graph = {"S": [("C", 2), ("B", 10)], "A": [("B", 4), ("D", 9)],
+               "B": [("D", 1)], "C": [("A", 1), ("B", 7)], "D": []}
       dist = {node: float("inf") for node in graph}
       dist["S"] = 0
       heap = [(0, "S")]
@@ -176,67 +176,71 @@ questions:
       - line: 8
         ask: '`S` has been expanded. Which node is expanded next? Move `u` to it.'
         pointer: u
-        correct: 1
-        explanation: '`S` pushed `(1, "A")` and `(9, "C")`. The smaller entry pops first, so `A` is expanded at 1.'
+        correct: 3
+        explanation: '`S` pushed `(2, "C")` and `(10, "B")`. The smaller entry pops first, so `C` is expanded at 2.'
         misses:
-          - index: 3
-            explanation: '`C`''s entry is 9, larger than `A`''s 1.'
-        elsewhere: Only `A` and `C` have entries in the heap, and `A`'s is smaller.
+          - index: 2
+            explanation: '`B`''s entry is 10, larger than `C`''s 2.'
+          - index: 1
+            explanation: '`A` has no entry yet. The edges out of `S` lead only to `C` and `B`.'
+        elsewhere: Only `C` and `B` have entries in the heap, and `C`'s is smaller.
+      - line: 8
+        ask: Which node is expanded next?
+        pointer: u
+        correct: 1
+        explanation: >-
+          `C` pushed `(3, "A")` and `(9, "B")`, since 2 + 7 is less than 10. The heap holds 3, 9 and
+          10, so `A` is expanded at 3.
+        misses:
+          - index: 2
+            explanation: '`B` now has entries 9 and 10, both larger than `A`''s 3.'
+        elsewhere: '`S` and `C` are done, and `D` has no entry yet. The smallest entry is `(3, "A")`.'
       - line: 8
         ask: Which node is expanded next?
         pointer: u
         correct: 2
-        explanation: '`A` pushed `(3, "B")` and `(8, "C")`. The heap holds 3, 8 and 9, so `B` is expanded at 3.'
-        misses:
-          - index: 3
-            explanation: '`C` now has entries 8 and 9, both larger than `B`''s 3.'
-        elsewhere: '`S` and `A` are done, and `D` has no entry yet. The smallest entry is `(3, "B")`.'
-      - line: 8
-        ask: Which node is expanded next?
-        pointer: u
-        correct: 3
         explanation: >-
-          `B` pushed `(6, "C")`, since 3 + 3 is less than 8, and `(11, "D")`. The heap holds 6, 8,
-          9 and 11, so `C` is expanded at 6.
+          `A` pushed `(7, "B")`, since 3 + 4 is less than 9, and `(12, "D")`. The heap holds 7, 9,
+          10 and 12, so `B` is expanded at 7.
         misses:
           - index: 4
-            explanation: '`D`''s only entry is 11, larger than `C`''s 6.'
-        elsewhere: The smallest entry in the heap is `(6, "C")`.
+            explanation: '`D`''s only entry is 12, larger than `B`''s 7.'
+        elsewhere: The smallest entry in the heap is `(7, "B")`.
       - line: 8
         ask: '`D` is expanded next. With what distance does its entry pop?'
         options:
           - id: seven
-            text: '`7`'
+            text: '`8`'
             explanation: >-
-              `C` pushed `(7, "D")`, since 6 + 1 is less than 11. It pops before the stale 8 and 9
-              for `C` and the old 11 for `D`.
+              `B` pushed `(8, "D")`, since 7 + 1 is less than 12. It pops before the stale 9 and 10
+              for `B` and the old 12 for `D`.
           - id: eleven
-            text: '`11`'
-            explanation: '11 came from `B`. `C` later found 6 + 1 = 7, and that entry pops first.'
+            text: '`12`'
+            explanation: '12 came from `A`. `B` later found 7 + 1 = 8, and that entry pops first.'
           - id: nine
-            text: '`9`'
+            text: '`10`'
             explanation: >-
-              9 would be the stale `(8, "C")` entry plus `C -> D`. `C` was expanded at 6, so it
-              pushed 7 instead.
+              10 would be the stale `(9, "B")` entry plus `B -> D`. `B` was expanded at 7, so it
+              pushed 8 instead.
         correct: seven
       - line: 9
-        ask: If the two stale-check lines were deleted, how many times would the loop scan the edges out of `C`?
+        ask: If the two stale-check lines were deleted, how many times would the loop scan the edges out of `B`?
         options:
           - id: three
             text: '3'
             explanation: >-
-              `C` was pushed with 9, 8 and 6. Without the check, all three entries are expanded.
-              The answers stay right, since 8 + 1 and 9 + 1 do not beat 7, but two scans are
+              `B` was pushed with 10, 9 and 7. Without the check, all three entries are expanded.
+              The answers stay right, since 9 + 1 and 10 + 1 do not beat 8, but two scans are
               wasted.
           - id: one
             text: '1'
             explanation: >-
-              That is the count with the stale check. Without it, the entries 8 and 9 for `C` are
+              That is the count with the stale check. Without it, the entries 9 and 10 for `B` are
               expanded as well.
           - id: two
             text: '2'
             explanation: >-
-              `C` has three entries: 9 from `S`, 8 from `A` and 6 from `B`. Each one is expanded
+              `B` has three entries: 10 from `S`, 9 from `C` and 7 from `A`. Each one is expanded
               when the check is gone.
         correct: three
 
@@ -312,12 +316,13 @@ questions:
         prompt: What does the second pass do on this list?
         options:
           - id: confirms
-            text: It checks all six edges and lowers nothing, which shows the values are final
+            text: It lowers no distance
           - id: lowers-d
-            text: It lowers `D` from 8 to its final value
+            text: It lowers `D` from 8 to 7
           - id: lowers-c
-            text: It lowers `C` through `B`, a route that pass 1 missed
+            text: It lowers `C` from 8 to 6
         correct: confirms
         explanation: >-
-          Pass 1 already found `C` through `B` and `D` through `C`. A pass that changes nothing
-          proves no later pass will, which is when the loop can stop.
+          It checks all six edges and lowers nothing, because pass 1 already found `C` through `B`
+          and `D` through `C`. A pass that changes nothing shows the values are final, which is when
+          the loop can stop.
