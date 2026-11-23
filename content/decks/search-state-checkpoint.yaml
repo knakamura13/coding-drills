@@ -93,88 +93,85 @@ questions:
           it passed through, so (1, 1) is still open.
 
   - id: checkpoint-alias-pairs
+    heading: What does it return?
     tags: [backtracking, python]
     prompt: |-
+      This lists every team of three that includes the first item.
+
       ```python
-      def choose_two(items):
-          out, path = [], []
+      def with_lead(items):
+          out, team = [], [items[0]]
           def pick(start):
-              if len(path) == 2:
-                  out.append(path)
+              if len(team) == 3:
+                  out.append(team)
                   return
               for j in range(start, len(items)):
-                  path.append(items[j])
+                  team.append(items[j])
                   pick(j + 1)
-                  path.pop()
-          pick(0)
+                  team.pop()
+          pick(1)
           return out
       ```
 
-      Which one change makes `choose_two("abc")` return
-      `[['a', 'b'], ['a', 'c'], ['b', 'c']]`?
+      What does `with_lead("pqrs")` return?
     options:
       - id: copy
-        text: "Record `out.append(path[:])`"
+        text: "`[['p'], ['p'], ['p']]`"
         explanation: >-
-          The undo is fine. The leak is in the record, which
-          saves `path` itself. The pops then empty that one list, and every entry shows `[]`. A
-          slice saves each pair as it was.
+          `out.append(team)` stores `team` itself three times, not three trios. Each pop undoes an
+          append made inside `pick`, so when the search ends `team` is back to its seed, `['p']`,
+          and every entry shows that.
       - id: no-pop
-        text: "Delete `path.pop()`"
-        explanation: >-
-          Without the pop, the letters pile up and `path` never has length 2 again after the first
-          leaf. `out` ends as one entry, `[['a', 'b', 'c', 'b', 'c', 'c']]`.
+        text: "`[['p', 'q', 'r'], ['p', 'q', 's'], ['p', 'r', 's']]`"
+        explanation: Look at what `out.append(team)` stores at each record.
       - id: pop-first
-        text: "Move `path.pop()` above `pick(j + 1)`"
-        explanation: >-
-          Then each letter is removed before the call that should see it. `path` never reaches
-          length 2, and the function returns `[]`.
+        text: "`[[], [], []]`"
+        explanation: Check which item went into `team` without an append that a pop undoes.
       - id: pick-j
-        text: "Call `pick(j)` instead of `pick(j + 1)`"
-        explanation: >-
-          That lets a letter pair with itself, and the record still saves `path` itself. It
-          returns six entries, all `[]`.
+        text: "`[['p', 'r', 's'], ['p', 'r', 's'], ['p', 'r', 's']]`"
+        explanation: Check what `team` holds after the pops that follow the last record.
     correct: copy
     followUps:
       no-pop:
-        prompt: Is the undo in `choose_two` in the wrong place?
-        options:
-          - id: correct-place
-            text: No, each pop follows its own call and comes before the next letter
-          - id: too-late
-            text: Yes, the pop should come before the call
-          - id: too-early
-            text: Yes, the pop should come after the loop
-        correct: correct-place
-        explanation: >-
-          The entries are wrong because they are all `path`, not because `path` held the wrong
-          letters. At each leaf it held the right pair.
-      pop-first:
-        prompt: What does a call see if the letter is popped before the call is made?
-        options:
-          - id: without
-            text: The path without that letter, so it never sees the choice
-          - id: with
-            text: The path with that letter, since the append came first
-          - id: copy
-            text: A copy of the path taken at the append
-        correct: without
-        explanation: >-
-          A call sees `path` as it is when the call starts. A choice has to stay in place for the
-          whole call, and be undone after it.
-      pick-j:
-        prompt: "What does `out.append(path)` store at each leaf?"
+        prompt: What does `out.append(team)` store at each record?
         options:
           - id: same
-            text: The one shared list, which later pops empty
+            text: The one shared list, which later pops change
           - id: pair
-            text: The pair of letters at that moment
+            text: The three letters it holds at that moment
           - id: new-list
-            text: A new list, since each leaf is a new call
+            text: A new list, since each record is a new call
         correct: same
         explanation: >-
-          Changing which calls run does not change what the record stores. Any version that saves
-          `path` itself ends with every entry showing its final, empty contents.
+          Appending a name stores the object, not its contents. All three entries are `team`
+          itself, so they show what `team` holds when the search ends.
+      pop-first:
+        prompt: Which letters does `team` hold once `pick(1)` returns?
+        options:
+          - id: seed
+            text: "`['p']`, since no pop undoes the seed"
+          - id: empty
+            text: None, since every letter is popped again
+          - id: last
+            text: "`['p', 'r', 's']`, the last team recorded"
+        correct: seed
+        explanation: >-
+          Each pop undoes an append made inside `pick`. The `'p'` went in before the search
+          started, so no pop removes it, and every entry shows `['p']`.
+      pick-j:
+        prompt: The last record stores `team` while it holds `['p', 'r', 's']`. Is that what the entries show at the end?
+        options:
+          - id: changed
+            text: No, the pops after that record change `team` again
+          - id: fixed
+            text: Yes, the last record fixes what every entry shows
+          - id: snapshot
+            text: Yes, a record keeps the letters it saw
+        correct: changed
+        explanation: >-
+          The entries are `team` itself, so they show its contents when `out` is returned. After
+          the last record the search pops back out, tries `'s'` right after the lead and pops it
+          too, and ends with `team` as `['p']`.
 
   - id: checkpoint-running-total-leak
     tags: [backtracking, recursion]

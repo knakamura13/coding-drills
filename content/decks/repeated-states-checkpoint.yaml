@@ -95,92 +95,89 @@ questions:
     heading: Which one gains from a cache?
     tags: [dp, recursion]
     prompt: |-
-      Both functions make two recursive calls on a list `w` of 16 numbers.
+      Both functions make two recursive calls. `n` is 16.
 
       ```python
-      def split(lo, hi):            # sum of w[lo:hi]
-          if hi - lo == 1:
-              return w[lo]
-          mid = (lo + hi) // 2
-          return split(lo, mid) + split(mid, hi)
-
-      def trim(lo, hi):             # best lead, taking from either end
-          if lo == hi:
+      def size(i):                  # nodes under index i in a heap of n
+          if i >= n:
               return 0
-          return max(w[lo] - trim(lo + 1, hi),
-                     w[hi - 1] - trim(lo, hi - 1))
+          return 1 + size(2 * i + 1) + size(2 * i + 2)
+
+      def walks(r, c):              # routes to (0, 0), stepping up or left
+          if r == 0 or c == 0:
+              return 1
+          return walks(r - 1, c) + walks(r, c - 1)
       ```
 
-      A cache keyed on `(lo, hi)` is added to each. For which of them does the cache cut the
-      number of times the body runs on `(0, 16)`?
+      A cache keyed on the arguments is added to each. For which of them does the cache cut the
+      number of times the body runs, on `size(0)` and on `walks(6, 6)`?
     options:
       - id: only-trim
-        text: Only `trim`, since its two calls both reach `(lo + 1, hi - 1)`
+        text: Only `walks`, since its two calls both reach `(r - 1, c - 1)`
         explanation: >-
-          `trim`'s two calls take from opposite ends, and each of them then reaches the same
-          `(lo + 1, hi - 1)`. `trim(0, 16)` runs its body 131,071 times without a
-          cache and 153 times with one. `split` hands out disjoint halves, so it runs 31 times
-          either way.
+          A step up and then left reaches the same `(r - 1, c - 1)` as a step left and then up.
+          `walks(6, 6)` runs its body 1,847 times without a cache and 48 times with one.
+          `size` hands each index to exactly one parent, so it runs 33 times either way.
       - id: only-split
-        text: Only `split`, since its halves repeat on every level
+        text: Only `size`, since its calls fan out to the same indexes
         explanation: >-
-          Each half belongs to one parent only. Look for a range that two different calls of
-          `split` would both ask for.
+          Each index belongs to one parent only. Look for an index that two different calls of
+          `size` would both ask for.
       - id: both
-        text: Both, since each one makes two recursive calls
+        text: Both, since each of them makes two recursive calls
         explanation: >-
           Two calls per level is not what a cache feeds on. It feeds on the same arguments coming
           up more than once.
       - id: neither
-        text: Neither, since each call changes `lo` or `hi`
+        text: Neither, since every call moves on to new arguments
         explanation: >-
-          Every call changes the range, but different paths can still arrive at the same range.
-          Try two orders of taking one item from each end.
+          Every call changes its arguments, but different paths can still arrive at the same
+          ones. Try two orders of one step up and one step left.
     correct: only-trim
     followUps:
       only-split:
-        prompt: Which calls ask for `split(4, 8)`?
+        prompt: Which calls ask for `size(5)`?
         options:
           - id: one-parent
-            text: "`split(0, 8)` and no other call"
+            text: "`size(2)` and no other call"
           - id: two-parents
-            text: "`split(0, 8)` and `split(4, 12)`"
+            text: "`size(2)` and `size(1)`"
           - id: every-level
-            text: "`split(0, 8)` and `split(0, 16)`"
+            text: "`size(2)` and `size(0)`"
         correct: one-parent
         explanation: >-
-          `mid` fixes every split, so each range has one parent and is solved once. `(4, 12)` is
-          never a range, and `split(0, 16)` asks for `split(0, 8)`, not `split(4, 8)`. A cache
-          stores 31 ranges and never reads one back.
+          Index `j` is asked for only by index `(j - 1) // 2`, so each call has one parent and is
+          solved once. `size(1)` asks for 3 and 4, and `size(0)` for 1 and 2. A cache stores 33
+          results and never reads one back.
       both:
-        prompt: What makes the plain `trim(0, 16)` run its body 131,071 times?
+        prompt: What makes the plain `walks(6, 6)` run its body 1,847 times?
         options:
           - id: same-ranges
-            text: The same ranges come up along many different orders of takes
+            text: The same arguments come up along many different orders of steps
           - id: two-calls
             text: Any function with two calls per level runs that many times
           - id: long-list
-            text: Sixteen numbers are too many for any recursion
+            text: A 6 by 6 grid is too big for any recursion
         correct: same-ranges
         explanation: >-
-          With 16 items, `trim` has only 153 different ranges, but plain recursion visits each one
-          once per path that reaches it. `split` also makes two calls per level and runs only 31
-          times, because its ranges never repeat.
+          `walks(6, 6)` has only 48 different argument pairs, but plain recursion runs each one
+          once per order of steps that reaches it. `size` also makes two calls per level and runs
+          only 33 times, because its arguments never repeat.
       neither:
         prompt: >-
-          From `trim(0, 16)`, take the left end and then the right, or the right end and then
-          the left. Which call does each order reach?
+          From `walks(6, 6)`, step up and then left, or step left and then up. Which call does
+          each order reach?
         options:
           - id: same-range
-            text: Both reach `trim(1, 15)`
+            text: Both reach `walks(5, 5)`
           - id: different
-            text: "`trim(1, 16)` and `trim(0, 15)`, which differ"
+            text: "`walks(5, 6)` and `walks(6, 5)`, which differ"
           - id: no-range
-            text: Neither, since two takes end the recursion
+            text: Neither, since two steps end the recursion
         correct: same-range
         explanation: >-
           Two different paths that arrive at the same arguments are exactly what a cache saves.
-          `trim(1, 16)` and `trim(0, 15)` are the steps in between, not where the paths end.
+          `walks(5, 6)` and `walks(6, 5)` are the steps in between, not where the paths end.
 
   - id: checkpoint-first-hit-steps
     format: tap-cell
