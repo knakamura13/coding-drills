@@ -1,6 +1,8 @@
 <!--
 	Multiple-choice answers as tiles (lesson Round 3, Tile B; Round 4, Feedback D). Native radio
-	inputs, so arrow keys move between answers and screen readers announce a radio group.
+	inputs, so arrow keys move between answers and screen readers announce a radio group. With
+	"Immediate feedback" on, a pick is the answer, so the tiles become buttons instead: arrow keys
+	only move focus, and Enter, Space or a tap answers.
 	Before Check: rest, pressed and selected. After Check: the right answer takes the branch tint and
 	border with a check, a wrong pick a rose border and '!', and every other answer dims to Mist.
 -->
@@ -8,6 +10,7 @@
 	import { renderInline } from '$lib/markdown/render';
 	import type { OptionView } from '$lib/domain/lesson';
 	import Icon from './Icon.svelte';
+	import { roving } from './roving';
 
 	let {
 		options,
@@ -15,6 +18,7 @@
 		checked,
 		label,
 		name,
+		atOnce = false,
 		onselect
 	}: {
 		options: readonly OptionView[];
@@ -25,6 +29,8 @@
 		/** The question, as the group's accessible name. */
 		label: string;
 		name: string;
+		/** A press answers at once: buttons with arrow-key focus instead of radios. */
+		atOnce?: boolean;
 		onselect: (id: string) => void;
 	} = $props();
 
@@ -34,27 +40,37 @@
 	}
 </script>
 
+{#snippet face(option: OptionView, state: string)}
+	<!-- renderInline escapes HTML first, so the output is safe to inject. -->
+	<span class="text">{@html renderInline(option.text)}</span>
+	{#if state === 'correct'}
+		<Icon name="correct" /><span class="visually-hidden">, the right answer</span>
+	{:else if state === 'wrong'}
+		<Icon name="missed" /><span class="visually-hidden">, your answer, not right</span>
+	{/if}
+{/snippet}
+
 <fieldset class="tiles" disabled={checked}>
 	<legend class="visually-hidden">{label}</legend>
-	{#each options as option (option.id)}
+	{#each options as option, index (option.id)}
 		{@const state = look(option)}
-		<label class="tile {state}">
-			<input
-				class="radio"
-				type="radio"
-				{name}
-				value={option.id}
-				checked={option.id === selectedId}
-				onchange={() => onselect(option.id)}
-			/>
-			<!-- renderInline escapes HTML first, so the output is safe to inject. -->
-			<span class="text">{@html renderInline(option.text)}</span>
-			{#if state === 'correct'}
-				<Icon name="correct" /><span class="visually-hidden">, the right answer</span>
-			{:else if state === 'wrong'}
-				<Icon name="missed" /><span class="visually-hidden">, your answer, not right</span>
-			{/if}
-		</label>
+		{#if atOnce}
+			<button type="button" class="tile {state}" tabindex={index === 0 ? 0 : -1} onkeydown={roving} onclick={() => onselect(option.id)}>
+				{@render face(option, state)}
+			</button>
+		{:else}
+			<label class="tile {state}">
+				<input
+					class="radio"
+					type="radio"
+					{name}
+					value={option.id}
+					checked={option.id === selectedId}
+					onchange={() => onselect(option.id)}
+				/>
+				{@render face(option, state)}
+			</label>
+		{/if}
 	{/each}
 </fieldset>
 
@@ -79,6 +95,8 @@
 		background: var(--color-surface-card);
 		color: var(--color-text-primary);
 		cursor: pointer;
+		font: inherit;
+		text-align: start;
 		transition:
 			background-color var(--dur-state) var(--ease),
 			border-color var(--dur-state) var(--ease),
@@ -140,7 +158,8 @@
 		cursor: inherit;
 	}
 
-	.tile:has(.radio:focus-visible) {
+	.tile:has(.radio:focus-visible),
+	button.tile:focus-visible {
 		outline: 2px solid var(--color-focus-ring);
 		outline-offset: 2px;
 	}

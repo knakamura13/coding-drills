@@ -16,8 +16,8 @@
 		{ key: 'haptics', label: 'Haptics', hint: 'Vibration feedback on answer and on correct/wrong.' },
 		{
 			key: 'immediateFeedback',
-			label: 'Immediate feedback on quizzes',
-			hint: 'Show right or wrong as soon as an option is picked.'
+			label: 'Immediate feedback',
+			hint: 'Show right or wrong as soon as an answer or a cell is picked.'
 		}
 	];
 
@@ -125,7 +125,7 @@
 <Dialog open={feedbackOpen} label="Immediate feedback is on" onclose={() => (feedbackOpen = false)}>
 	<h2 class="dialog-title">Immediate feedback is on</h2>
 	<p class="explain">
-		Picking an option shows right or wrong at once, with no separate Check step. A wrong answer still opens its follow-up.
+		Picking an answer or tapping a cell shows right or wrong at once, with no separate Check step. A wrong answer still opens its follow-up.
 	</p>
 	<ul class="sample">
 		<li class="tile">Unanswered</li>

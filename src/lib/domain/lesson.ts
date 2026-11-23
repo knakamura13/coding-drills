@@ -401,7 +401,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 			code: question.code,
 			board: boardView(question, state.selected, state.checked),
 			followUpPrompt: null,
-		mainPickText: null,
+			mainPickText: null,
 			options: [],
 			verdict: result
 				? {
@@ -424,7 +424,7 @@ export function view(state: LessonState, deckHeading?: string): LessonView | nul
 			code: question.code,
 			board: dragBoardView(question, state.selected, result),
 			followUpPrompt: null,
-		mainPickText: null,
+			mainPickText: null,
 			options: [],
 			verdict: result
 				? {

@@ -26,7 +26,7 @@ test.describe('settings', () => {
 		await page.goto('/settings');
 		await page.getByRole('switch', { name: 'Sound effects' }).click();
 		await page.getByRole('switch', { name: 'Haptics' }).click();
-		await page.getByRole('switch', { name: 'Immediate feedback on quizzes' }).click();
+		await page.getByRole('switch', { name: 'Immediate feedback' }).click();
 		const dialog = page.getByRole('dialog', { name: 'Immediate feedback is on' });
 		await expect(dialog).toBeVisible();
 		await expect(dialog.getByText('Unanswered')).toBeVisible();
@@ -41,7 +41,7 @@ test.describe('settings', () => {
 		await page.reload();
 		await expect(page.getByRole('switch', { name: 'Sound effects' })).toBeChecked();
 		await expect(page.getByRole('switch', { name: 'Haptics' })).toBeChecked();
-		await expect(page.getByRole('switch', { name: 'Immediate feedback on quizzes' })).toBeChecked();
+		await expect(page.getByRole('switch', { name: 'Immediate feedback' })).toBeChecked();
 		await expect(page.getByRole('radio', { name: 'Dark', exact: true })).toBeChecked();
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 		await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -138,7 +138,7 @@ test.describe('settings', () => {
 			await page.goto('/settings');
 			await expect(page.getByRole('switch', { name: 'Sound effects' })).toBeVisible();
 			await expectNoViolations(page);
-			await page.getByRole('switch', { name: 'Immediate feedback on quizzes' }).click();
+			await page.getByRole('switch', { name: 'Immediate feedback' }).click();
 			await expect(page.getByRole('dialog', { name: 'Immediate feedback is on' })).toBeVisible();
 			await expectNoViolations(page);
 

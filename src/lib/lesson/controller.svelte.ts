@@ -90,15 +90,18 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 				);
 			return existing?.note ?? '';
 		},
-		select(optionId: string) {
+		/** `atOnce` lets a screen decide whether this pick is also the answer; otherwise the old UI's rule applies. */
+		select(optionId: string, atOnce?: boolean) {
 			const question = state.plan[state.cursor]?.question;
 			// A tap, and each step of a trace, answers in one gesture. Multiple choice follows
 			// the preference. A drag answer has several pointers to place, so it waits for Check.
-			const immediate = question
-				? isTapCellQuestion(question) ||
-					isStepTraceQuestion(question) ||
-					(preferences.immediateFeedback && isChoiceQuestion(question))
-				: false;
+			const immediate =
+				atOnce ??
+				(question
+					? isTapCellQuestion(question) ||
+						isStepTraceQuestion(question) ||
+						(preferences.immediateFeedback && isChoiceQuestion(question))
+					: false);
 			state = select(state, optionId, immediate);
 		},
 		/** Moves one pointer of a drag question. The answer is every pointer's cell, checked on Check. */
