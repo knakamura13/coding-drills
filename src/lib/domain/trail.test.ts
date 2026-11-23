@@ -62,6 +62,17 @@ describe('lessonTrail', () => {
 		expect(slipped).toMatchObject({ id: 'exact', mastered: false });
 	});
 
+	it('is no one path for a deck that mixes paths: its branch, then the deck', () => {
+		const mixed: Curriculum = {
+			...curriculum,
+			drills: [...curriculum.drills, { ...curriculum.drills[0]!, questionId: 'mixed-1', deckId: 'mixed-deck' }, { ...curriculum.drills[2]!, questionId: 'mixed-2', deckId: 'mixed-deck' }]
+		};
+		expect(lessonTrail(mixed, [], 'mixed-deck', 'Searching')).toEqual({
+			earlier: [{ kind: 'branch', id: 'search', title: 'Sequences and search', mastered: false }],
+			title: 'Searching'
+		});
+	});
+
 	it('is just the deck for a deck no path maps', () => {
 		expect(lessonTrail(curriculum, [], 'loose-deck', 'Loose deck')).toEqual({ earlier: [], title: 'Loose deck' });
 	});

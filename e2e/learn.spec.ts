@@ -180,6 +180,20 @@ test.describe('the summary', () => {
 		await page.mouse.up();
 		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
 		await expect(misses(page).getByRole('listitem')).toHaveCount(shown.length);
+
+		// A drag the system cancels snaps back, and the next tap still works.
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		await grab(page).evaluate((button) => {
+			const at = button.getBoundingClientRect();
+			const event = (type: string, y: number) => new PointerEvent(type, { pointerId: 9, clientX: at.x + 10, clientY: y, bubbles: true });
+			button.dispatchEvent(event('pointerdown', at.y + 10));
+			window.dispatchEvent(event('pointermove', at.y - 120));
+			window.dispatchEvent(event('pointercancel', at.y - 120));
+		});
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
+		await grab(page).click();
+		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
 	});
 });
 

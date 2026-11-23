@@ -5,7 +5,9 @@ import { projectCurriculum, rollup } from './mastery';
 /**
  * The piece of the mastery tree on the lesson summary (lesson Round 6): the nodes that led to this
  * lesson, ending at it. A lesson is a path on its branch; the nodes before it are the branch, then
- * the branch's earlier paths, of which the summary shows the last two.
+ * the branch's earlier paths, of which the summary shows the last two. An older topic deck can
+ * hold drills from several paths: it is no one path, so it shows only its branch, when they share
+ * one, before a leaf with the deck's own title.
  */
 
 export interface TrailNode {
@@ -19,14 +21,17 @@ export interface TrailNode {
 export interface LessonTrail {
 	/** Up to two nodes before this lesson, oldest first. Empty for a deck no path maps. */
 	earlier: TrailNode[];
-	/** This lesson's name: its path's title, or the deck's title when no path maps it. */
+	/** This lesson's name: its path's title, or the deck's title when no one path maps it. */
 	title: string;
 }
 
 export function lessonTrail(curriculum: Curriculum, attempts: readonly Attempt[], deckId: string, deckTitle: string): LessonTrail {
-	const pathId = curriculum.drills.find((drill) => drill.deckId === deckId)?.pathId;
-	const branch = pathId ? projectCurriculum(curriculum, attempts).branches.find((candidate) => candidate.paths.some((path) => path.id === pathId)) : undefined;
-	if (!branch) return { earlier: [], title: deckTitle };
+	const pathIds = new Set(curriculum.drills.filter((drill) => drill.deckId === deckId).map((drill) => drill.pathId));
+	const branches = projectCurriculum(curriculum, attempts).branches.filter((candidate) => candidate.paths.some((path) => pathIds.has(path.id)));
+	if (branches.length !== 1) return { earlier: [], title: deckTitle };
+	const branch = branches[0]!;
+	if (pathIds.size > 1) return { earlier: [{ kind: 'branch', id: branch.id, title: branch.title, mastered: false }], title: deckTitle };
+	const pathId = [...pathIds][0];
 	const at = branch.paths.findIndex((path) => path.id === pathId);
 	const chain: TrailNode[] = [
 		{ kind: 'branch', id: branch.id, title: branch.title, mastered: false },

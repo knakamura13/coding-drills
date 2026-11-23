@@ -63,13 +63,20 @@
 			if (dragged && dragTop !== null) open = (closedTop - dragTop) / (closedTop - openTop) > 0.5;
 			dragTop = null;
 		};
+		// A canceled drag snaps back, and since no click follows it, the next tap must not be skipped.
+		const cancel = (next: PointerEvent) => {
+			if (next.pointerId !== id) return;
+			stopDrag();
+			dragged = false;
+			dragTop = null;
+		};
 		window.addEventListener('pointermove', move);
 		window.addEventListener('pointerup', up);
-		window.addEventListener('pointercancel', up);
+		window.addEventListener('pointercancel', cancel);
 		stopDrag = () => {
 			window.removeEventListener('pointermove', move);
 			window.removeEventListener('pointerup', up);
-			window.removeEventListener('pointercancel', up);
+			window.removeEventListener('pointercancel', cancel);
 			stopDrag = () => {};
 		};
 	}
