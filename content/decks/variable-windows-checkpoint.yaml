@@ -108,7 +108,7 @@ questions:
     misses:
       - index: 0
         explanation: >-
-          The window would hold both `b` days. `left` moved past index 1 when the second `b`
+          The window would hold both `b` letters. `left` moved past index 1 when the second `b`
           arrived, and it never moves back.
       - index: 1
         explanation: >-
@@ -159,22 +159,22 @@ questions:
           `while` passes together remove at most `n` days. Each pass adds a whole group of
           stretches with one subtraction, and `counts` never holds more than `k + 1` keys.
       - id: quadratic
-        text: O(n²) time, since it counts up to n(n + 1) / 2 stretches
+        text: O(n²) time and O(k) extra space
         explanation: Does the loop visit each stretch, or add them up in groups?
       - id: k-per-pass
-        text: O(n·k) time, since the `while` can run up to `k` times per pass
+        text: O(nk) time and O(k) extra space
         explanation: Is the number of removals bounded per pass, or over the whole call?
       - id: n-space
-        text: O(n) time and O(n) extra space, since `counts` keeps every type seen
+        text: O(n) time and O(n) extra space
         explanation: What happens to a key when its last copy leaves?
     correct: right
     followUps:
       quadratic:
         prompt: On a pass with `left` at 2 and `right` at 9, how much work does `total += right - left + 1` do?
         options:
-          - { id: one, text: 'One subtraction and one addition, for all 8 stretches at once' }
+          - { id: one, text: 'Constant work, for all 8 at once' }
           - { id: eight, text: 'Eight steps, one per stretch' }
-          - { id: ten, text: 'Ten steps, one per index up to `right`' }
+          - { id: ten, text: 'Ten steps, one per index so far' }
         correct: one
         explanation: >-
           The count of valid stretches ending at `right` is a formula, not a list to walk. The
@@ -185,7 +185,7 @@ questions:
           With `k = 1`, the log is 50 days of `plan` followed by one `ship`. How many days leave on
           the last pass?
         options:
-          - { id: fifty, text: 'All 50 `plan` days, though `k` is 1' }
+          - { id: fifty, text: 'All 50, one per `plan`' }
           - { id: one, text: 'One, since `k` is 1' }
           - { id: two, text: 'Two, which is `k + 1`' }
         correct: fifty
@@ -195,14 +195,14 @@ questions:
       n-space:
         prompt: With `k = 2` and a log that uses 40 types, how many keys can `counts` hold at once?
         options:
-          - { id: three, text: 'At most 3, one more than `k` for a moment before the repair' }
-          - { id: forty, text: 'Up to 40, one per type in the log' }
+          - { id: three, text: 'At most 3, which is `k + 1`' }
+          - { id: forty, text: 'Up to 40, one per type' }
           - { id: n, text: 'Up to `n`, one per day' }
         correct: three
         explanation: >-
           A key is deleted when its count reaches 0, so `counts` only describes the current
-          window. The repair keeps that window at `k` types, so the space grows with `k`, not
-          with the log.
+          window. The repair keeps that window at `k` types, with one more for a moment before
+          the repair, so the space grows with `k`, not with the log.
 
   - id: checkpoint-fixed-window-cost
     heading: What is the complexity?
@@ -234,22 +234,22 @@ questions:
           Each pass adds one day and removes at most one, so the work per pass is constant. The
           window holds `k` days, plus one for a moment, so `counts` has at most `k + 1` keys.
       - id: nk-time
-        text: O(n·k) time and O(k) extra space, since every window has `k` days to count
+        text: O(nk) time and O(k) extra space
         explanation: Does any pass look at all `k` days of its window?
       - id: n-space
-        text: O(n) time and O(n) extra space, since `counts` gains a key for each new type
+        text: O(n) time and O(n) extra space
         explanation: Can a type that left the window keep its key?
       - id: constant-space
-        text: O(n) time and O(1) extra space, since only `best` is kept between passes
+        text: O(n) time and O(1) extra space
         explanation: What does `counts` hold between passes?
     correct: right
     followUps:
       nk-time:
         prompt: How many dictionary updates does one pass make once the window is full?
         options:
-          - { id: two, text: 'Two: one for the day coming in and one for the day going out' }
-          - { id: k, text: '`k`, one for each day in the window' }
-          - { id: right, text: '`right`, one for each day so far' }
+          - { id: two, text: 'Two, one in and one out' }
+          - { id: k, text: '`k`, one per window day' }
+          - { id: right, text: '`right`, one per day so far' }
         correct: two
         explanation: >-
           The window is never rebuilt. Each pass changes only the counts of the day that comes in
@@ -257,9 +257,9 @@ questions:
       n-space:
         prompt: With `k = 3`, what is the most keys `counts` can hold at once, however many types the log uses?
         options:
-          - { id: four, text: 'Four: the 3 days in the window plus the one just added' }
-          - { id: types, text: 'One per type in the whole log' }
-          - { id: three, text: 'Three, since keys are deleted before the day is added' }
+          - { id: four, text: 'Four, the window plus one' }
+          - { id: types, text: 'One per type in the log' }
+          - { id: three, text: 'Three, the window size' }
         correct: four
         explanation: >-
           A key goes when its count reaches 0, so `counts` describes only the current window.
@@ -267,10 +267,11 @@ questions:
       constant-space:
         prompt: Between passes, what is in `counts`?
         options:
-          - { id: window, text: 'A count for each type in the current window, at most `k` of them' }
-          - { id: one, text: 'One number, the size of the window' }
-          - { id: log, text: 'One entry per day in the whole log' }
+          - { id: window, text: 'A count per type in the window' }
+          - { id: one, text: 'One number, the window size' }
+          - { id: log, text: 'One entry per day in the log' }
         correct: window
         explanation: >-
-          `counts` maps each type in the window to its copies there, so it grows with `k`. A
+          `counts` maps each type in the window to its copies there, at most `k` of them between
+          passes, so it grows with `k`. A
           dictionary whose size depends on the input is not O(1) extra space.

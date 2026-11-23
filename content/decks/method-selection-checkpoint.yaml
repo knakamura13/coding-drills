@@ -112,11 +112,12 @@ questions:
       total equals `k`.
     options:
       - id: right
-        text: Prefix counts; on `[2, -2, 2]` with `k = 2` the window counts 2 of the 3 runs
+        text: Prefix counts; on `[5, -4, 2, -1]` with `k = 1` the window counts 0 of the 2 runs
         explanation: >-
-          The first `2`, `2, -2, 2` and the last `2` each total 2. The total never goes over 2, so
-          the window never drops the first 2, so it never holds a window of just the final value. Counting earlier
-          running totals in a map, seeded with 0, finds all 3.
+          `5, -4` and `2, -1` each total 1. The 5 alone is over 1, so the window drops it before
+          the -4 arrives. After that the totals are -4, -2 and -3, never over 1, so `left` never
+          moves again and the window never holds `2, -1` alone. Counting earlier running totals in
+          a map, seeded with 0, finds both runs.
       - id: wrong-input
         text: Prefix counts; on `[4, -2, 3]` with `k = 5` the window misses the whole list
         explanation: Run the window on `[4, -2, 3]`. Does its total ever go over 5?
@@ -140,22 +141,22 @@ questions:
           whole list. No other run totals 5, so the window is right here and the input rules
           nothing out.
       window:
-        prompt: On `[2, -2, 2]` with `k = 2`, which run does the window never hold?
+        prompt: On `[5, -4, 2, -1]` with `k = 1`, what does the window do with the 5 on its first pass?
         options:
-          - { id: last, text: The last `2` alone }
-          - { id: first, text: The first `2` alone }
-          - { id: whole, text: The whole list }
+          - { id: last, text: 'Drops it for good, since 5 is over `k`' }
+          - { id: first, text: Keeps it until the -4 brings the total to 1 }
+          - { id: whole, text: 'Counts it, then keeps it for the next run' }
         correct: last
         explanation: >-
-          The totals are 2, 0 and 2, never over 2, so nothing is dropped and the left end stays at
-          the first value. The last `2` alone needs the first two values gone, and the -2 is what
-          kept the total low.
+          The drop rule fires as soon as the total is over `k`, so the 5 leaves before the -4 can
+          pull the total back down. The run `5, -4` is lost, and a value further right can never
+          bring it back.
       sort:
         prompt: Why can't sorting come before counting runs?
         options:
-          - { id: neighbors, text: 'Runs are set by the original neighbors, which sorting changes' }
-          - { id: cost, text: Sorting costs more time than the count allows }
-          - { id: negatives, text: Sorting removes the negative values }
+          - { id: neighbors, text: It gives values new neighbors }
+          - { id: cost, text: It changes the total of the list }
+          - { id: negatives, text: It drops the negative values }
         correct: neighbors
         explanation: >-
           A run is consecutive positions in the original order. Sorting gives values new neighbors,
@@ -206,16 +207,16 @@ questions:
       values first.
     options:
       - id: right
-        text: Window in the given order; sorting `[2, 6, 1]` invents the run `1, 2` for `k = 3`
+        text: Window in the given order; sorting `[6, 2, 7, 3]` invents the run `2, 3` for `k = 5`
         explanation: >-
           With every value at least 1, dropping from the left always lowers the total, so the
-          window is safe and needs O(1) space. `[2, 6, 1]` has no run totaling 3, but sorted to
-          `[1, 2, 6]` it starts with `1, 2`.
+          window is safe and needs O(1) space. `[6, 2, 7, 3]` has no run totaling 5, but sorted
+          to `[2, 3, 6, 7]` it starts with `2, 3`.
       - id: wrong-input
         text: Window in the given order; sorting `[4, 1, 3]` invents the run `1, 3` for `k = 4`
         explanation: Look at `[4, 1, 3]` before sorting. Is `1, 3` already a run?
       - id: prefix
-        text: Prefix counts; sorting `[2, 6, 1]` invents the run `1, 2` for `k = 3`
+        text: Prefix counts; sorting `[6, 2, 7, 3]` invents the run `2, 3` for `k = 5`
         explanation: How much space does a set of running totals take?
       - id: sort-first
         text: Sort first, then the window; sorting keeps every value and the total
@@ -225,30 +226,33 @@ questions:
       wrong-input:
         prompt: Which runs of `[4, 1, 3]` total 4?
         options:
-          - { id: both, text: '`4` and `1, 3`, so sorting changes nothing here' }
-          - { id: none, text: 'None, so sorting invents one' }
-          - { id: only-four, text: 'Only `4`, so `1, 3` is invented' }
+          - { id: both, text: 'Both `4` and `1, 3`' }
+          - { id: none, text: Neither of them }
+          - { id: only-four, text: Only the single `4` }
         correct: both
         explanation: >-
-          The 1 and the 3 are already neighbors, so the run exists before sorting too. A
-          counterexample needs the sorted answer and the true answer to differ.
+          The 1 and the 3 are already neighbors, so the run exists before sorting too, and
+          sorting changes nothing here. A counterexample needs the sorted answer and the true
+          answer to differ.
       prefix:
         prompt: Prefix counts give the right answer. Which part of the task do they miss?
         options:
-          - { id: space, text: 'O(1) extra space, since they store up to n running totals' }
-          - { id: time, text: 'O(n) time, since each lookup is slow' }
-          - { id: wrong, text: 'Correctness, since every value is positive' }
+          - { id: space, text: The O(1) space limit }
+          - { id: time, text: The O(n) time limit }
+          - { id: wrong, text: Both of those limits }
         correct: space
         explanation: >-
-          A set of running totals grows with the list, so it takes O(n) space. With every value at
-          least 1, the window gives the same answer in O(1) space.
+          A set of running totals grows with the list, so it takes O(n) space. Each lookup is
+          O(1) expected, so the time fits. With every value at least 1, the window gives the
+          same answer in O(1) space.
       sort-first:
         prompt: Sorting keeps every value. What does it change?
         options:
-          - { id: neighbors, text: 'Which values are neighbors, and so which runs exist' }
+          - { id: neighbors, text: Which values are neighbors }
           - { id: total, text: The total of the whole list }
           - { id: minimum, text: Whether any value is below 1 }
         correct: neighbors
         explanation: >-
           A run is a stretch of neighbors in the original order. Sorting keeps the values and the
-          total but gives them new neighbors, so it answers a question about a different list.
+          total but gives them new neighbors, so it can create runs and answers a question about
+          a different list.
