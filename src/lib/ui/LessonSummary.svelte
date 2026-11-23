@@ -18,7 +18,7 @@
 	import LessonTopBar from './LessonTopBar.svelte';
 	import MissList from './MissList.svelte';
 	import SummaryTree from './SummaryTree.svelte';
-	import { FLAT_HEIGHT, TREE_HEIGHT, TREE_WIDTH } from './trailGeometry';
+	import { TREE_HEIGHT, TREE_WIDTH, treeBoxHeight } from './trailGeometry';
 
 	let { summary, trail, ondone, onretry }: { summary: Summary; trail: LessonTrail; ondone: () => void; onretry: () => void } = $props();
 
@@ -49,8 +49,8 @@
 		desktop ? Math.max(0.5, Math.min(cellWidth / TREE_WIDTH, cellHeight / TREE_HEIGHT, 2.2)) : Math.min(innerWidth / TREE_WIDTH, 1.25)
 	);
 	// The tree sits 8px below the body's top edge on a phone.
-	const closedTop = $derived(8 + TREE_HEIGHT * scale);
-	const openTop = $derived(8 + FLAT_HEIGHT * scale);
+	const closedTop = $derived(8 + treeBoxHeight(false, scale));
+	const openTop = $derived(8 + treeBoxHeight(true, scale));
 	// The card adds 28px above the list and 16px below it. A drawer needs room to show a row closed;
 	// a phone shorter than that scrolls the body instead.
 	const cardNeeds = $derived(listHeight + 44);

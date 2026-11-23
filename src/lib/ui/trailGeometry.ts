@@ -7,10 +7,18 @@
 
 export const TREE_WIDTH = 390;
 export const TREE_HEIGHT = 368;
-/** Height of the flat layout with its labels hanging below, for the open drawer's top edge. */
-export const FLAT_HEIGHT = 124;
+/**
+ * The tree box's height in px. Flat, the labels hang below the nodes in text that does not scale
+ * with the drawing, so the box is the drawing's part plus room for four lines of labels (three
+ * lines, or a staggered row of two).
+ */
+export function treeBoxHeight(flat: boolean, scale: number): number {
+	return flat ? (FLAT_Y + LEAF_R.flat) * scale + 8 + 4 * 24 + 8 : TREE_HEIGHT * scale;
+}
 
-type Point = readonly [number, number];
+import type { Circle, LabelForm, LabelRequest, Side, Size } from './labelPlacement';
+
+export type Point = readonly [number, number];
 
 interface Shape {
 	/** Earlier nodes, oldest first. */
@@ -18,10 +26,8 @@ interface Shape {
 	leaf: Point;
 	/** One quadratic control point per edge, into each node after the first and into the leaf. */
 	controls: readonly Point[];
-	trunk: readonly [Point, Point, Point];
-	/** How far right of each earlier node its label starts, and how far left of the leaf its label ends. */
-	labelDx: readonly number[];
-	leafDx: number;
+	/** Where the trunk starts, past the box's left and bottom edges, and its control point. */
+	trunk: readonly [Point, Point];
 }
 
 // The approved frames, measured from the bottom of the top bar. Two earlier nodes rise in a curve;
@@ -39,11 +45,8 @@ const CURVE: Record<0 | 1 | 2, Shape> = {
 		],
 		trunk: [
 			[-60, 398],
-			[-10, 348],
-			[18, 310]
-		],
-		labelDx: [32, 36],
-		leafDx: -64
+			[-10, 348]
+		]
 	},
 	1: {
 		nodes: [[52, 280]],
@@ -51,13 +54,10 @@ const CURVE: Record<0 | 1 | 2, Shape> = {
 		controls: [[110, 108]],
 		trunk: [
 			[-60, 398],
-			[-6, 348],
-			[34, 298]
-		],
-		labelDx: [34],
-		leafDx: -63
+			[-6, 348]
+		]
 	},
-	0: { nodes: [], leaf: [285, 78], controls: [], trunk: [[0, 0], [0, 0], [0, 0]], labelDx: [], leafDx: -63 }
+	0: { nodes: [], leaf: [285, 78], controls: [], trunk: [[0, 0], [0, 0]] }
 };
 
 const FLAT_Y = 44;
@@ -80,72 +80,140 @@ const NODE_SCALE = { curve: 1.3, flat: [0.85, 0.8] };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const mix = (a: Point, b: Point, t: number): [number, number] => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
 
-export interface Placed {
+/** A quadratic curve in drawing units. */
+export interface Curve {
+	from: Point;
+	control: Point;
+	to: Point;
+}
+
+export interface TrailNode {
 	x: number;
 	y: number;
+	/** Draw scale of the node; its outer radius is `NODE_R * scale`. */
 	scale: number;
-	/** Label anchor in box units, and which side of it the label hangs. */
-	label: { x: number; y: number; align: 'start' | 'end' | 'center'; below: boolean };
 }
 
 export interface TrailLayout {
 	/** One per earlier node, oldest first. */
-	earlier: Placed[];
-	leaf: Placed & { r: number; ring: number; score: number };
-	edges: string[];
-	trunk: string | null;
+	earlier: TrailNode[];
+	/** The leaf: `r` is the ring's outer radius. */
+	leaf: { x: number; y: number; r: number; ring: number; score: number };
+	/**
+	 * Every edge and the trunk run center to center, under the nodes, which are opaque. However the
+	 * nodes are sized, an edge always reaches its node: there is no endpoint to fall short.
+	 */
+	edges: Curve[];
+	trunk: Curve | null;
 }
+
+/** Outer radius of an earlier node at scale 1 (the lesson circle; the branch circle is smaller). */
+export const NODE_R = 20;
 
 export function trailLayout(earlierCount: number, t: number): TrailLayout {
 	const count = Math.min(2, Math.max(0, earlierCount)) as 0 | 1 | 2;
 	const curve = CURVE[count];
 	const flatShape = FLAT[count];
-	const flat = t > 0.5;
-	const r = lerp(LEAF_R.curve, LEAF_R.flat, t);
-	const below = LEAF_R.flat + 6;
 	const [lx, ly] = mix(curve.leaf, flatShape.leaf, t);
 	const earlier = curve.nodes.map((point, index) => {
 		const [x, y] = mix(point, flatShape.nodes[index]!, t);
 		const flatScale = NODE_SCALE.flat[index === curve.nodes.length - 1 && count === 2 ? 1 : 0]!;
-		return {
-			x,
-			y,
-			scale: lerp(NODE_SCALE.curve, flatScale, t),
-			label: flat ? { x, y: y + below, align: 'center' as const, below: true } : { x: x + curve.labelDx[index]!, y, align: 'start' as const, below: false }
-		};
+		return { x, y, scale: lerp(NODE_SCALE.curve, flatScale, t) };
 	});
-	const points: [number, number][] = [...earlier.map((node) => [node.x, node.y] as [number, number]), [lx, ly]];
-	const edges: string[] = [];
-	for (let index = 1; index < points.length; index++) {
-		const [ax, ay] = points[index - 1]!;
-		const [bx, by] = points[index]!;
+	const centers: Point[] = [...earlier.map((node) => [node.x, node.y] as Point), [lx, ly]];
+	const edges: Curve[] = [];
+	for (let index = 1; index < centers.length; index++) {
+		const from = centers[index - 1]!;
+		const to = centers[index]!;
 		// Flat, the control point sits on the line, so the edge is straight.
-		const [cx, cy] = mix(curve.controls[index - 1]!, [(ax + bx) / 2, (ay + by) / 2], t);
-		edges.push(`M${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`);
+		const control = mix(curve.controls[index - 1]!, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2], t);
+		edges.push({ from, control, to });
 	}
-	let trunk: string | null = null;
+	let trunk: Curve | null = null;
 	if (count > 0) {
-		const [first] = points;
-		const [start, control, end] = curve.trunk;
-		const flatEnd: Point = [first![0] - 20, first![1]];
-		const [sx, sy] = mix(start, [-60, FLAT_Y], t);
-		const [cx, cy] = mix(control, [(flatEnd[0] - 60) / 2, FLAT_Y], t);
-		const [ex, ey] = mix(end, flatEnd, t);
-		trunk = `M${sx} ${sy} Q${cx} ${cy} ${ex} ${ey}`;
+		const to = centers[0]!;
+		const from = mix(curve.trunk[0], [-60, FLAT_Y], t);
+		const control = mix(curve.trunk[1], [(to[0] - 60) / 2, FLAT_Y], t);
+		trunk = { from, control, to };
 	}
 	return {
 		earlier,
-		leaf: {
-			x: lx,
-			y: ly,
-			r,
-			ring: lerp(8, 6, t),
-			score: lerp(18, 13, t),
-			scale: 1,
-			label: flat ? { x: lx, y: ly + below, align: 'center', below: true } : { x: lx + curve.leafDx, y: ly, align: 'end', below: false }
-		},
+		leaf: { x: lx, y: ly, r: lerp(LEAF_R.curve, LEAF_R.flat, t), ring: lerp(8, 6, t), score: lerp(18, 13, t) },
 		edges,
 		trunk
+	};
+}
+
+export function curvePath({ from, control, to }: Curve): string {
+	return `M${from[0]} ${from[1]} Q${control[0]} ${control[1]} ${to[0]} ${to[1]}`;
+}
+
+/** Points along a curve, about `step` units apart, ends included. */
+export function sampleCurve({ from, control, to }: Curve, step = 3): Point[] {
+	const length = Math.hypot(control[0] - from[0], control[1] - from[1]) + Math.hypot(to[0] - control[0], to[1] - control[1]);
+	const count = Math.max(2, Math.ceil(length / step));
+	return Array.from({ length: count + 1 }, (_, index) => {
+		const u = index / count;
+		const a = (1 - u) * (1 - u);
+		const b = 2 * (1 - u) * u;
+		const c = u * u;
+		return [a * from[0] + b * control[0] + c * to[0], a * from[1] + b * control[1] + c * to[1]] as Point;
+	});
+}
+
+/** The label forms, best first: one line, wrapped to 140px, then to 96px, then the same a size smaller. */
+export const LABEL_FORMS = [
+	{ wrap: null, small: false },
+	{ wrap: 140, small: false },
+	{ wrap: 96, small: false },
+	{ wrap: null, small: true },
+	{ wrap: 140, small: true },
+	{ wrap: 96, small: true }
+] as const satisfies readonly Omit<LabelForm, 'w' | 'h'>[];
+
+/**
+ * On the curve, labels sit beside their nodes, where a wider wrap fits best. Flat, they hang below
+ * nodes about 130 units apart, so the narrow wrap comes first and the wide one last.
+ */
+function formOrder(flat: boolean): (typeof LABEL_FORMS)[number][] {
+	if (!flat) return [...LABEL_FORMS];
+	const rank = (form: (typeof LABEL_FORMS)[number]) => (form.wrap === 140 ? 2 : 0) + (form.small ? 1 : 0);
+	return [...LABEL_FORMS].sort((a, b) => rank(a) - rank(b));
+}
+
+export interface LabelScene {
+	requests: LabelRequest[];
+	/** Every node, and points along every edge and the trunk, in px. */
+	obstacles: Circle[];
+	box: Size;
+}
+
+/**
+ * What the label placement works on, in px: one request per label (earlier nodes oldest first,
+ * then the leaf), and everything a label must clear. `measure` gives a label's size in a form.
+ */
+export function labelScene(
+	layout: TrailLayout,
+	view: { scale: number; nodeScale: number; width: number; flat: boolean },
+	measure: (index: number, form: (typeof LABEL_FORMS)[number]) => Size
+): LabelScene {
+	const { scale, nodeScale, width, flat } = view;
+	const nodes: Circle[] = [
+		...layout.earlier.map((node) => ({ x: node.x * scale, y: node.y * scale, r: NODE_R * node.scale * nodeScale * scale })),
+		{ x: layout.leaf.x * scale, y: layout.leaf.y * scale, r: layout.leaf.r * nodeScale * scale }
+	];
+	const curves = [...layout.edges, ...(layout.trunk ? [layout.trunk] : [])];
+	// Edges are 2 units wide: each sample stands for its half width plus a pixel.
+	const samples = curves.flatMap((curve) => sampleCurve(curve).map(([x, y]) => ({ x: x * scale, y: y * scale, r: scale + 1 })));
+	const sides = (leaf: boolean): Side[] => (flat ? ['below', 'lower'] : leaf ? ['left', 'right', 'above', 'below'] : ['right', 'left', 'below', 'above']);
+	return {
+		requests: nodes.map((node, index) => ({
+			node,
+			forms: formOrder(flat).map((form) => ({ ...form, ...measure(index, form) })),
+			sides: sides(index === nodes.length - 1)
+		})),
+		obstacles: [...nodes, ...samples],
+		box: { w: width, h: treeBoxHeight(flat, scale) }
 	};
 }
 

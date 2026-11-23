@@ -170,6 +170,69 @@ test.describe('the summary', () => {
 		expect(await violations(page)).toEqual([]);
 	});
 
+	test('the tree holds on a real render: edges meet node centers, and labels clear nodes, edges, each other and the screen edge', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+		const check = () =>
+			page.evaluate(() => {
+				const problems: string[] = [];
+				const svg = document.querySelector<SVGSVGElement>('[role="img"] svg')!;
+				const matrix = svg.getScreenCTM()!;
+				const toScreen = (x: number, y: number) => new DOMPoint(x, y).matrixTransform(matrix);
+				const nodes = [...svg.querySelectorAll<SVGCircleElement>('circle.hollow, circle.filled, circle.ring-base')].map((circle) => {
+					const box = circle.getBoundingClientRect();
+					return { x: box.x + box.width / 2, y: box.y + box.height / 2, r: box.width / 2 };
+				});
+				const paths = [...svg.querySelectorAll<SVGPathElement>('path.edge, path.trunk')];
+				for (const path of paths) {
+					const length = path.getTotalLength();
+					const end = path.getPointAtLength(length);
+					const endOnScreen = toScreen(end.x, end.y);
+					if (!nodes.some((node) => Math.hypot(node.x - endOnScreen.x, node.y - endOnScreen.y) < 1)) problems.push('an edge ends away from every node center');
+				}
+				const points = paths.flatMap((path) => {
+					const length = path.getTotalLength();
+					return Array.from({ length: Math.ceil(length / 2) + 1 }, (_, i) => {
+						const at = path.getPointAtLength(Math.min(length, i * 2));
+						return toScreen(at.x, at.y);
+					});
+				});
+				const labels = [...document.querySelectorAll<HTMLElement>('[role="img"] .label:not(.measure)')].map((label) => ({
+					text: label.textContent,
+					box: label.getBoundingClientRect()
+				}));
+				const near = (box: DOMRect, x: number, y: number, r: number) =>
+					Math.hypot(x - Math.max(box.left, Math.min(x, box.right)), y - Math.max(box.top, Math.min(y, box.bottom))) < r;
+				for (const { text, box } of labels) {
+					if (box.left < 8 || box.right > window.innerWidth - 8) problems.push(`${text} is within 8px of the screen edge`);
+					if (nodes.some((node) => near(box, node.x, node.y, node.r + 6))) problems.push(`${text} touches a node`);
+					if (points.some((point) => near(box, point.x, point.y, 4))) problems.push(`${text} touches an edge`);
+					for (const other of labels) {
+						if (other.box === box) continue;
+						if (box.left < other.box.right && other.box.left < box.right && box.top < other.box.bottom && other.box.top < box.bottom) problems.push(`${text} overlaps ${other.text}`);
+					}
+				}
+				return { problems, labels: labels.length };
+			});
+		for (const size of [
+			{ width: 390, height: 844 },
+			{ width: 320, height: 700 }
+		]) {
+			await page.setViewportSize(size);
+			await page.waitForTimeout(200);
+			expect(await check()).toEqual({ problems: [], labels: 3 });
+		}
+		await page.setViewportSize({ width: 390, height: 844 });
+		await grab(page).click();
+		await page.waitForTimeout(200);
+		expect(await check()).toEqual({ problems: [], labels: 3 });
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.waitForTimeout(200);
+		expect(await check()).toEqual({ problems: [], labels: 3 });
+	});
+
 	test('misses that would scroll become a drawer: tap, Enter and a drag open it, Escape closes it', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
@@ -180,8 +243,8 @@ test.describe('the summary', () => {
 
 		await grab(page).click();
 		await expect(grab(page)).toHaveAttribute('aria-expanded', 'true');
-		// Open, the tree lies flat, so it takes far less height.
-		await expect.poll(async () => (await tree.boundingBox())!.height).toBeLessThan(curved / 2);
+		// Open, the tree lies flat, so it takes far less height (its labels keep room for four lines).
+		await expect.poll(async () => (await tree.boundingBox())!.height).toBeLessThan(curved * 0.6);
 		expect(await violations(page)).toEqual([]);
 		await page.keyboard.press('Escape');
 		await expect(grab(page)).toHaveAttribute('aria-expanded', 'false');
