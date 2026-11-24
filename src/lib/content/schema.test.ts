@@ -520,4 +520,24 @@ questions:
 		expect(result.success).toBe(false);
 		expect(formatIssues('d.yaml', result.error?.issues ?? [])).toMatch(/worked example has 1 steps/);
 	});
+
+	it('fails a deck whose worked example has no steps', () => {
+		const deck = parse(`
+id: d
+title: D
+questions:
+  - id: q
+    workedExample: One paragraph that explains it all at once.
+    prompt: Which?
+    options:
+      - { id: a, text: A, explanation: Right. }
+      - { id: b, text: B, explanation: Wrong. }
+    correct: a
+    followUps:
+      b: { prompt: Why?, options: [{ id: x, text: X }, { id: y, text: Y }], correct: x }
+`);
+		const result = deckSchema.safeParse(deck);
+		expect(result.success).toBe(false);
+		expect(formatIssues('d.yaml', result.error?.issues ?? [])).toMatch(/worked example needs a setup paragraph and then 2 to 4 numbered steps/);
+	});
 });

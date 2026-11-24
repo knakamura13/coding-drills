@@ -40,14 +40,11 @@ export function workedExampleIssue(source: string): string | null {
 
 /**
  * Markdown. A short solved example the learner can open from the question. Kept apart from the
- * prompt so the prompt is only the question. Optional: not every question has one.
- *
- * While #137 rewrites them, only examples that already have numbered steps are held to the shape.
- * The last rewrite batch drops that condition so every example is.
+ * prompt so the prompt is only the question. Optional: not every question has one. Each one has
+ * the step shape (#137).
  */
 const workedExample = text(800)
 	.superRefine((source, ctx) => {
-		if (!markdownBlocks(source).some((block) => block.kind === 'steps')) return;
 		const issue = workedExampleIssue(source);
 		if (issue) ctx.addIssue({ code: 'custom', message: `worked example ${issue}` });
 	})
