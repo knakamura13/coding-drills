@@ -6,8 +6,12 @@
 	move focus. After Check: the right cell takes the branch tint and border with a check, a wrong
 	tap a rose border and '!', both inside the cell's top-right corner, and the rest dim to Mist.
 	Cells grow to fit long values, and a strip wider than the screen scrolls sideways.
+	Placing pointers (drag-pointers questions), the cells are where a pointer goes rather than the
+	answer: `oncell` makes each a button that takes the picked-up pointer, and `below` draws the
+	pointer tabs under the strip, in the same scrolling track.
 -->
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { BoardCellView, BoardView } from '$lib/domain/lesson';
 	import Icon from './Icon.svelte';
 	import { roving } from './roving';
@@ -18,7 +22,11 @@
 		checked,
 		name,
 		atOnce = false,
-		onselect
+		onselect = () => {},
+		oncell,
+		hint = '',
+		below,
+		track = $bindable()
 	}: {
 		board: BoardView;
 		/** The learner's pick, before and after Check. */
@@ -28,14 +36,25 @@
 		name: string;
 		/** A tap answers at once: buttons with arrow-key focus instead of radios. */
 		atOnce?: boolean;
-		onselect: (id: string) => void;
+		onselect?: (id: string) => void;
+		/** Placing pointers: a cell takes the picked-up pointer. */
+		oncell?: (index: number) => void;
+		/** Said after the strip's name, as how to use it. */
+		hint?: string;
+		/** Drawn under the strip in the same scrolling track. */
+		below?: Snippet;
+		/** The track holding the strip and `below`, for measuring cells. */
+		track?: HTMLElement;
 	} = $props();
 
 	const kind = $derived(board.presentation === 'string' ? 'String' : 'Array');
-	const label = $derived(`${kind}${board.name ? ` ${board.name}` : ''}, ${board.cells.length} ${board.cells.length === 1 ? 'cell' : 'cells'}`);
+	const label = $derived(
+		`${kind}${board.name ? ` ${board.name}` : ''}, ${board.cells.length} ${board.cells.length === 1 ? 'cell' : 'cells'}${hint ? `. ${hint}` : ''}`
+	);
 	const lastValue = $derived(board.cells.findLast((cell) => !cell.pastEnd)?.index ?? -1);
 
 	function look(cell: BoardCellView): string {
+		if (oncell) return 'rest';
 		if (!checked) return cell.tone === 'selected' ? 'selected' : 'rest';
 		return cell.tone === 'correct' ? 'correct' : cell.tone === 'wrong' ? 'wrong' : 'dimmed';
 	}
@@ -63,41 +82,56 @@
 
 <!-- Padding inside the scroller leaves room for the focus ring, which a scroller would clip. -->
 <div class="scroller">
-	<fieldset class="strip" disabled={checked}>
-		<legend class="visually-hidden">{label}</legend>
-		{#each board.cells as cell (cell.id)}
-			{@const state = look(cell)}
-			<div class="column" class:past={cell.pastEnd} class:first={cell.index === 0} class:last={cell.index === lastValue}>
-				<span class="index" aria-hidden="true">{cell.index}</span>
-				{#if atOnce}
-					<button
-						type="button"
-						class="cell {state}"
-						aria-label={accessibleName(cell, state)}
-						tabindex={cell.index === 0 ? 0 : -1}
-						onkeydown={roving}
-						onclick={() => onselect(cell.id)}
-					>
-						{@render face(cell, state)}
-					</button>
-				{:else}
-					<label class="cell {state}">
-						<input
-							class="radio"
-							type="radio"
-							{name}
-							value={cell.id}
+	<div class="track" bind:this={track}>
+		<fieldset class="strip" class:bare={!board.cells.some((cell) => cell.markers.length > 0)} disabled={checked}>
+			<legend class="visually-hidden">{label}</legend>
+			{#each board.cells as cell (cell.id)}
+				{@const state = look(cell)}
+				<div class="column" class:past={cell.pastEnd} class:first={cell.index === 0} class:last={cell.index === lastValue}>
+					<span class="index" aria-hidden="true">{cell.index}</span>
+					{#if oncell}
+						<button
+							type="button"
+							class="cell {state}"
+							data-index={cell.index}
 							aria-label={accessibleName(cell, state)}
-							checked={cell.id === selectedId}
-							onchange={() => onselect(cell.id)}
-						/>
-						{@render face(cell, state)}
-					</label>
-				{/if}
-				<span class="markers" aria-hidden="true">{cell.markers.join(' ')}</span>
-			</div>
-		{/each}
-	</fieldset>
+							tabindex="-1"
+							onclick={() => oncell(cell.index)}
+						>
+							{@render face(cell, state)}
+						</button>
+					{:else if atOnce}
+						<button
+							type="button"
+							class="cell {state}"
+							data-index={cell.index}
+							aria-label={accessibleName(cell, state)}
+							tabindex={cell.index === 0 ? 0 : -1}
+							onkeydown={roving}
+							onclick={() => onselect(cell.id)}
+						>
+							{@render face(cell, state)}
+						</button>
+					{:else}
+						<label class="cell {state}" data-index={cell.index}>
+							<input
+								class="radio"
+								type="radio"
+								{name}
+								value={cell.id}
+								aria-label={accessibleName(cell, state)}
+								checked={cell.id === selectedId}
+								onchange={() => onselect(cell.id)}
+							/>
+							{@render face(cell, state)}
+						</label>
+					{/if}
+					<span class="markers" aria-hidden="true">{cell.markers.join(' ')}</span>
+				</div>
+			{/each}
+		</fieldset>
+		{@render below?.()}
+	</div>
 </div>
 
 <style>
@@ -105,6 +139,11 @@
 		overflow-x: auto;
 		padding: var(--space-1);
 		margin: calc(-1 * var(--space-1));
+	}
+
+	.track {
+		position: relative;
+		width: max-content;
 	}
 
 	.strip {
@@ -133,6 +172,15 @@
 	/* The slot past the end stands apart, dashed. */
 	.column.past {
 		margin-left: var(--space-2);
+	}
+
+	/* No markers on any cell: no empty row under the strip. */
+	.bare .column {
+		grid-template-rows: 16px 48px;
+	}
+
+	.bare .markers {
+		display: none;
 	}
 
 	.index {
