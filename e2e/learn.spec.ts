@@ -575,6 +575,19 @@ test.describe('motion (lesson Round 7)', () => {
 			}
 		});
 
+		test(`leaving drawer mode mid-morph leaves the tree shown${full ? '' : ', with Reduce effects'}`, async ({ page, isMobile }) => {
+			test.skip(isMobile, 'resizes to desktop');
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.setViewportSize({ width: 390, height: 844 });
+			await page.goto(URL);
+			for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+			// Open, then resize at once, inside the morph's first 125 ms.
+			await page.getByRole('button', { name: 'Missed questions' }).click();
+			await page.setViewportSize({ width: 1440, height: 900 });
+			await expect(page.locator('.tree-wrap.faded')).toHaveCount(0);
+			await expect.poll(() => page.locator('.tree-wrap').evaluate((node) => getComputedStyle(node).opacity)).toBe('1');
+		});
+
 		test(`the drawer ${full ? 'drifts the tree while dragged' : 'crossfades the tree with Reduce effects'}`, async ({ page }) => {
 			await page.emulateMedia({ reducedMotion: motion });
 			await page.setViewportSize({ width: 390, height: 844 });

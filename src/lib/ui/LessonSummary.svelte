@@ -102,10 +102,13 @@
 		morphTo(next ? 1 : 0);
 	}
 
-	// A phone turned or resized out of drawer mode starts over, closed and curved.
+	// A phone turned or resized out of drawer mode starts over, closed, curved and shown, even mid
+	// crossfade: the tree must never be left faded out.
 	$effect(() => {
 		if (drawer) return;
 		stopMorph();
+		morphing = false;
+		faded = false;
 		open = false;
 		t = 0;
 	});
