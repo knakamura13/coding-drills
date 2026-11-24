@@ -1,6 +1,6 @@
 id: pointer-walks
 title: Pointer walks
-description: Move a pointer one or two nodes safely, keep a gap or a speed difference, and stop at the right node. Each card opens with a worked example, then asks for one decision.
+description: Move a pointer one or two nodes safely, keep a gap or a speed difference, and stop at the right node. Each card asks for one decision, with a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -8,10 +8,17 @@ questions:
     id: odd-length-hops
     heading: Where does fast land?
     tags: [linked-list, two-pointers, python]
-    workedExample: >-
-      `fast.next.next` reads two links, so it is safe only when `fast` and
-      `fast.next` are both nodes. The test `fast and fast.next` checks exactly those two, left to
-      right.
+    workedExample: |-
+      Consider the list `6 -> 1 -> 8` with `fast` on the 6, and the loop `while fast and fast.next:`
+      whose body runs `fast = fast.next.next`. Reading two links is safe only when `fast` and
+      `fast.next` are both nodes, and the test checks those two, left to right.
+
+      1. The 6 is a node and its `next`, the 1, is a node, so the body runs. One hop reaches the 1
+         and a second reaches the 8.
+      2. The 8 is the tail. The left side of the test, `fast`, is a node, so it passes, and reading
+         `fast.next` from a real node is safe.
+      3. The 8's `next` is `None`, which counts as false, so the loop ends with `fast` on the 8, the
+         tail. It never steps past the tail, so `fast.next.next` never reads through `None`.
     prompt: >-
       The cells are the list `3 -> 7 -> 2 -> 9 -> 4`, then the `None` after its tail. Predict
       each step before it is shown.
@@ -87,8 +94,15 @@ questions:
     heading: Which list breaks it?
     tags: [linked-list, two-pointers, python]
     workedExample: |-
-      On `3 -> 7 -> 2`, `fast` goes from the 3 to the 2 and stops on the tail.
-      On `3 -> 7`, two hops from the 3 go past the tail, so `fast` becomes `None`.
+      Consider the lists `3 -> 7 -> 2` and `3 -> 7`, each with `fast` on the 3. One round runs
+      `fast = fast.next.next`, which follows two links.
+
+      1. On `3 -> 7 -> 2`, two hops from the 3 reach the 2. The 2 is the tail, so `fast` is still on
+         a node, and its `next` is `None`.
+      2. On `3 -> 7`, the first hop reaches the 7, which is the tail. The second hop follows the 7's
+         `next`, which is `None`.
+      3. So on the 2-node list `fast` itself becomes `None`, while on the 3-node list it stays on a
+         node.
     prompt: |-
       ```python
       fast = head
@@ -165,10 +179,15 @@ questions:
     id: fixed-gap-drag
     heading: Where do they stop?
     tags: [linked-list, two-pointers, python]
-    workedExample: >-
-      When `fast` starts `k` nodes ahead and each round moves both by one, the
-      gap stays `k`. On `1 -> 2 -> 3 -> 4` with `k = 1`, they stop with `fast` on 4 and `slow` on
-      3.
+    workedExample: |-
+      Consider `1 -> 2 -> 3 -> 4`, with `slow` on the 1 and `fast` moved `k = 1` node ahead, onto
+      the 2. Each round of `while fast.next:` moves both pointers one node.
+
+      1. Both pointers move one node a round, so the gap between them stays 1 in every round.
+      2. The loop runs while `fast` has a `next`. From the 2, `fast` needs 2 rounds to reach the 4,
+         the tail, and then the test fails.
+      3. `slow` moves in the same 2 rounds, from the 1 to the 3. So the loop ends with `fast` on the
+         4 and `slow` on the 3, still 1 node behind.
     prompt: >-
       The cells are `6 -> 1 -> 8 -> 3 -> 5 -> 2`, drawn after the `for` loop, with `fast` 2
       nodes ahead. Drag `slow` and `fast` to where they are when the `while` loop ends.
@@ -217,8 +236,15 @@ questions:
     heading: How many rounds?
     tags: [linked-list, two-pointers, python]
     workedExample: |-
-      On a straight list, `slow` moves 1 node a round and `fast` moves 2, so
-      after 3 rounds `fast` is 3 nodes further along than `slow`. Each round adds 1 to that lead.
+      Consider a straight list with `slow` and `fast` starting on the same node. Each round, `slow`
+      moves 1 node and `fast` moves 2.
+
+      1. In one round `fast` moves 2 nodes while `slow` moves 1, so the lead of `fast` grows by
+         `2 - 1 = 1` node.
+      2. The speeds are the same every round, so the lead grows by exactly 1 each round. After 3
+         rounds it is `3 * 1 = 3` nodes.
+      3. So the distance between them changes by 1 node per round and never jumps, taking the values
+         0, 1, 2 and 3 in turn.
     prompt: |-
       Both pointers are now inside a cycle of 7 nodes. Going forward around it, `fast` is 3 nodes
       behind `slow`. Each round, `slow = slow.next` and `fast = fast.next.next`. After how many
@@ -290,10 +316,17 @@ questions:
     id: head-removal-gap
     heading: Where does slow stop?
     tags: [linked-list, two-pointers, python]
-    workedExample: >-
-      `slow.next = slow.next.next` removes the node after `slow`, so `slow` must
-      stop one node before the target. For `n = 1` on this list, `fast` ends on 8 and `slow` on 5,
-      and line 8 removes the 8.
+    workedExample: |-
+      Consider a dummy node in front of `4 -> 7 -> 2 -> 6`, and `n = 2`, so the target is the 2,
+      second from the end. `slow.next = slow.next.next` removes the node after `slow`, so `slow`
+      must stop one node before the target.
+
+      1. Both pointers start on the dummy, and the `for` loop moves `fast` 2 hops, onto the 7. So
+         `fast` is 2 nodes ahead of `slow`.
+      2. The `while` loop moves both by one until `fast` has no `next`. That takes 2 rounds, from
+         the 7 to the 6, so `slow` moves from the dummy to the 7.
+      3. `slow` is on the 7, the node just before the target. So line 8 points the 7 past the 2, and
+         the list reads `4 -> 7 -> 6`.
     prompt: >-
       The cells are a dummy node and then `9 -> 5 -> 8`. Now `n = 3`, so
       the target is the head. Tap the node `slow` is on when line 8 runs.
@@ -333,12 +366,19 @@ questions:
     id: first-middle-stop
     heading: Which middle does it stop on?
     tags: [linked-list, two-pointers, python]
-    workedExample: >-
-      With `while fast and fast.next`, the walk on `1 -> 2 -> 3 -> 4` runs two
-      rounds. `fast` ends on `None` and `slow` on 3, the second of the two middles.
+    workedExample: |-
+      Consider `1 -> 2 -> 3 -> 4` and the loop `while fast and fast.next:`, which moves `slow` one
+      node and `fast` two nodes each round. A list of 4 nodes has two middles, the 2 and the 3.
+
+      1. `fast` starts on the 1, which has a `next`, so round 1 runs: `slow` moves to the 2 and
+         `fast` to the 3.
+      2. The 3 has a `next`, the 4, so round 2 runs: `slow` moves to the 3, and two hops from the 3
+         take `fast` past the tail to `None`.
+      3. `fast` is `None`, so the test fails and the loop ends with `slow` on the 3, the second of
+         the two middles.
     prompt: >-
       This loop tests
-      one link further ahead. The cells are `2 -> 8 -> 4 -> 6 -> 1 -> 9`. Tap the node `slow` is on
+      `fast.next.next`, one link further ahead than `while fast and fast.next`. The cells are `2 -> 8 -> 4 -> 6 -> 1 -> 9`. Tap the node `slow` is on
       when the loop ends.
     code: |
       slow = fast = head
@@ -375,8 +415,13 @@ questions:
     heading: What does this print?
     tags: [linked-list, two-pointers, python]
     workedExample: |-
-      `a = Node(4)` and `b = Node(4)` are two nodes. `a.val == b.val` is
-      `True`, but `a is b` is `False`.
+      Consider `a = Node(4)` and `b = Node(4)`, made by two separate calls. `a.val == b.val`
+      compares the numbers stored, while `a is b` asks whether the two names refer to one node.
+
+      1. Each call to `Node` makes a new node, so `a` and `b` refer to two different nodes.
+      2. Both nodes store 4, so `a.val == b.val` is `True`.
+      3. They are still two nodes, so `a is b` is `False`. After `c = a`, though, `c is a` is
+         `True`, because both names now refer to the same node.
     prompt: |-
       ```python
       def has_cycle(head):
