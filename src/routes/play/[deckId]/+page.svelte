@@ -9,8 +9,14 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const source = $derived({
-		create: (rng: () => number) => createLesson(data.deck, rng, answeredIn(getRepository().attempts(), data.deck.id))
+	const answered = () => answeredIn(getRepository().attempts(), data.deck.id);
+	const source = $derived.by(() => {
+		let plannedWith = new Set<string>();
+		return {
+			create: (rng: () => number) => createLesson(data.deck, rng, (plannedWith = answered())),
+			// Attempts are only ever added, so a larger set means new answers.
+			outdated: () => answered().size !== plannedWith.size
+		};
 	});
 	const trail = () => lessonTrail(curriculum, getRepository().attempts(), data.deck.id, data.deck.title);
 	const opensExample = (screen: LessonView | null) => opensWorkedExample(screen, getRepository().attempts(), data.deck.id);

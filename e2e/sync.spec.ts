@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { createAccount, serverState, signIn } from './account';
 import { answerMain, continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
-import { playThrough } from './learn-helpers';
-import { openOldLesson } from './seed';
+import { URL as learnURL, deck as learnDeck, onScreen, playThrough } from './learn-helpers';
+import { openOldLesson, seed } from './seed';
 
 const TWO_DAYS_MS = 2 * 86_400_000;
 
@@ -60,6 +60,36 @@ test.describe('accounts and sync', () => {
 		await expect
 			.poll(async () => (await serverState(request, account, baseURL!)).attempts.length)
 			.toBe(deck.questions.length * 2);
+		await other.close();
+	});
+
+	test('a deck lesson on a new device counts answers made on another device', async ({ browser, page, request, baseURL }) => {
+		const account = await createAccount(request);
+		// Device A holds one answer, to the deck's first question, and syncs it on load.
+		await seed(page, [
+			{
+				id: 'device-a-first',
+				at: '2026-01-01T12:00:00.000Z',
+				day: '2026-01-01',
+				deckId: learnDeck.id,
+				questionId: learnDeck.questions[0]!.id,
+				pickedId: 'seen',
+				correct: true
+			}
+		]);
+		await signIn(page.context(), account, baseURL!);
+		await page.goto('/settings');
+		await expect.poll(async () => (await serverState(request, account, baseURL!)).attempts.length).toBe(1);
+
+		// Device B opens the lesson straight away, before its first sync has run. Once the sync brings
+		// in the answer from device A, the untouched lesson is planned again and leads with the second
+		// question, the first one this learner has not answered.
+		const other = await browser.newContext({ baseURL });
+		await signIn(other, account, baseURL!);
+		const phone = await other.newPage();
+		await phone.goto(learnURL);
+		await expect.poll(async () => (await onScreen(phone)).id).toBe(learnDeck.questions[1]!.id);
+		await expect(phone.getByRole('dialog')).toHaveCount(0);
 		await other.close();
 	});
 
