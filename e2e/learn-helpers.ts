@@ -13,7 +13,7 @@ import {
 	type StepTraceQuestion,
 	type TapCellQuestion
 } from '../src/lib/content/schema.ts';
-import { plainText } from '../src/lib/markdown/render.ts';
+import { markdownBlocks, plainText } from '../src/lib/markdown/render.ts';
 import { seed } from './seed.ts';
 
 // Helpers for driving the new lesson screen on /play/<deck>, shared by its specs.
@@ -247,3 +247,13 @@ export async function playThrough(page: Page, deckId: string, miss: (index: numb
 	}
 	await expect(summaryHeading(page)).toBeVisible();
 }
+
+/** What a worked example's sheet shows as text: each paragraph and each numbered step, without its number. */
+export const exampleParts = (markdown: string) =>
+	markdownBlocks(markdown)
+		.flatMap((block) => (block.kind === 'steps' ? block.steps : block.kind === 'paragraph' ? [block.text] : []))
+		.map((text) => plainText(text, 1000));
+
+/** How many numbered steps a worked example has. */
+export const exampleSteps = (markdown: string) =>
+	markdownBlocks(markdown).reduce((count, block) => count + (block.kind === 'steps' ? block.steps.length : 0), 0);
