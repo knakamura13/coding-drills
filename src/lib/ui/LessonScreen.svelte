@@ -1,7 +1,8 @@
 <!--
 	The new lesson screen (FigCraft "Lesson screen" page), on the existing lesson controller. This
-	version runs multiple-choice and tap-the-cell questions: top bar with progress, heading and
-	prompt, then answer tiles, or a code snippet and a strip of cells (screen 5), and Check. With
+	version runs multiple-choice, tap-the-cell and drag-pointers questions: top bar with progress,
+	heading and prompt, then answer tiles, or a code snippet and a strip of cells (screen 5) to tap
+	or to place pointer tabs on (Drag A), and Check. With
 	"Immediate feedback" on, a pick is the answer and there is no Check. After Check the footer
 	becomes the feedback panel, and a follow-up opens with a recap of the question. The quit control asks first once anything has been answered. Phone first; from 1024px the same parts sit in a 640px column.
 -->
@@ -17,6 +18,7 @@
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
 	import CellStrip from './CellStrip.svelte';
+	import PointerStrip from './PointerStrip.svelte';
 	import CodeBlock from './CodeBlock.svelte';
 	import FeedbackPanel from './FeedbackPanel.svelte';
 	import LessonFooter from './LessonFooter.svelte';
@@ -124,7 +126,15 @@
 						{/if}
 						<Prose source={view.prompt} />
 					{/if}
-					{#if view.format === 'tap-cell' && view.board}
+					{#if view.format === 'drag-pointers' && view.board}
+						{#if view.code}<CodeBlock code={view.code} />{/if}
+						<PointerStrip
+							board={view.board}
+							name="pointers-{lesson.stepKey}"
+							checked={Boolean(view.verdict)}
+							onplace={(pointer, at) => lesson.place(pointer, at)}
+						/>
+					{:else if view.format === 'tap-cell' && view.board}
 						{#if view.code}<CodeBlock code={view.code} />{/if}
 						<CellStrip
 							board={view.board}

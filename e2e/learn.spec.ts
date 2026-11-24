@@ -18,7 +18,9 @@ import {
 	optionLabel,
 	panel,
 	pick,
+	placePointer,
 	questions,
+	reach,
 	primary,
 	runs,
 	shown,
@@ -30,7 +32,7 @@ import {
 
 test.beforeEach(async ({ page }) => {
 	await page.goto(URL);
-	await expect(page.getByRole('radio').first()).toBeVisible();
+	await expect(page.locator('fieldset').first()).toBeVisible();
 });
 
 test('opens on the new screen: deck title, no counter, Check waits for a pick', async ({ page }) => {
@@ -93,6 +95,7 @@ test('a wrong answer: rose pick, right answer marked, then its follow-up', async
 
 test('answers are a radio group: arrow keys move the pick', async ({ page, browserName }) => {
 	test.skip(browserName === 'webkit', 'WebKit does not move radio focus with Tab by default');
+	await firstChoice(page);
 	await page.getByRole('radio').first().focus();
 	await page.keyboard.press('ArrowDown');
 	await expect(page.getByRole('radio').nth(1)).toBeChecked();
@@ -464,7 +467,8 @@ test.describe('tap the cell', () => {
 			await answerRight(page, question);
 		}
 		const strip = page.getByRole('group', { name: 'Array ways, 10 cells' });
-		const scroller = strip.locator('..');
+		// The strip sits in a track (with any pointer tabs) inside the scroller.
+		const scroller = strip.locator('xpath=../..');
 		expect(await scroller.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true);
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 		await cell(page, 9).check();
@@ -615,4 +619,89 @@ test.describe('motion (lesson Round 7)', () => {
 			}
 		});
 	}
+});
+
+test.describe('drag the pointers', () => {
+	const tab = (page: Page, name: string) => page.locator(`[data-pointer="${name}"]`);
+	const cellButton = (page: Page, index: number) => page.getByRole('button', { name: new RegExp(`^Index ${index},`) });
+	const center = async (locator: ReturnType<Page['locator']>) => {
+		const box = (await locator.boundingBox())!;
+		return box.x + box.width / 2;
+	};
+
+	test('each pointer is a tab under its cell; a tap picks it up and a tap on a cell puts it there', async ({ page }) => {
+		await reach(page, 'boundary-search', 'insert-after-last');
+		await expect(page.getByRole('group', { name: /^Array a, 8 cells\. Drag a pointer/ })).toBeVisible();
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 0');
+		expect(Math.abs((await center(tab(page, 'lo'))) - (await center(cellButton(page, 0))))).toBeLessThan(2);
+		await expect(primary(page)).toBeDisabled();
+		await tab(page, 'lo').click();
+		await expect(tab(page, 'lo')).toHaveAttribute('aria-pressed', 'true');
+		await cellButton(page, 5).click();
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 5');
+		await expect(tab(page, 'lo')).toHaveAttribute('aria-pressed', 'false');
+		await expect(page.getByRole('status').filter({ hasText: 'lo moved to index 5.' })).toHaveCount(1);
+		await expect(primary(page)).toBeEnabled();
+		expect(Math.abs((await center(tab(page, 'lo'))) - (await center(cellButton(page, 5))))).toBeLessThan(2);
+		expect(await violations(page)).toEqual([]);
+	});
+
+	test('arrow keys, Home and End move a focused pointer and keep it focused', async ({ page }) => {
+		await reach(page, 'boundary-search', 'insert-after-last');
+		await tab(page, 'lo').focus();
+		await page.keyboard.press('ArrowRight');
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 1');
+		await expect(tab(page, 'lo')).toBeFocused();
+		await page.keyboard.press('End');
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 7');
+		await page.keyboard.press('Home');
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 0');
+	});
+
+	test('dragging a tab with the mouse drops it on the nearest cell', async ({ page }) => {
+		await reach(page, 'boundary-search', 'insert-after-last');
+		// Raw mouse input only reaches what is on screen and not under the sticky footer, which can
+		// cover the board on a short phone: center the tabs first.
+		await tab(page, 'hi').evaluate((node) => node.scrollIntoView({ block: 'center' }));
+		const from = (await tab(page, 'hi').boundingBox())!;
+		const to = (await cellButton(page, 3).boundingBox())!;
+		await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(to.x + to.width / 2 + 6, from.y, { steps: 10 });
+		await page.mouse.up();
+		await expect(tab(page, 'hi')).toHaveAccessibleName('hi pointer, at index 3');
+		await expect(tab(page, 'hi')).toBeFocused();
+	});
+
+	test('a wrong pointer turns rose, explains itself by name, and a ghost shows where it belonged', async ({ page }) => {
+		await reach(page, 'boundary-search', 'insert-after-last');
+		await placePointer(page, 'lo', 6);
+		await primary(page).click();
+		await expect(panel(page)).toHaveAccessibleName('Not quite');
+		await expect(panel(page)).toContainText('lo:');
+		await expect(tab(page, 'lo')).toHaveAccessibleName('lo pointer, at index 6, not right, it belongs at index 7');
+		await expect(tab(page, 'hi')).toHaveAccessibleName('hi pointer, at index 7, right');
+		const ghost = page.locator('.ghost', { hasText: 'lo' });
+		await expect(ghost).toBeVisible();
+		expect(Math.abs((await center(ghost)) - (await center(cellButton(page, 7))))).toBeLessThan(2);
+		expect(await violations(page)).toEqual([]);
+	});
+
+	test('tabs never overlap: two on one cell stack, and long names on neighboring cells keep apart', async ({ page }) => {
+		const overlapping = () =>
+			page.locator('[data-pointer]').evaluateAll((nodes) => {
+				const boxes = nodes.map((node) => node.getBoundingClientRect());
+				return boxes.some((a, i) => boxes.some((b, j) => i < j && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom));
+			});
+		await reach(page, 'boundary-search', 'insert-after-last');
+		await placePointer(page, 'lo', 7);
+		expect(await overlapping()).toBe(false);
+		await primary(page).click();
+		await expect(panel(page)).toHaveAccessibleName('Correct');
+		expect(await overlapping()).toBe(false);
+		await reach(page, 'greedy-scheduling', 'sched-drag-two-kept');
+		await placePointer(page, 'third', 2);
+		await placePointer(page, 'second', 1);
+		expect(await overlapping()).toBe(false);
+	});
 });

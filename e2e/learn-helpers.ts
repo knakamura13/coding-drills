@@ -1,13 +1,21 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
-import { isChoiceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question, type TapCellQuestion } from '../src/lib/content/schema.ts';
+import {
+	isChoiceQuestion,
+	isDragPointersQuestion,
+	isTapCellQuestion,
+	type ChoiceQuestion,
+	type DragPointersQuestion,
+	type Question,
+	type TapCellQuestion
+} from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
 
 // Helpers for driving the new lesson screen on /learn/<deck>, shared by its specs.
 
 export const decks = loadDecks('content/decks');
-export const runs = (question: Question) => isChoiceQuestion(question) || isTapCellQuestion(question);
+export const runs = (question: Question) => isChoiceQuestion(question) || isTapCellQuestion(question) || isDragPointersQuestion(question);
 export const deck = decks.find((candidate) => candidate.id === 'boundary-search')!;
 export const questions = deck.questions.filter(isChoiceQuestion);
 export const shown = deck.questions.filter(runs);
@@ -47,8 +55,8 @@ export async function current(page: Page, pool: ChoiceQuestion[] = questions): P
 	return match;
 }
 
-/** The values a tap question's cells show, as their accessible names spell them. */
-export const cellValues = (question: TapCellQuestion) => [
+/** The values a tap or drag question's cells show, as their accessible names spell them. */
+export const cellValues = (question: TapCellQuestion | DragPointersQuestion) => [
 	...question.sequence.cells.map((value) => (value === '' ? 'empty' : value)),
 	...(question.sequence.pastEnd ? ['past the end'] : [])
 ];
@@ -60,6 +68,18 @@ export async function onScreen(page: Page, pool: Question[] = shown): Promise<Qu
 	const names = await labelledCells(page).evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')!));
 	if (names.length === 0) return current(page, pool.filter(isChoiceQuestion));
 	const values = names.map((name) => name.match(/^Index \d+, (.*?)(, marked .*)?$/)![1]);
+	const tabs = (await page.locator('[data-pointer]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-pointer')!))).sort();
+	if (tabs.length > 0) {
+		const drag = pool
+			.filter(isDragPointersQuestion)
+			.find(
+				(question) =>
+					JSON.stringify(cellValues(question)) === JSON.stringify(values) &&
+					JSON.stringify(question.pointers.map((pointer) => pointer.name).sort()) === JSON.stringify(tabs)
+			);
+		if (!drag) throw new Error(`no drag question has these cells and pointers: ${values.join(' | ')} / ${tabs.join(' ')}`);
+		return drag;
+	}
 	const match = pool.filter(isTapCellQuestion).find((question) => JSON.stringify(cellValues(question)) === JSON.stringify(values));
 	if (!match) throw new Error(`no question has these cells: ${values.join(' | ')}`);
 	return match;
@@ -76,9 +96,19 @@ export async function firstChoice(page: Page): Promise<ChoiceQuestion> {
 	throw new Error('a multiple-choice question never came first');
 }
 
+/** Moves a pointer from the keyboard: Home to the first cell, then right to `index`. */
+export async function placePointer(page: Page, pointer: string, index: number) {
+	const tab = page.locator(`[data-pointer="${pointer}"]`);
+	await tab.focus();
+	await page.keyboard.press('Home');
+	for (let step = 0; step < index; step++) await page.keyboard.press('ArrowRight');
+	await expect(tab).toHaveAccessibleName(new RegExp(`at index ${index}\\b`));
+}
+
 /** Answers right with Check, then Continues. A right answer never opens a follow-up. */
 export async function answerRight(page: Page, question: Question) {
-	if (isTapCellQuestion(question)) await cell(page, question.correct).check();
+	if (isDragPointersQuestion(question)) for (const pointer of question.pointers) await placePointer(page, pointer.name, pointer.correct);
+	else if (isTapCellQuestion(question)) await cell(page, question.correct).check();
 	else if (isChoiceQuestion(question)) await pick(page, optionLabel(question, question.correct));
 	await primary(page).click();
 	await primary(page).click();
@@ -95,6 +125,15 @@ export async function pick(page: Page, label: string) {
  * as asked and Continued too; a missed cell has no follow-up.
  */
 export async function answerWrong(page: Page, question: Question, followUpRight = true) {
+	if (isDragPointersQuestion(question)) {
+		// The first pointer one cell off its answer; a drag answer has no follow-up.
+		const [first] = question.pointers;
+		const last = question.sequence.cells.length + (question.sequence.pastEnd ? 1 : 0) - 1;
+		await placePointer(page, first!.name, first!.correct === 0 ? 1 : Math.min(last, first!.correct - 1));
+		await primary(page).click();
+		await primary(page).click();
+		return;
+	}
 	if (isTapCellQuestion(question)) {
 		await cell(page, question.misses[0]!.index).check();
 		await primary(page).click();
@@ -111,4 +150,16 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 	await pick(page, plainText(target.text, 1000));
 	await primary(page).click();
 	await primary(page).click();
+}
+
+/** Opens a deck and answers right until the given question is on screen. */
+export async function reach(page: Page, deckId: string, questionId: string): Promise<Question> {
+	const pool = decks.find((candidate) => candidate.id === deckId)!.questions.filter(runs);
+	await page.goto(`/learn/${deckId}`);
+	for (let step = 0; step < pool.length; step++) {
+		const question = await onScreen(page, pool);
+		if (question.id === questionId) return question;
+		await answerRight(page, question);
+	}
+	throw new Error(`${questionId} never came up in ${deckId}`);
 }
