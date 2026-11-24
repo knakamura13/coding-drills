@@ -1,12 +1,17 @@
 <script lang="ts">
-	import Lesson from '$lib/components/Lesson.svelte';
 	import { APP_NAME } from '$lib/config';
-	import { createLesson } from '$lib/domain/lesson';
+	import { curriculum } from 'virtual:curriculum';
+	import { createLesson, opensWorkedExample, type LessonView } from '$lib/domain/lesson';
+	import { lessonTrail } from '$lib/domain/trail';
+	import { getRepository } from '$lib/storage';
+	import LessonScreen from '$lib/ui/LessonScreen.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	const source = $derived({ create: (rng: () => number) => createLesson(data.deck, rng) });
+	const trail = () => lessonTrail(curriculum, getRepository().attempts(), data.deck.id, data.deck.title);
+	const opensExample = (screen: LessonView | null) => opensWorkedExample(screen, getRepository().attempts(), data.deck.id);
 </script>
 
 <svelte:head>
@@ -14,5 +19,5 @@
 </svelte:head>
 
 {#key data.deck.id}
-	<Lesson {source} title={data.deck.title} subtitle={data.deck.description} />
+	<LessonScreen title={data.deck.title} branch={data.branch} {source} {trail} {opensExample} />
 {/key}

@@ -5,7 +5,6 @@ import { plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
 export const deck = loadDecks('content/decks').find((candidate) => candidate.id === 'pattern-identification')!;
-export const DECK_URL = `/play/${deck.id}`;
 
 export const allDecks = loadDecks('content/decks');
 

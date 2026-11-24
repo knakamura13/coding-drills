@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, currentQuestionAny, firstWrongId, playDeck } from './helpers';
+import { isChoiceQuestion } from '../src/lib/content/schema.ts';
+import { answerMain, continueButton, continuePastWrong, currentQuestion, firstWrongId, playDeck } from './helpers';
+import { answerRight, decks, next, onScreen, optionLabel, pick, primary, seenEveryDeck } from './learn-helpers';
+import { openOldLesson } from './seed';
 
 test.describe('deployment surface', () => {
 	test('the health check answers ok', async ({ request }) => {
@@ -76,7 +79,7 @@ test.describe('accessibility', () => {
 	});
 
 	test('a question, its wrong-answer sheet, and the See why dialog', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await expectNoViolations(page);
 
@@ -90,7 +93,7 @@ test.describe('accessibility', () => {
 	});
 
 	test('a follow-up and its feedback', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, firstWrongId(question));
 		await continuePastWrong(page);
@@ -99,7 +102,7 @@ test.describe('accessibility', () => {
 	});
 
 	test('the correct-answer sheet and the summary', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, question.correct);
 		await expect(page.getByRole('heading', { name: 'Well done!' })).toBeVisible();
@@ -119,7 +122,7 @@ test.describe('accessibility', () => {
 	});
 
 	test('the flag dialog and the flags page', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, question.correct);
 		await page.getByRole('button', { name: 'Flag this question' }).click();
@@ -138,20 +141,26 @@ test.describe('layout on a phone', () => {
 	// card instead of widening the page, which on a phone shrinks everything and breaks taps.
 	for (const deckId of ['trees-traversals-bst', 'linked-lists', 'graph-algorithms', 'recursion-backtracking', 'two-dimensional-dp-greedy']) {
 		test(`${deckId}: no question or follow-up scrolls sideways`, async ({ page }) => {
+			await seenEveryDeck(page);
+			const pool = decks.find((candidate) => candidate.id === deckId)!.questions;
 			await page.goto(`/play/${deckId}`);
-			for (let step = 0; step < 6; step++) {
-				const { question } = await currentQuestionAny(page);
-				const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-				expect(await overflow(), `${question.id}`).toBeLessThanOrEqual(0);
-				await answerMain(page, question, firstWrongId(question));
-				await continuePastWrong(page);
+			const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+			for (let index = 0; index < Math.min(6, pool.length); index++) {
+				const question = await onScreen(page, pool);
+				expect(await overflow(), question.id).toBeLessThanOrEqual(0);
+				if (!isChoiceQuestion(question)) {
+					await answerRight(page, question);
+					continue;
+				}
+				await pick(page, optionLabel(question, firstWrongId(question)));
+				await primary(page).click();
+				await primary(page).click();
 				await page.getByText('Follow-up', { exact: true }).waitFor();
 				expect(await overflow(), `${question.id} follow-up`).toBeLessThanOrEqual(0);
 				await page.getByRole('radio').first().check();
-				await page.getByRole('button', { name: 'Check', exact: true }).click();
-				await continueButton(page).click();
+				await primary(page).click();
+				await next(page);
 			}
-			await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
 		});
 	}
 });
