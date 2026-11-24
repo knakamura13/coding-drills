@@ -3,6 +3,7 @@ import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import { isChoiceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question, type TapCellQuestion } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
+import { seed } from './seed.ts';
 
 // Helpers for driving the new lesson screen on /learn/<deck>, shared by its specs.
 
@@ -21,6 +22,26 @@ export const labelledCells = (page: Page) => page.locator('[aria-label^="Index "
 // Check in the footer, or Continue in the feedback panel that replaces it.
 export const primary = (page: Page) => page.getByRole('button', { name: /^(Check|Continue)$/ });
 export const panel = (page: Page) => page.getByRole('region', { name: /^(Correct|Not quite)$/ });
+
+/**
+ * One old answer in every deck, saved before the app loads. On a deck with no answers the worked
+ * example opens by itself over the first question (lesson Round 2), so specs that are about
+ * something else start from a deck the learner has seen.
+ */
+export async function seenEveryDeck(page: Page) {
+	await seed(
+		page,
+		decks.map((candidate) => ({
+			id: `seen-${candidate.id}`,
+			at: '2026-01-01T12:00:00.000Z',
+			day: '2026-01-01',
+			deckId: candidate.id,
+			questionId: candidate.questions[0]!.id,
+			pickedId: 'seen',
+			correct: true
+		}))
+	);
+}
 
 // The new UI keeps its fades under reduced motion, so axe waits for them: mid-fade, text shows
 // through a half-transparent sheet or panel and fails contrast it passes once settled.
