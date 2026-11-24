@@ -8,9 +8,16 @@ questions:
     heading: Which cost stays flat?
     tags: [complexity, python, hash-map]
     workedExample: |-
-      `5 in [8, 5, 2]` compares 5 with 8, then with 5, and stops after two
-      comparisons. A missing value is compared with every item. A set finds a value through its
-      hash instead, so one check costs about the same at any size, on average.
+      Consider `nums = [8, 5, 2]` and `s = set(nums)`. `in` on a list compares the value with the
+      items from the front and stops at the first match. A set finds a value through its hash
+      instead.
+
+      1. `5 in nums` compares 5 with `nums[0] = 8`, no match, then with `nums[1] = 5`, a match. So
+         it stops after 2 comparisons.
+      2. `7 in nums` never finds a match, so it cannot stop early and compares 7 with all 3 items.
+         On a list of `n` items, a missing value costs `n` comparisons.
+      3. `7 in s` hashes 7 and looks in one place. That work does not depend on how many items `s`
+         holds, so one check costs about the same at any size, on average.
     prompt: |-
       Now `ids` is a list of `n` different numbers, and `id_set = set(ids)` holds the same numbers.
       `-1` is not among them, and `42` is.
@@ -85,9 +92,13 @@ questions:
     format: step-trace
     heading: Count the comparisons
     tags: [complexity, python]
-    workedExample: >-
-      `'b' in ['a', 'b']` compares with `'a'`, then with `'b'`, and stops after 2
-      comparisons.
+    workedExample: |-
+      Consider `'b' in ['a', 'b']`. `in` on a list compares the target with each item from the front
+      and stops at the first match.
+
+      1. The first comparison is with `'a'`, at index 0. It does not match, so the scan moves on.
+      2. The second comparison is with `'b'`, at index 1. It matches, so the scan stops.
+      3. So the check made 2 comparisons: one for each index from 0 up to the match at index 1.
     prompt: >-
       The loop below makes the same comparisons that `target in nums` makes, and
       counts them. Predict each step before it is shown.
@@ -173,10 +184,16 @@ questions:
     format: tap-cell
     heading: Tap where the 8 lands
     tags: [complexity, python]
-    workedExample: >-
-      `nums.append(5)` writes one new slot at the end and moves nothing.
-      `nums.insert(0, 5)` has to make room at index 0, so every item already in the list moves one
-      slot to the right.
+    workedExample: |-
+      Consider `nums = [6, 2, 9]`. A list keeps its items in one block of slots that starts at index
+      0, with no gaps.
+
+      1. `nums.append(7)` writes 7 into a new slot after index 2. No item sits after that slot, so
+         nothing moves, and `nums` is `[6, 2, 9, 7]`.
+      2. Starting again from `[6, 2, 9]`, `nums.insert(0, 7)` must put 7 at index 0. The block has
+         no gaps, so index 0 is freed only by moving every item one slot right.
+      3. So 6, 2 and 9 move to index 1, 2 and 3, and `nums` is `[7, 6, 2, 9]`. Every item already in
+         the list moved.
     prompt: >-
       The cells show `nums` before the insert, plus the new slot past the end.
       Tap the cell where the 8 sits after the insert.
@@ -209,8 +226,15 @@ questions:
     heading: Which removal moves the rest?
     tags: [complexity, python, queue]
     workedExample: |-
-      A queue serves its oldest item first. With `queue = ['a', 'b', 'c']`,
-      `queue.append('d')` adds at the back and moves nothing.
+      Consider `queue = ['p', 'q']`. A queue serves its oldest item first, so new items join at the
+      back. A list keeps its items in one block that starts at index 0.
+
+      1. `'p'` joined first, so it is the oldest and sits at the front, index 0. `'q'` is behind it,
+         at index 1.
+      2. `queue.append('r')` adds `'r'` in a new slot after index 1, at the back. No item sits after
+         that slot, so nothing has to move.
+      3. So `queue` is `['p', 'q', 'r']`, with `'p'` still first in line, and adding at the back
+         moved nothing.
     prompt: |-
       Now take the oldest item away. Which of these removals has to move the items that remain?
 
@@ -271,8 +295,12 @@ questions:
     heading: How many steps?
     tags: [complexity, python, hash-map]
     workedExample: |-
-      A loop over 5 items followed by a second loop over the same 5 items takes
-      5 + 5 = 10 steps. Phases that run one after the other add.
+      Consider a loop over 5 items followed by a second loop over the same 5 items, each taking one
+      step per item. When one phase finishes before the next starts, each runs once.
+
+      1. The first loop takes one step per item, so 5 steps.
+      2. The second loop starts only after the first has finished, and it also takes 5 steps.
+      3. By the setup, each loop ran once, so their counts add: 5 + 5 = 10 steps.
     prompt: |-
       Now:
 
@@ -338,8 +366,15 @@ questions:
     format: step-trace
     heading: Predict the counter
     tags: [complexity, python]
-    workedExample: >-
-      Two loops over 3 items, one after the other, take 3 + 3 = 6 steps.
+    workedExample: |-
+      Consider `nums = [4, 1, 7]` and two loops, one after the other, that each run
+      `for i in range(len(nums)): work += 1`, with `work` starting at 0.
+
+      1. The first loop runs for `i` = 0, 1 and 2 and adds 1 each time, so `work` is 3 when it ends.
+      2. The second loop is a new `range(len(nums))`, so `i` starts again at 0 and takes 0, 1 and 2.
+         It adds 3 more.
+      3. Nothing reset `work` between the loops, so it ends at 3 + 3 = 6. Loops that run one after
+         the other add.
     prompt: >-
       Step
       through the code below and predict `work` before each step is shown.
@@ -421,8 +456,15 @@ questions:
     heading: How many comparisons?
     tags: [complexity, python]
     workedExample: |-
-      `for x in a: if x in b_set: ...` makes one set test per item of `a`. Each
-      test is one step on average, so `n` items cost about `n` steps: `n` × 1.
+      Consider `a = [3, 8, 1, 6]`, a set `b_set`, and `for x in a: if x in b_set: ...`. A cost
+      inside a loop is paid on every pass, so the total is the number of passes times the cost of
+      one pass.
+
+      1. The loop makes one pass per item of `a`, so it makes 4 passes.
+      2. Each pass runs one `x in b_set`. A set finds a value through its hash, so that test is
+         about 1 step on average, whatever the size of `b_set`.
+      3. So the loop costs about 4 × 1 = 4 steps. For `n` items in `a` it is `n` × 1, about `n`
+         steps.
     prompt: |-
       Now `b` is a **list** of `m` items:
 
@@ -505,9 +547,15 @@ questions:
     format: step-trace
     heading: Count the comparisons
     tags: [complexity, python]
-    workedExample: >-
-      With `a = [1, 2]` and `b = [2, 3]`, the scan for 1 checks both cells and finds nothing. The
-      scan for 2 starts again at `j = 0` and stops at the first cell: 2 + 1 = 3 checks.
+    workedExample: |-
+      Consider `a = [1, 2]` and `b = [2, 3]`. For each `x` in `a`, a scan compares `x` with the
+      cells of `b` from `j = 0` and stops at the first match. Each comparison is a check.
+
+      1. The scan for 1 compares it with `b[0] = 2` and `b[1] = 3`. Neither matches, so it reads
+         both cells: 2 checks.
+      2. Each scan starts over, so the scan for 2 begins again at `j = 0`. `b[0] = 2` matches at
+         once, so it stops after 1 check.
+      3. The checks from the two scans add up: 2 + 1 = 3 checks in all.
     prompt: >-
       The inner loop makes the comparisons that `x in b` makes, and counts them. The cells show
       `b`. Predict each step before it is shown.
