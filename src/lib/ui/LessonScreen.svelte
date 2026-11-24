@@ -15,6 +15,7 @@
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
 	import { preferences } from '$lib/preferences/store.svelte';
+	import { firstSync } from '$lib/sync/store.svelte';
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
 	import CellStrip from './CellStrip.svelte';
@@ -74,9 +75,21 @@
 	$effect(() => applyBranch(branch));
 
 	let quitOpen = $state(false);
+	let exampleOpen = $state(false);
+
 	// On a deck the learner has never answered in, the first question's worked example opens by
-	// itself, once, as the screen appears. After that only the link opens it.
-	let exampleOpen = $state(untrack(() => opensExample(view)));
+	// itself, once. A signed-in device decides after its first sync, so answers from another device
+	// count; if the learner has started answering by then, it stays closed. After that only the link
+	// opens it.
+	$effect(() => {
+		let live = true;
+		void firstSync().then(() => {
+			if (live && lesson.pristine && opensExample(view)) exampleOpen = true;
+		});
+		return () => {
+			live = false;
+		};
+	});
 	let exampleLink: HTMLButtonElement | undefined = $state();
 	let heading: HTMLElement | undefined = $state();
 
