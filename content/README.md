@@ -8,26 +8,27 @@ A deck is one YAML file in `content/decks/`. The file name must equal the deck `
 
 - Use the established name of the problem or concept. Define a new term once in plain language, then keep using the established name. Use the exact variable names from the snippet and render names, expressions, and literal values as monospace code. Give inline code a visible background in the lesson UI.
 - Use plain headings and labels. Avoid the middle dot character in all learner-facing copy.
-- Before the first question, establish the goal, show the state the learner is working with, and illustrate the rule or representation they need. For example, show a labeled table and one worked cell before asking a learner to read a diagonal cell. A later question can rely on an established rule and the state still visible on screen.
+- Before a learner uses a rule, establish the goal, show the state they are working with, and illustrate the rule or representation. For example, show a labeled table and one worked cell before asking a learner to read a diagonal cell. The lesson screen supports this two ways: a deck's unanswered questions play in the order the file lists them, so order the deck as a teaching sequence; and on a deck the learner has never answered, the first question's worked example opens by itself. A later question can rely on an established rule and the state still visible on screen.
 - In a first encounter, ask for one new inference or operation at a time. State which line ran or which moment the learner is predicting. Use the prompt to name that decision and point to the relevant cell, line, or item. Use fresh review to check recall and checkpoints to combine skills.
 - If a learner needs a prerequisite to make sense of the question, supply it or teach it first. To review a teaching card, finish this sentence: “Given what the learner knows, this question asks them to infer ___.”
 
 ### Actions and answer options
 
-- Use a direct action when the action gives evidence of the skill: tap the cell, move the pointer, enter the value, or pick the first failing character. When the decision is which whole state will result, show the candidate states as two clearly bounded answer controls or use a short set of complete alternatives. Keep all states at the same scale and use the same notation in every option.
-- Keep read-only diagrams distinct from controls. Use one visible affordance per available action. When an entire stack preview is one answer, the whole preview is one button. When choosing an opener inside a stack, each selectable cell is its own button. Indicate valid targets without exposing the right answer. Use color together with a border, label, underline, or position.
-- Single-answer questions can show the options directly. For a question that accepts multiple selections, say “Select one or more answers” and let the learner submit after selecting. State an exact count when the task requires one. In move or order questions, provide tap and keyboard alternatives to dragging.
+- The lesson screen has four answer formats: multiple choice with one right answer, tap the cell, drag the pointers, and step-through trace (sections below). Use a direct action when it gives evidence of the skill: tap the cell or move the pointer rather than picking an index from a list.
+- Entering a value, choosing among whole candidate states and questions with several right answers are not built. Propose one when content needs it (see "When a question needs a new format").
+- Keep read-only diagrams distinct from controls, and indicate valid targets without exposing the right answer. Use color together with a border, label, underline, or position.
 - Give every option the same level of detail and a consistent form. Make each wrong option represent a plausible error. Run snippets and work through every option, including ties, index boundaries, and alternate interpretations of the prompt.
 
 ### Feedback and continuity
 
-- On a correct intermediate answer, carry the resulting state into the next question immediately. Let the changed state show what happened. Give any finished result or substantive explanation inline on the question, without a standalone success screen or a Continue step.
-- On a miss, keep the relevant state in view and explain the specific mistake where it happened. If a prerequisite is missing, give a small worked example and a fresh retry of that inference, then return to the original step. Avoid a wrong-answer path that resets unrelated progress.
+- A learner picks an answer and presses Check, which opens a feedback panel. With the Immediate feedback setting on (off by default), a pick, a tap or a trace step is checked as soon as it is made; placing pointers always waits for Check. **Correct** shows the right option's `explanation`. **Not quite** marks the pick and the right answer on the question and shows the pick's `explanation`, so write it about the pick: the screen already names the right answer. Continue moves on.
+- A wrong multiple-choice pick leads to that option's follow-up, with the original question folded into a recap above it. Write the follow-up for the misconception the wrong option shows ("What makes a good follow-up"). A wrong tap or pointer is explained in place from `misses` and has no follow-up. A trace keeps each answered step on its card, explains a wrong prediction in place and carries on from the true state.
+- The #95 prototypes also tried a fresh retry on new input after a miss, and moving on without a Continue step after a correct intermediate answer. Neither is built; write for the panel and follow-ups above until a pilot proves them.
 - Review and checkpoint cues depend on the purpose of the exercise. Preserve the relevant visual context, remove any scaffolding that would reveal the decision being assessed, and keep checkpoint results until the sitting ends. A fresh input should give the learner a chance to apply the rule independently.
 
 ### Review each representation
 
-These are candidate treatments for adapting authored questions. Review the visual representation separately from the answer format. A tap can select an index, a stack item, or a node. A stack can ask the learner to select an item or choose an entire resulting state. Verify each treatment with an actual question before adding a renderer.
+Arrays and strings are covered by tap the cell, drag the pointers and step-through trace. Every other representation below is shown today as code or text in the prompt, with multiple-choice answers. The table lists candidate treatments for when content needs more. Review the visual representation separately from the answer format: a tap can select an index, a stack item, or a node, and a stack can ask the learner to select an item or choose an entire resulting state.
 
 | Representation | What to show | What the learner can do |
 | --- | --- | --- |
@@ -48,18 +49,9 @@ These are candidate treatments for adapting authored questions. Review the visua
 | Bits and masks | Bit positions and width, with any signedness rule that affects the answer. | Select a bit or predict one masked value. |
 | Code, math or problem statement | The relevant snippet or problem contract, with enough context to determine an answer. | Pick a line, predict a short result, choose a counterexample, or compare complete statements. Use text choices when the explanation itself is the skill. |
 
-### Review every question type
+### When a question needs a new format
 
-1. Inventory the current questions and planned formats. Record the deck and question ID, what the learner must reason about, how the state is shown, what they do to answer, and how the question responds. Map every question to a type and flag any that need a new one. Use the representation table as a starting point and extend it as needed.
-2. Give a type its own review entry whenever the reasoning, visual state, action, or feedback needs a different design. For example, picking one opener, choosing a whole stack, and finding the first mismatch in an input string each need their own prototype. Include teaching, review, and checkpoint variants where their differences change what the learner sees or does. Reuse a design across questions only after checking that it fits each one.
-3. Build a playable prototype from a real or planned question for every entry. Review the exact wording, terminology and notation, what looks clickable, answer options, and what happens after each answer. Try a likely miss, a fresh example, and any boundary case that changes the interaction. Check the same flow by touch and keyboard.
-4. Walk through each prototype with Kyle and record specific feedback, revisions, and the decision for that entry. Bring revised designs back for review. A treatment is ready to apply to the decks once Kyle approves that treatment. Track deferred treatments explicitly.
-
-### Source decks for the review
-
-Source decks include [1D table entries](decks/one-dimensional-tables.yaml), [2D table cells](decks/grid-tables.yaml), [list references](decks/names-and-objects.yaml), [bracket stacks](decks/stack-matching.yaml), [queues](decks/traversal-layers.yaml), [index and pointer moves](decks/exact-search.yaml), [grid traversal](decks/reachability.yaml), [heaps](decks/heap-operations.yaml), [linked lists](decks/link-rewrites.yaml), [trees](decks/tree-walks.yaml), [graphs](decks/dependency-order.yaml), [call frames](decks/recursive-calls.yaml), [maps](decks/hash-lookups.yaml), [intervals](decks/interval-merging.yaml), [bit positions](decks/bit-manipulation.yaml), and [problem statements](decks/problem-solving-routine.yaml).
-
-The inventory at the start of this review contained 996 authored questions in 145 decks, including 673 choices, 151 cell taps, 64 pointer placements, and 108 step traces. Refresh the inventory as the curriculum changes and track coverage in [the question design review](https://github.com/knakamura13/coding-drills/issues/103).
+The four shipped formats went through design rounds and count as reviewed. When content being written needs a reasoning task, visual state, action or feedback they cannot express, build a playable prototype from that real question and walk through it with Kyle: the exact wording and notation, what looks clickable, each answer and what follows it, a likely miss, a boundary case, and touch and keyboard. Record the decision on #103, and apply a treatment to decks only after Kyle approves it.
 
 ## Shape
 
