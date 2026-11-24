@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { isChoiceQuestion, isTapCellQuestion } from './schema.ts';
-import { ContentError, deckFiles, loadDecks, parseDeck } from './loadDecks.ts';
+import { ContentError } from './contentError.ts';
+import { deckFiles, loadDecks, parseDeck } from './loadDecks.ts';
 
 const MINIMAL_DECK = `
 id: tiny

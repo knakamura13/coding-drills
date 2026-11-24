@@ -1,16 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parse } from 'yaml';
+import { ContentError } from './contentError.ts';
 import { deckSchema, formatIssues, type Deck } from './schema.ts';
 
 /** Node-only. Reads, parses, and validates deck files at build and test time. */
-
-export class ContentError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'ContentError';
-	}
-}
 
 export function deckFiles(dir: string): string[] {
 	return readdirSync(dir)
