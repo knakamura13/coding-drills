@@ -10,6 +10,7 @@
 <script lang="ts">
 	import type { LessonTrail } from '$lib/domain/trail';
 	import { placeLabels, type Side } from './labelPlacement';
+	import { summaryTimeline } from './motion';
 	import { LABEL_FORMS, TREE_HEIGHT, TREE_WIDTH, curvePath, fitLeaf, labelScene, ringArcs, trailLayout, treeBoxHeight } from './trailGeometry';
 
 	let {
@@ -32,6 +33,9 @@
 	} = $props();
 
 	const right = $derived(results.filter(Boolean).length);
+	const timeline = $derived(summaryTimeline(trail.earlier.length, results.length));
+	// Mid-morph between the curve and the flat branch, labels step aside and return when it settles.
+	const settled = $derived(t <= 0.1 || t >= 0.99);
 	const layout = $derived(fitLeaf(trailLayout(trail.earlier.length, t), scale * nodeScale, `${right} of ${results.length}`));
 	const arcs = $derived(ringArcs(layout.leaf.r - layout.leaf.ring / 2, results.length));
 	const flat = $derived(t > 0.5);
@@ -75,11 +79,11 @@
 				<stop offset="1" class="glow-stop" stop-opacity="0" />
 			</radialGradient>
 		</defs>
-		{#if layout.trunk}<path class="trunk" d={curvePath(layout.trunk)} />{/if}
-		{#each layout.edges as edge, index (index)}<path class="edge" d={curvePath(edge)} />{/each}
+		{#if layout.trunk}<path class="trunk arrive" d={curvePath(layout.trunk)} />{/if}
+		{#each layout.edges as edge, index (index)}<path class="edge draw" style:--delay="{timeline.edge(index)}ms" d={curvePath(edge)} />{/each}
 		{#each trail.earlier as node, index (node.id)}
 			{@const placed = layout.earlier[index]!}
-			<g transform="translate({placed.x} {placed.y}) scale({placed.scale * nodeScale})">
+			<g class="arrive" style:--delay="{timeline.node(index)}ms" transform="translate({placed.x} {placed.y}) scale({placed.scale * nodeScale})">
 				{#if node.kind === 'branch'}
 					<circle class="hollow" r="17" />
 					<path class="branch-mark" d="M-8 -2h16v7h-16z M-2.7 -2v7 M2.7 -2v7" />
@@ -92,12 +96,18 @@
 				{/if}
 			</g>
 		{/each}
-		<g transform="translate({layout.leaf.x} {layout.leaf.y}) scale({nodeScale})">
+		<g class="arrive" style:--delay="{timeline.leaf}ms" transform="translate({layout.leaf.x} {layout.leaf.y}) scale({nodeScale})">
 			<circle r={layout.leaf.r * 2.1} fill="url(#leaf-glow)" />
 			<!-- Opaque under the ring, so the edge that runs to the leaf's center never shows in a ring gap. -->
 			<circle class="ring-base" r={layout.leaf.r} />
 			<circle class="core" r={layout.leaf.r - layout.leaf.ring} />
-			{#each arcs as arc, index (index)}<path class="segment" class:missed={!results[index]} d={arc} stroke-width={layout.leaf.ring} />{/each}
+			{#each arcs as arc, index (index)}<path
+					class="segment arrive"
+					class:missed={!results[index]}
+					style:--delay="{timeline.segment(index)}ms"
+					d={arc}
+					stroke-width={layout.leaf.ring}
+				/>{/each}
 			<text class="score" text-anchor="middle" dominant-baseline="central" font-size={layout.leaf.score}>{right} of {results.length}</text>
 		</g>
 	</svg>
@@ -119,8 +129,10 @@
 		<!-- A label with no clear spot is left out of the drawing; the accessible name still has it. -->
 		{#if place}
 			<span
-				class="label"
+				class="label arrive"
 				class:current={index === texts.length - 1}
+				class:hidden={!settled}
+				style:--delay="{index === texts.length - 1 ? timeline.leaf : timeline.node(index)}ms"
 				class:wrap={place.wrap !== null}
 				class:small={place.small}
 				aria-hidden="true"
@@ -144,6 +156,40 @@
 		top: 0;
 		left: 0;
 		overflow: visible;
+	}
+
+	/* Arrival (Round 7, A Path draws). Delays scale with --shift: with Reduce effects, all at once. */
+	.arrive {
+		animation: arrive var(--dur-state) var(--ease) backwards;
+		animation-delay: calc(var(--delay, 0ms) * var(--shift));
+	}
+
+	@keyframes arrive {
+		from {
+			opacity: 0;
+		}
+	}
+
+	/* An edge draws from its start; with Reduce effects it fades in instead. */
+	.draw {
+		stroke-dasharray: 1000;
+		animation: draw var(--dur-state) var(--ease) backwards;
+		animation-delay: calc(var(--delay, 0ms) * var(--shift));
+	}
+
+	@keyframes draw {
+		from {
+			stroke-dashoffset: calc(1000 * var(--shift));
+			opacity: calc(1 - var(--shift));
+		}
+	}
+
+	.label.hidden {
+		opacity: 0;
+	}
+
+	.label {
+		transition: opacity var(--dur-state) var(--ease);
 	}
 
 	.trunk {

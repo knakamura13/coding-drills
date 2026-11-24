@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import { isChoiceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question, type TapCellQuestion } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
@@ -30,7 +30,13 @@ export async function violations(page: Page) {
 }
 
 /** Which deck question is on screen, from its answer labels. */
+/** Between steps the old card slides out for 150 ms; read the screen once it has gone. */
+export async function settled(page: Page) {
+	await expect(page.locator('[data-leaving]')).toHaveCount(0);
+}
+
 export async function current(page: Page, pool: ChoiceQuestion[] = questions): Promise<ChoiceQuestion> {
+	await settled(page);
 	await tiles(page).first().waitFor();
 	const answers = (await tiles(page).allInnerTexts()).map((label) => label.trim()).sort();
 	const match = pool.find(
@@ -49,6 +55,7 @@ export const cellValues = (question: TapCellQuestion) => [
 
 /** Which question is on screen, of either format: cells by their values, tiles by their answers. */
 export async function onScreen(page: Page, pool: Question[] = shown): Promise<Question> {
+	await settled(page);
 	await page.locator('fieldset').first().waitFor();
 	const names = await labelledCells(page).evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')!));
 	if (names.length === 0) return current(page, pool.filter(isChoiceQuestion));
@@ -61,6 +68,7 @@ export async function onScreen(page: Page, pool: Question[] = shown): Promise<Qu
 /** A multiple-choice question first: the lesson order is random, so reload until one leads. */
 export async function firstChoice(page: Page): Promise<ChoiceQuestion> {
 	for (let attempt = 0; attempt < 30; attempt++) {
+		await settled(page);
 		await page.locator('fieldset').first().waitFor();
 		if ((await labelledCells(page).count()) === 0) return current(page);
 		await page.goto(URL);

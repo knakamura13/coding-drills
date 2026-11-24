@@ -18,6 +18,8 @@
 	import LessonTopBar from './LessonTopBar.svelte';
 	import MissList from './MissList.svelte';
 	import SummaryTree from './SummaryTree.svelte';
+	import { shift, summaryTimeline, tween } from './motion';
+	import { MOTION } from './tokens';
 	import { TREE_HEIGHT, TREE_WIDTH, treeBoxHeight } from './trailGeometry';
 
 	let { summary, trail, ondone, onretry }: { summary: Summary; trail: LessonTrail; ondone: () => void; onretry: () => void } = $props();
@@ -66,6 +68,52 @@
 	let dragTop = $state<number | null>(null);
 	const top = $derived(dragTop ?? (open ? openTop : closedTop));
 
+	// The tree's shape, 0 curved to 1 flat (Round 7). While dragging it drifts up to 10% toward flat
+	// (stage 1); snapped open it flattens over 250ms, and closing runs that back (stage 2). With
+	// Reduce effects there is no drift and stage 2 crossfades: the tree fades out, changes, fades in.
+	const DRIFT = 0.1;
+	let t = $state(0);
+	let faded = $state(false);
+	let morphing = false;
+	let stopMorph = () => {};
+
+	function morphTo(target: number) {
+		stopMorph();
+		if (shift() === 0) {
+			faded = true;
+			const timer = setTimeout(() => {
+				t = target;
+				faded = false;
+			}, MOTION.duration.morph / 2);
+			stopMorph = () => clearTimeout(timer);
+			return;
+		}
+		const from = t;
+		morphing = true;
+		stopMorph = tween(
+			MOTION.duration.morph,
+			(progress) => (t = from + (target - from) * progress),
+			() => (morphing = false)
+		);
+	}
+
+	function setOpen(next: boolean) {
+		open = next;
+		morphTo(next ? 1 : 0);
+	}
+
+	// A phone turned or resized out of drawer mode starts over, closed and curved.
+	$effect(() => {
+		if (drawer) return;
+		stopMorph();
+		open = false;
+		t = 0;
+	});
+
+	$effect(() => () => stopMorph());
+
+	const timeline = $derived(summaryTimeline(trail.earlier.length, summary.results.length));
+
 	let grab: HTMLButtonElement | undefined = $state();
 	let dragged = false;
 	let stopDrag = () => {};
@@ -79,16 +127,20 @@
 		const startTop = top;
 		const id = event.pointerId;
 		dragged = false;
+		// Leaving the open drawer, the flatten runs back to the drift first.
+		if (open && shift() === 1) morphTo(DRIFT);
 		const move = (next: PointerEvent) => {
 			if (next.pointerId !== id) return;
 			const dy = next.clientY - startY;
 			if (Math.abs(dy) > 6) dragged = true;
-			if (dragged) dragTop = Math.min(closedTop, Math.max(openTop, startTop + dy));
+			if (!dragged) return;
+			dragTop = Math.min(closedTop, Math.max(openTop, startTop + dy));
+			if (!morphing && shift() === 1) t = DRIFT * ((closedTop - dragTop) / (closedTop - openTop));
 		};
 		const up = (next: PointerEvent) => {
 			if (next.pointerId !== id) return;
 			stopDrag();
-			if (dragged && dragTop !== null) open = (closedTop - dragTop) / (closedTop - openTop) > 0.5;
+			if (dragged && dragTop !== null) setOpen((closedTop - dragTop) / (closedTop - openTop) > 0.5);
 			dragTop = null;
 		};
 		// A canceled drag snaps back, and since no click follows it, the next tap must not be skipped.
@@ -97,6 +149,7 @@
 			stopDrag();
 			dragged = false;
 			dragTop = null;
+			morphTo(open ? 1 : 0);
 		};
 		window.addEventListener('pointermove', move);
 		window.addEventListener('pointerup', up);
@@ -117,14 +170,14 @@
 			dragged = false;
 			return;
 		}
-		open = !open;
+		setOpen(!open);
 	}
 
 	// On the window, since Safari does not focus a button it clicks.
 	function drawerKey(event: KeyboardEvent) {
 		if (event.key !== 'Escape' || !open || !drawer) return;
 		event.preventDefault();
-		open = false;
+		setOpen(false);
 		grab?.focus();
 	}
 </script>
@@ -139,9 +192,9 @@
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<main class="body" class:drawer bind:clientHeight={bodyHeight} tabindex={bodyScrolls ? 0 : undefined} style:padding-top="{desktop ? 0 : headerHeight}px">
 		<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>{summary.correctFirstTry} of {summary.total} right the first time</h1>
-		<div class="tree-wrap" bind:clientWidth={cellWidth} bind:clientHeight={cellHeight}>
+		<div class="tree-wrap" class:faded bind:clientWidth={cellWidth} bind:clientHeight={cellHeight}>
 			<!-- On desktop the path spreads over the left half while the nodes stay near their 1.5x design size. -->
-			<SummaryTree {trail} results={summary.results} width={treeWidth} {scale} nodeScale={desktop ? 0.6 : 1} t={drawer && open ? 1 : 0} />
+			<SummaryTree {trail} results={summary.results} width={treeWidth} {scale} nodeScale={desktop ? 0.6 : 1} t={drawer ? t : 0} />
 		</div>
 		{#if summary.missed.length > 0}
 			<!-- One list in every mode, so its measured height never drops out when the drawer turns on. -->
@@ -149,6 +202,8 @@
 			<section
 				class="misses"
 				class:sheet={drawer}
+				class:dragging={dragTop !== null}
+				style:--delay="{timeline.misses}ms"
 				class:open={drawer && open}
 				style:top={drawer ? `${top}px` : null}
 				aria-label="Missed questions"
@@ -249,6 +304,35 @@
 		flex: none;
 		width: 100%;
 		padding-top: var(--space-2);
+	}
+
+	/* The tree's crossfade under Reduce effects: out and back in, half the morph each way. */
+	.tree-wrap {
+		transition: opacity calc(var(--dur-morph) / 2) var(--ease);
+	}
+
+	.tree-wrap.faded {
+		opacity: 0;
+	}
+
+	/* Arrival: the misses rise 8px and fade in after the ring's last segment (Round 7). The rise is
+	   on `translate`, so it composes with the drawer's centering transform. */
+	.misses {
+		animation: rise var(--dur-state) var(--ease) backwards;
+		animation-delay: calc(var(--delay, 0ms) * var(--shift));
+	}
+
+	@keyframes rise {
+		from {
+			opacity: 0;
+			translate: 0 calc(8px * var(--shift));
+		}
+	}
+
+	/* The drawer snaps to open or closed in 150ms; with Reduce effects it moves at once. Dragging,
+	   it follows the finger. */
+	.sheet:not(.dragging) {
+		transition: top calc(var(--dur-state) * var(--shift)) var(--ease);
 	}
 
 	/* Every misses list sits on the drawer's raised card, reaching down to the footer and out to the
