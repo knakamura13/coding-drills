@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createAccount, signIn } from './account.ts';
-import { URL, answerRight, cellsDeck, deck, exampleParts, onScreen, violations } from './learn-helpers.ts';
+import { URL, answerRight, cellsDeck, deck, onScreen, violations } from './learn-helpers.ts';
+import { markdownParts } from './helpers.ts';
 
 // Lesson Round 2: on a deck the learner has never answered in, the first question's worked example
 // opens by itself; after that only the link opens it. Unlike learn.spec.ts, these tests start with
@@ -19,7 +20,7 @@ test('a deck never answered in opens the first worked example, and opens it agai
 	await expect(sheet(page)).toBeHidden();
 	await expect(exampleLink(page)).toBeFocused();
 	const question = await onScreen(page);
-	for (const part of exampleParts(question.workedExample!)) expect(shownText.replace(/\s+/g, ' ')).toContain(part);
+	for (const part of markdownParts(question.workedExample!)) expect(shownText.replace(/\s+/g, ' ')).toContain(part);
 
 	// Leaving without an answer saves nothing, so the next visit is still a first visit.
 	await page.reload();

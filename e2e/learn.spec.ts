@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { isChoiceQuestion, type TapCellQuestion } from '../src/lib/content/schema.ts';
 import { cellLabel } from '../src/lib/domain/tap.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
+import { markdownParts } from './helpers.ts';
 import { PREFERENCES_KEY } from '../src/lib/preferences/preferences.ts';
 import {
 	URL,
@@ -12,7 +13,6 @@ import {
 	cellsDeck,
 	deck,
 	decks,
-	exampleParts,
 	exampleSteps,
 	firstChoice,
 	labelledCells,
@@ -421,7 +421,7 @@ test.describe('the worked example', () => {
 		await expect(page.getByRole('main').getByText('Need help?')).toBeVisible();
 		await exampleLink(page).click();
 		await expect(sheet(page)).toBeVisible();
-		for (const part of exampleParts(question.workedExample!)) await expect(sheet(page)).toContainText(part);
+		for (const part of markdownParts(question.workedExample!)) await expect(sheet(page)).toContainText(part);
 		// Numbered steps (#137) stay a list for screen readers, one item per step.
 		await expect(sheet(page).getByRole('listitem')).toHaveCount(exampleSteps(question.workedExample!));
 		expect(await violations(page)).toEqual([]);
