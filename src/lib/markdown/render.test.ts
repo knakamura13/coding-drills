@@ -152,4 +152,34 @@ describe('markdownBlocks', () => {
 	it('closes an unterminated fence at the end', () => {
 		expect(markdownBlocks('```\nx = 1')).toEqual([{ kind: 'code', language: '', code: 'x = 1' }]);
 	});
+
+	it('reads numbered steps, joining wrapped lines, and keeps blank-separated steps in one list', () => {
+		const source = 'Consider `a`.\n\n1. First step\n   wraps here.\n2. Second step.\n\n3. Third step.\n\nAfter.';
+		expect(markdownBlocks(source)).toEqual([
+			{ kind: 'paragraph', text: 'Consider `a`.' },
+			{ kind: 'steps', steps: ['First step wraps here.', 'Second step.', 'Third step.'] },
+			{ kind: 'paragraph', text: 'After.' }
+		]);
+	});
+
+	it('lets only a `1.` line interrupt a paragraph', () => {
+		expect(markdownBlocks('The probe reads\n25. Which part?')).toEqual([{ kind: 'paragraph', text: 'The probe reads 25. Which part?' }]);
+		expect(markdownBlocks('Setup.\n1. Step.')).toEqual([
+			{ kind: 'paragraph', text: 'Setup.' },
+			{ kind: 'steps', steps: ['Step.'] }
+		]);
+	});
+
+	it('ends a list at a fence', () => {
+		expect(markdownBlocks('1. Step.\n```\nx\n```')).toEqual([
+			{ kind: 'steps', steps: ['Step.'] },
+			{ kind: 'code', language: '', code: 'x' }
+		]);
+	});
+});
+
+describe('renderMarkdown steps', () => {
+	it('renders numbered steps as an ordered list with inline Markdown', () => {
+		expect(renderMarkdown('1. `a < b`\n2. **done**')).toBe('<ol><li><code>a &lt; b</code></li><li><strong>done</strong></li></ol>');
+	});
 });

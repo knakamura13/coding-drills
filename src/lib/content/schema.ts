@@ -12,6 +12,7 @@ import { z } from 'zod';
  * code blocks). Option text is inline Markdown.
  */
 
+import { markdownBlocks } from '../markdown/render.ts';
 import { TOPIC_TAGS, type TopicTag } from './tags.ts';
 
 const id = z
@@ -21,10 +22,40 @@ const id = z
 const text = (max: number) => z.string().trim().min(1).max(max);
 
 /**
+ * How a worked example breaks its shape (content/README.md, "Worked example shape"), or null when
+ * it fits: a setup paragraph first, then two to four steps numbered from 1, ending the example.
+ */
+export function workedExampleIssue(source: string): string | null {
+	const blocks = markdownBlocks(source);
+	const lists = blocks.filter((block) => block.kind === 'steps');
+	if (lists.length === 0) return 'needs a setup paragraph and then 2 to 4 numbered steps';
+	if (lists.length > 1) return 'has its steps split into more than one list';
+	if (blocks[0].kind !== 'paragraph') return 'must open with a setup paragraph';
+	const last = blocks[blocks.length - 1];
+	if (last.kind !== 'steps') return 'must end with its last step';
+	if (last.steps.length < 2 || last.steps.length > 4) return `has ${last.steps.length} steps, not 2 to 4`;
+	const numbers = source
+		.replace(/```[\s\S]*?(```|$)/g, '')
+		.split('\n')
+		.flatMap((line) => /^\s*(\d+)\.\s/.exec(line)?.[1] ?? []);
+	if (numbers.join() !== last.steps.map((_, index) => index + 1).join()) return 'must number its steps 1, 2, 3 in order';
+	return null;
+}
+
+/**
  * Markdown. A short solved example the learner can open from the question. Kept apart from the
  * prompt so the prompt is only the question. Optional: not every question has one.
+ *
+ * While #137 rewrites them, only examples that already have numbered steps are held to the shape.
+ * The last rewrite batch drops that condition so every example is.
  */
-const workedExample = text(800).optional();
+const workedExample = text(800)
+	.superRefine((source, ctx) => {
+		if (!markdownBlocks(source).some((block) => block.kind === 'steps')) return;
+		const issue = workedExampleIssue(source);
+		if (issue) ctx.addIssue({ code: 'custom', message: `worked example ${issue}` });
+	})
+	.optional();
 
 const optionSchema = z
 	.object({

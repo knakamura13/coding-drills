@@ -1,6 +1,6 @@
 /**
- * A deliberately tiny Markdown renderer for deck content: paragraphs, fenced
- * code blocks, `inline code`, **bold**, and *italics*. Input is HTML-escaped
+ * A deliberately tiny Markdown renderer for deck content: paragraphs, numbered
+ * steps, fenced code blocks, `inline code`, **bold**, and *italics*. Input is HTML-escaped
  * before any markup is applied, so the output is safe for `{@html}`.
  */
 
@@ -43,13 +43,26 @@ function renderCode(language: string, lines: string[]): string {
 	return `<pre tabindex="0"><code${className}>${escapeHtml(lines.join('\n'))}</code></pre>`;
 }
 
-/** A block of deck Markdown: a paragraph (inline Markdown, unrendered) or a fenced code block. */
-export type MarkdownBlock = { kind: 'paragraph'; text: string } | { kind: 'code'; language: string; code: string };
+/**
+ * A block of deck Markdown: a paragraph (inline Markdown, unrendered), a numbered list of steps
+ * (each step inline Markdown), or a fenced code block.
+ */
+export type MarkdownBlock =
+	| { kind: 'paragraph'; text: string }
+	| { kind: 'steps'; steps: string[] }
+	| { kind: 'code'; language: string; code: string };
 
-/** Splits Markdown into paragraphs and fenced code blocks. Soft-wrapped lines join with a space. */
+const STEP = /^(\d+)\.\s+(.*)$/;
+
+/**
+ * Splits Markdown into blocks. Soft-wrapped lines join with a space, in a paragraph or a step.
+ * A line starting `1.`, `2.` and so on starts a step; blank lines between steps keep one list. As in
+ * CommonMark, only `1.` can interrupt a paragraph, so a wrapped line that happens to start `2.` cannot.
+ */
 export function markdownBlocks(source: string): MarkdownBlock[] {
 	const blocks: MarkdownBlock[] = [];
 	let paragraph: string[] = [];
+	let steps: string[][] | null = null;
 	let fence: { language: string; lines: string[] } | null = null;
 
 	const flushParagraph = () => {
@@ -57,6 +70,13 @@ export function markdownBlocks(source: string): MarkdownBlock[] {
 		blocks.push({ kind: 'paragraph', text: paragraph.join(' ') });
 		paragraph = [];
 	};
+	const flushSteps = () => {
+		if (!steps) return;
+		blocks.push({ kind: 'steps', steps: steps.map((lines) => lines.join(' ')) });
+		steps = null;
+	};
+	// A blank line ends a paragraph at once, but a list only once something other than a step follows.
+	let blank = false;
 
 	for (const line of source.replace(/\r\n/g, '\n').trim().split('\n')) {
 		if (fence) {
@@ -69,26 +89,40 @@ export function markdownBlocks(source: string): MarkdownBlock[] {
 			continue;
 		}
 		const opening = /^```(\w*)\s*$/.exec(line);
+		const step = STEP.exec(line.trim());
 		if (opening) {
 			flushParagraph();
+			flushSteps();
 			fence = { language: opening[1], lines: [] };
 		} else if (line.trim() === '') {
 			flushParagraph();
+			blank = true;
+			continue;
+		} else if (step && (paragraph.length === 0 || step[1] === '1')) {
+			flushParagraph();
+			(steps ??= []).push([step[2]]);
+		} else if (steps && !blank) {
+			steps[steps.length - 1].push(line.trim());
 		} else {
+			flushSteps();
 			paragraph.push(line.trim());
 		}
+		blank = false;
 	}
 	if (fence) blocks.push({ kind: 'code', language: fence.language, code: fence.lines.join('\n') });
 	flushParagraph();
+	flushSteps();
 	return blocks;
 }
 
-/** Block rendering: paragraphs and fenced code. */
+/** Block rendering: paragraphs, numbered steps and fenced code. */
 export function renderMarkdown(source: string): string {
 	return markdownBlocks(source)
-		.map((block) =>
-			block.kind === 'paragraph' ? `<p>${renderInline(block.text)}</p>` : renderCode(block.language, block.code.split('\n'))
-		)
+		.map((block) => {
+			if (block.kind === 'paragraph') return `<p>${renderInline(block.text)}</p>`;
+			if (block.kind === 'steps') return `<ol>${block.steps.map((step) => `<li>${renderInline(step)}</li>`).join('')}</ol>`;
+			return renderCode(block.language, block.code.split('\n'));
+		})
 		.join('');
 }
 
