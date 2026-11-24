@@ -7,6 +7,7 @@ import {
 	currentQuestion,
 	deck,
 	firstWrongId,
+	markdownParts,
 	openMenu,
 	optionOf,
 	playDeck
@@ -67,7 +68,7 @@ test.describe('the lesson loop', () => {
 		await expect(sheet.getByRole('button', { name: 'See why again' })).toBeVisible();
 		await continueButton(page).click();
 		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
-		await expect(page.getByRole('region', { name: 'Problem' })).toContainText(text(question.prompt).slice(0, 30));
+		await expect(page.getByRole('region', { name: 'Problem' })).toContainText(markdownParts(question.prompt)[0].slice(0, 30));
 		await expect(page.getByRole('heading', { level: 2 })).toHaveText(text(question.followUps[wrongId].prompt));
 		await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeDisabled();
 	});

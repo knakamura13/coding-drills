@@ -1,6 +1,6 @@
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { deckSchema, formatIssues, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, repeatsFollowUpAnswer, type ChoiceQuestion, type Deck } from './schema.ts';
+import { deckSchema, formatIssues, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, repeatsFollowUpAnswer, workedExampleIssue, type ChoiceQuestion, type Deck } from './schema.ts';
 
 function validDeck(): Deck {
 	return {
@@ -475,5 +475,49 @@ describe('repeatsFollowUpAnswer', () => {
 	it('matches a whole option that is shorter than 6 words', () => {
 		expect(repeatsFollowUpAnswer('Use a hash map as a key here.', 'a hash map')).toBe(true);
 		expect(repeatsFollowUpAnswer('Use a tree.', 'a hash map')).toBe(false);
+	});
+});
+
+describe('workedExampleIssue', () => {
+	const setup = 'Consider `a = [3, 8]`.';
+
+	it('accepts a setup paragraph then two to four steps numbered from 1', () => {
+		expect(workedExampleIssue(`${setup}\n\n1. One.\n2. Two.`)).toBeNull();
+		expect(workedExampleIssue(`${setup}\n\n\`\`\`\nx = 1\n\`\`\`\n\n1. One.\n   Wraps.\n2. Two.\n3. Three.\n4. Four.`)).toBeNull();
+	});
+
+	it('names what breaks the shape', () => {
+		expect(workedExampleIssue(setup)).toMatch(/numbered steps/);
+		expect(workedExampleIssue('1. One.\n2. Two.')).toMatch(/setup paragraph/);
+		expect(workedExampleIssue(`${setup}\n\n1. One.\n2. Two.\n\nSo it works.`)).toMatch(/last step/);
+		expect(workedExampleIssue(`${setup}\n\n1. One.`)).toMatch(/1 steps/);
+		expect(workedExampleIssue(`${setup}\n\n1. A\n2. B\n3. C\n4. D\n5. E`)).toMatch(/5 steps/);
+		expect(workedExampleIssue(`${setup}\n\n1. One.\n3. Two.`)).toMatch(/in order/);
+		// A wrapped setup line that starts with a number is text, not a step.
+		expect(workedExampleIssue('Merge the two lists of length\n4. Then:\n\n1. One.\n2. Two.')).toBeNull();
+		expect(workedExampleIssue(`${setup}\n\n1. One.\n2. Two.\n\nMore.\n\n1. Again.\n2. Again.`)).toMatch(/more than one list/);
+	});
+
+	it('fails a deck whose worked example has steps in the wrong shape', () => {
+		const deck = parse(`
+id: d
+title: D
+questions:
+  - id: q
+    workedExample: |-
+      Setup.
+
+      1. Only one step.
+    prompt: Which?
+    options:
+      - { id: a, text: A, explanation: Right. }
+      - { id: b, text: B, explanation: Wrong. }
+    correct: a
+    followUps:
+      b: { prompt: Why?, options: [{ id: x, text: X }, { id: y, text: Y }], correct: x }
+`);
+		const result = deckSchema.safeParse(deck);
+		expect(result.success).toBe(false);
+		expect(formatIssues('d.yaml', result.error?.issues ?? [])).toMatch(/worked example has 1 steps/);
 	});
 });

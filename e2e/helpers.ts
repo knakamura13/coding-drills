@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import { isCellStep, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
-import { plainText } from '../src/lib/markdown/render.ts';
+import { markdownBlocks, plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
 export const deck = loadDecks('content/decks').find((candidate) => candidate.id === 'pattern-identification')!;
@@ -9,6 +9,12 @@ export const deck = loadDecks('content/decks').find((candidate) => candidate.id 
 export const allDecks = loadDecks('content/decks');
 
 const text = (markdown: string) => plainText(markdown, 1000);
+
+/** What rendered Markdown shows as text: each paragraph and each numbered step, without its number. */
+export const markdownParts = (markdown: string) =>
+	markdownBlocks(markdown)
+		.flatMap((block) => (block.kind === 'steps' ? block.steps : block.kind === 'paragraph' ? [block.text] : []))
+		.map(text);
 
 function asChoice(question: Question): ChoiceQuestion {
 	if (!isChoiceQuestion(question)) throw new Error(`${question.id} is not a multiple-choice question`);
@@ -85,7 +91,7 @@ export async function currentQuestionAny(page: Page): Promise<{ question: Questi
 	if (candidates.length === 0) throw new Error(`no question has these options: ${shown.join(' | ')}`);
 	if (candidates.length === 1) return candidates[0];
 	const page_text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
-	const match = candidates.find(({ question }) => page_text.includes(text(question.prompt).replace(/\s+/g, ' ').slice(0, 40)));
+	const match = candidates.find(({ question }) => page_text.includes(markdownParts(question.prompt)[0].replace(/\s+/g, ' ').slice(0, 40)));
 	return match ?? candidates[0];
 }
 

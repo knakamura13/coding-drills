@@ -95,9 +95,34 @@ questions:
         explanation: The rule, in one to three sentences.
 ```
 
-Prompts and explanations are Markdown: paragraphs, `` `inline code` ``, **bold**, *italics*, and fenced code blocks. Option text is inline Markdown. Quote any YAML value that starts with a backtick or contains `: `.
+Prompts and explanations are Markdown: paragraphs, numbered steps, `` `inline code` ``, **bold**, *italics*, and fenced code blocks. Option text is inline Markdown. Quote any YAML value that starts with a backtick or contains `: `.
 
-`workedExample` is optional on every question format. It holds the solved case that sets up the question, in Markdown, without a label. Keep it out of `prompt`, which holds only the question. `/play` shows it above the prompt, and the new lesson screen will offer it from a link under the prompt.
+`workedExample` is optional on every question format. It holds a solved case of the same idea, in Markdown, without a label. Keep it out of `prompt`, which holds only the question. The lesson screen offers it from a "Need help?" link under the prompt, and opens it by itself on the first question of a deck the learner has never answered. The older review, practice and exam screens show it above the prompt.
+
+### Worked example shape
+
+A learner who opens a worked example is stuck, so it walks through one inference at a time:
+
+- One setup paragraph: the input, with every value as inline code, and the one rule the steps rely on.
+- Then two to four numbered steps (`1.`, `2.` and so on), each on its own line. Each step names the fact it builds on (from the setup or an earlier step) and says why the next fact follows from it: since A, B, because Y.
+- The last step states the result.
+- Use plain words, and state every link. If a learner would have to supply a reason themselves, add it to the step.
+- Use values different from the question's own, so the example shows the method without giving away the answer.
+- Run every value in Python before writing it down.
+- Write the field as a literal block (`|-`), not a folded one (`>-`), or the steps run together into one paragraph. Indent a step's wrapped lines under its text.
+
+```yaml
+    workedExample: |-
+      Consider `a = [3, 8, 12, 20]` and `x = 10`. `bisect_left(a, x)` returns the first index
+      whose value is at least `x`.
+
+      1. `a[0] = 3` and `a[1] = 8` are both below 10, so neither index 0 nor index 1 holds a value
+         that is at least 10.
+      2. `a[2] = 12` is at least 10. Since indexes 0 and 1 did not qualify, index 2 is the first
+         one that does.
+      3. So `bisect_left(a, 10)` returns 2. Inserting 10 there gives `[3, 8, 10, 12, 20]`, which is
+         still sorted.
+```
 
 ## Tap the cell
 
