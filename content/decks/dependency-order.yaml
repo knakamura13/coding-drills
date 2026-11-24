@@ -6,7 +6,13 @@ questions:
     format: tap-cell
     tags:
       - graph
-    workedExample: The pair `("wash", "chop")` means washing finishes before chopping starts. Chop waits, and wash can start at once.
+    workedExample: |-
+      Consider `pairs = [("wash", "chop")]`. A pair `(a, b)` means `a` finishes before `b` starts,
+      so the second item of a pair has to wait.
+
+      1. Chop is the second item of `("wash", "chop")`, so chop waits until wash finishes.
+      2. Wash is not the second item of any pair, so nothing has to finish before it.
+      3. So wash can start now, and chop cannot.
     prompt: |-
       Each pair below reads the same way. Tap the task that can start now.
     code: |-
@@ -30,7 +36,14 @@ questions:
   - id: dep-needs-to-pair
     tags:
       - graph
-    workedExample: '`needs = {"fry": ["heat"]}` lists what fry waits for. It encodes the pair `("heat", "fry")`: heat before fry.'
+    workedExample: |-
+      Consider `needs = {"fry": ["heat"]}`. Each key is a task that waits, and its list holds the
+      tasks it waits for.
+
+      1. The key is `"fry"`, so fry is the task that waits.
+      2. Its list is `["heat"]`, so fry waits for heat to finish.
+      3. A pair `(a, b)` puts the task that finishes first in `a`. Since heat finishes before fry
+         starts, the entry encodes `("heat", "fry")`.
     prompt: |-
       Which pair `(a, b)`, meaning a finishes before b starts, is written directly in this `needs`?
 
@@ -89,7 +102,14 @@ questions:
   - id: dep-two-task-cycle
     tags:
       - graph
-    workedExample: With the single pair `(a, b)`, a starts first and b follows.
+    workedExample: |-
+      Consider the single pair `(a, b)`: a finishes before b starts. A task can start first only if
+      it is not the second item of any pair.
+
+      1. b is the second item of `(a, b)`, so b must wait for a to finish.
+      2. `(a, b)` is the only pair, so a is not the second item of any pair. Nothing has to finish
+         before a.
+      3. So a starts first, and b follows once a is done.
     prompt: |-
       Now the pairs are `(a, b)` and `(b, a)`. Which task can start first?
     options:
@@ -145,7 +165,16 @@ questions:
     format: step-trace
     tags:
       - graph
-    workedExample: An edge `x→y` means x comes before y, so it adds one to `indeg[y]`, the number of prerequisites y has.
+    workedExample: |-
+      Consider `edges` holding `0→1` and `2→1`, with `indeg = [0, 0, 0]`. An edge `a→b` means a
+      comes before b, so b gains one prerequisite.
+
+      1. The loop reads `0→1`, so `b` is 1 and `indeg[1] += 1` runs. `indeg` becomes `[0, 1, 0]`.
+         Node 0 gains nothing, since the edge does not make 0 wait.
+      2. The loop reads `2→1`. It also ends at 1, so `indeg[1]` goes up again, and `indeg` becomes
+         `[0, 2, 0]`.
+      3. No edge ends at 0 or 2, so their counts stay 0 and they have no prerequisite. Node 1 waits
+         for two.
     prompt: |-
       Predict each step as the loop counts incoming edges.
     code: |-
@@ -220,7 +249,13 @@ questions:
   - id: dep-count-direct-only
     tags:
       - graph
-    workedExample: With pairs `(x, y)` and `(z, y)`, two edges end at y, so the in-degree of y is 2.
+    workedExample: |-
+      Consider the pairs `(x, y)` and `(z, y)`. The in-degree of a task is the number of pairs, or
+      edges, that end at it.
+
+      1. `(x, y)` ends at y, so it counts once toward y.
+      2. `(z, y)` also ends at y, so it counts once more.
+      3. No other pair ends at y, so the in-degree of y is 2.
     prompt: |-
       The pairs are `("build", "test")`, `("test", "ship")` and `("docs", "ship")`. What is the in-degree of ship?
     options:
@@ -263,7 +298,16 @@ questions:
     tags:
       - graph
       - queue
-    workedExample: Processing a node lowers the count of each node it points to. A node joins the queue when its count reaches 0.
+    workedExample: |-
+      Consider the edges `X→Y`, `X→Z` and `Y→Z`, so `indeg` is 0 for X, 1 for Y and 2 for Z, and the
+      queue starts as `X`. Processing a node lowers the count of each node it points to, and a node
+      joins the queue when its count reaches 0.
+
+      1. X is processed. `out[X]` lists Y first, so `indeg[Y]` drops from 1 to 0, and Y joins the
+         queue.
+      2. Next in `out[X]` is Z. `indeg[Z]` drops from 2 to 1, which is not 0, so Z keeps waiting for
+         Y. The queue is now `Y`.
+      3. Y is processed next. `indeg[Z]` drops from 1 to 0, so Z joins the queue now.
     prompt: |-
       Edges: `A→C`, `B→C`, `B→E`, `C→D`. `out` lists successors in that edge order. The queue starts as `A, B`. Predict each step.
     code: |-
@@ -339,7 +383,13 @@ questions:
     tags:
       - graph
       - queue
-    workedExample: E has one prerequisite, B. When B is processed, `indeg[E]` drops from 1 to 0 and E joins the queue.
+    workedExample: |-
+      Say E has one prerequisite, B, so `indeg[E]` starts at 1. Processing a node lowers by one the
+      count of each node it points to, and a node joins the queue when its count reaches 0.
+
+      1. B is processed. E is one of the nodes B points to, so `indeg[E]` drops by one, from 1 to 0.
+      2. A count of 0 means E has no prerequisite left to wait for.
+      3. So E joins the queue as soon as B is processed.
     prompt: |-
       D has two prerequisites, B and C, so `indeg[D]` starts at 2. B is processed. What happens to D?
     options:
