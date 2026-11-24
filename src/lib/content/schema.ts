@@ -34,11 +34,7 @@ export function workedExampleIssue(source: string): string | null {
 	const last = blocks[blocks.length - 1];
 	if (last.kind !== 'steps') return 'must end with its last step';
 	if (last.steps.length < 2 || last.steps.length > 4) return `has ${last.steps.length} steps, not 2 to 4`;
-	const numbers = source
-		.replace(/```[\s\S]*?(```|$)/g, '')
-		.split('\n')
-		.flatMap((line) => /^\s*(\d+)\.\s/.exec(line)?.[1] ?? []);
-	if (numbers.join() !== last.steps.map((_, index) => index + 1).join()) return 'must number its steps 1, 2, 3 in order';
+	if (last.numbers.some((number, index) => number !== index + 1)) return 'must number its steps 1, 2, 3 in order';
 	return null;
 }
 

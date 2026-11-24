@@ -157,7 +157,7 @@ describe('markdownBlocks', () => {
 		const source = 'Consider `a`.\n\n1. First step\n   wraps here.\n2. Second step.\n\n3. Third step.\n\nAfter.';
 		expect(markdownBlocks(source)).toEqual([
 			{ kind: 'paragraph', text: 'Consider `a`.' },
-			{ kind: 'steps', steps: ['First step wraps here.', 'Second step.', 'Third step.'] },
+			{ kind: 'steps', steps: ['First step wraps here.', 'Second step.', 'Third step.'], numbers: [1, 2, 3] },
 			{ kind: 'paragraph', text: 'After.' }
 		]);
 	});
@@ -166,13 +166,13 @@ describe('markdownBlocks', () => {
 		expect(markdownBlocks('The probe reads\n25. Which part?')).toEqual([{ kind: 'paragraph', text: 'The probe reads 25. Which part?' }]);
 		expect(markdownBlocks('Setup.\n1. Step.')).toEqual([
 			{ kind: 'paragraph', text: 'Setup.' },
-			{ kind: 'steps', steps: ['Step.'] }
+			{ kind: 'steps', steps: ['Step.'], numbers: [1] }
 		]);
 	});
 
 	it('ends a list at a fence', () => {
 		expect(markdownBlocks('1. Step.\n```\nx\n```')).toEqual([
-			{ kind: 'steps', steps: ['Step.'] },
+			{ kind: 'steps', steps: ['Step.'], numbers: [1] },
 			{ kind: 'code', language: '', code: 'x' }
 		]);
 	});

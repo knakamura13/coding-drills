@@ -493,6 +493,8 @@ describe('workedExampleIssue', () => {
 		expect(workedExampleIssue(`${setup}\n\n1. One.`)).toMatch(/1 steps/);
 		expect(workedExampleIssue(`${setup}\n\n1. A\n2. B\n3. C\n4. D\n5. E`)).toMatch(/5 steps/);
 		expect(workedExampleIssue(`${setup}\n\n1. One.\n3. Two.`)).toMatch(/in order/);
+		// A wrapped setup line that starts with a number is text, not a step.
+		expect(workedExampleIssue('Merge the two lists of length\n4. Then:\n\n1. One.\n2. Two.')).toBeNull();
 		expect(workedExampleIssue(`${setup}\n\n1. One.\n2. Two.\n\nMore.\n\n1. Again.\n2. Again.`)).toMatch(/more than one list/);
 	});
 

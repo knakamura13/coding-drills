@@ -45,11 +45,11 @@ function renderCode(language: string, lines: string[]): string {
 
 /**
  * A block of deck Markdown: a paragraph (inline Markdown, unrendered), a numbered list of steps
- * (each step inline Markdown), or a fenced code block.
+ * (each step inline Markdown, with the number its source line gave it), or a fenced code block.
  */
 export type MarkdownBlock =
 	| { kind: 'paragraph'; text: string }
-	| { kind: 'steps'; steps: string[] }
+	| { kind: 'steps'; steps: string[]; numbers: number[] }
 	| { kind: 'code'; language: string; code: string };
 
 const STEP = /^(\d+)\.\s+(.*)$/;
@@ -62,7 +62,7 @@ const STEP = /^(\d+)\.\s+(.*)$/;
 export function markdownBlocks(source: string): MarkdownBlock[] {
 	const blocks: MarkdownBlock[] = [];
 	let paragraph: string[] = [];
-	let steps: string[][] | null = null;
+	let steps: { number: number; lines: string[] }[] | null = null;
 	let fence: { language: string; lines: string[] } | null = null;
 
 	const flushParagraph = () => {
@@ -72,7 +72,7 @@ export function markdownBlocks(source: string): MarkdownBlock[] {
 	};
 	const flushSteps = () => {
 		if (!steps) return;
-		blocks.push({ kind: 'steps', steps: steps.map((lines) => lines.join(' ')) });
+		blocks.push({ kind: 'steps', steps: steps.map((step) => step.lines.join(' ')), numbers: steps.map((step) => step.number) });
 		steps = null;
 	};
 	// A blank line ends a paragraph at once, but a list only once something other than a step follows.
@@ -100,9 +100,9 @@ export function markdownBlocks(source: string): MarkdownBlock[] {
 			continue;
 		} else if (step && (paragraph.length === 0 || step[1] === '1')) {
 			flushParagraph();
-			(steps ??= []).push([step[2]]);
+			(steps ??= []).push({ number: Number(step[1]), lines: [step[2]] });
 		} else if (steps && !blank) {
-			steps[steps.length - 1].push(line.trim());
+			steps[steps.length - 1].lines.push(line.trim());
 		} else {
 			flushSteps();
 			paragraph.push(line.trim());
