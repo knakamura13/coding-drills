@@ -87,14 +87,16 @@
 	let quitOpen = $state(false);
 	let exampleOpen = $state(false);
 
-	// On a deck the learner has never answered in, the first question's worked example opens by
-	// itself, once. A signed-in device decides after its first sync, so answers from another device
-	// count; if the learner has started answering by then, it stays closed. After that only the link
-	// opens it.
+	// A signed-in device learns about answers made on another device only at its first sync. If the
+	// learner has not started by then, the lesson is planned again with them, since a deck plays its
+	// unanswered questions first. Likewise the first question's worked example opens by itself, once,
+	// only on a deck with no answers from any device. After that only the link opens it.
 	$effect(() => {
 		let live = true;
 		void firstSync().then(() => {
-			if (live && lesson.pristine && opensExample(view)) exampleOpen = true;
+			if (!live || !lesson.pristine) return;
+			if (source.outdated?.()) lesson.restart();
+			if (opensExample(view)) exampleOpen = true;
 		});
 		return () => {
 			live = false;

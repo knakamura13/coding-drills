@@ -99,7 +99,7 @@ Decks are YAML files in `content/decks/`. The build validates them, and a deck w
 - A Vite plugin compiles `content/decks/*.yaml` into virtual modules and validates them with zod at build time: a small index of deck titles and question ids for the menu, home, decks, and progress; and one lazily loaded module per deck, so a lesson downloads only its own deck.
 - The lesson is a pure state machine (`src/lib/domain/lesson.ts`) with unit tests, including randomized play over every shipped deck. Svelte wraps it in `src/lib/lesson/controller.svelte.ts`.
 - Attempts and flags are stored in `localStorage` first, so the app works offline and signed out. A signed-in device also syncs them to Postgres through `/api/sync`.
-- `/play/[deckId]` renders on the client because option order is shuffled each run. Other pages are prerendered.
+- `/play/[deckId]` renders on the client: option order is shuffled each run, and question order depends on which questions the attempt log says were answered. Other pages are prerendered.
 - Accessibility: the target is WCAG 2.2 AA. Options are native radio buttons, dialogs are native `<dialog>` elements that keep Tab inside while open, and axe scans run in the e2e suite. Single-key shortcuts can be switched off on the Settings page.
 - Performance: each deck is its own module, so a lesson downloads one deck's content. The home screen reserves space for stored progress, and the e2e suite checks that it does not shift.
 

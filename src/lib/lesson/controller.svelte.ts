@@ -19,6 +19,11 @@ import { syncSoon } from '$lib/sync/store.svelte';
 /** Where a lesson's questions come from: one deck, or today's review across decks. */
 export interface LessonSource {
 	create(rng: Rng): LessonState;
+	/**
+	 * Whether a plan made now would differ from the last one, because answers arrived since. The
+	 * lesson screen asks once, after the first sync, and plans again if the learner has not started.
+	 */
+	outdated?(): boolean;
 }
 
 /**
