@@ -22,6 +22,7 @@
 	import LessonFooter from './LessonFooter.svelte';
 	import LessonSummary from './LessonSummary.svelte';
 	import LessonTopBar from './LessonTopBar.svelte';
+	import { slide } from './motion';
 	import Prose from './Prose.svelte';
 	import RecapCard from './RecapCard.svelte';
 	import Sheet from './Sheet.svelte';
@@ -102,44 +103,50 @@
 			</div>
 		</div>
 
-		<main class="column content">
-			{#if view.stage === 'followUp'}
-				<p class="label">Follow-up</p>
-				<RecapCard title={view.heading ?? 'The question'} prompt={view.prompt} picked={view.mainPickText ?? ''} />
-				<h1 class="follow-up" tabindex="-1" bind:this={heading}>
-					<Prose source={view.followUpPrompt ?? ''} />
-				</h1>
-			{:else}
-				{#if view.heading}
-					<h1 class="heading" tabindex="-1" bind:this={heading}>{view.heading}</h1>
-				{:else}
-					<!-- Some decks have no heading: the prompt is the question. Screen readers still get a
-					     heading to land on, and the progress the screen shows only as segments. -->
-					<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>Question {view.position} of {view.total}</h1>
-				{/if}
-				<Prose source={view.prompt} />
-			{/if}
-			{#if view.format === 'tap-cell' && view.board}
-				{#if view.code}<CodeBlock code={view.code} />{/if}
-				<CellStrip
-					board={view.board}
-					name="cell-{lesson.stepKey}"
-					selectedId={lesson.selectedId}
-					checked={Boolean(view.verdict)}
-					{atOnce}
-					onselect={(id) => lesson.select(id, atOnce)}
-				/>
-			{:else}
-				<AnswerTiles
-					name="answer-{lesson.stepKey}"
-					label={view.stage === 'followUp' ? (view.followUpPrompt ?? 'Follow-up') : (view.heading ?? 'Answers')}
-					options={view.options}
-					selectedId={lesson.selectedId}
-					checked={Boolean(view.verdict)}
-					{atOnce}
-					onselect={(id) => lesson.select(id, atOnce)}
-				/>
-			{/if}
+		<!-- One card per step, keyed so a new question or follow-up slides in as the last slides out
+		     (lesson Round 7, A Slide). The cards share one grid cell while they pass. -->
+		<main class="column stage">
+			{#key lesson.stepKey}
+				<div class="content" in:slide={{ direction: 'in' }} out:slide={{ direction: 'out' }}>
+					{#if view.stage === 'followUp'}
+						<p class="label">Follow-up</p>
+						<RecapCard title={view.heading ?? 'The question'} prompt={view.prompt} picked={view.mainPickText ?? ''} />
+						<h1 class="follow-up" tabindex="-1" bind:this={heading}>
+							<Prose source={view.followUpPrompt ?? ''} />
+						</h1>
+					{:else}
+						{#if view.heading}
+							<h1 class="heading" tabindex="-1" bind:this={heading}>{view.heading}</h1>
+						{:else}
+							<!-- Some decks have no heading: the prompt is the question. Screen readers still get a
+							     heading to land on, and the progress the screen shows only as segments. -->
+							<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>Question {view.position} of {view.total}</h1>
+						{/if}
+						<Prose source={view.prompt} />
+					{/if}
+					{#if view.format === 'tap-cell' && view.board}
+						{#if view.code}<CodeBlock code={view.code} />{/if}
+						<CellStrip
+							board={view.board}
+							name="cell-{lesson.stepKey}"
+							selectedId={lesson.selectedId}
+							checked={Boolean(view.verdict)}
+							{atOnce}
+							onselect={(id) => lesson.select(id, atOnce)}
+						/>
+					{:else}
+						<AnswerTiles
+							name="answer-{lesson.stepKey}"
+							label={view.stage === 'followUp' ? (view.followUpPrompt ?? 'Follow-up') : (view.heading ?? 'Answers')}
+							options={view.options}
+							selectedId={lesson.selectedId}
+							checked={Boolean(view.verdict)}
+							{atOnce}
+							onselect={(id) => lesson.select(id, atOnce)}
+						/>
+					{/if}
+				</div>
+			{/key}
 		</main>
 
 		<p class="visually-hidden" role="status">{announcement}</p>
@@ -197,8 +204,19 @@
 		padding-bottom: var(--space-4);
 	}
 
-	.content {
+	/* The leaving and arriving cards overlap in one cell; their 24px slide never widens the page. */
+	/* minmax(0, 1fr): the card keeps the column's width, so a wide cell strip scrolls inside itself
+	   rather than widening the card. */
+	.stage {
 		flex: 1;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		overflow-x: clip;
+	}
+
+	.content {
+		grid-area: 1 / 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);

@@ -1,7 +1,7 @@
 <!--
 	One 4px segment per question, done in the branch accent, the rest Twilight. No counter on screen
 	(lesson Round 1); assistive technology reads it as a progress bar. A segment fills left to right
-	in 150 ms when it completes.
+	in 150 ms when it completes (Round 7); with Reduce effects it fades in instead.
 -->
 <script lang="ts">
 	let { total, done, label = 'Lesson progress' }: { total: number; done: number; label?: string } = $props();
@@ -35,16 +35,21 @@
 		background: var(--color-border-default);
 	}
 
+	/* --shift 1 grows the fill from nothing; --shift 0 starts it full width, so it only fades. */
 	.fill {
 		display: block;
 		height: 100%;
 		background: var(--accent);
-		transform: scaleX(0);
+		opacity: 0;
+		transform: scaleX(calc(1 - var(--shift)));
 		transform-origin: left;
-		transition: transform var(--dur-state) var(--ease);
+		transition:
+			transform var(--dur-state) var(--ease),
+			opacity var(--dur-state) var(--ease);
 	}
 
 	.done {
+		opacity: 1;
 		transform: scaleX(1);
 	}
 </style>

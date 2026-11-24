@@ -509,3 +509,110 @@ test.describe('with Immediate feedback on', () => {
 		expect(await violations(page)).toEqual([]);
 	});
 });
+
+test.describe('motion (lesson Round 7)', () => {
+	for (const motion of ['no-preference', 'reduce'] as const) {
+		const full = motion === 'no-preference';
+
+		test(`the next question slides in as the last slides out, ${full ? '24px' : 'fading only with Reduce effects'}`, async ({ page }) => {
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.goto(URL);
+			const question = await firstChoice(page);
+			await pick(page, optionLabel(question, question.correct));
+			await primary(page).click();
+			// Continue is pressed in the page and the cards read on the next frame, well inside the 150ms.
+			const frames = await page.evaluate(async () => {
+				[...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Continue')!.click();
+				await new Promise(requestAnimationFrame);
+				return [...document.querySelectorAll<HTMLElement>('.content')].map((card) => ({
+					leaving: card.hasAttribute('data-leaving'),
+					inert: card.inert,
+					hidden: card.getAttribute('aria-hidden'),
+					transforms: card.getAnimations().flatMap((animation) => (animation.effect as KeyframeEffect).getKeyframes().map((frame) => String(frame.transform)))
+				}));
+			});
+			const leaving = frames.find((frame) => frame.leaving)!;
+			const arriving = frames.find((frame) => !frame.leaving)!;
+			expect(leaving).toMatchObject({ inert: true, hidden: 'true' });
+			if (full) {
+				expect(leaving.transforms).toContain('translateX(-24px)');
+				expect(arriving.transforms).toContain('translateX(24px)');
+			} else {
+				expect(new Set([...leaving.transforms, ...arriving.transforms])).toEqual(new Set(['translateX(0px)']));
+			}
+			await expect(page.locator('[data-leaving]')).toHaveCount(0);
+		});
+
+		test(`a progress segment ${full ? 'grows left to right' : 'fades in with Reduce effects'}`, async ({ page }) => {
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.goto(URL);
+			const fill = page.getByRole('progressbar', { name: 'Lesson progress' }).locator('span > span').first();
+			const style = await fill.evaluate((node) => ({ transform: getComputedStyle(node).transform, opacity: getComputedStyle(node).opacity }));
+			expect(style).toEqual({ transform: full ? 'matrix(0, 0, 0, 1, 0, 0)' : 'matrix(1, 0, 0, 1, 0, 0)', opacity: '0' });
+		});
+
+		test(`the summary ${full ? 'draws its path, then the ring, then the misses' : 'fades in as a whole with Reduce effects'}`, async ({ page }) => {
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.setViewportSize({ width: 390, height: 844 });
+			await page.goto(URL);
+			for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+			const delays = await page.evaluate(() => {
+				const delay = (node: Element) => getComputedStyle(node).animationDelay;
+				const svg = document.querySelector('[role="img"] svg')!;
+				return {
+					edges: [...svg.querySelectorAll('path.edge')].map(delay),
+					segments: [...svg.querySelectorAll('path.segment')].map(delay),
+					misses: delay(document.querySelector('section[aria-label="Missed questions"]')!)
+				};
+			});
+			const segments = shown.length;
+			if (full) {
+				expect(delays.edges).toEqual(['0s', '0.15s']);
+				expect(delays.segments).toEqual(Array.from({ length: segments }, (_, k) => `${(450 + k * 45) / 1000}s`));
+				expect(delays.misses).toBe(`${(450 + (segments - 1) * 45 + 150) / 1000}s`);
+			} else {
+				expect(new Set([...delays.edges, ...delays.segments, delays.misses])).toEqual(new Set(['0s']));
+			}
+		});
+
+		test(`leaving drawer mode mid-morph leaves the tree shown${full ? '' : ', with Reduce effects'}`, async ({ page, isMobile }) => {
+			test.skip(isMobile, 'resizes to desktop');
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.setViewportSize({ width: 390, height: 844 });
+			await page.goto(URL);
+			for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+			// Open, then resize at once, inside the morph's first 125 ms.
+			await page.getByRole('button', { name: 'Missed questions' }).click();
+			await page.setViewportSize({ width: 1440, height: 900 });
+			await expect(page.locator('.tree-wrap.faded')).toHaveCount(0);
+			await expect.poll(() => page.locator('.tree-wrap').evaluate((node) => getComputedStyle(node).opacity)).toBe('1');
+		});
+
+		test(`the drawer ${full ? 'drifts the tree while dragged' : 'crossfades the tree with Reduce effects'}`, async ({ page }) => {
+			await page.emulateMedia({ reducedMotion: motion });
+			await page.setViewportSize({ width: 390, height: 844 });
+			await page.goto(URL);
+			for (let index = 0; index < shown.length; index++) await answerWrong(page, await onScreen(page));
+			const handle = page.getByRole('button', { name: 'Missed questions' });
+			// The branch node travels furthest between the curve and the flat row.
+			const nodeY = () => page.evaluate(() => document.querySelector('circle.hollow')!.getBoundingClientRect().y);
+			if (full) {
+				const before = await nodeY();
+				const box = (await handle.boundingBox())!;
+				await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+				await page.mouse.down();
+				await page.mouse.move(box.x + box.width / 2, box.y - 40, { steps: 6 });
+				// A short drag moves the tree a little toward flat, and the drawer stays shut on release.
+				expect(Math.abs((await nodeY()) - before)).toBeGreaterThan(0.5);
+				await page.mouse.up();
+				await expect(handle).toHaveAttribute('aria-expanded', 'false');
+				await expect.poll(nodeY).toBeCloseTo(before, 0);
+			} else {
+				await handle.click();
+				await expect(page.locator('.tree-wrap.faded')).toHaveCount(1);
+				await expect(page.locator('.tree-wrap.faded')).toHaveCount(0);
+				await expect(handle).toHaveAttribute('aria-expanded', 'true');
+			}
+		});
+	}
+});
