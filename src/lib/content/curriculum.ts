@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ContentError } from './loadDecks.ts';
+import { ContentError } from './contentError.ts';
 
 /**
  * The mastery curriculum compiled from `content/curriculum/*.yaml`.

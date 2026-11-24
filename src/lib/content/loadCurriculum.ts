@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parse } from 'yaml';
 import { branchSchema, compileCurriculum, type Curriculum } from './curriculum.ts';
-import { ContentError, loadDecks } from './loadDecks.ts';
+import { ContentError } from './contentError.ts';
+import { loadDecks } from './loadDecks.ts';
 import { isChoiceQuestion } from './schema.ts';
 
 /** Node-only. Reads, parses, and validates the curriculum at build and test time. */
