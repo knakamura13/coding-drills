@@ -1,6 +1,6 @@
 id: weighted-paths
 title: Weighted paths
-description: Add up a route's edge weights, relax one edge at a time, and see when a heap entry gives a final distance. Each card opens with a worked example, then asks for one decision.
+description: Add up a route's edge weights, relax one edge at a time, and see when a heap entry gives a final distance. Each card asks for one decision, with a worked example on hand.
 heading: What does the weighted search do?
 
 questions:
@@ -8,9 +8,13 @@ questions:
     heading: Which route is cheapest?
     tags: [graph]
     workedExample: |-
-      A route costs the sum of the weights on its edges. With `X -> Y`
-      costing 4 and `Y -> Z` costing 3, the route `X -> Y -> Z` costs 7. A direct edge
-      `X -> Z` costing 6 would be cheaper, even though it is a single edge.
+      Consider one-way edges `X -> Y` costing 4, `Y -> Z` costing 3 and `X -> Z` costing 6. A route
+      costs the sum of the weights on its edges.
+
+      1. The route `X -> Y -> Z` uses two edges, so it costs `4 + 3`, which is 7.
+      2. The route `X -> Z` uses one edge, so it costs 6.
+      3. 6 is less than 7, so `X -> Z` is the cheaper route. It wins because its total weight is
+         smaller, not because it has fewer edges.
     prompt: |-
       Below, every edge is one-way and each pair is `(next node, weight)`. Which route from
       `S` to `T` is cheapest?
@@ -91,9 +95,13 @@ questions:
     id: wp-tap-costliest
     heading: Which node costs the most?
     tags: [graph]
-    workedExample: >-
-      A node's cost from `S` is the total of its cheapest route. If
-      `S -> X` costs 5 but `S -> Y -> X` costs 1 + 1, then `X` costs 2, not 5.
+    workedExample: |-
+      Consider one-way edges `S -> X` costing 5, `S -> Y` costing 1 and `Y -> X` costing 1. A node's
+      cost from `S` is the total of its cheapest route.
+
+      1. The direct route `S -> X` costs 5.
+      2. The route `S -> Y -> X` costs `1 + 1`, which is 2.
+      3. These are the only two routes to `X`, and 2 is less than 5. So `X` costs 2, not 5.
     prompt: >-
       Below, every edge
       is one-way. Using each node's cheapest route from `S`, which node costs the most to reach?
@@ -134,9 +142,15 @@ questions:
     heading: What does one relaxation change?
     tags: [graph, python]
     workedExample: |-
-      Relaxing an edge `u -> v` with weight `w` asks whether going through
-      `u` beats the best cost known for `v`. With `dist[u]` at 3, `w` at 2 and `dist[v]` at 9,
-      the route through `u` costs 5, so `dist[v]` drops to 5.
+      Relaxing an edge `u -> v` with weight `w` checks `dist[u] + w < dist[v]`. Consider
+      `dist[u] = 6`, `w = 1` and `dist[v] = 10`.
+
+      1. A route through `u` pays `dist[u]` to reach `u`, then `w` for the edge, so it costs
+         `6 + 1`, which is 7.
+      2. The test asks whether `7 < 10`. It is true, so the route through `u` beats the best cost
+         known for `v`.
+      3. Since the test passes, the assignment runs and `dist[v]` drops from 10 to 7. Had the test
+         failed, `dist[v]` would keep its old value.
     prompt: |-
       ```python
       dist = {"S": 0, "A": 3, "B": 4}
@@ -214,9 +228,15 @@ questions:
     id: wp-bellman-pass-trace
     heading: Follow one pass over the edges
     tags: [graph, python]
-    workedExample: >-
-      One Bellman-Ford pass relaxes every edge once, in list order. An edge
-      that starts at a node still at `inf` cannot lower anything yet.
+    workedExample: |-
+      Consider `edges = [("X", "Y", 2), ("S", "X", 1)]` and `dist` with `S` at 0 and `X` and `Y` at
+      `inf`. One pass relaxes every edge once, in list order.
+
+      1. The first edge is `X -> Y`. `dist["X"]` is still `inf`, and `inf + 2` is `inf`, which is
+         not less than `inf`. So `dist["Y"]` stays `inf`.
+      2. The second edge is `S -> X`. `0 + 1` is 1, which is less than `inf`, so `X` drops to 1.
+      3. The pass has now checked each edge once. It ends with `X` at 1 but `Y` still at `inf`,
+         because `X -> Y` was checked before `X` had a distance.
     prompt: >-
       Predict each step of this
       single pass. The pointer `again` is used only in the last step.
@@ -320,11 +340,17 @@ questions:
     id: wp-tap-finalize-next
     heading: Which node is final next?
     tags: [graph, heap, python]
-    workedExample: >-
-      When no weight is negative, the smallest valid entry in the heap is
-      final. Any other route to that node passes through an entry at least as large, and its
-      remaining edges add 0 or more. A pop whose distance is larger than the stored one is stale
-      and skipped.
+    workedExample: |-
+      No weight is negative. `S`, `Y` and `X` are done, `dist = {"S": 0, "Y": 1, "X": 2, "Z": 4}`,
+      and `heap = [(4, "Z"), (6, "X")]`. The `(6, "X")` entry was pushed before `Y` found a cheaper
+      route to `X`.
+
+      1. The first pop is `(4, "Z")`, the smallest entry. `dist["Z"]` is 4, so `4 > 4` is false and
+         the entry is not stale.
+      2. Every other entry is at least 4, and edges add 0 or more. So no route through another entry
+         can reach `Z` for less than 4.
+      3. So `Z` is final at 4. The later pop `(6, "X")` has 6, more than `dist["X"]`, which is 2, so
+         it is stale and skipped.
     prompt: >-
       Below, `S`, `B` and `A` are already done, and the loop keeps popping. Which
       node is finalized next? Tap it.
@@ -362,10 +388,16 @@ questions:
     id: wp-dijkstra-pop-trace
     heading: Follow the pops
     tags: [graph, heap, python]
-    workedExample: >-
-      Each pop takes the smallest entry. If its distance is larger than the
-      stored one, the entry is stale and skipped. Otherwise the node is expanded: its edges are
-      relaxed and every improvement is pushed.
+    workedExample: |-
+      Consider `graph = {"S": [("X", 4), ("Y", 1)], "Y": [("X", 1)], "X": []}`, with the heap
+      starting as `[(0, "S")]`. Each pop takes the smallest entry.
+
+      1. Popping `(0, "S")` expands `S`. `X` drops to 4 and `Y` to 1, and the entries `(4, "X")` and
+         `(1, "Y")` are pushed.
+      2. The smallest entry is `(1, "Y")`, so `Y` is expanded next. `1 + 1` is 2, which is less than
+         4, so `X` drops to 2 and `(2, "X")` is pushed.
+      3. `(2, "X")` pops next and expands `X` at 2. Then `(4, "X")` pops. 4 is more than
+         `dist["X"]`, which is 2, so that entry is stale and skipped.
     prompt: >-
       `u` marks the node expanded most recently.
       Predict each step.
@@ -467,9 +499,16 @@ questions:
     heading: When is finalizing unsafe?
     tags: [graph, heap, greedy]
     workedExample: |-
-      Finalizing a node on its first pop is safe when no weight is
-      negative, since a later route only adds weight. A negative edge can lower a node after it
-      was finalized.
+      Run the question's version from `S` on one-way edges `S -> X` 2, `S -> Y` 5 and `Y -> X` 1. It
+      never changes a node once it is done.
+
+      1. `S` is done at 0 and pushes `(2, "X")` and `(5, "Y")`. The smaller entry pops first, so `X`
+         is done at 2.
+      2. `Y` pops at 5, so a route through `Y` reaches `X` for `5 + 1`, which is 6. It started from
+         5, already at least 2, and the edge adds 1, which is not negative. So it cannot beat 2, and
+         keeping 2 is right.
+      3. If `Y -> X` weighed -4 instead, the route through `Y` would cost `5 - 4`, which is 1, less
+         than 2. But `X` is already done, so the code skips it and keeps 2, a wrong distance.
     prompt: |-
       This version never changes a node once it is done:
 
