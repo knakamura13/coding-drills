@@ -8,10 +8,14 @@ questions:
     id: three-node-hops
     heading: Which node does it reach?
     tags: [linked-list, python]
-    workedExample: >-
-      `Node(val, next=None)` stores a value and a link. After `p = Node(4)`,
-      `q = Node(7)` and `p.next = q`, `p.next.val` is 7. Each `.next` follows one link, whatever
-      order the nodes were made in.
+    workedExample: |-
+      Consider `p = Node(4)`, `q = Node(7)` and `r = Node(2)`, made in that order, then `q.next = p`
+      and `p.next = r`. Each `.next` follows one link, whatever order the nodes were made in.
+
+      1. `q.next = p` sets `q`'s link, so `q.next` is `p`, the node holding 4, even though `p` was
+         made before `q`.
+      2. `p.next = r` sets `p`'s link, so one more `.next` from `p` reaches `r`.
+      3. So `q.next.next` is `r`, and `q.next.next.val` is 2.
     prompt: >-
       The cells are three nodes in the order the code makes them.
       Tap the node that `a.next.next` reaches.
@@ -47,8 +51,13 @@ questions:
     heading: What does this do?
     tags: [linked-list, python]
     workedExample: |-
-      In `2 -> 6`, the tail is the node holding 6, and its `next` holds no
-      node. So `head.next.next` is `None`.
+      Consider `head = Node(2, Node(6))`, the list `2 -> 6`. A node made without a second argument
+      has `next = None`, which means no node follows it.
+
+      1. `head.next` follows the 2's link, so it is the node holding 6.
+      2. The 6 was made without a second argument, so its `next` is `None`. That makes the 6 the
+         tail.
+      3. So `head.next.next` is `None`. One hop past the tail is not a node at all.
     prompt: |-
       ```python
       def last_val(head):
@@ -112,8 +121,14 @@ questions:
     heading: Which order keeps the rest?
     tags: [linked-list, python]
     workedExample: |-
-      `p.next = p.next.next` removes the node after `p`. The right side is read
-      before `p.next` is overwritten, so the link past the removed node is not lost.
+      Consider the list `1 -> 5 -> 8` with `p` on the node holding 1, and the line
+      `p.next = p.next.next`. Python works out the right side of an assignment before it changes the
+      left side.
+
+      1. The right side runs first. `p.next` is the 5, so `p.next.next` is the 8.
+      2. Only then is `p.next` overwritten, and it is set to the 8 found in step 1.
+      3. So the list reads `1 -> 8`. The 5 is removed, and the 8 stays reachable because its link
+         was read before `p.next` changed.
     prompt: |-
       ```python
       # head is 3 -> 9 -> 4, and p is the node holding 3
@@ -192,9 +207,15 @@ questions:
     id: lost-remainder
     heading: Where does the walk stop?
     tags: [linked-list, python]
-    workedExample: >-
-      To insert after `p`, the link out of `p` is read before it is
-      overwritten: `new.next = p.next`, then `p.next = new`.
+    workedExample: |-
+      Consider the list `7 -> 3 -> 9`, with `p` on the 7 and `new = Node(4)`. The link out of `p` is
+      the only way to reach the 3 and the 9.
+
+      1. `new.next = p.next` runs first, while `p.next` still leads to the 3, so the 4 now links to
+         the 3.
+      2. `p.next = new` then points the 7 at the 4. The old link to the 3 is gone, but step 1
+         already copied it into the 4.
+      3. So a walk from the 7 reads 7, 4, 3, 9, and it stops on the 9, whose `next` is `None`.
     prompt: >-
       This code overwrites the link out of `p` without reading it first. The cells are the list
       `5 -> 2 -> 8 -> 1` with the new node drawn last. Tap the node `node` is on when the loop ends.
@@ -235,9 +256,15 @@ questions:
     id: reverse-one-pass
     heading: Where do the names go?
     tags: [linked-list, python]
-    workedExample: >-
-      Before the link out of `cur` is turned around, `nxt = cur.next` saves
-      where it led. After `cur.next = prev`, `nxt` is the only way to the rest.
+    workedExample: |-
+      Consider the list `1 -> 2 -> 3` with `prev = None` and `cur` on the 1. One pass runs
+      `nxt = cur.next`, `cur.next = prev`, `prev = cur` and `cur = nxt`, in that order.
+
+      1. `nxt = cur.next` runs while the 1's link still leads forward, so `nxt` is the 2.
+      2. `cur.next = prev` turns the 1's link to `None`. No link from the 1 reaches the 2 now, so
+         `nxt` is the only way to the rest of the list.
+      3. `prev = cur` moves `prev` onto the 1, then `cur = nxt` moves `cur` onto the saved 2. The
+         turned part is just the 1, and the next pass starts from the 2.
     prompt: >-
       The cells are the
       list `4 -> 9 -> 2 -> 7` in its original order. One pass has run: 4's link is turned to
@@ -306,8 +333,14 @@ questions:
     heading: What does this print?
     tags: [linked-list, python]
     workedExample: |-
-      `head = Node(1, head)` makes a node whose `next` is the old first node,
-      then moves the name `head` onto it. The list now starts at 1.
+      Consider `head = Node(5, Node(3))`, the list `5 -> 3`, and the line `head = Node(1, head)`.
+      The right side runs first, and the assignment then moves the name on its left.
+
+      1. `Node(1, head)` runs while `head` is still on the 5, so the new node holding 1 gets the 5
+         as its `next`.
+      2. The assignment then moves the name `head` onto the new node. Nothing else changes: the 5
+         and the 3 keep their links.
+      3. So a walk from `head` now reads 1, 5, 3.
     prompt: |-
       ```python
       def push_front(head, val):
@@ -387,9 +420,16 @@ questions:
     id: sentinel-only-node
     heading: Which link changes?
     tags: [linked-list, python]
-    workedExample: >-
-      `dummy = Node(0, head)` gives the first node a predecessor. With `p` on
-      `dummy`, `p.next = p.next.next` removes the first node the same way it removes any other.
+    workedExample: |-
+      Consider `head` on the list `4 -> 6`, and `dummy = Node(0, head)`. In a singly linked list, a
+      node is removed by changing the `next` of the node before it.
+
+      1. Without the dummy, the 4 has no node before it, so there is no `next` leading to it that
+         could be changed.
+      2. `dummy = Node(0, head)` puts a node in front of the 4. With `p` on `dummy`, the 4 is
+         `p.next`.
+      3. `p.next = p.next.next` sets `dummy.next` to the 6, so a walk from `dummy.next` reads only
+         the 6. The first node is removed the same way as any other.
     prompt: >-
       Here the list has one node and it matches. The cells are the dummy, the only node, and the
       `None` after it. Which node's `next` does line 6 change? Tap it.
