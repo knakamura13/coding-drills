@@ -2,12 +2,15 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import {
+	isCellStep,
 	isChoiceQuestion,
 	isDragPointersQuestion,
+	isStepTraceQuestion,
 	isTapCellQuestion,
 	type ChoiceQuestion,
 	type DragPointersQuestion,
 	type Question,
+	type StepTraceQuestion,
 	type TapCellQuestion
 } from '../src/lib/content/schema.ts';
 import { plainText } from '../src/lib/markdown/render.ts';
@@ -16,10 +19,9 @@ import { seed } from './seed.ts';
 // Helpers for driving the new lesson screen on /learn/<deck>, shared by its specs.
 
 export const decks = loadDecks('content/decks');
-export const runs = (question: Question) => isChoiceQuestion(question) || isTapCellQuestion(question) || isDragPointersQuestion(question);
 export const deck = decks.find((candidate) => candidate.id === 'boundary-search')!;
 export const questions = deck.questions.filter(isChoiceQuestion);
-export const shown = deck.questions.filter(runs);
+export const shown = deck.questions;
 export const URL = `/learn/${deck.id}`;
 export const cellsDeck = decks.find((candidate) => candidate.id === 'tap-the-cell')!;
 export const cellQuestions = cellsDeck.questions.filter(isTapCellQuestion);
@@ -28,7 +30,9 @@ export const tiles = (page: Page) => page.getByRole('group', { name: /./ }).loca
 export const cell = (page: Page, index: number) => page.getByRole('radio', { name: new RegExp(`^Index ${index},`) });
 export const labelledCells = (page: Page) => page.locator('[aria-label^="Index "]');
 // Check in the footer, or Continue in the feedback panel that replaces it.
-export const primary = (page: Page) => page.getByRole('button', { name: /^(Check|Continue)$/ });
+export const primary = (page: Page) => page.getByRole('button', { name: /^(Check|Continue|Next step)$/ });
+/** A trace's "Step n of m" line. */
+export const stepCount = (page: Page) => page.locator('main').getByText(/^Step \d+ of \d+$/);
 export const panel = (page: Page) => page.getByRole('region', { name: /^(Correct|Not quite)$/ });
 
 /**
@@ -77,7 +81,7 @@ export async function current(page: Page, pool: ChoiceQuestion[] = questions): P
 }
 
 /** The values a tap or drag question's cells show, as their accessible names spell them. */
-export const cellValues = (question: TapCellQuestion | DragPointersQuestion) => [
+export const cellValues = (question: TapCellQuestion | DragPointersQuestion | StepTraceQuestion) => [
 	...question.sequence.cells.map((value) => (value === '' ? 'empty' : value)),
 	...(question.sequence.pastEnd ? ['past the end'] : [])
 ];
@@ -89,6 +93,17 @@ export async function onScreen(page: Page, pool: Question[] = shown): Promise<Qu
 	const names = await labelledCells(page).evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label')!));
 	if (names.length === 0) return current(page, pool.filter(isChoiceQuestion));
 	const values = names.map((name) => name.match(/^Index \d+, (.*?)(, marked .*)?$/)![1]);
+	if ((await stepCount(page).count()) > 0) {
+		const ask = (await page.locator('main').getByRole('heading', { level: 2 }).innerText()).trim();
+		const trace = pool
+			.filter(isStepTraceQuestion)
+			.find(
+				(question) =>
+					JSON.stringify(cellValues(question)) === JSON.stringify(values) && question.steps.some((step) => plainText(step.ask, 1000) === ask)
+			);
+		if (!trace) throw new Error(`no trace has these cells and this ask: ${values.join(' | ')} / ${ask}`);
+		return trace;
+	}
 	const tabs = (await page.locator('[data-pointer]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-pointer')!))).sort();
 	if (tabs.length > 0) {
 		const drag = pool
@@ -133,8 +148,30 @@ export async function next(page: Page) {
 	await card?.waitForElementState('hidden');
 }
 
+/**
+ * Answers every step of a trace with Check, right except the steps in `wrong`, then Continues.
+ * A wrong cell is the first targeted miss, or a neighbor of the right cell.
+ */
+export async function answerTrace(page: Page, question: StepTraceQuestion, wrong: readonly number[] = []) {
+	for (const [index, step] of question.steps.entries()) {
+		await expect(stepCount(page)).toHaveText(`Step ${index + 1} of ${question.steps.length}`);
+		const right = !wrong.includes(index);
+		if (isCellStep(step)) {
+			const miss = step.misses?.[0]?.index ?? (step.correct === 0 ? 1 : step.correct - 1);
+			await cell(page, right ? step.correct : miss).check();
+		} else {
+			const option = step.options.find((candidate) => (candidate.id === step.correct) === right)!;
+			await pick(page, plainText(option.text, 1000));
+		}
+		await primary(page).click();
+		if (index < question.steps.length - 1) await page.getByRole('button', { name: 'Next step' }).click();
+		else await next(page);
+	}
+}
+
 /** Answers right with Check, then Continues. A right answer never opens a follow-up. */
 export async function answerRight(page: Page, question: Question) {
+	if (isStepTraceQuestion(question)) return answerTrace(page, question);
 	if (isDragPointersQuestion(question)) for (const pointer of question.pointers) await placePointer(page, pointer.name, pointer.correct);
 	else if (isTapCellQuestion(question)) await cell(page, question.correct).check();
 	else if (isChoiceQuestion(question)) await pick(page, optionLabel(question, question.correct));
@@ -162,6 +199,7 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 		await next(page);
 		return;
 	}
+	if (isStepTraceQuestion(question)) return answerTrace(page, question, [0]);
 	if (isTapCellQuestion(question)) {
 		await cell(page, question.misses[0]!.index).check();
 		await primary(page).click();
@@ -182,7 +220,7 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 
 /** Opens a deck and answers right until the given question is on screen. */
 export async function reach(page: Page, deckId: string, questionId: string): Promise<Question> {
-	const pool = decks.find((candidate) => candidate.id === deckId)!.questions.filter(runs);
+	const pool = decks.find((candidate) => candidate.id === deckId)!.questions;
 	await page.goto(`/learn/${deckId}`);
 	for (let step = 0; step < pool.length; step++) {
 		const question = await onScreen(page, pool);

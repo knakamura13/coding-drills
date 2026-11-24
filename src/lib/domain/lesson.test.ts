@@ -754,8 +754,9 @@ describe('step-trace lessons', () => {
 	it('opens on step 1 with the pointers at their start cells and the step\'s line highlighted', () => {
 		const first = view(start(traceLesson()))!;
 		expect(first.format).toBe('step-trace');
-		expect(first.heading).toBe('Where does `l` sit after this pass?');
-		expect(first.trace).toEqual({ step: 1, total: 2, line: 3, kind: 'cell' });
+		// The question keeps its heading; the step's ask is the trace's own.
+		expect(first.heading).toBe('Trace it');
+		expect(first.trace).toEqual({ step: 1, total: 2, line: 3, kind: 'cell', ask: 'Where does `l` sit after this pass?', pointer: 'l', done: [] });
 		expect(first.board?.cells.map((cell) => cell.markers)).toEqual([['l'], [], [], ['r']]);
 		expect(first.options).toEqual([]);
 		expect(first.canCheck).toBe(false);
@@ -778,7 +779,15 @@ describe('step-trace lessons', () => {
 		state = advance(state);
 		expect(state.completed).toEqual([]);
 		const next = view(state)!;
-		expect(next.trace).toEqual({ step: 2, total: 2, line: 1, kind: 'choice' });
+		expect(next.trace).toEqual({
+			step: 2,
+			total: 2,
+			line: 1,
+			kind: 'choice',
+			ask: 'What is `total` on the next pass?',
+			pointer: null,
+			done: [{ ask: null, answer: '`l` at index 1', correct: false }]
+		});
 		expect(next.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], [], ['r']]);
 		expect(next.options.map((option) => option.id).sort()).toEqual(['ten', 'twelve']);
 		expect(next.verdict).toBeNull();
@@ -813,6 +822,36 @@ describe('step-trace lessons', () => {
 		expect(view(second)!.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], [], ['r']]);
 		const checked = view(select(second, 'twelve', true))!;
 		expect(checked.board?.cells.map((cell) => cell.markers)).toEqual([[], ['l'], ['r'], []]);
+	});
+
+	it('lets a pick wait for Check, showing the picked cell until then', () => {
+		const picked = view(select(start(traceLesson()), '3'))!;
+		expect(picked.canCheck).toBe(true);
+		expect(picked.verdict).toBeNull();
+		expect(picked.board?.cells.map((cell) => cell.tone)).toEqual(['idle', 'idle', 'idle', 'selected']);
+		const checked = view(check(select(start(traceLesson()), '3')))!;
+		expect(checked.canCheck).toBe(false);
+		expect(checked.verdict).toMatchObject({ correct: false });
+	});
+
+	it('lists each answered step with what was true: a value step with its ask, a cell step by where its pointer landed', () => {
+		const deck = traceLesson();
+		const question = deck.questions[0] as StepTraceQuestion;
+		question.steps.push({ line: 3, ask: 'Where does `r` sit?', pointer: 'r', correct: 4, explanation: 'r runs off the end.', elsewhere: 'r moves one cell.' });
+		question.sequence.pastEnd = true;
+		const third = advance(select(advance(select(start(deck), '1', true)), 'ten', true));
+		expect(view(third)!.trace?.done).toEqual([
+			{ ask: null, answer: '`l` at index 1', correct: true },
+			{ ask: 'What is `total` on the next pass?', answer: '12', correct: false }
+		]);
+		const last = advance(select(third, '4', true));
+		expect(last.completed[0]).toMatchObject({ pickedId: '1,ten,4' });
+		expect(view(select(advance(select(advance(select(start(deck), '1', true)), 'twelve', true)), '2', true))!.trace?.done).toHaveLength(2);
+		// The slot past the end says so.
+		const stepFour = traceLesson();
+		(stepFour.questions[0] as StepTraceQuestion).sequence.pastEnd = true;
+		(stepFour.questions[0] as StepTraceQuestion).steps[0] = { ...(stepFour.questions[0] as StepTraceQuestion).steps[0]!, correct: 4 } as StepTraceQuestion['steps'][number];
+		expect(view(advance(select(start(stepFour), '4', true)))!.trace?.done[0]?.answer).toBe('`l` at index 4, past the end');
 	});
 
 	it('explains a wrong value in the verdict, and ignores a pick the step does not offer', () => {

@@ -6,10 +6,13 @@
 	After Check, a right pointer takes the branch tint and border with a check, a wrong one a rose
 	border and '!', and a dashed branch-color ghost tab shows where it belonged, in a row below.
 	Tabs never overlap: two on one cell, or long names on neighboring cells, stack in rows.
+	A step-trace strip (Trace A) shows its pointers the same way but only for reading: the cells are
+	picked as in tap-the-cell, and once a cell step is checked its pointer sits on the true cell in
+	the branch tint (`lit`).
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
-	import type { BoardView, PointerView } from '$lib/domain/lesson';
+	import type { BoardView, OptionState, PointerView } from '$lib/domain/lesson';
 	import CellStrip from './CellStrip.svelte';
 	import Icon from './Icon.svelte';
 	import { stackRows } from './tabRows';
@@ -18,17 +21,41 @@
 		board,
 		checked,
 		name,
-		onplace
+		onplace,
+		selectedId = null,
+		atOnce = false,
+		onselect,
+		readonly = false,
+		lit = null
 	}: {
 		board: BoardView;
 		/** True once the answer has been checked: the tabs show the result and stop moving. */
 		checked: boolean;
 		name: string;
-		onplace: (pointer: string, at: number) => void;
+		/** Placing pointers (drag-pointers). Without it the tabs are only shown and a cell is picked. */
+		onplace?: (pointer: string, at: number) => void;
+		/** Picking a cell (step-trace): as in tap-the-cell. */
+		selectedId?: string | null;
+		atOnce?: boolean;
+		onselect?: (id: string) => void;
+		/** Only shown: the board beside a step-trace value step. */
+		readonly?: boolean;
+		/** Picking a cell: the pointer the step asked about, tinted once checked. */
+		lit?: string | null;
 	} = $props();
 
+	const placing = $derived(onplace !== undefined);
 	const pointers = $derived(board.pointers);
-	const lone = $derived(pointers.length === 1 ? pointers[0]!.name : null);
+	const lone = $derived(placing && pointers.length === 1 ? pointers[0]!.name : null);
+
+	/** The tabs to draw: the movable pointers, or a picked strip's markers. */
+	const tabs = $derived<{ name: string; at: number; tone: OptionState; correctAt: number | null }[]>(
+		placing
+			? pointers
+			: board.cells.flatMap((cell) =>
+					cell.markers.map((marker) => ({ name: marker, at: cell.index, tone: checked && marker === lit ? 'correct' : 'idle', correctAt: null }))
+				)
+	);
 
 	let track: HTMLElement | undefined = $state();
 	let layer: HTMLElement | undefined = $state();
@@ -59,12 +86,12 @@
 	const ROW = 36;
 	const GHOST_ROW = 32;
 	// Neighbors may sit 2px apart, as in the design; only tabs that would touch stack.
-	const rows = $derived(stackRows(pointers.map((pointer) => ({ center: centers[pointer.at] ?? 0, width: widths[pointer.name] ?? 40 })), 2));
-	const ghosts = $derived(checked ? pointers.filter((pointer) => pointer.tone === 'wrong' && pointer.correctAt !== null) : []);
+	const rows = $derived(stackRows(tabs.map((tab) => ({ center: centers[tab.at] ?? 0, width: widths[tab.name] ?? 40 })), 2));
+	const ghosts = $derived(checked ? tabs.filter((tab) => tab.tone === 'wrong' && tab.correctAt !== null) : []);
 	const ghostRows = $derived(
 		stackRows(ghosts.map((pointer) => ({ center: centers[pointer.correctAt!] ?? 0, width: ghostWidths[pointer.name] ?? 40 })), 2)
 	);
-	const tabRowCount = $derived(pointers.length ? Math.max(...rows) + 1 : 0);
+	const tabRowCount = $derived(tabs.length ? Math.max(...rows) + 1 : 0);
 	const ghostRowCount = $derived(ghosts.length ? Math.max(...ghostRows) + 1 : 0);
 	const height = $derived(tabRowCount * ROW + (ghostRowCount ? 4 + ghostRowCount * GHOST_ROW : 0));
 
@@ -84,7 +111,7 @@
 
 	function place(pointerName: string, at: number) {
 		const pointer = pointers.find((one) => one.name === pointerName);
-		if (!pointer || pointer.at === at) return;
+		if (!pointer || pointer.at === at || !onplace) return;
 		onplace(pointerName, at);
 		announcement = `${pointerName} moved to index ${at}.`;
 	}
@@ -201,31 +228,43 @@
 	}
 </script>
 
-{#snippet tabs()}
+{#snippet tabLayer()}
 	<div class="layer" bind:this={layer} style:height="{height}px">
-		{#each pointers as pointer, index (pointer.name)}
-			{@const dragging = drag?.name === pointer.name}
-			<button
-				type="button"
-				class="tab {pointer.tone}"
-				class:armed={!checked && target === pointer.name && !lone}
-				class:dragging
-				data-pointer={pointer.name}
-				aria-label={tabName(pointer)}
-				aria-pressed={checked || lone ? undefined : armed === pointer.name}
-				aria-disabled={checked || undefined}
-				bind:offsetWidth={widths[pointer.name]}
-				style:left="{left(centers[pointer.at] ?? 0, widths[pointer.name] ?? 40)}px"
-				style:top="{rows[index]! * ROW + 6}px"
-				style:translate={dragging ? `${drag!.dx}px ${drag!.dy}px` : null}
-				onpointerdown={(event) => grab(event, pointer)}
-				onclick={() => tabClicked(pointer)}
-				onkeydown={(event) => tabKey(event, pointer)}
-			>
-				<span>{pointer.name}</span>
-				{#if checked && pointer.tone === 'correct'}<Icon name="correct" small />{/if}
-				{#if checked && pointer.tone === 'wrong'}<Icon name="missed" small />{/if}
-			</button>
+		{#each tabs as tab, index (tab.name)}
+			{#if !placing}
+				<!-- Only shown: each cell's name already says which pointers mark it. -->
+				<span
+					class="tab {tab.tone}"
+					aria-hidden="true"
+					bind:offsetWidth={widths[tab.name]}
+					style:left="{left(centers[tab.at] ?? 0, widths[tab.name] ?? 40)}px"
+					style:top="{rows[index]! * ROW + 6}px">{tab.name}</span
+				>
+			{:else}
+				{@const pointer = pointers[index]!}
+				{@const dragging = drag?.name === pointer.name}
+				<button
+					type="button"
+					class="tab {pointer.tone}"
+					class:armed={!checked && target === pointer.name && !lone}
+					class:dragging
+					data-pointer={pointer.name}
+					aria-label={tabName(pointer)}
+					aria-pressed={checked || lone ? undefined : armed === pointer.name}
+					aria-disabled={checked || undefined}
+					bind:offsetWidth={widths[pointer.name]}
+					style:left="{left(centers[pointer.at] ?? 0, widths[pointer.name] ?? 40)}px"
+					style:top="{rows[index]! * ROW + 6}px"
+					style:translate={dragging ? `${drag!.dx}px ${drag!.dy}px` : null}
+					onpointerdown={(event) => grab(event, pointer)}
+					onclick={() => tabClicked(pointer)}
+					onkeydown={(event) => tabKey(event, pointer)}
+				>
+					<span>{pointer.name}</span>
+					{#if checked && pointer.tone === 'correct'}<Icon name="correct" small />{/if}
+					{#if checked && pointer.tone === 'wrong'}<Icon name="missed" small />{/if}
+				</button>
+			{/if}
 		{/each}
 		{#each ghosts as pointer, index (pointer.name)}
 			<span
@@ -243,16 +282,20 @@
 	</div>
 {/snippet}
 
-<CellStrip
-	{board}
-	{name}
-	selectedId={null}
-	{checked}
-	oncell={cellTapped}
-	hint="Drag a pointer to a cell, or tap a pointer and then a cell. With a pointer focused, the arrow keys move it."
-	below={tabs}
-	bind:track
-/>
+{#if placing}
+	<CellStrip
+		{board}
+		{name}
+		selectedId={null}
+		{checked}
+		oncell={cellTapped}
+		hint="Drag a pointer to a cell, or tap a pointer and then a cell. With a pointer focused, the arrow keys move it."
+		below={tabLayer}
+		bind:track
+	/>
+{:else}
+	<CellStrip {board} {name} {selectedId} {checked} {atOnce} {onselect} {readonly} below={tabLayer} markerRow={false} bind:track />
+{/if}
 <p class="visually-hidden" role="status">{announcement}</p>
 
 <style>
@@ -323,6 +366,12 @@
 	.wrong {
 		border-color: var(--color-status-missed);
 		--caret: var(--color-status-missed);
+	}
+
+	/* Only shown, on a picked strip: nothing to grab. */
+	span.tab {
+		cursor: default;
+		touch-action: auto;
 	}
 
 	.tab[aria-disabled='true'] {

@@ -1,9 +1,9 @@
 <!--
 	The new lesson screen (FigCraft "Lesson screen" page), on the existing lesson controller. This
-	version runs multiple-choice, tap-the-cell and drag-pointers questions: top bar with progress,
-	heading and prompt (with a link to the question's worked example, when it has one), then answer
-	tiles, or a code snippet and a strip of cells (screen 5) to tap or to place pointer tabs on
-	(Drag A), and Check. With
+	version runs every question format: top bar with progress, heading and prompt (with a link to
+	the question's worked example, when it has one), then answer tiles, or a code snippet and a strip
+	of cells (screen 5) to tap or to place pointer tabs on (Drag A), or a code snippet with its steps
+	stacked below (Trace A), and Check. With
 	"Immediate feedback" on, a pick is the answer and there is no Check. After Check the footer
 	becomes the feedback panel, and a follow-up opens with a recap of the question. The quit control asks first once anything has been answered. Phone first; from 1024px the same parts sit in a 640px column.
 -->
@@ -27,10 +27,11 @@
 	import LessonFooter from './LessonFooter.svelte';
 	import LessonSummary from './LessonSummary.svelte';
 	import LessonTopBar from './LessonTopBar.svelte';
-	import { slide } from './motion';
+	import { shift, slide } from './motion';
 	import Prose from './Prose.svelte';
 	import RecapCard from './RecapCard.svelte';
 	import Sheet from './Sheet.svelte';
+	import StepTrace from './StepTrace.svelte';
 	import { applyBranch, type BranchId } from './branch';
 
 	let {
@@ -58,8 +59,12 @@
 	// included, carries it directly.
 	const explanation = $derived(!view?.verdict ? '' : (view.seeWhy?.pickedExplanation ?? view.verdict.explanation));
 
-	// The "Immediate feedback" setting: a picked answer or a tapped cell is the answer.
-	const atOnce = $derived(preferences.immediateFeedback && (view?.format === 'choice' || view?.format === 'tap-cell'));
+	// The "Immediate feedback" setting: a picked answer or a tapped cell is the answer, in a trace's
+	// steps too. A drag answer has several pointers to place, so it always waits for Check.
+	const atOnce = $derived(preferences.immediateFeedback && view?.format !== undefined && view.format !== 'drag-pointers');
+
+	// Every step of a trace but the last goes on to the next step.
+	const nextAction = $derived(view?.trace && view.trace.step < view.trace.total ? 'Next step' : 'Continue');
 
 	// Spoken as soon as the panel appears. The panel moves focus to Continue, which on its own would
 	// only announce the button.
@@ -95,16 +100,34 @@
 	});
 	let exampleLink: HTMLButtonElement | undefined = $state();
 	let heading: HTMLElement | undefined = $state();
+	let stepAsk: HTMLElement | undefined = $state();
+	let stepStrip: HTMLElement | undefined = $state();
+	let feedbackPanel: HTMLElement | undefined = $state();
 
-	// A new question or follow-up moves focus to its heading, so the change is announced. The first
-	// question keeps the page's normal focus order.
+	// After a cell step's Check the strip shows where the pointer truly went (Trace A). On a phone the
+	// panel would cover it, so the page scrolls just enough to keep it in sight above the panel.
+	$effect(() => {
+		if (!view?.verdict || view.trace?.kind !== 'cell') return;
+		void tick().then(() => {
+			if (!stepStrip || !feedbackPanel) return;
+			const hidden = stepStrip.getBoundingClientRect().bottom - (window.innerHeight - feedbackPanel.offsetHeight) + 8;
+			if (hidden > 0) window.scrollBy({ top: hidden, behavior: shift() ? 'smooth' : 'auto' });
+		});
+	});
+
+	// A new question or follow-up moves focus to its heading, so the change is announced, and a
+	// trace's next step to its ask. The first question keeps the page's normal focus order.
 	let shownStep = '';
+	let shownQuestion = '';
 	$effect(() => {
 		const key = lesson.stepKey;
+		const question = lesson.questionKey;
 		if (key === shownStep) return;
 		const first = shownStep === '';
+		const sameQuestion = question === shownQuestion;
 		shownStep = key;
-		if (!first) void tick().then(() => heading?.focus());
+		shownQuestion = question;
+		if (!first) void tick().then(() => (sameQuestion ? stepAsk : heading)?.focus());
 	});
 
 	function leave() {
@@ -127,10 +150,11 @@
 			</div>
 		</div>
 
-		<!-- One card per step, keyed so a new question or follow-up slides in as the last slides out
-		     (lesson Round 7, A Slide). The cards share one grid cell while they pass. -->
+		<!-- One card per question, keyed so a new question or follow-up slides in as the last slides
+		     out (lesson Round 7, A Slide). The cards share one grid cell while they pass. A trace's
+		     steps stack on one card. -->
 		<main class="column stage">
-			{#key lesson.stepKey}
+			{#key lesson.questionKey}
 				<div class="content" in:slide={{ direction: 'in' }} out:slide={{ direction: 'out' }}>
 					{#if view.stage === 'followUp'}
 						<p class="label">Follow-up</p>
@@ -157,7 +181,23 @@
 							</p>
 						{/if}
 					{/if}
-					{#if view.format === 'drag-pointers' && view.board}
+					{#if view.format === 'step-trace' && view.board && view.trace}
+						{#if view.code}<CodeBlock code={view.code} current={view.trace.line ?? undefined} />{/if}
+						{#key lesson.stepKey}
+							<StepTrace
+								trace={view.trace}
+								board={view.board}
+								options={view.options}
+								name="step-{lesson.stepKey}"
+								selectedId={lesson.selectedId}
+								checked={Boolean(view.verdict)}
+								{atOnce}
+								onselect={(id) => lesson.select(id, atOnce)}
+								bind:ask={stepAsk}
+								bind:strip={stepStrip}
+							/>
+						{/key}
+					{:else if view.format === 'drag-pointers' && view.board}
 						{#if view.code}<CodeBlock code={view.code} />{/if}
 						<PointerStrip
 							board={view.board}
@@ -193,7 +233,13 @@
 		<p class="visually-hidden" role="status">{announcement}</p>
 
 		{#if view.verdict}
-			<FeedbackPanel correct={view.verdict.correct} {explanation} oncontinue={() => lesson.advance()} />
+			<FeedbackPanel
+				correct={view.verdict.correct}
+				{explanation}
+				action={nextAction}
+				oncontinue={() => lesson.advance()}
+				bind:panel={feedbackPanel}
+			/>
 		{:else if !atOnce}
 			<LessonFooter>
 				<Button disabled={!view.canCheck} onclick={() => lesson.check()}>Check</Button>

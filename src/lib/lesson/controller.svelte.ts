@@ -60,9 +60,13 @@ export function createLessonController(source: LessonSource, rng: Rng = Math.ran
 		get selectedId() {
 			return state.selected;
 		},
-		/** Changes whenever the learner reaches a new question or follow-up. */
+		/** Changes whenever the learner reaches a new question or follow-up, or a trace's next step. */
 		get stepKey() {
 			return `${state.cursor}:${state.stage}:${state.picks.length}`;
+		},
+		/** Like `stepKey`, but a trace's steps share it: they stack on one screen. */
+		get questionKey() {
+			return `${state.cursor}:${state.stage}`;
 		},
 		/** Flags created or updated during this run, for the summary. */
 		get flags() {

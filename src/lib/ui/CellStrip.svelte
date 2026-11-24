@@ -8,7 +8,9 @@
 	Cells grow to fit long values, and a strip wider than the screen scrolls sideways.
 	Placing pointers (drag-pointers questions), the cells are where a pointer goes rather than the
 	answer: `oncell` makes each a button that takes the picked-up pointer, and `below` draws the
-	pointer tabs under the strip, in the same scrolling track.
+	pointer tabs under the strip, in the same scrolling track. A step-trace strip draws its markers
+	as those tabs, so `markerRow` turns the text row off, and beside a value step the strip is
+	`readonly`.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -26,6 +28,8 @@
 		oncell,
 		hint = '',
 		below,
+		markerRow = true,
+		readonly = false,
 		track = $bindable()
 	}: {
 		board: BoardView;
@@ -43,6 +47,10 @@
 		hint?: string;
 		/** Drawn under the strip in the same scrolling track. */
 		below?: Snippet;
+		/** False when `below` draws the markers instead, as pointer tabs (step-trace). */
+		markerRow?: boolean;
+		/** Only shown, never picked: the board beside a step-trace value step. */
+		readonly?: boolean;
 		/** The track holding the strip and `below`, for measuring cells. */
 		track?: HTMLElement;
 	} = $props();
@@ -54,7 +62,7 @@
 	const lastValue = $derived(board.cells.findLast((cell) => !cell.pastEnd)?.index ?? -1);
 
 	function look(cell: BoardCellView): string {
-		if (oncell) return 'rest';
+		if (oncell || readonly) return 'rest';
 		if (!checked) return cell.tone === 'selected' ? 'selected' : 'rest';
 		return cell.tone === 'correct' ? 'correct' : cell.tone === 'wrong' ? 'wrong' : 'dimmed';
 	}
@@ -83,13 +91,17 @@
 <!-- Padding inside the scroller leaves room for the focus ring, which a scroller would clip. -->
 <div class="scroller">
 	<div class="track" bind:this={track}>
-		<fieldset class="strip" class:bare={!board.cells.some((cell) => cell.markers.length > 0)} disabled={checked}>
+		<fieldset class="strip" class:bare={!markerRow || !board.cells.some((cell) => cell.markers.length > 0)} disabled={checked}>
 			<legend class="visually-hidden">{label}</legend>
 			{#each board.cells as cell (cell.id)}
 				{@const state = look(cell)}
 				<div class="column" class:past={cell.pastEnd} class:first={cell.index === 0} class:last={cell.index === lastValue}>
 					<span class="index" aria-hidden="true">{cell.index}</span>
-					{#if oncell}
+					{#if readonly}
+						<span class="cell {state}" role="img" data-index={cell.index} aria-label={accessibleName(cell, state)}>
+							{@render face(cell, state)}
+						</span>
+					{:else if oncell}
 						<button
 							type="button"
 							class="cell {state}"
@@ -228,6 +240,10 @@
 
 	.past .cell {
 		border-style: dashed;
+	}
+
+	span.cell {
+		cursor: default;
 	}
 
 	.rest:active {
