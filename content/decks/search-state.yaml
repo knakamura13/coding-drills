@@ -8,8 +8,15 @@ questions:
     heading: What does path hold?
     tags: [backtracking, recursion]
     workedExample: |-
-      With one item, `[4]`, the search has two leaves. The take branch reaches
-      `explore(1)` holding `[4]`, and the skip branch reaches it holding `[]`.
+      Consider `items = [4]` and `explore(i)`, which records `path` when `i == len(items)`.
+      Otherwise it appends `items[i]`, calls `explore(i + 1)`, pops, and calls `explore(i + 1)`
+      again.
+
+      1. `explore(0)` runs its take line first: it appends 4 and calls `explore(1)`. So the first
+         `explore(1)` starts with `path == [4]`, and it records `[4]`.
+      2. That call returns, and `explore(0)` pops the 4, so `path` is `[]` again.
+      3. Then the skip call starts the second `explore(1)` with `path == []`, and it records `[]`.
+         So the search has two leaves, `[4]` and `[]`.
     prompt: |-
       ```text
       explore(0)  path []
@@ -99,9 +106,15 @@ questions:
     format: drag-pointers
     heading: Where does the next call start?
     tags: [backtracking, recursion]
-    workedExample: >-
-      After `pick(0)` takes `items[0]`, it calls `pick(1)`, so the next level
-      chooses only from the items after it.
+    workedExample: |-
+      Consider `items = [2, 9, 4]` and `pick(start)`, whose loop runs `j` from `start`, appends
+      `items[j]`, and calls `pick(j + 1)`.
+
+      1. `pick(0)` starts its loop at `j = 0` and appends `items[0] = 2`, so `path == [2]`.
+      2. It then calls `pick(j + 1)`, which is `pick(1)`. So the next level's loop starts at index 1
+         and can choose only the 9 or the 4.
+      3. The 2 at index 0 lies before that `start`, so the next level can never take it a second
+         time.
     prompt: >-
       Now `pick(1)` has `path == [7]`, and its loop is at
       `j = 2`. It appends `items[2]`, so `path == [7, 5]`, and calls the next level. Drag `start`
@@ -143,8 +156,15 @@ questions:
     heading: What does this do?
     tags: [backtracking, recursion]
     workedExample: |-
-      This builds every two-letter code from `"xy"`. Each pass appends a
-      letter, calls the next level, and pops. It returns `['xx', 'xy', 'yx', 'yy']`.
+      Consider `codes()` over the letters `"xy"`, which records `"".join(path)` once `path` holds 2
+      letters. Otherwise each pass of its loop appends a letter, calls `codes()`, and pops.
+
+      1. The top call appends `'x'` and then calls `codes()`. The append ran first, so that call
+         sees `['x']`.
+      2. That call appends `'x'` and then `'y'`, calling the next level each time with `['x', 'x']`
+         and then `['x', 'y']`. So it records `'xx'` and `'xy'`.
+      3. The top call pops its `'x'` and does the same with `'y'`, which records `'yx'` and `'yy'`.
+         It returns `['xx', 'xy', 'yx', 'yy']`.
     prompt: |-
       ```python
       def codes():
@@ -236,9 +256,15 @@ questions:
     heading: What does this record?
     tags: [backtracking, recursion]
     workedExample: |-
-      In the `spell` search with its pop in place, the call at depth 1 appends `'a'`, the leaf records
-      `'aa'`, and `path.pop()` removes that `'a'` so the next letter starts from `['a']`. The leaf
-      after it records `'ab'`.
+      Consider `spell(0)` over the letters `"ab"`, with `path` empty, the pop in place, and the leaf
+      at depth 2 recording `"".join(path)`. Each call below depth 2 appends a letter, calls
+      `spell(depth + 1)`, then runs `path.pop()`.
+
+      1. The depth-0 call appends `'a'`, and the depth-1 call appends `'a'` too. The leaf sees
+         `['a', 'a']` and records `'aa'`.
+      2. Back in the depth-1 call, `path.pop()` removes that call's own `'a'`. So `path` is `['a']`
+         again, holding only the depth-0 choice.
+      3. The depth-1 call then appends `'b'`, so the next leaf sees `['a', 'b']` and records `'ab'`.
     prompt: |-
       Here the pop was forgotten:
 
@@ -322,9 +348,15 @@ questions:
     format: step-trace
     heading: Trace the undo
     tags: [backtracking, recursion]
-    workedExample: >-
-      `explore(i)` takes `items[i]`, calls deeper, pops it, then calls deeper
-      again to skip it.
+    workedExample: |-
+      Consider `items = [3, 8]` and `explore(i)`, which takes `items[i]`, calls deeper, pops it, and
+      then calls deeper again to skip it. The leaf, `explore(2)`, records `path`.
+
+      1. `explore(0)` appends 3 and `explore(1)` appends 8, so the first leaf records `[3, 8]`.
+      2. `explore(1)` pops its 8, so `path` is `[3]`, and its skip call reaches the leaf, which
+         records `[3]`. The 3 stays, because `explore(0)` has not undone its take yet.
+      3. `explore(1)` returns, and `explore(0)` pops its 3. Its skip call runs `explore(1)` again
+         from `[]`, which records `[8]` and then `[]`.
     prompt: >-
       With `items = [5, 2, 7]` the first leaf has just recorded `[5, 2, 7]` and
       returned to `explore(2)`. The arrow `i` marks the call that is running (the slot past the
@@ -434,15 +466,20 @@ questions:
     heading: What does this print?
     tags: [backtracking, python]
     workedExample: |-
-      A leaf runs `saved.append(path[:])`. The slice builds a new list, so a
-      later `path.pop()` leaves the saved entry alone:
+      Consider a leaf that saves a copy of `path`, after which the search backs up one level:
 
       ```python
-      path, saved = [3, 8], []
+      path, saved = [5, 1], []
       saved.append(path[:])
       path.pop()
-      print(saved)   # [[3, 8]]
+      print(saved)
       ```
+
+      1. `path[:]` builds a new list with the same items, `[5, 1]`. `saved` stores that new list,
+         not `path` itself.
+      2. `path.pop()` removes the last item from `path`, so `path` becomes `[5]`. The copy in
+         `saved` is a different list, so it does not change.
+      3. So `print(saved)` shows `[[5, 1]]`.
     prompt: |-
       This leaf saves `path` itself, and the search then backs up one level:
 
@@ -521,8 +558,15 @@ questions:
     format: step-trace
     heading: Watch the saved entries
     tags: [backtracking, python]
-    workedExample: >-
-      `out.append(path[:])` saves a copy that later pops cannot touch.
+    workedExample: |-
+      Consider `items = [9]` and `explore(i)`, which takes `items[i]`, calls deeper, pops, and calls
+      deeper again. The leaf runs `out.append(path[:])`.
+
+      1. `explore(0)` appends 9, and the first leaf saves a copy of `[9]`. `out` is `[[9]]`.
+      2. `explore(0)` then pops the 9, so `path` is `[]`. The saved copy is a separate list, so
+         `out` is still `[[9]]`.
+      3. The skip call reaches the leaf with `path == []` and saves a copy of that. The search ends
+         with `out == [[9], []]`, each entry as it was when it was recorded.
     prompt: >-
       This
       search saves `path` itself. With `items = [6, 1]` the first leaf is about to record. The

@@ -8,9 +8,15 @@ questions:
     format: tap-cell
     heading: Which entry is still needed?
     tags: [dp, python]
-    workedExample: >-
-      If every step reads `dp[i-1]` and `dp[i-2]`, then once `dp[5]` is
-      written the next step reads `dp[5]` and `dp[4]`, so `dp[3]` and older can go.
+    workedExample: |-
+      Consider a table where step `i` reads `dp[i-1]` and `dp[i-2]`, and `dp[5]` has just been
+      written. An entry is still needed only while some later step reads it.
+
+      1. The next step computes `dp[6]`, so it reads `dp[5]` and `dp[4]`. Both are still needed.
+      2. Every step after that has a larger `i`, so its older read, `dp[i-2]`, lands on index 5 or
+         higher. Only the step for `dp[6]` reaches back to index 4.
+      3. So `dp[4]` is the oldest entry still needed, and `dp[3]` and everything before it can be
+         dropped.
     prompt: >-
       Below, a
       climber takes 1 or 3 stairs at a time, and `ways[7]` has just been written. Tap the
@@ -58,8 +64,14 @@ questions:
     heading: How much must stay?
     tags: [dp, complexity]
     workedExample: |-
-      `fib[i] = fib[i-1] + fib[i-2]` keeps the last two entries, because the
-      farthest read is two back.
+      Consider `fib[i] = fib[i-1] + fib[i-2]`, filled for `i` from 2 upward. A past entry must stay
+      until the last step that reads it.
+
+      1. Step `i` reads back at most two places, to `fib[i-2]`. Every later step has a larger `i`,
+         so from here on no step reads an entry older than `fib[i-2]`, and those can go.
+      2. `fib[i-2]` and `fib[i-1]` are both read by step `i` itself, so neither can go yet.
+      3. So the loop keeps two entries, as many as its farthest read reaches back. Two variables can
+         replace the whole table.
     prompt: |-
       A game scores plays worth 2 or 5 points, and `ways[i]` counts the orders that reach a score of
       `i`. Only `ways[n]` is returned.
@@ -146,9 +158,15 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [dp, python]
-    workedExample: >-
-      `a, b = b, a + b` evaluates the whole right side first, so with `a = 1`
-      and `b = 2` it sets `a = 2` and `b = 3`.
+    workedExample: |-
+      Consider `a = 1` and `b = 2`, then the line `a, b = b, a + b`. Python builds the whole right
+      side from the old values before it assigns any name.
+
+      1. The right side is `b, a + b`. With the old values that is `2, 1 + 2`, the pair `(2, 3)`.
+      2. Only now are the names assigned: `a` takes 2 and `b` takes 3.
+      3. Two separate lines, `a = b` and then `b = a + b`, would let the second line read the new
+         `a = 2` and set `b = 4`. The one-line form reads only old values, so it gives `a = 2` and
+         `b = 3`.
     prompt: >-
       Below, a walker starts on stair 0 or 1, climbs 1
       or 2 stairs at a time, and pays the cost of every stair it stands on. `a` and `b` hold the
@@ -247,9 +265,17 @@ questions:
     format: tap-cell
     heading: Where does the row go wrong?
     tags: [dp, python]
-    workedExample: >-
-      In a one-row table, an entry to the left of the loop has already been
-      rewritten for this pass, and an entry to the right still holds the last pass.
+    workedExample: |-
+      Consider `dp = [0, 0, 3, 3, 3, 3]`, the best value per capacity for one item of weight 2
+      worth 3. A pass adds an item of weight 1 worth 2 that may be packed once, with
+      `dp[w] = max(dp[w], dp[w - 1] + 2)` for `w` from 1 to 5, left to right.
+
+      1. At `w = 1`, the loop reads `dp[0]`, which this pass never writes. So `dp[1]` becomes
+         `max(0, 0 + 2) = 2`, the new item alone, and that is right.
+      2. At `w = 2`, the loop reads `dp[1]`. It sits to the left of `w`, so this pass has already
+         rewritten it to 2, and that 2 already uses the new item.
+      3. So `dp[2]` becomes `max(3, 2 + 2) = 4`, the new item packed twice. With last pass's
+         `dp[1] = 0` it would be `max(3, 0 + 2) = 3`, the right value.
     prompt: >-
       Below, each
       item may be packed once. The row holds the best value per capacity for an item of weight 3
@@ -293,8 +319,16 @@ questions:
     heading: Which direction is right?
     tags: [dp, python]
     workedExample: |-
-      For items packed at most once, a one-row loop runs from high to low so
-      that `dp[w - wt]` still holds the last pass.
+      Consider items packed at most once, `dp = [0, 0, 0, 0, 0]` for capacities 0 to 4, and an item
+      of weight 2 worth 5. The pass runs `dp[w] = max(dp[w], dp[w - 2] + 5)` from `w = 4` down to
+      `w = 2`.
+
+      1. `w = 4` comes first and reads `dp[2]`. The loop writes `dp[2]` last, so it still holds last
+         pass's 0, and `dp[4]` becomes `0 + 5 = 5`.
+      2. `w = 3` and `w = 2` read `dp[1]` and `dp[0]`, which the loop never writes. Both become
+         `0 + 5 = 5`.
+      3. Every read saw an entry this pass had not rewritten, so each value counts the item at most
+         once. The row ends `[0, 0, 5, 5, 5]`, which is right.
     prompt: |-
       Here `dp[a]` counts the ways to pay amount `a` when each coin value may be used any number of
       times, and order does not matter.
@@ -382,8 +416,13 @@ questions:
     heading: What is the time?
     tags: [dp, complexity]
     workedExample: |-
-      A table with `n` entries that each read two earlier entries does O(1)
-      work per entry, so O(n) in all.
+      Consider a table of `n` entries filled by `fib.append(fib[i-1] + fib[i-2])` for `i` from 2 to
+      `n - 1`. The time of a table is the number of entries times the work to fill one.
+
+      1. Entry `i` reads exactly two earlier entries and adds them. That is the same for every `i`,
+         so one entry costs O(1) work.
+      2. Each of the `n` entries is filled once.
+      3. So the total is `n` times O(1), which is O(n). For `n = 1000` the loop does 998 additions.
     prompt: |-
       `dp[i]` is the length of the longest strictly rising run of picks that ends at `a[i]`, where
       picks keep their order but need not be next to each other.
@@ -468,8 +507,16 @@ questions:
     heading: How much work and depth?
     tags: [dp, recursion, complexity]
     workedExample: |-
-      With a cache, a call whose argument was seen before returns at once, so
-      the body runs once per distinct argument.
+      Consider `f(n)` under `@cache`, which returns `n` when `n <= 1` and `f(n // 2) + f(n // 3)`
+      otherwise, called as `f(12)`. The cache stores a result when its call returns, and a call
+      whose argument is stored returns at once.
+
+      1. Starting from 12 and taking `n // 2` and `n // 3` again and again gives only seven
+         arguments: 12, 6, 4, 3, 2, 1 and 0.
+      2. The first call with each argument runs the body and stores the result. A later call with
+         the same argument finds it stored and skips the body.
+      3. So the body runs 7 times, once per distinct argument. Without the cache, `f(12)` makes 13
+         calls.
     prompt: |-
       ```python
       from functools import cache
