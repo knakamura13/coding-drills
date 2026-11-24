@@ -3,6 +3,7 @@ import { loadDecks } from '../content/loadDecks.ts';
 import { isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, type Deck, type DragPointersQuestion, type StepTraceQuestion, type TapCellQuestion } from '../content/schema.ts';
 import {
 	advance,
+	answeredIn,
 	check,
 	createLesson,
 	createReviewLesson,
@@ -110,20 +111,58 @@ describe('createLesson', () => {
 		}
 	});
 
-	it('is reproducible for a seed and varies across seeds', () => {
-		const first = createLesson(deck, seededRng(11));
-		const again = createLesson(deck, seededRng(11));
+	it('puts never-answered questions first, in the order the deck lists them', () => {
+		const ids = deck.questions.map((q) => q.id);
+		for (const seed of [1, 2, 3]) expect(createLesson(deck, seededRng(seed)).plan.map((p) => p.question.id)).toEqual(ids);
+	});
+
+	it('follows the fresh questions with the answered ones, shuffled', () => {
+		const ids = deck.questions.map((q) => q.id);
+		const answered = new Set(ids.filter((_, index) => index % 2 === 0));
+		const fresh = ids.filter((id) => !answered.has(id));
+		const orders = new Set(
+			Array.from({ length: 12 }, (_, seed) => {
+				const order = createLesson(deck, seededRng(seed), answered).plan.map((p) => p.question.id);
+				expect(order.slice(0, fresh.length)).toEqual(fresh);
+				expect([...order.slice(fresh.length)].sort()).toEqual([...answered].sort());
+				return order.join(',');
+			})
+		);
+		expect(orders.size).toBeGreaterThan(1);
+	});
+
+	it('still shuffles the options of a question in file order', () => {
+		const first = deck.questions[0].id;
+		const orders = new Set(Array.from({ length: 12 }, (_, seed) => createLesson(deck, seededRng(seed)).plan[0].optionOrder.join(',')));
+		expect(createLesson(deck, seededRng(1)).plan[0].question.id).toBe(first);
+		expect(orders.size).toBeGreaterThan(1);
+	});
+
+	it('is reproducible for a seed and varies across seeds once every question is answered', () => {
+		const all = new Set(deck.questions.map((q) => q.id));
+		const first = createLesson(deck, seededRng(11), all);
+		const again = createLesson(deck, seededRng(11), all);
 		expect(first.plan.map((p) => [p.question.id, p.optionOrder])).toEqual(
 			again.plan.map((p) => [p.question.id, p.optionOrder])
 		);
 		const orders = new Set(
 			Array.from({ length: 12 }, (_, seed) =>
-				createLesson(deck, seededRng(seed))
+				createLesson(deck, seededRng(seed), all)
 					.plan.map((p) => p.question.id)
 					.join(',')
 			)
 		);
 		expect(orders.size).toBeGreaterThan(1);
+	});
+
+	it('reads which questions of a deck were answered from the attempt log', () => {
+		const attempts = [
+			{ deckId: deck.id, questionId: 'a' },
+			{ deckId: 'other', questionId: 'b' },
+			{ deckId: deck.id, questionId: 'a' },
+			{ deckId: deck.id, questionId: 'c' }
+		];
+		expect(answeredIn(attempts, deck.id)).toEqual(new Set(['a', 'c']));
 	});
 
 	it('starts pristine, unfinished, at zero progress', () => {

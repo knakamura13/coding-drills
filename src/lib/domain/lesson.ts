@@ -87,8 +87,9 @@ export interface LessonEntry {
 	question: Question;
 }
 
+/** Plans the entries in the order given, shuffling each question's options. */
 function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonState {
-	const planned = shuffled(entries, rng).map(({ question, ...entry }) => ({
+	const planned = entries.map(({ question, ...entry }) => ({
 		...entry,
 		question,
 		optionOrder: isTapCellQuestion(question)
@@ -129,17 +130,26 @@ function plan(id: string, entries: readonly LessonEntry[], rng: Rng): LessonStat
 	};
 }
 
-export function createLesson(deck: Deck, rng: Rng = Math.random): LessonState {
-	return plan(
-		deck.id,
-		deck.questions.map((question) => ({ deckId: deck.id, heading: deck.heading, question })),
-		rng
-	);
+/**
+ * A lesson over one deck. Questions the learner has never answered come first, in the order the
+ * deck lists them, so a first exposure follows the authored teaching order (#95). Questions
+ * already answered follow in shuffled order, so a deck the learner has seen in full is shuffled.
+ */
+export function createLesson(deck: Deck, rng: Rng = Math.random, answered: ReadonlySet<string> = new Set()): LessonState {
+	const entries = deck.questions.map((question) => ({ deckId: deck.id, heading: deck.heading, question }));
+	const fresh = entries.filter((entry) => !answered.has(entry.question.id));
+	const seen = entries.filter((entry) => answered.has(entry.question.id));
+	return plan(deck.id, [...fresh, ...shuffled(seen, rng)], rng);
+}
+
+/** The ids of the questions in a deck that the learner has answered at least once. */
+export function answeredIn(attempts: readonly QuestionRef[], deckId: string): Set<string> {
+	return new Set(attempts.filter((attempt) => attempt.deckId === deckId).map((attempt) => attempt.questionId));
 }
 
 /** One lesson over questions from any decks, such as today's review. */
 export function createReviewLesson(entries: readonly LessonEntry[], rng: Rng = Math.random): LessonState {
-	return plan('review', entries, rng);
+	return plan('review', shuffled(entries, rng), rng);
 }
 
 export function isFinished(state: LessonState): boolean {

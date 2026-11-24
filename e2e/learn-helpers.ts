@@ -14,7 +14,7 @@ import {
 	type TapCellQuestion
 } from '../src/lib/content/schema.ts';
 import { markdownBlocks, plainText } from '../src/lib/markdown/render.ts';
-import { seed } from './seed.ts';
+import { ATTEMPTS_KEY, seed } from './seed.ts';
 
 // Helpers for driving the new lesson screen on /play/<deck>, shared by its specs.
 
@@ -121,8 +121,33 @@ export async function onScreen(page: Page, pool: Question[] = shown): Promise<Qu
 	return match;
 }
 
-/** A multiple-choice question first: the lesson order is random, so reload until one leads. */
+/**
+ * Saves an old answer to every question of `deck`. A lesson plays a deck's unanswered questions in
+ * file order (#95), so a spec that reloads until a given question leads needs the deck answered
+ * in full, which shuffles it. Takes effect on the next load.
+ */
+export async function answeredWholeDeck(page: Page) {
+	await page.evaluate(
+		([key, entries]) => localStorage.setItem(key, JSON.stringify([...JSON.parse(localStorage.getItem(key) ?? '[]'), ...entries])),
+		[
+			ATTEMPTS_KEY,
+			deck.questions.map((question) => ({
+				id: `answered-${question.id}`,
+				at: '2026-01-01T12:00:00.000Z',
+				day: '2026-01-01',
+				deckId: deck.id,
+				questionId: question.id,
+				pickedId: 'seen',
+				correct: true
+			}))
+		] as const
+	);
+}
+
+/** A multiple-choice question first: with the deck answered in full the order is random, so reload until one leads. */
 export async function firstChoice(page: Page): Promise<ChoiceQuestion> {
+	await answeredWholeDeck(page);
+	await page.goto(URL);
 	for (let attempt = 0; attempt < 30; attempt++) {
 		await settled(page);
 		await page.locator('fieldset').first().waitFor();

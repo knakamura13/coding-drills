@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/config';
 	import { curriculum } from 'virtual:curriculum';
-	import { createLesson, opensWorkedExample, type LessonView } from '$lib/domain/lesson';
+	import { answeredIn, createLesson, opensWorkedExample, type LessonView } from '$lib/domain/lesson';
 	import { lessonTrail } from '$lib/domain/trail';
 	import { getRepository } from '$lib/storage';
 	import LessonScreen from '$lib/ui/LessonScreen.svelte';
@@ -9,7 +9,9 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const source = $derived({ create: (rng: () => number) => createLesson(data.deck, rng) });
+	const source = $derived({
+		create: (rng: () => number) => createLesson(data.deck, rng, answeredIn(getRepository().attempts(), data.deck.id))
+	});
 	const trail = () => lessonTrail(curriculum, getRepository().attempts(), data.deck.id, data.deck.title);
 	const opensExample = (screen: LessonView | null) => opensWorkedExample(screen, getRepository().attempts(), data.deck.id);
 </script>

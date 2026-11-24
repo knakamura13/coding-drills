@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { addDays, localDay } from '../src/lib/domain/days.ts';
 import { deck } from './helpers';
 
-const ATTEMPTS_KEY = 'coding-drills:v1:attempts';
+export const ATTEMPTS_KEY = 'coding-drills:v1:attempts';
 
 /** One attempt per deck question on `daysAgo` days before today, the first one missed. */
 export function history(daysAgo: number, allRight = false) {

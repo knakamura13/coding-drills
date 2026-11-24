@@ -6,6 +6,7 @@ import { markdownParts } from './helpers.ts';
 import { PREFERENCES_KEY } from '../src/lib/preferences/preferences.ts';
 import {
 	URL,
+	answeredWholeDeck,
 	answerRight,
 	answerWrong,
 	cell,
@@ -50,6 +51,15 @@ test('opens on the new screen: deck title, no counter, Check waits for a pick', 
 	await expect(primary(page)).toBeDisabled();
 	expect(await page.evaluate(() => document.documentElement.dataset.branch)).toBe('sequences-and-search');
 	expect(await violations(page)).toEqual([]);
+});
+
+test('unanswered questions come first, in the order the deck lists them', async ({ page }) => {
+	// beforeEach saved an answer to the deck's first question only, so the lesson opens on the second.
+	expect((await onScreen(page)).id).toBe(deck.questions[1]!.id);
+	for (let reload = 0; reload < 3; reload++) {
+		await page.reload();
+		expect((await onScreen(page)).id).toBe(deck.questions[1]!.id);
+	}
 });
 
 test('a right answer: the tile shows it, Continue moves on and focus goes to the next heading', async ({ page }) => {
@@ -858,6 +868,7 @@ test.describe('trace the steps', () => {
 		await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ immediateFeedback: true })), PREFERENCES_KEY);
 		// The answer helpers check radios, so reload until the trace leads instead of answering up to it.
 		// The first load (in beforeEach) came before the setting, so always load once more.
+		await answeredWholeDeck(page);
 		await page.goto(URL);
 		for (let attempt = 0; attempt < 40 && (await onScreen(page)).id !== 'all-equal-trace'; attempt++) await page.goto(URL);
 		await expect(stepCount(page)).toHaveText('Step 1 of 3');
