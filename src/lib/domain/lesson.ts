@@ -168,7 +168,7 @@ export function isPristine(state: LessonState): boolean {
  */
 export function opensWorkedExample(screen: LessonView | null, attempts: readonly QuestionRef[], deckId: string): boolean {
 	if (!screen || screen.position !== 1 || screen.stage !== 'question' || !screen.workedExample) return false;
-	return !attempts.some((attempt) => attempt.deckId === deckId);
+	return answeredIn(attempts, deckId).size === 0;
 }
 
 function currentPlanned(state: LessonState): PlannedQuestion | null {
