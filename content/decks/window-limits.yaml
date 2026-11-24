@@ -1,6 +1,6 @@
 id: window-limits
 title: Window limits
-description: Trace a window that shrinks by its sum, see a negative value hide a better stretch, and tell when the shrink is safe. Each card opens with a worked example.
+description: Trace a window that shrinks by its sum, see a negative value hide a better stretch, and tell when the shrink is safe. Each card has a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -8,10 +8,15 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [sliding-window, python]
-    workedExample: >-
-      On `[3, 4]` with `T = 7`, the pass with `right` at 1 makes the total 7.
-      The `while` loop records length 2, subtracts the 3 and moves `left` to 1. The total is now
-      4, below 7, so the loop stops.
+    workedExample: |-
+      Consider `shortest([3, 4], 7)`, so `T = 7`. On each pass the `while` loop runs as long as
+      `total >= T`: it records the window's size, then subtracts `nums[left]` and moves `left` one
+      cell right.
+
+      1. The pass with `right` at 0 adds the 3. The total is 3, below 7, so the loop does not run.
+      2. The pass with `right` at 1 adds the 4, making the total 7. Since 7 is at least `T`, the
+         loop records size 2, subtracts the 3 and moves `left` to 1.
+      3. The total is now 4, below 7, so the loop stops. No passes are left, so the call returns 2.
     prompt: >-
       Below, every value is 0 or more and `T = 7`. The passes with
       `right` at 0 and 1 have run, so `total` is 5. Predict each step before it is shown.
@@ -123,10 +128,15 @@ questions:
     format: drag-pointers
     heading: Where does the left edge stop?
     tags: [sliding-window, two-pointers]
-    workedExample: >-
-      To find the longest stretch with total at most `S = 5` in `[2, 2, 4]`,
-      the 4 makes the total 8. Dropping the first 2 leaves 6, still too much, so the loop drops
-      the second 2 as well and stops at `4`, total 4.
+    workedExample: |-
+      Consider `nums = [2, 2, 4]` and `S = 5`, looking for the longest stretch with total at most
+      `S`. When the total goes above `S`, the `while` loop drops values from the left until it is not.
+
+      1. The pass with `right` at 2 adds the 4, so the window `2, 2, 4` totals 8. 8 is above 5, so the
+         loop drops `nums[0]`, leaving a total of 6 with `left` at 1.
+      2. 6 is still above 5, so the loop runs again and drops `nums[1]`, leaving a total of 4 with
+         `left` at 2.
+      3. 4 is not above 5, so the loop stops with `left` at 2 and the window `4`.
     prompt: >-
       Below, every value is 0 or more and
       `S = 8`. The window `3, 1, 2, 2` totals 8, and the 6 at index 4 has just come in. Drag
@@ -166,10 +176,15 @@ questions:
     heading: Why is it safe to stop?
     tags: [sliding-window]
     workedExample: |-
-      On `[1, 4, 2, 0]` with `T = 7`, after the pass with `right` at 3 the
-      window is `4, 2, 0`, total 6, and the loop does not run. The stretches that end at index 3
-      and start later, `2, 0` and `0`, total 2 and 0. Neither reaches 7, and the loop never
-      checks them.
+      Consider `shortest([1, 4, 2, 0], 7)`, where every value is 0 or more. After the pass with
+      `right` at 3, the window is `4, 2, 0` with total 6, so the `while` loop does not run.
+
+      1. The other stretches that end at index 3 start later: `2, 0` and `0`. Each one is the window
+         with values taken off its left end.
+      2. `2, 0` is the window without the 4, so it totals `6 - 4 = 2`. `0` is that stretch without the
+         2, so it totals `2 - 2 = 0`.
+      3. 2 and 0 are both below 7, so neither stretch could be recorded. The loop loses nothing by
+         not checking them.
     prompt: |-
       With every value 0 or more, why can the loop stop as soon as the window total is below `T`?
     options:
@@ -231,12 +246,17 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [sliding-window, python]
-    workedExample: >-
-      In the window `-2, 6`, dropping the -2 raises the total from 4 to 6.
-      Removing a negative value pushes the total up, which never happens when every value is 0 or
-      more.
+    workedExample: |-
+      Consider a window `-2, 6` with `T = 6`. Its total is `-2 + 6 = 4`, and dropping the left value
+      subtracts it from the total.
+
+      1. 4 is below 6, so the `while` loop does not run and the -2 stays at the left edge.
+      2. Dropping the -2 would subtract -2, which adds 2. So `6` on its own totals `4 + 2 = 6`, which
+         meets `T`.
+      3. So a shorter stretch reaches `T` while the window does not. When every value is 0 or more,
+         dropping one never raises the total, so this happens only because -2 is negative.
     prompt: >-
-      Below, the same function runs on a list with one negative value and `T = 7`. The
+      Below, `shortest` runs on a list with one negative value and `T = 7`. The
       passes with `right` at 0 to 2 have run, so `total` is 3. Predict each step.
     code: |
       def shortest(nums, T):
@@ -335,11 +355,16 @@ questions:
     format: tap-cell
     heading: Tap where the missed stretch starts
     tags: [sliding-window]
-    workedExample: >-
-      For the longest stretch with total at most `S`, a window that is over
-      `S` drops values from the left. On `[3, 2, -4]` with `S = 3`, the 2 makes the total 5, so
-      the 3 leaves. The -4 arrives one pass later and would have made `3, 2, -4` fine, total 1,
-      but the 3 is already gone.
+    workedExample: |-
+      Consider `longest([3, 2, -4], 3)`, so `S = 3`. When the total goes above `S`, the `while` loop
+      drops values from the left, and `left` never moves back.
+
+      1. The pass with `right` at 1 adds the 2, so the total is `3 + 2 = 5`. 5 is above 3, so the
+         loop drops the 3, the total falls to 2, and `left` moves to 1.
+      2. The pass with `right` at 2 adds the -4, so the window `2, -4` totals -2. That window has 2
+         values, more than any earlier one, and no passes are left, so the call returns 2.
+      3. But `3, 2, -4` totals 1, which is at most 3, so a valid stretch of 3 values starts at
+         index 0. The loop missed it because the 3 left one pass before the -4 arrived.
     prompt: >-
       Below, `S = 5` and the template returns 4. A stretch of 5 values
       is valid. Tap its first cell.
@@ -385,9 +410,17 @@ questions:
     heading: Which method fits?
     tags: [sliding-window, prefix-sum, hash-map]
     workedExample: |-
-      In `[2, -2, 3]` the stretch `2, -2, 3` totals 3, but so does `3` on its
-      own. With a negative value, adding or dropping a value can move the total either way, so a
-      window cannot tell which way to move an edge.
+      Consider `nums = [2, -2, 3]` and a target total of `3`. A window that drops values from the
+      left while its total is over the target relies on one rule: a stretch never totals more
+      than a longer stretch that contains it.
+
+      1. `2, -2, 3` totals 3, and `3` on its own also totals 3. So two stretches that end at index 2
+         hit the target.
+      2. `-2, 3` totals 1, but `3`, which it contains, totals 3. So a shorter stretch totals more
+         than a longer one, and the rule fails: dropping the -2 raised the total.
+      3. The window ending at index 2 holds `2, -2, 3`. Its total 3 is not over the target, so it
+         drops nothing and counts that one stretch. It never reaches `3` on its own, so it counts 1
+         where 2 stretches fit.
     prompt: |-
       A log of daily balance changes, positive, zero or negative, has `n` entries. You need the
       number of stretches of consecutive days whose changes total exactly `k`. Which method
@@ -454,9 +487,15 @@ questions:
     heading: Is the shrink still safe?
     tags: [sliding-window]
     workedExample: |-
-      The shortest-stretch template runs on `[2, 0, 0, 5, 0, 1]` with
-      `T = 6`. It records 4 for `2, 0, 0, 5`, later 3 for `5, 0, 1`, and returns 3, which is the
-      true shortest length.
+      Consider `shortest([2, 0, 0, 5, 0, 1], 6)`. Every value is 0 or more, and three of them are 0.
+
+      1. The pass with `right` at 3 brings the total to 7, so the loop records 4 for `2, 0, 0, 5`
+         and drops the 2. The total falls to 5, below 6, so the loop stops with `left` at 1.
+      2. The pass with `right` at 4 adds a 0, so the total stays 5. The pass with `right` at 5 adds
+         the 1, bringing it to 6. The loop records 5, drops the 0 at index 1 (total still 6),
+         records 4, drops the 0 at index 2 (total still 6), and records 3 for `5, 0, 1`.
+      3. Dropping the 5 leaves 1, so the loop stops. No single value and no pair reaches 6, so 3 is
+         the true shortest length, and the call returns 3.
     prompt: |-
       The values may include 0 but never a negative. Is the template guaranteed to return the
       shortest length for every such list?

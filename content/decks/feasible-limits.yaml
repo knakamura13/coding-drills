@@ -1,6 +1,6 @@
 id: feasible-limits
 title: Feasible limits
-description: Test one limit, find where the answers turn from no to yes, and shrink the range of limits. Each card opens with a worked example, then asks for one decision.
+description: Test one limit, find where the answers turn from no to yes, and shrink the range of limits. Each card asks for one decision, with a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -9,12 +9,16 @@ questions:
     heading: Predict each step
     tags: [binary-search, greedy]
     workedExample: |-
-      Files are packed into sessions whole and in their given order. A limit `x` is feasible for
-      `d` when every session's load is at most `x` and at most `d` sessions are needed.
+      Consider `sessions([3, 5, 4, 2], 8)`, so `x = 8`. Files go into sessions whole and in their
+      given order, and a new session opens when adding the next file would make the load more than
+      `x`.
 
-      `sessions([3, 5, 4, 2], 8)` puts 3 and 5 in the first session. Their load
-      is exactly 8, which fits, since the test is `>`. Adding 4 would make 12, so a second session
-      opens at the 4 and takes the 2 as well. The call returns 2.
+      1. The first session takes the 3. Adding the 5 makes `3 + 5 = 8`, and 8 is not more than 8, so
+         the 5 joins the first session.
+      2. The load is now 8 from step 1, so adding the 4 would make 12, which is more than 8. So
+         `count` becomes 2 at the 4, and the new session starts with a load of 4.
+      3. Adding the 2 makes `4 + 2 = 6`, which is at most 8, so the 2 joins the second session. The
+         call returns 2, so 8 is a feasible limit for any `d` of at least 2.
     prompt: >-
       Now the limit is 10 and `d = 3`.
       Predict each step before it is shown.
@@ -102,8 +106,14 @@ questions:
     heading: Is this limit feasible?
     tags: [binary-search, greedy]
     workedExample: |-
-      With `sizes = [6, 3, 8]` and `x = 9`, the pass packs [6, 3] and then
-      [8], so `sessions` returns 2, and 9 is feasible for `d = 2`.
+      Consider `sizes = [6, 3, 8]`, `x = 9` and `d = 2`. A limit `x` is feasible when the files fit,
+      whole and in order, into at most `d` sessions whose loads are each at most `x`.
+
+      1. `6 + 3 = 9` is not more than 9, so the first session holds 6 and 3, a load of 9.
+      2. Adding the 8 would make 17, more than 9, so the 8 opens a second session. Its load is 8,
+         which is at most 9, so that session fits too.
+      3. Steps 1 and 2 give loads of 9 and 8, both at most 9, and the pass used 2 sessions, which
+         is at most `d = 2`. Both conditions hold, so 9 is feasible.
     prompt: |-
       ```python
       def sessions(sizes, x):
@@ -186,9 +196,17 @@ questions:
     heading: What follows from one result?
     tags: [binary-search]
     workedExample: |-
-      For `sizes = [5, 3, 6, 2]` and `d = 2`, the pass needs 4 sessions at
-      limits 6 and 7, then 2 at every limit from 8 to 15. Asked "at most 2 sessions?", the limits
-      answer no, no, yes, yes, and so on, and never turn back to no.
+      Consider `sizes = [5, 3, 6, 2]` and `d = 2`. A limit `x` gets the answer yes when
+      `sessions(sizes, x) <= 2`.
+
+      1. At limits 6 and 7, no two neighboring files fit together: `5 + 3 = 8`, `3 + 6 = 9` and
+         `6 + 2 = 8` are all above 7. So each file gets its own session, 4 in all, and the answer
+         is no.
+      2. At limit 8, `5 + 3 = 8` and `6 + 2 = 8` both fit, so the pass makes `[5, 3]` and
+         `[6, 2]`. That is 2 sessions, and the answer is yes.
+      3. The two sessions from step 2 have loads of 8, so they also fit under every limit above 8,
+         and the count stays at most 2. So the answer is no at limits 6 and 7, and yes at 8 and at
+         every limit above it.
     prompt: |-
       Now another list, with `d = 3`: every file is at most 14, and `sessions(sizes, 14)` returns
       3, so 14 is feasible. Without running it, what can you say about the limit 15?
@@ -263,10 +281,17 @@ questions:
     format: tap-cell
     heading: Tap the smallest feasible limit
     tags: [binary-search]
-    workedExample: >-
-      If `needs = [6, 4, 3, 3]` lists the sessions needed at limits 20 to 23
-      and `d = 3`, the first entry that is at most 3 is `needs[2]`, so 22 is the smallest feasible
-      limit.
+    workedExample: |-
+      Consider `needs = [7, 5, 4, 3, 3, 2]`, which holds the session counts at limits 20 to 25, so
+      `needs[i]` is the count at limit `20 + i`, and `d = 3`. A limit fits when its count is at most
+      `d`.
+
+      1. `needs[0] = 7`, `needs[1] = 5` and `needs[2] = 4` are all more than 3, so limits 20, 21 and
+         22 fail.
+      2. `needs[3] = 3` is at most 3, so limit 23 fits. The count equals `d`, and that is enough,
+         because the test is "at most `d`", not "fewer than `d`".
+      3. Step 1 ruled out every smaller limit, so 23 is the first limit that fits. The smallest
+         feasible limit is 23, at `needs[3]`.
     prompt: >-
       Below, `needs[i]` is the count at limit `9 + i`, and `d = 4`. Tap the entry for the
       smallest feasible limit.
@@ -310,8 +335,14 @@ questions:
     heading: Which `hi` is safe?
     tags: [binary-search]
     workedExample: |-
-      Every session must hold the largest file, so no limit below
-      `max(sizes)` is feasible. That makes `lo = max(sizes)` the bottom of the range.
+      Consider `sizes = [4, 9, 2]`. A limit `x` is feasible only if every session's load is at most
+      `x`, and a file can't be split across sessions.
+
+      1. The 9 has to go, whole, into some session, so that session's load is at least 9.
+      2. Since that load must also be at most `x`, every limit below 9 fails, whatever `d` is. At
+         `x = 8`, for example, no session can hold the 9.
+      3. So no answer is below `max(sizes) = 9`, and `lo = max(sizes)` is a safe bottom for the
+         range: starting there skips only limits that can't fit.
     prompt: |-
       ```python
       lo, hi = max(sizes), ...  # which hi?
@@ -394,9 +425,14 @@ questions:
     format: drag-pointers
     heading: Place the bounds
     tags: [binary-search]
-    workedExample: >-
-      With candidates 40 to 47, the probe `mid = 43` fails. Then every limit up
-      to 43 fails too, so `lo = 44`, and `hi` stays.
+    workedExample: |-
+      Consider the candidate limits 40 to 47, with `lo, hi = 40, 47`. The answers turn from no to
+      yes only once, so when a limit fails, every smaller limit fails too.
+
+      1. `mid = (40 + 47) // 2 = 43`, and `sessions(sizes, 43) <= d` is false, so 43 fails.
+      2. Since 43 fails, the limits 40 to 43 all fail, so none of them can be the answer.
+      3. So `lo = mid + 1` moves `lo` to 44, the first limit not yet ruled out. The probe said
+         nothing about the limits above 43, so `hi` stays on 47.
     prompt: >-
       Here the cells are the candidate limits 15 to
       22, and the first probe passes: `sessions(sizes, 18) <= d`. Drag `lo` and `hi` to where they
@@ -441,9 +477,14 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [binary-search]
-    workedExample: >-
-      On the candidates 30 to 33, where every limit from 31 up fits, the probe
-      31 passes (`hi = 31`), then 30 fails (`lo = 31`), and the loop prints 31.
+    workedExample: |-
+      Consider `lo, hi = 30, 33`, where `sessions(sizes, x) <= d` holds for every `x` from 31 up. A
+      probe that fits sets `hi = mid`, and a probe that fails sets `lo = mid + 1`.
+
+      1. The first `mid` is `(30 + 33) // 2 = 31`. 31 fits, so `hi = 31`.
+      2. After step 1, `lo = 30` and `hi = 31`, so `mid = (30 + 31) // 2 = 30`. 30 fails, so
+         `lo = 31`.
+      3. Now `lo == hi == 31`, so the loop stops and prints 31, the first limit that fits.
     prompt: >-
       Here the cells are
       the limits 12 to 19, and `sessions(sizes, x) <= d` holds for every `x` from 16 up. Predict

@@ -1,6 +1,6 @@
 id: interval-merging
 title: Interval merging
-description: Draw two ranges, apply the rule for ranges that only touch, and extend the running end of a sorted scan. Each card opens with a worked example, then asks for one decision.
+description: Draw two ranges, apply the rule for ranges that only touch, and extend the running end of a sorted scan. Each card asks for one decision, with a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -8,9 +8,13 @@ questions:
     heading: Which call gets it wrong?
     tags: [intervals, python]
     workedExample: |-
-      On a number line, `[2, 5]` covers 2 through 5 and `[4, 9]` covers 4
-      through 9, so both cover the stretch from 4 to 5. Two ranges share a point when each one
-      starts at or before the other one ends.
+      Consider `a = [2, 5]` and `b = [4, 9]` on a number line. Two ranges share a point when each one
+      starts at or before the other one ends: `a[0] <= b[1]` and `b[0] <= a[1]`.
+
+      1. `a[0] <= b[1]` is `2 <= 9`, which is `True`, so `a` starts before `b` ends.
+      2. `b[0] <= a[1]` is `4 <= 5`, which is `True`, so `b` starts before `a` ends.
+      3. Steps 1 and 2 both hold, so the ranges overlap. They share the stretch from the later
+         start, 4, to the earlier end, 5.
     prompt: |-
       Now a helper `overlaps(a, b)` returns `b[0] <= a[1]`. Its author assumed `a` always starts
       first. Which call gives a wrong answer?
@@ -82,9 +86,15 @@ questions:
     format: drag-pointers
     heading: Place the merged range
     tags: [intervals]
-    workedExample: >-
-      `[2, 4]` and `[3, 6]` overlap, so together they cover `[2, 6]`: the
-      smaller start and the larger end.
+    workedExample: |-
+      Consider `a = [2, 4]` and `b = [3, 6]`. They overlap, since `b` starts at 3, before `a`
+      ends at 4. The merged range must cover every point of both.
+
+      1. `a` starts at 2 and `b` starts at 3. `a` already covers 2, so the merged range starts at the
+         smaller start, 2.
+      2. `a` ends at 4 and `b` ends at 6. `b` still covers 5 and 6, so the merged range ends at the
+         larger end, 6.
+      3. So together they cover `[2, 6]`, from `min(2, 3)` to `max(4, 6)`.
     prompt: >-
       The two ranges below are drawn on a number line. Drag
       `start` and `end` to the range they cover together.
@@ -126,9 +136,14 @@ questions:
     heading: Which test merges them?
     tags: [intervals]
     workedExample: |-
-      A problem has to say whether ranges that only touch count as
-      overlapping. If touching ranges merge, `[1, 3]` and `[3, 5]` become `[1, 5]`. If a meeting
-      that ends at 3 frees the room for one that starts at 3, the same pair does not clash.
+      Consider `[1, 3]` and `[3, 5]`. They share only the point 3, so they touch. Each problem has to
+      say whether touching ranges count as overlapping.
+
+      1. If touching ranges merge, the shared 3 is enough, so the pair becomes `[1, 5]`.
+      2. If a meeting that ends at 3 frees the room for one that starts at 3, the shared endpoint is
+         no clash, so the same pair stays apart.
+      3. Steps 1 and 2 give two answers for one pair, so the code has to follow the problem's rule:
+         its comparison either counts the case where a start equals an end, or leaves it out.
     prompt: |-
       Now the rule is that ranges sharing only an endpoint merge. A scan over ranges sorted by
       start keeps the current range's end in `end` and reads the next range `[s, e]`. Which test
@@ -205,8 +220,12 @@ questions:
     heading: What does the merge give?
     tags: [intervals]
     workedExample: |-
-      When touching ranges merge, `[2, 5]` and `[5, 8]` become `[2, 8]`,
-      because both contain 5.
+      Consider `[2, 5]` and `[5, 8]` under the rule that touching ranges merge. Two ranges merge when
+      some point lies in both.
+
+      1. `[2, 5]` covers every point from 2 to 5, including 5 itself.
+      2. `[5, 8]` starts at 5, so the point 5 from step 1 lies in both ranges, and they merge.
+      3. The merged range runs from the smaller start, 2, to the larger end, 8, so it is `[2, 8]`.
     prompt: |-
       Now the ranges are hours on a clock, so 3.5 is a time like any other. Touching ranges merge.
       What does merging `[[1, 3], [4, 6], [6, 7]]` give?
@@ -259,12 +278,18 @@ questions:
     format: tap-cell
     heading: Tap where it returns
     tags: [intervals, python]
-    workedExample: >-
-      A meeting that ends at 3 frees the room for one that starts at 3, so
-      `[1, 3]` and `[3, 4]` do not clash, and `3 < 3` is False.
+    workedExample: |-
+      Consider `first_clash([[1, 3], [3, 5], [4, 6]])`. A meeting that ends at 3 frees the room for
+      one that starts at 3, so only a start strictly before the previous end is a clash.
+
+      1. At `i = 1`, `[3, 5]` starts at 3 and `[1, 3]` ends at 3. `3 < 3` is `False`, so they only
+         touch, and the loop goes on.
+      2. At `i = 2`, `[4, 6]` starts at 4 and `[3, 5]` ends at 5. `4 < 5` is `True`, so the two
+         overlap from 4 to 5.
+      3. Step 1 found no clash, so this is the first one, and the call returns 2.
     prompt: >-
       The meetings below are sorted by
-      start, under the same rule. Tap the meeting where `first_clash` returns.
+      start. A meeting that starts exactly when the one before it ends does not clash with it. Tap the meeting where `first_clash` returns.
     code: |
       def first_clash(meetings):  # sorted by start
           for i in range(1, len(meetings)):
@@ -298,9 +323,15 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [intervals, python]
-    workedExample: >-
-      Sorted by start, `[1, 4]` then `[3, 8]` merge because `3 <= 4`, and the
-      end becomes `max(4, 8)`, which is 8.
+    workedExample: |-
+      Consider `spans = [[1, 4], [3, 8], [10, 12]]`, sorted by start, with `out = [[1, 4]]`. A range
+      merges when its start is at most `out[-1][1]`, the running end.
+
+      1. At `i = 1`, `[3, 8]` starts at 3, and `3 <= 4`, so it merges. The end becomes
+         `max(4, 8)`, which is 8. Taking the larger end means the running end never shrinks.
+      2. After step 1, `out = [[1, 8]]`. At `i = 2`, `[10, 12]` starts at 10, and `10 <= 8` is
+         `False`, so line 8 appends it as a new range.
+      3. So `out` ends as `[[1, 8], [10, 12]]`.
     prompt: >-
       Touching ranges merge here too. Step through the scan
       below and predict each step before it is shown.
@@ -383,8 +414,14 @@ questions:
     heading: What does the scan do?
     tags: [intervals, sorting]
     workedExample: |-
-      Sorted by start, the scan holds `[1, 4]` and reads `[3, 8]`. 3 is at
-      most 4, so the two merge and the end becomes 8.
+      Consider a scan over ranges sorted by start, where touching ranges merge. It holds `[1, 4]`
+      and reads `[3, 8]`.
+
+      1. `[3, 8]` starts at 3, which is at most the current end, 4. So the two share every point
+         from 3 to 4, and they merge.
+      2. The merged range keeps the start 1. Its end becomes the larger end, `max(4, 8)`, which is
+         8, because `[3, 8]` reaches past 4.
+      3. So the scan now holds `[1, 8]`, and it compares the next range against the end 8.
     prompt: |-
       Now the ranges are sorted by start and touching ranges merge. The scan holds `[2, 6]` and
       reads `[8, 9]`. What should it do?
