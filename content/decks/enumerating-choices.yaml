@@ -1,6 +1,6 @@
 id: enumerating-choices
 title: Enumerating choices
-description: List what a search records, tell a repeated value from a repeated sibling, and say which assumption makes a prune safe. Each card opens with a worked example, then asks for one decision.
+description: List what a search records, tell a repeated value from a repeated sibling, and say which assumption makes a prune safe. Each card asks for one decision, with a worked example on hand.
 heading: What does the search record?
 
 questions:
@@ -8,9 +8,18 @@ questions:
     format: step-trace
     heading: Trace the leaves
     tags: [backtracking, recursion]
-    workedExample: >-
-      With `items = [4, 1, 7]` this search records `[4, 1]`, `[4, 7]` and
-      `[1, 7]`, one leaf per pair of indexes, with the second index after the first.
+    workedExample: |-
+      Consider `items = [6, 2, 9]` and the `pick` search, which records `path` once it holds 2
+      items. After taking index `j`, a call runs `pick(j + 1)`, so the call below loops only over
+      later indexes.
+
+      1. `pick(0)` takes the 6 at index 0 and calls `pick(1)`. That loop covers indexes 1 and 2, so
+         it records `[6, 2]` and then `[6, 9]`.
+      2. `pick(0)` pops the 6, moves `j` to index 1 and takes the 2. It calls `pick(2)`, whose loop
+         covers only index 2, so it records `[2, 9]`.
+      3. Since every call looks only past the index just taken, each pair of indexes comes out once,
+         in index order. The search records 3 leaves, `[6, 2]`, `[6, 9]` and `[2, 9]`, and never
+         `[9, 6]`.
     prompt: >-
       Now `items`
       is `[4, 1, 7, 3]`. `first` is `j` in `pick(0)`, and `second` is `j` in the call one level
@@ -114,9 +123,14 @@ questions:
     heading: How many items are copied?
     tags: [backtracking, complexity]
     workedExample: |-
-      Choosing 2 of `[x, y, z]` with this loop records 3 lists: `[x, y]`,
-      `[x, z]` and `[y, z]`. Each `path[:]` copies every item in the list, so the copies write
-      3 × 2 = 6 items in all.
+      Consider choosing 2 of `items = [x, y, z]` with the `pick` loop, which records `path[:]` when
+      `path` holds 2 items. A slice copies every item in the list.
+
+      1. Each call looks only past the index it just took, so each pair is recorded once: `[x, y]`,
+         `[x, z]` and `[y, z]`. That is 3 lists, the number of ways to choose 2 of 3,
+         `3 × 2 / 2 = 3`.
+      2. Each of those lists holds 2 items, so each `path[:]` writes 2 items.
+      3. So the copies write `3 × 2 = 6` items in all.
     prompt: |-
       ```python
       def pick(start):
@@ -199,9 +213,15 @@ questions:
     heading: How many different lists?
     tags: [backtracking]
     workedExample: |-
-      The take-or-skip search over `[2, 2]` records 4 lists: `[2, 2]`, `[2]`,
-      `[2]` and `[]`. The two `[2]` leaves took different indexes, 0 and 1, but they hold the
-      same list.
+      Consider the take-or-skip search over `items = [3, 3]`. At each index it first takes the item
+      and then skips it, and it records `path` after the last index.
+
+      1. Two indexes with two choices each give `2 × 2 = 4` leaves: take both, take index 0 only,
+         take index 1 only, take neither.
+      2. Those leaves record `[3, 3]`, `[3]`, `[3]` and `[]`. Taking index 0 only and taking index 1
+         only both hold one 3, so both record the list `[3]`.
+      3. So the 4 leaves hold 3 different lists: `[3, 3]`, `[3]` and `[]`. A list here is set by how
+         many 3s it holds, not by which indexes it took.
     prompt: |-
       ```python
       def explore(i):
@@ -285,11 +305,17 @@ questions:
     format: tap-cell
     heading: Which item comes next?
     tags: [backtracking, sorting]
-    workedExample: >-
-      On sorted `[3, 3]`, the top loop takes the first 3 and skips the second,
-      since it would start the same subsets again. Inside the call that took the first 3, the
-      second 3 is the first item its loop tries (`i == start`), so it is taken and `[3, 3]` is
-      recorded.
+    workedExample: |-
+      Consider sorted `nums = [3, 3]` and the loop that skips index `i` when `i > start` and
+      `nums[i] == nums[i - 1]`. The skip stops one value from opening two branches in the same loop.
+
+      1. In `explore(0)`, `i = 0` takes the first 3. At `i = 1`, `1 > 0` holds and
+         `nums[1] == nums[0]`, so the second 3 is skipped there. A branch starting with it would
+         list the same subsets again.
+      2. Taking the first 3 calls `explore(1)`, so that call's `start` is 1. Its loop begins at
+         `i = 1`, where `i > start` is false, so the skip cannot fire on that first pass.
+      3. So that call takes the second 3, and `[3, 3]` is recorded. The skip blocks a repeat beside
+         it in one loop, never a repeat further down one path.
     prompt: >-
       Now `nums` is `[1, 2, 2, 2, 5]`, and `explore(2)` runs with `path == [1, 2]`.
       Tap the item its loop takes first.
@@ -332,10 +358,19 @@ questions:
     heading: Which lists are lost?
     tags: [backtracking, sorting]
     workedExample: |-
-      With the test `i > start`, sorted `[3, 3, 6]` gives each distinct subset
-      once: `[[], [3], [3, 3], [3, 3, 6], [3, 6], [6]]`.
+      Consider sorted `nums = [1, 4, 4]` and `explore(start)`, which records `path` and then loops
+      `i` from `start`, skipping `i` when `i > start` and `nums[i] == nums[i - 1]`.
+
+      1. `explore(0)` records `[]`, takes the 1, and calls `explore(1)`, which records `[1]`, takes
+         the 4 at index 1, and calls `explore(2)` with `path == [1, 4]`.
+      2. `explore(2)` records `[1, 4]`. Its loop starts at `i = start = 2`, so `i > start` is false
+         and it takes the second 4, which records `[1, 4, 4]`.
+      3. Back in `explore(1)`, `i = 2` is skipped, since `2 > 1` and `nums[2] == nums[1]`.
+         `explore(0)` then takes the 4 at index 1, which gives `[4]` and `[4, 4]`, and skips
+         index 2. Each distinct subset comes out once.
     prompt: |-
-      A slip changes the test to `i > 0`:
+      With sorted `nums = [3, 3, 6]`, the test `i > start` records `[]`, `[3]`, `[3, 3]`,
+      `[3, 3, 6]`, `[3, 6]` and `[6]`. A slip changes the test to `i > 0`:
 
       ```python
       def explore(start):
@@ -417,9 +452,13 @@ questions:
     heading: Which assumption makes it safe?
     tags: [backtracking]
     workedExample: |-
-      Values `[4, 3, 5]`, target 7. A branch that takes 4 and then 5 has
-      `left == -2`. Every value is positive, so taking more can only push `left` further below 0.
-      Stopping there loses nothing, and the search still records `[4, 3]`.
+      Consider `nums = [4, 3, 5]` with target 7. `left` starts at 7, taking a value `x` changes it
+      to `left - x`, and a branch stops as soon as `left < 0`.
+
+      1. The branch that takes 4 and then 5 has `left = 7 - 4 - 5 = -2`, so the stop fires.
+      2. Every value is positive, so each further value taken would only push `left` lower. Nothing
+         deeper in that branch could bring it back up to 0.
+      3. So stopping at -2 loses no set. The search still records `[4, 3]`, since `7 - 4 - 3 = 0`.
     prompt: |-
       Now the values can be any integers:
 
@@ -506,10 +545,15 @@ questions:
     format: drag-pointers
     heading: Where does the loop stop?
     tags: [backtracking, sorting]
-    workedExample: >-
-      In sorted order, once `weights[i] > left`, every later weight is heavier
-      too, so `break` drops the rest of the loop and loses nothing. A weight equal to `left` fits
-      exactly and must still be tried.
+    workedExample: |-
+      Consider sorted `weights = [2, 3, 6, 8]` and a call with `left = 6` whose loop starts at
+      index 0. The loop runs `break` at the first `weights[i] > left`.
+
+      1. `weights[0] = 2` and `weights[1] = 3` are not above 6, so the loop tries both.
+      2. `weights[2] = 6` equals `left`, and `6 > 6` is false, so it is tried too. It fits exactly
+         and brings `left` to 0.
+      3. `weights[3] = 8` is above 6, so `break` runs at `i = 3`. The list is sorted, so any weight
+         after it would be at least 8 and too heavy as well. Stopping there loses nothing.
     prompt: >-
       Now `weights` is sorted, the target is 6, and
       `explore(1, 5)` runs with `path == [1]`. Drag `i` to where this call's loop is when `break`

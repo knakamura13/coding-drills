@@ -1,6 +1,6 @@
 id: repeated-states
 title: Repeated states
-description: Say what a recursive call solves, spot the calls that repeat it, and answer a repeat from a cache. Each card opens with a worked example, then asks for one decision.
+description: Say what a recursive call solves, spot the calls that repeat it, and answer a repeat from a cache. Each card asks for one decision, with a worked example on hand.
 heading: What does the call solve?
 
 questions:
@@ -8,9 +8,16 @@ questions:
     heading: What does the call answer?
     tags: [dp, recursion]
     workedExample: |-
-      `climb(n)` counts the ways to climb `n` steps, one or two at a time.
-      Its subproblem is "the ways to climb the `n` steps still left". `climb(total)` answers
-      the whole question, and `climb(0)` is the stopping case.
+      Consider `climb(n)`, which counts the ways to climb `n` steps, 1 or 2 at a time. It returns
+      `climb(n - 1) + climb(n - 2)`, and 1 when `n <= 1`.
+
+      1. After a first move of 1 step, `n - 1` steps are left, and `climb(n - 1)` counts the ways to
+         finish them. After a first move of 2, `climb(n - 2)` counts the rest.
+      2. So each call is handed only what is still left to climb. Its subproblem is "the ways to
+         climb the `n` steps still left".
+      3. `climb(total)` starts with every step left, so it answers the whole question, and a call
+         with 1 or 0 steps left is a stopping case. For example,
+         `climb(3) = climb(2) + climb(1) = 2 + 1 = 3`.
     prompt: |-
       Now a string is split into dictionary words:
 
@@ -95,7 +102,14 @@ questions:
     heading: What does the cache return?
     tags: [dp, hash-map, recursion]
     workedExample: |-
-      `climb(n)` depends only on `n`, so `memo[n]` can hold its answer.
+      Consider `climb(n)`, which returns `climb(n - 1) + climb(n - 2)`, and 1 when `n <= 1`. A cache
+      key is safe only if every call with that key has the same answer.
+
+      1. The body reads nothing but `n`. No second argument and no outside value can change what it
+         returns.
+      2. So two calls with the same `n` always return the same value. For example, both calls to
+         `climb(2)` inside `climb(4)` return 2.
+      3. That makes `n` alone a safe key, and `memo[n]` can hold the answer of `climb(n)`.
     prompt: |-
       This counts the ways to put `+` or `-` before each number so the total is `target`.
       With `nums = [1, 2, 1, 2]` and `target = 2` there are 3 ways.
@@ -184,9 +198,15 @@ questions:
     format: tap-cell
     heading: Which call repeats?
     tags: [dp, recursion]
-    workedExample: >-
-      Plain `f(n) = f(n - 1) + f(n - 2)` calls, in order, `f(4)`, `f(3)`,
-      `f(2)`, `f(1)`, `f(0)`, then `f(1)` again. That sixth call repeats an earlier argument.
+    workedExample: |-
+      Consider plain `f(n) = f(n - 1) + f(n - 2)`, with `f(n) = n` when `n <= 1`, called as `f(4)`.
+      Each call finishes its left call, `f(n - 1)`, before it starts its right call, `f(n - 2)`.
+
+      1. `f(4)` calls `f(3)`, which calls `f(2)`, which calls `f(1)` and then `f(0)`. So the first
+         five calls have the arguments 4, 3, 2, 1 and 0, each one new.
+      2. `f(2)` returns to `f(3)`, which now makes its right call, `f(3 - 2)`, which is `f(1)`.
+      3. 1 already appeared as the fourth call, so this sixth call, `f(1)`, is the first one that
+         repeats an earlier argument.
     prompt: >-
       Now the cells list the arguments of `h(7)`'s calls in the order they start. Tap the first
       call whose argument already appeared.
@@ -234,9 +254,16 @@ questions:
     heading: How often is it called?
     tags: [dp, recursion]
     workedExample: |-
-      In plain `f(4)` with `f(n) = f(n - 1) + f(n - 2)`, circle the
-      arguments that repeat. `f(2)` is called twice, once under `f(3)` and once straight from
-      `f(4)`, and the stopping cases under it repeat with it.
+      Consider plain `f(4)` with `f(n) = f(n - 1) + f(n - 2)` and stopping cases `f(1)` and `f(0)`.
+      With no cache, each call path from 4 down to an argument makes its own call with that
+      argument.
+
+      1. `f(4)` calls `f(2)` directly, a drop of 2. That is one call of `f(2)`, along the path
+         `4, 2`.
+      2. `f(4)` also calls `f(3)`, which calls `f(2)` again, along the path `4, 3, 2`. So `f(2)` is
+         called twice, once per path from 4 to 2.
+      3. Each of those `f(2)` calls makes its own `f(1)` and `f(0)`, so the stopping cases under it
+         repeat along with it.
     prompt: |-
       ```text
       f(4)
@@ -316,9 +343,17 @@ questions:
     format: step-trace
     heading: Which calls hit the cache?
     tags: [dp, hash-map, recursion]
-    workedExample: >-
-      A cache answers a call from storage only if an earlier call with the same
-      argument has already finished and stored it.
+    workedExample: |-
+      Consider `t(n) = t(n - 2) + t(n - 3)`, with `t(n) = 1` when `n < 3`, a `memo` checked after
+      the stopping case, and the call `t(10)`. A call is answered from `memo` only if an earlier
+      call with the same argument has finished and stored its value.
+
+      1. `t(10)` calls `t(8)`, which calls `t(6)`. Inside `t(6)`, `t(4)` and then `t(3)` finish and
+         store 2 each, and `t(6)` stores 4.
+      2. `t(8)` next calls `t(5)`, and `t(5)` calls `t(3)`. The earlier `t(3)` finished inside
+         `t(6)`, so this call finds 3 in `memo` and returns 2 at once.
+      3. So that `t(3)` is the first hit, inside `t(8)`, before `t(10)` makes its second call. Calls
+         with 2, 1 or 0 never hit, because the stopping case returns before the `memo` check.
     prompt: >-
       The cells are the arguments 0 to 5, and `call`
       marks one call. Predict each step of `f(5)`.
@@ -404,10 +439,17 @@ questions:
     heading: What does the cache save?
     tags: [dp, hash-map, recursion]
     workedExample: |-
-      With the `memo` check before the recursive calls, `ways(25)` makes 49
-      calls. Plain recursion makes 242,785.
+      Consider `ways(n) = ways(n - 1) + ways(n - 2)`, with `ways(n) = 1` when `n <= 1`, and a `memo`
+      checked right after the stopping case, before the recursive calls. The call is `ways(10)`.
+
+      1. The first call with each argument from 10 down to 2 finds nothing in `memo`, so it makes
+         both recursive calls and stores its value.
+      2. Any later call with one of those arguments meets the check before the recursive calls, so
+         it returns the stored value and makes no calls of its own.
+      3. So `ways(10)` makes 19 calls in all, while plain recursion makes 177. The saving comes from
+         reading `memo` before the work starts.
     prompt: |-
-      This version moves the check:
+      This version checks `memo` only after both recursive calls:
 
       ```python
       memo = {}
@@ -490,8 +532,16 @@ questions:
     heading: Does the cache ever hit?
     tags: [dp, hash-map, recursion]
     workedExample: |-
-      A `memo` built once, outside `ways`, lets `ways(25)` finish in 49
-      calls. Plain recursion makes 242,785.
+      Consider `memo = {}` built once, outside `ways`, with `ways(n) = ways(n - 1) + ways(n - 2)`,
+      `ways(n) = 1` when `n <= 1`, and the check `if n in memo` before the recursive calls. The call
+      is `ways(10)`.
+
+      1. The dict is made once, before `ways(10)` runs, so every call reads and writes that same
+         dict.
+      2. When the first `ways(3)` returns, it stores `memo[3] = 3`, and the dict keeps that entry
+         after the call ends. The next `ways(3)` finds it there and returns at once.
+      3. So `ways(10)` makes 19 calls, while plain recursion makes 177. The cache helps because it
+         outlives the calls that fill it.
     prompt: |-
       Here the dict is built inside the function:
 

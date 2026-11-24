@@ -1,6 +1,6 @@
 id: one-dimensional-tables
 title: One-dimensional tables
-description: Say what a table entry means, start the empty and impossible entries right, and pick the entries each one is built from. Each card opens with a worked example.
+description: Say what a table entry means, start the empty and impossible entries right, and pick the entries each one is built from. Each card has a worked example on hand.
 heading: What does the table hold?
 
 questions:
@@ -8,10 +8,16 @@ questions:
     heading: What does an entry mean?
     tags: [dp, python]
     workedExample: |-
-      In `ways[i] = ways[i - 1] + ways[i - 2]` for a climb of 1 or 2 steps
-      at a time, `ways[i]` is the number of step orders that end exactly on step `i`. `ways[0] = 1`
-      counts standing still, and the line adds the orders whose last move was 1 step to those
-      whose last move was 2.
+      Consider `ways = [1, 1]` extended by `ways[i] = ways[i - 1] + ways[i - 2]`, for a climb of 1
+      or 2 steps at a time. The setup and the line that fills an entry together say what the entry
+      means.
+
+      1. `ways[0] = 1` counts one order for step 0, standing still. So an entry counts the orders
+         that end on its step.
+      2. An order that ends on step `i` has a last move of 1 step, from step `i - 1`, or of 2 steps,
+         from step `i - 2`. The line adds the count for each of those two cases.
+      3. So `ways[i]` is the number of step orders that end exactly on step `i`. For example,
+         `ways[3] = ways[2] + ways[1] = 2 + 1 = 3`, for `1+1+1`, `1+2` and `2+1`.
     prompt: |-
       Below, a climber starts on step 0 or step 1, moves up 1 or 2 steps at a time, pays `fee[i]`
       for every step stood on, and leaves from either of the top two steps.
@@ -100,11 +106,16 @@ questions:
     format: tap-cell
     heading: Tap the answer
     tags: [dp]
-    workedExample: >-
-      If `best[i]` is the best answer using the first `i + 1` values, the
-      answer for the whole list sits in the last cell. If an entry only describes stretches that
-      end exactly at index `i`, the best stretch could end anywhere, so the answer is the largest
-      cell.
+    workedExample: |-
+      Consider `nums = [1, -3, 5, -2]` and `end[i]`, the largest total of a stretch of neighbors
+      that ends exactly at index `i`. The table is `end = [1, -2, 5, 3]`.
+
+      1. Every stretch ends at some index, so the best stretch is counted in the entry for the index
+         where it ends.
+      2. That index can be anywhere. The last cell, `end[3] = 3`, only covers stretches that end on
+         the -2, such as `5, -2`.
+      3. So the answer is the largest entry, `end[2] = 5`, for the 5 alone. Only a table whose entry
+         is the best over all of the first `i + 1` values keeps its answer in the last cell.
     prompt: >-
       Below, `end[i]` is the largest total of a stretch of neighbors that ends exactly at
       index `i`. Tap the cell that holds the largest total of any stretch.
@@ -143,9 +154,15 @@ questions:
     heading: Which meaning fits?
     tags: [dp]
     workedExample: |-
-      For a climb of 1 or 2 steps, `ways[i]` is the number of step orders that
-      end on step `i`. It covers the whole climb up to step `i`, so taking off the last move leaves
-      a shorter climb that an earlier entry already counts.
+      Consider a climb of 1 or 2 steps at a time, where `ways[i]` is the number of step orders that
+      end on step `i`. The entry covers the whole climb up to step `i`.
+
+      1. Take an order that ends on step 4, such as `1+2+1`. Its last move is either 1 step or 2
+         steps.
+      2. Taking off that last move leaves an order that ends on step 3 or on step 2. Those shorter
+         climbs are exactly what `ways[3]` and `ways[2]` count.
+      3. So `ways[4] = ways[3] + ways[2] = 3 + 2 = 5`. The meaning works because removing the last
+         move always leaves a smaller case with the same meaning.
     prompt: |-
       Below, digits are read as letters, with `1` to `26` standing for A to Z. A `0` cannot stand
       alone, and a two-digit piece cannot start with `0`. So `'1226'` can be read 5 ways, such as
@@ -224,9 +241,15 @@ questions:
     heading: Which setup is right?
     tags: [dp, python]
     workedExample: |-
-      To count the orders of 1-steps and 2-steps that reach step `i`,
-      `ways[0]` is 1, not 0. Standing still on step 0 is one order with no moves, and every order
-      that starts with a 2-step builds on it.
+      Consider counting the orders of 1-steps and 2-steps that reach step `i`, with
+      `ways[i] = ways[i - 1] + ways[i - 2]` and an index below 0 counted as 0.
+
+      1. Step 0 is reached by one order: standing still, with no moves. So `ways[0] = 1`, not 0.
+      2. Then `ways[1] = ways[0] = 1`, the single 1-step, and `ways[2] = ways[1] + ways[0] = 2`. The
+         order `1+1` builds on `ways[1]`, and the single 2-step builds on the empty order in
+         `ways[0]`.
+      3. With `ways[0] = 0` instead, every entry would be a sum of zeros, and the whole table would
+         stay 0.
     prompt: |-
       Below, a climber takes steps of 2 or 3 at a time.
 
@@ -313,9 +336,15 @@ questions:
     heading: Which setup is right?
     tags: [dp, python]
     workedExample: |-
-      For the fewest coins, an amount that cannot be made starts at `inf`.
-      `min` never prefers it, and `1 + inf` is still `inf`, so it cannot pass for a real count.
-      For a largest count the roles flip.
+      Consider the fewest coins of 2 and 5 that make an amount, with
+      `few[a] = min(few[a], 1 + few[a - c])`. Amount 0 takes 0 coins, and every other amount starts
+      at `inf`, meaning no way found yet: a start value for "impossible" has to lose every `min`.
+
+      1. No coin fits in amount 1, so `few[1]` stays `inf`.
+      2. For amount 3 only the 2 fits, giving `1 + few[1]`, which is `1 + inf`, still `inf`. So
+         amount 3 stays `inf` too, and it cannot pass for a real count.
+      3. For amount 6, `min` compares `1 + few[4] = 3` with `1 + few[1] = inf`. `min` never prefers
+         `inf`, so `few[6] = 3`, for `2 + 2 + 2`.
     prompt: |-
       Below, a rod of length `n` is cut into pieces of length 3 and 5 with nothing left over.
       `most[i]` is the largest number of pieces for length `i`, or `-inf` when no exact cut
@@ -403,10 +432,16 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [dp, python]
-    workedExample: >-
-      A route to stone `i` arrives from a stone one hop back. With hops of 1
-      or 2, those are stones `i - 1` and `i - 2`, and a missing stone (`None`) is not one of them:
-      its entry stays `inf`, so `min` passes it over.
+    workedExample: |-
+      Consider `cheapest([2, None, 4, 5])`: the frog starts on stone 0, hops 1 or 2 stones, and pays
+      for each stone it lands on. Every entry starts at `inf`, `best[0] = 2`, and the loop skips a
+      missing stone (`None`), so its entry stays `inf`.
+
+      1. Stone 1 is missing, so the loop skips it and `best[1]` stays `inf`.
+      2. Stone 2 is reached from stone 1 or stone 0. `best[1] + 4` is `inf` and `best[0] + 4` is 6,
+         so `min` passes over the missing stone and `best[2] = 6`.
+      3. Stone 3 is reached from stone 2 or stone 1. `6 + 5 = 11` beats `inf + 5`, so
+         `best[3] = 11`, for stones 0, 2 and 3.
     prompt: >-
       Below, a frog starts on stone 0, hops 1 or 2
       stones forward, and pays `cost[i]` for each stone it lands on. The passes up to `i = 2`
@@ -510,9 +545,15 @@ questions:
     format: tap-cell
     heading: Tap the entry it adds
     tags: [dp]
-    workedExample: >-
-      With `s = '1226'`, `ways[4]` adds `ways[3]` for a last piece `6` and
-      `ways[2]` for a last piece `26`, since both are letters.
+    workedExample: |-
+      Consider `s = '1226'`, where `ways[i]` counts the readings of the first `i` digits and `1` to
+      `26` stand for A to Z. The last piece of a reading is one digit or two.
+
+      1. If the last piece is the `6` alone, the rest is `'122'`, the first 3 digits. `6` is a
+         letter, so `ways[4]` adds `ways[3]`.
+      2. If the last piece is `26`, the rest is `'12'`, the first 2 digits. 26 is from 10 to 26, so
+         it is a letter too, and `ways[4]` adds `ways[2]`.
+      3. So `ways[4] = ways[3] + ways[2] = 3 + 2 = 5`.
     prompt: >-
       Below, `s = '1106'`, and the cells
       are the finished table. `ways[3]` covers the first three digits, `'110'`, so its last piece

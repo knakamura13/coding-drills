@@ -1,6 +1,6 @@
 id: grid-tables
 title: Grid tables
-description: Find the cells a grid entry reads, set up edges and blocked cells, and fill one interior cell. Each card opens with a worked example.
+description: Find the cells a grid entry reads, set up edges and blocked cells, and fill one interior cell. Each card has a worked example on hand.
 heading: Which one is right?
 
 questions:
@@ -8,11 +8,21 @@ questions:
     heading: Which cells feed this one?
     tags: [dp, grid]
     workedExample: |-
-      When a walker moves only right or down, the last move into `(r, c)` comes
-      from above or from the left. So `ways[r][c]` reads `(r-1, c)` and `(r, c-1)`.
+      Consider a walker who moves one cell right or one cell down, and the entry `ways[r][c]` for
+      `(r, c) = (2, 3)`. Every path into `(2, 3)` ends with one last move, so the entry reads the
+      cells that move can come from.
+
+      1. If the last move was right, the walker was one column to the left, on `(2, 2)`. Undoing a
+         move right takes 1 off the column.
+      2. If the last move was down, the walker was one row up, on `(1, 3)`. Undoing a move down
+         takes 1 off the row.
+      3. No other move exists, so every path into `(2, 3)` comes through `(1, 3)` or `(2, 2)`. For
+         a walker that moves only right or down, `ways[r][c]` reads `(r-1, c)` and `(r, c-1)`: one
+         cell for each allowed move, undone.
     prompt: |-
-      Now each move goes one cell right, one cell down, or one cell diagonally down and to the right.
-      Which cells does the entry for `(r, c)` read?
+      A walker moves one cell right, one cell down, or one cell diagonally down and to the right.
+      `ways[r][c]` counts the paths from the top-left corner that end at `(r, c)`. Which cells does
+      the entry for `(r, c)` read?
     options:
       - id: three-behind
         text: "`(r-1, c)`, `(r, c-1)` and `(r-1, c-1)`"
@@ -28,8 +38,9 @@ questions:
       - id: top-and-left
         text: "`(r-1, c)` and `(r, c-1)`, as on a right-and-down grid"
         explanation: >-
-          That is the worked example's answer, but the diagonal is a third way in. A path whose last
-          move is the diagonal arrives from `(r-1, c-1)`, and leaving it out drops every such path.
+          Those are the only ways in when the moves are right and down. Here the diagonal is a third
+          way in: a path whose last move is the diagonal arrives from `(r-1, c-1)`, and leaving it out
+          drops every such path.
       - id: row-above
         text: "`(r-1, c-1)`, `(r-1, c)` and `(r-1, c+1)`"
         explanation: >-
@@ -74,9 +85,16 @@ questions:
     format: tap-cell
     heading: Which cell steps in?
     tags: [dp, grid]
-    workedExample: >-
-      If the walker moves down or diagonally down and to the *right*, then
-      `(2, 3)` is entered from `(1, 3)` or from `(1, 2)`.
+    workedExample: |-
+      Consider a walker who moves one cell down, or one cell diagonally down and to the *right*,
+      from `(r, c)` to `(r+1, c+1)`. The cells that step into `(2, 3)` are found by undoing each
+      move from it.
+
+      1. Undoing a move down goes up one row and keeps the column, so `(2, 3)` is entered from
+         `(1, 3)`.
+      2. Undoing a move down and to the right goes up one row and left one column, so `(2, 3)` is
+         also entered from `(1, 2)`.
+      3. There are only those two moves, so `(2, 3)` is entered from `(1, 3)` or from `(1, 2)`.
     prompt: >-
       Here the walker moves one cell down, or one
       cell diagonally down and to the *left*, from `(r, c)` to `(r+1, c-1)`. The board is row 1 of
@@ -102,8 +120,8 @@ questions:
           `(2, 3)`.
       - index: 2
         explanation: >-
-          That is the source for a down-*right* move, as in the worked example. A down-left move from
-          `(1, 2)` lands on `(2, 1)`.
+          A down-*right* move from `(1, 2)` would land on `(2, 3)`, but this walker moves down and to
+          the *left*. A down-left move from `(1, 2)` lands on `(2, 1)`.
       - index: 3
         explanation: >-
           `(1, 3)` is directly above and feeds `(2, 3)` with a move down. The question asks for the
@@ -116,8 +134,16 @@ questions:
     heading: Which loop order works?
     tags: [dp, grid]
     workedExample: |-
-      On a right-and-down grid, `ways[r][c]` reads the cell above and the cell to
-      its left. Filling rows top to bottom, each row left to right, computes both before they are read.
+      Consider a right-and-down grid, where `ways[r][c]` reads the cell above, `(r-1, c)`, and the
+      cell to its left, `(r, c-1)`. A loop order works when it fills every cell after the cells it
+      reads.
+
+      1. Filling rows top to bottom finishes row `r-1` before row `r` starts, so the cell above is
+         ready.
+      2. Within row `r`, going left to right fills `(r, c-1)` just before `(r, c)`, so the cell to
+         the left is ready too.
+      3. Both cells that `ways[r][c]` reads are filled first, so rows top to bottom, each row left
+         to right, works. For example, `(1, 2)` comes after `(0, 2)` and `(1, 1)`.
     prompt: |-
       Now the walker starts at the top-right corner and moves one cell left or one cell down, so
       `ways[r][c]` reads `ways[r-1][c]` and `ways[r][c+1]`. Which loop order computes every cell after
@@ -184,9 +210,15 @@ questions:
     format: tap-cell
     heading: Which count is wrong?
     tags: [dp, grid]
-    workedExample: >-
-      On an open grid, every cell of row 0 has exactly one path, straight right
-      from the start, so 1 is right there.
+    workedExample: |-
+      Consider an open grid with 4 columns, where the walker starts at `(0, 0)` and moves right or
+      down. A cell's count is the number of paths from the start that end there.
+
+      1. No row lies above row 0, so no move down can enter it. A row 0 cell can only be entered
+         from its left.
+      2. So the only path to `(0, c)` is `c` moves right, straight from the start, and `(0, 1)`,
+         `(0, 2)` and `(0, 3)` each have one path. The start has one path too, the empty one.
+      3. So every row 0 cell of an open grid holds 1, the same count as its left neighbor.
     prompt: >-
       Below, row 0 has a blocked cell. The code fills row 0 and
       column 0 with 1, then sets each blocked cell to 0. The board is row 0. Tap the first cell of
@@ -230,8 +262,16 @@ questions:
     heading: What does a blocked cell hold?
     tags: [dp, grid]
     workedExample: |-
-      In a path count, a blocked cell holds 0. It adds no paths to the cells
-      after it.
+      Consider a path count on a grid with 2 rows and 3 columns, moving right or down, where
+      `(1, 1)` is blocked. Each open cell adds the counts of the cell above and the cell to its
+      left.
+
+      1. No path can stand on `(1, 1)`, so no path ends there, and its count is 0.
+      2. `(1, 2)` adds the 1 above it and the block's 0 to its left. Adding 0 changes nothing, so it
+         gets `1 + 0 = 1`.
+      3. That 1 is right: the only path to `(1, 2)` is right, right, down. The block holds 0 because
+         0 leaves a sum unchanged, so it adds no paths. A table that combines with something other
+         than `+` needs the value that leaves that step unchanged instead.
     prompt: |-
       Here `cost[r][c]` is the cheapest total for reaching `(r, c)`, moving right or down and paying
       every cell's cost: `cost[r][c] = grid[r][c] + min(top, left)`. The middle cell is blocked.
@@ -305,9 +345,16 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [dp, grid, python]
-    workedExample: >-
-      For an open cell, the count is the cell above plus the cell to the left,
-      with a missing neighbor read as 0. So `(2, 0)` gets `above[0] + 0 = 1`.
+    workedExample: |-
+      Consider a row filled from `above = [1, 3, 0, 2]`, the counts for the row above, where only
+      `row[2]` is blocked. An open cell gets the cell above plus the cell to its left, with a
+      missing neighbor read as 0, and a blocked cell holds 0.
+
+      1. `row[0]` is open and has no left neighbor, so it gets `above[0] + 0 = 1`.
+      2. `row[1]` is open, so it gets `above[1] + row[0] = 3 + 1 = 4`. `row[2]` is blocked, so it
+         holds 0.
+      3. `row[3]` is open, and its left neighbor is the block, so it gets
+         `above[3] + row[2] = 2 + 0 = 2`. The row is `[1, 4, 0, 2]`.
     prompt: >-
       The walker moves right
       or down on the grid in the snippet. Row 1 is filled, and the board shows it. The loop now fills
@@ -416,8 +463,14 @@ questions:
     heading: What goes in the cell?
     tags: [dp, grid]
     workedExample: |-
-      A cell costing 2 with totals 10 above and 7 to its left gets
-      `2 + min(10, 7) = 9`.
+      Consider a cell `(r, c)` that costs 2, with the total 10 in the cell above and 7 in the cell
+      to its left. The walker moves right or down and pays every cell it stands on.
+
+      1. The last move into `(r, c)` comes from above or from the left, so a route has paid either
+         10 or 7 when it arrives.
+      2. A route arrives from only one of them, and 7 is less than 10, so the cheaper route comes
+         from the left with 7 paid.
+      3. The walker also pays the 2 for `(r, c)` itself. So the cell holds `2 + min(10, 7) = 9`.
     prompt: |-
       The walker moves right or down and pays every cell's cost. The table of cheapest totals is
       filled up to `?`.

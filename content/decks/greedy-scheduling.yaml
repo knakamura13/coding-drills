@@ -1,6 +1,6 @@
 id: greedy-scheduling
 title: Greedy scheduling
-description: Keep the most intervals that never overlap. Pick a compatible interval, compare the room each choice leaves, and apply earliest finish. Each card opens with a worked example.
+description: Keep the most intervals that never overlap. Pick a compatible interval, compare the room each choice leaves, and apply earliest finish. Each card has a worked example on hand.
 heading: Which interval is kept?
 
 questions:
@@ -8,10 +8,15 @@ questions:
     format: tap-cell
     heading: Tap the next interval kept
     tags: [intervals, greedy]
-    workedExample: >-
-      With `[1, 3]` kept, `[2, 6]` starts at 2, before the kept end 3, so it
-      clashes. `[3, 4]` starts at 3, exactly where the kept interval ends. Touching intervals
-      share no time here, so `3 >= 3` holds and `[3, 4]` is compatible.
+    workedExample: |-
+      Consider a schedule that has kept `[1, 3]`, where touching intervals may both be kept. A new
+      interval `[s, e]` is compatible when `s >= 3`, the kept end.
+
+      1. `[2, 6]` starts at 2, and `2 >= 3` is false. It would run from 2 to 3 alongside `[1, 3]`,
+         so it clashes.
+      2. `[3, 4]` starts at 3, exactly where `[1, 3]` ends. Touching intervals share no time, and
+         `3 >= 3` holds.
+      3. So `[3, 4]` is compatible and can be kept after `[1, 3]`, while `[2, 6]` cannot.
     prompt: >-
       Below, `spans` is sorted
       by end, touching intervals may both be kept, and the loop has kept `[0, 2]` and `[2, 5]`.
@@ -55,10 +60,15 @@ questions:
     heading: What does it return?
     tags: [intervals, greedy, python]
     workedExample: |-
-      A meeting `[9, 10]` in hours frees the room at 10, so `[10, 11]` can
-      follow it, and the test is `s >= last_end`. A booking of whole days 9 through 10 still
-      holds day 10, so the next booking has to start on day 11 or later, and the test is
-      `s > last_end`.
+      Consider a meeting `[9, 10]` in hours and a booking `[9, 10]` of whole days. The next interval
+      may be kept only if it uses none of the time the last one holds.
+
+      1. The meeting runs from hour 9 up to hour 10 and frees the room at 10. So a meeting
+         `[10, 11]` can follow it, and the test is `s >= last_end`.
+      2. The booking holds day 9 and day 10, both included. A booking that starts on day 10 would
+         need day 10 too, so it clashes.
+      3. So after a booking of days 9 through 10, the next one has to start on day 11 or later, and
+         the test is `s > last_end`.
     prompt: |-
       Here each booking `[a, b]` holds the room on days `a` through `b`, both included.
 
@@ -134,9 +144,13 @@ questions:
     format: drag-pointers
     heading: Place the next two kept
     tags: [intervals, greedy]
-    workedExample: >-
-      In end order `[1, 2]`, `[1, 3]`, `[2, 4]`, the loop keeps `[1, 2]`. `[1, 3]`
-      starts at 1, before 2, and is skipped. `[2, 4]` starts at 2 and is kept.
+    workedExample: |-
+      Consider `spans` sorted by end, `[[1, 2], [1, 3], [2, 4]]`, where touching intervals may both
+      be kept. The loop keeps an interval when its start is at or after the last kept end.
+
+      1. The first interval, `[1, 2]`, is kept, so the last kept end is 2.
+      2. `[1, 3]` starts at 1, and `1 >= 2` is false, so it is skipped. The last kept end stays 2.
+      3. `[2, 4]` starts at 2, and `2 >= 2` holds, so it is kept, and the last kept end becomes 4.
     prompt: >-
       Below, `spans` is
       sorted by end, touching intervals may both be kept, and `[1, 4]` is kept. Drag `second` to
@@ -190,10 +204,15 @@ questions:
   - id: sched-room-left
     heading: Which choice leaves more room?
     tags: [intervals, greedy]
-    workedExample: >-
-      After a kept interval that ends at 9, the next one must start at 9 or
-      later. After one that ends at 6, it must start at 6 or later, which includes every start
-      of 9 or later and more. So the choice that ends sooner never loses anything.
+    workedExample: |-
+      Consider two intervals that both fit next, `[1, 9]` and `[2, 6]`, where touching intervals may
+      both be kept. Whatever comes after a kept interval must start at or after its end.
+
+      1. After `[1, 9]`, the next interval must start at 9 or later.
+      2. After `[2, 6]`, it must start at 6 or later. Every start of 9 or later is also 6 or later,
+         so anything that can follow `[1, 9]` can also follow `[2, 6]`.
+      3. `[2, 6]` also allows starts from 6 to 8, such as `[6, 8]`, which cannot follow `[1, 9]`. So
+         the choice that ends sooner never loses anything and may gain.
     prompt: >-
       Touching
       intervals may both be kept. `[0, 2]` is kept, and the list also holds `A = [2, 8]`,
@@ -257,10 +276,16 @@ questions:
   - id: sched-swap-first
     heading: Why does the swap work?
     tags: [intervals, greedy]
-    workedExample: >-
-      Suppose a best schedule starts with `[0, 7]` and the list's
-      earliest-ending interval is `[1, 3]`. The best schedule's second interval starts at 7 or
-      later, and `[1, 3]` ends at 3, so swapping `[1, 3]` in for `[0, 7]` keeps the same count.
+    workedExample: |-
+      Consider a best schedule `[0, 7]`, `[8, 10]`, where touching intervals may both be kept, and
+      suppose the list's earliest-ending interval is `[1, 3]`.
+
+      1. The schedule is valid, so `[8, 10]` starts at or after the end of `[0, 7]`: 8 is at
+         least 7.
+      2. `[1, 3]` has the earliest end in the whole list, so it ends no later than `[0, 7]` does: 3
+         is at most 7.
+      3. `[1, 3]` ends at 3, which is at most 7 (step 2), and 7 is at most 8 (step 1). So `[1, 3]`
+         ends no later than `[8, 10]` starts, `[1, 3]`, `[8, 10]` is valid, and the count stays 2.
     prompt: >-
       Touching intervals may both be kept. On another list, a best schedule is `[1, 6]`,
       `[6, 9]`, `[10, 12]`, and the list's earliest-ending interval is `[2, 4]`. Why is
@@ -324,10 +349,15 @@ questions:
     format: step-trace
     heading: Predict each step
     tags: [intervals, greedy, python]
-    workedExample: >-
-      On `[[1, 2], [1, 3], [2, 4]]`, `last` starts at 0. With `i` at 1,
-      `[1, 3]` starts at 1, before `spans[0][1]`, which is 2, so `last` stays. With `i` at 2,
-      `[2, 4]` starts at 2, so `last` moves to 2 and `count` is 2.
+    workedExample: |-
+      Consider `most_meetings` on spans already in end order, `[[1, 2], [1, 3], [2, 4]]`. `last` is
+      the index of the last kept interval and starts at 0, with `count = 1`.
+
+      1. With `i` at 1, `[1, 3]` starts at 1. The kept end is `spans[0][1] = 2`, and `1 >= 2` is
+         false, so `last` stays at 0.
+      2. With `i` at 2, `[2, 4]` starts at 2. The kept end is still 2, and `2 >= 2` holds, so `last`
+         moves to 2 and `count` becomes 2.
+      3. The loop ends there, so the call returns 2, for `[1, 2]` and `[2, 4]`.
     prompt: >-
       Below, the board shows `spans`
       after the sort. Predict each step before it is shown.
@@ -426,10 +456,15 @@ questions:
   - id: sched-which-kept
     heading: Which meetings stay?
     tags: [intervals, greedy, sorting]
-    workedExample: >-
-      For `[[3, 5], [1, 4], [4, 6]]`, sorting by end gives `[1, 4]`,
-      `[3, 5]`, `[4, 6]`. The loop keeps `[1, 4]`, skips `[3, 5]` (it starts at 3, before 4), and
-      keeps `[4, 6]`.
+    workedExample: |-
+      Consider meetings `[[3, 5], [1, 4], [4, 6]]`, where touching meetings may both stay. The loop
+      sorts them by end and keeps each meeting that starts at or after the last kept end.
+
+      1. The ends are 5, 4 and 6, so sorting by end gives `[1, 4]`, `[3, 5]`, `[4, 6]`.
+      2. The loop keeps `[1, 4]`, so the last kept end is 4. `[3, 5]` starts at 3, before 4, so it
+         is skipped.
+      3. `[4, 6]` starts at 4, and `4 >= 4` holds, so it is kept. The loop keeps `[1, 4]` and
+         `[4, 6]`.
     prompt: >-
       Below, touching meetings may both stay. Sort
       `[[6, 9], [1, 5], [2, 3], [4, 7], [3, 6], [8, 10], [7, 8]]` by end and keep each meeting
