@@ -179,7 +179,7 @@
 			{:else if screen.trace}
 				<p class="step-label">Step {screen.trace.step} of {screen.trace.total}</p>
 				<h2 class="question" tabindex="-1" bind:this={heading}>
-					<Markdown source={screen.heading ?? ''} inline />
+					<Markdown source={screen.trace.ask} inline />
 				</h2>
 				<div class="pinned"><ProblemCard prompt={screen.prompt} workedExample={screen.workedExample} /></div>
 			{:else}

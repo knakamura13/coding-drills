@@ -22,14 +22,13 @@ import {
 	questions,
 	reach,
 	primary,
-	runs,
 	seenEveryDeck,
 	shown,
+	stepCount,
 	violations
 } from './learn-helpers.ts';
 
-// The new lesson screen on /learn/<deck>: multiple-choice and tap-the-cell questions on the
-// FigCraft design. Drag-pointers and step-trace questions are left out until they land.
+// The new lesson screen on /learn/<deck>: every question format on the FigCraft design.
 
 test.beforeEach(async ({ page }) => {
 	// The worked example's own first-visit opening is covered in learn-auto-example.spec.ts.
@@ -306,14 +305,6 @@ test('desktop keeps the lesson in a 640px column', async ({ page, isMobile }) =>
 	expect(box!.width).toBeLessThanOrEqual(672);
 });
 
-test('a deck with no questions the new screen runs yet is not found', async ({ page }) => {
-	const none = decks.find((candidate) => !candidate.questions.some(runs));
-	test.skip(!none, 'every deck has a question the new screen runs');
-	const response = await page.goto(`/learn/${none!.id}`);
-	await expect(page.getByText('This deck has no questions the new lesson screen runs yet')).toBeVisible();
-	expect(response?.status() ?? 200).toBeLessThan(500);
-});
-
 test('a prompt with a code block meets contrast and does not wrap code lines', async ({ page }) => {
 	const withCode = questions.filter((question) => question.prompt.includes('```'));
 	test.skip(withCode.length === 0, 'no prompt in this deck has a code block');
@@ -345,10 +336,10 @@ test('a deck without headings still gives each question a heading to land on', a
 		(candidate) =>
 			!candidate.heading &&
 			candidate.questions.some(isChoiceQuestion) &&
-			candidate.questions.filter(runs).every((question) => !question.heading)
+			candidate.questions.every((question) => !question.heading)
 	);
 	test.skip(!headingless, 'every deck has a heading');
-	const own = headingless!.questions.filter(runs);
+	const own = headingless!.questions;
 	await page.goto(`/learn/${headingless!.id}`);
 	const h1 = page.getByRole('heading', { level: 1 });
 	await expect(h1).toHaveText(`Question 1 of ${own.length}`);
@@ -378,7 +369,7 @@ test('the feedback panel rises in 150 ms, and only fades with reduced motion', a
 
 test('a long code pick wraps in the recap instead of widening the card', async ({ page }) => {
 	const heaps = decks.find((candidate) => candidate.id === 'bounded-heaps-checkpoint')!;
-	const pool = heaps.questions.filter(runs);
+	const pool = heaps.questions;
 	await page.goto(`/learn/${heaps.id}`);
 	// Right answers skip their follow-ups, so answer right until the question with the long pick.
 	for (let step = 0; step < pool.length; step++) {
@@ -444,7 +435,7 @@ test.describe('the worked example', () => {
 
 	test('code in an example keeps every line and its spacing', async ({ page }) => {
 		const state = decks.find((candidate) => candidate.id === 'search-state')!;
-		const pool = state.questions.filter(runs);
+		const pool = state.questions;
 		const target = pool.find((question) => question.workedExample?.includes('```'))!;
 		const lines = target.workedExample!.split('```python\n')[1]!.split('\n```')[0]!.split('\n');
 		await page.goto(`/learn/${state.id}`);
@@ -524,7 +515,7 @@ test.describe('tap the cell', () => {
 	test('a strip wider than a phone scrolls inside itself, not the page', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		const wide = decks.find((candidate) => candidate.id === 'dp-storage-review')!;
-		const pool = wide.questions.filter(runs);
+		const pool = wide.questions;
 		await page.goto(`/learn/${wide.id}`);
 		for (let step = 0; step < pool.length; step++) {
 			const question = await onScreen(page, pool);
@@ -768,5 +759,89 @@ test.describe('drag the pointers', () => {
 		await placePointer(page, 'third', 2);
 		await placePointer(page, 'second', 1);
 		expect(await overlapping()).toBe(false);
+	});
+});
+
+test.describe('trace the steps', () => {
+	const ask = (page: Page) => page.locator('main').getByRole('heading', { level: 2 });
+	const traceTab = (page: Page, name: string) => page.locator('main span.tab', { hasText: new RegExp(`^${name}$`) });
+	const answered = (page: Page) => page.getByRole('list', { name: 'Answered steps' });
+	const center = async (locator: ReturnType<Page['locator']>) => {
+		const box = (await locator.boundingBox())!;
+		return box.x + box.width / 2;
+	};
+	const cellBox = (page: Page, index: number) => page.locator(`main [data-index="${index}"]`);
+
+	test('a cell step bands the running line, shows the pointers as tabs, and waits for Check', async ({ page }) => {
+		await reach(page, 'boundary-search', 'all-equal-trace');
+		await expect(page.locator('[aria-current="step"]')).toContainText('mid = (lo + hi) // 2');
+		await expect(stepCount(page)).toHaveText('Step 1 of 3');
+		await expect(ask(page)).toHaveText('Where does hi sit after the first pass?');
+		// Each pointer is a tab under its cell; hi starts on the slot past the end.
+		expect(Math.abs((await center(traceTab(page, 'lo'))) - (await center(cellBox(page, 0))))).toBeLessThan(2);
+		expect(Math.abs((await center(traceTab(page, 'hi'))) - (await center(cellBox(page, 5))))).toBeLessThan(2);
+		await expect(page.getByRole('button', { name: 'Check' })).toBeDisabled();
+		await cell(page, 3).check();
+		await expect(panel(page)).toHaveCount(0);
+		await page.getByRole('button', { name: 'Check' }).click();
+		await expect(panel(page)).toHaveAccessibleName('Not quite');
+		await expect(panel(page)).toContainText('rounds down to 2');
+		// The trace goes on from the truth: the tapped cell in rose, the true cell and pointer in the branch color.
+		await expect(cell(page, 3)).toHaveAccessibleName(/your tap, not right/);
+		await expect(cell(page, 2)).toHaveAccessibleName(/the right cell/);
+		await expect(traceTab(page, 'hi')).toHaveClass(/\bcorrect\b/);
+		expect(Math.abs((await center(traceTab(page, 'hi'))) - (await center(cellBox(page, 2))))).toBeLessThan(2);
+		// On a phone the panel would cover the moved pointer, so the screen scrolls it into sight.
+		await expect
+			.poll(async () => (await traceTab(page, 'hi').boundingBox())!.y + 26 <= (await panel(page).boundingBox())!.y)
+			.toBe(true);
+		await expect(page.getByRole('button', { name: 'Next step' })).toBeVisible();
+		expect(await violations(page)).toEqual([]);
+	});
+
+	test('the next step stacks under the answered one on the same card, and takes focus', async ({ page }) => {
+		await reach(page, 'boundary-search', 'all-equal-trace');
+		const card = await page.locator('.content').elementHandle();
+		await cell(page, 3).check();
+		await page.getByRole('button', { name: 'Check' }).click();
+		await page.getByRole('button', { name: 'Next step' }).click();
+		await expect(stepCount(page)).toHaveText('Step 2 of 3');
+		await expect(ask(page)).toBeFocused();
+		await expect(answered(page)).toHaveText(/Step 1: hi at index 2/);
+		await expect(answered(page).getByRole('img', { name: 'Not right' })).toHaveCount(1);
+		expect(await card!.evaluate((node) => node.isConnected)).toBe(true);
+		// The step's pick is fresh: nothing picked, Check waits again.
+		await expect(page.getByRole('button', { name: 'Check' })).toBeDisabled();
+	});
+
+	test('a value step shows the strip only to read, answers with a tile, and ends on Continue', async ({ page }) => {
+		await reach(page, 'boundary-search', 'all-equal-trace');
+		for (const index of [2, 1]) {
+			await cell(page, index).check();
+			await page.getByRole('button', { name: 'Check' }).click();
+			await page.getByRole('button', { name: 'Next step' }).click();
+		}
+		await expect(stepCount(page)).toHaveText('Step 3 of 3');
+		await expect(answered(page).getByRole('img', { name: 'Right' })).toHaveCount(2);
+		await expect(page.getByRole('radio', { name: /^Index / })).toHaveCount(0);
+		await expect(page.getByRole('img', { name: /^Index 0, 7, marked lo/ })).toBeVisible();
+		await pick(page, '4');
+		await page.getByRole('button', { name: 'Check' }).click();
+		await expect(panel(page)).toHaveAccessibleName('Not quite');
+		await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+		expect(await violations(page)).toEqual([]);
+	});
+
+	test('with Immediate feedback on, a tap answers the step at once', async ({ page }) => {
+		await page.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ immediateFeedback: true })), PREFERENCES_KEY);
+		// The answer helpers check radios, so reload until the trace leads instead of answering up to it.
+		// The first load (in beforeEach) came before the setting, so always load once more.
+		await page.goto(URL);
+		for (let attempt = 0; attempt < 40 && (await onScreen(page)).id !== 'all-equal-trace'; attempt++) await page.goto(URL);
+		await expect(stepCount(page)).toHaveText('Step 1 of 3');
+		await expect(page.getByRole('button', { name: 'Check' })).toHaveCount(0);
+		await page.getByRole('button', { name: /^Index 2,/ }).click();
+		await expect(panel(page)).toHaveAccessibleName('Correct');
+		await expect(page.getByRole('button', { name: 'Next step' })).toBeVisible();
 	});
 });

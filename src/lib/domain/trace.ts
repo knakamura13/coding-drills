@@ -49,6 +49,19 @@ export function stepPickLabel(question: StepTraceQuestion, step: number, pick: s
 	return current.options.find((option) => option.id === pick)?.text ?? pick;
 }
 
+/**
+ * What was true after a step, for the answered steps listed above the current one (Trace A): a
+ * value step by its ask and right value, a cell step by where its pointer landed. Inline Markdown.
+ */
+export function stepOutcome(question: StepTraceQuestion, step: number): { ask: string | null; answer: string } {
+	const current = question.steps[step]!;
+	if (isCellStep(current)) {
+		const pastEnd = question.sequence.pastEnd && current.correct === question.sequence.cells.length;
+		return { ask: null, answer: `\`${current.pointer}\` at index ${current.correct}${pastEnd ? ', past the end' : ''}` };
+	}
+	return { ask: current.ask, answer: current.options.find((option) => option.id === current.correct)?.text ?? current.correct };
+}
+
 export function stepCorrectPick(step: TraceStep): string {
 	return isCellStep(step) ? String(step.correct) : step.correct;
 }

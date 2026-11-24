@@ -14,8 +14,16 @@
 		correct,
 		explanation,
 		action = 'Continue',
-		oncontinue
-	}: { correct: boolean; explanation: string; action?: string; oncontinue: () => void } = $props();
+		oncontinue,
+		panel = $bindable()
+	}: {
+		correct: boolean;
+		explanation: string;
+		action?: string;
+		oncontinue: () => void;
+		/** The panel, for keeping what it explains in sight above it. */
+		panel?: HTMLElement;
+	} = $props();
 
 	let actionWrap: HTMLDivElement;
 
@@ -24,7 +32,7 @@
 	});
 </script>
 
-<section class="panel" class:correct aria-label={correct ? 'Correct' : 'Not quite'}>
+<section class="panel" class:correct bind:this={panel} aria-label={correct ? 'Correct' : 'Not quite'}>
 	<div class="actions-column">
 		<p class="title">
 			<Icon name={correct ? 'correct' : 'missed'} />

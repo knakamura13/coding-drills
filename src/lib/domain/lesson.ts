@@ -23,7 +23,7 @@ import {
 import { shuffled, type Rng } from './shuffle';
 import type { QuestionRef } from '$lib/storage/types';
 import { cellCount, cellLabel, cellPickId, checkTap } from './tap';
-import { checkStep, parsePicks, positionsBefore, stepCorrectPick, stepPickIds, stepPickLabel } from './trace';
+import { checkStep, parsePicks, positionsBefore, stepCorrectPick, stepOutcome, stepPickIds, stepPickLabel } from './trace';
 
 /**
  * The lesson loop as a pure state machine.
@@ -341,6 +341,21 @@ export interface TraceView {
 	line: number | null;
 	/** `cell` steps are answered by tapping the board, `choice` steps by picking a value. */
 	kind: 'cell' | 'choice';
+	/** What this step asks. Inline Markdown. The question keeps its own heading. */
+	ask: string;
+	/** The pointer a cell step asks about; null on a value step. */
+	pointer: string | null;
+	/** The steps already answered, in order, with what was true. */
+	done: TraceStepDone[];
+}
+
+/** One answered step of a trace, as a one-line result above the current step. */
+export interface TraceStepDone {
+	/** A value step's ask; null for a cell step, whose answer names its pointer. Inline Markdown. */
+	ask: string | null;
+	/** What was true: the right value, or where the pointer landed. Inline Markdown. */
+	answer: string;
+	correct: boolean;
 }
 
 export interface LessonView {
@@ -557,7 +572,8 @@ function traceView(
 		cells: model.cells.map((cell) => {
 			let tone: OptionState = 'idle';
 			let reveal = false;
-			if (!onCells || !result) tone = 'idle';
+			if (!onCells) tone = 'idle';
+			else if (!result) tone = cell.id === picked ? 'selected' : 'idle';
 			else if (result.correct) tone = cell.id === picked ? 'correct' : 'idle';
 			else if (cell.id === picked) tone = 'wrong';
 			else if (cell.id === correctPick) {
@@ -578,15 +594,21 @@ function traceView(
 	}
 	return {
 		...base,
-		heading: step.ask,
 		format: 'step-trace',
 		code: question.code,
 		board,
 		followUpPrompt: null,
 		mainPickText: null,
 		options,
-		canCheck: false,
-		trace: { step: index + 1, total: question.steps.length, line: step.line ?? null, kind: onCells ? 'cell' : 'choice' },
+		trace: {
+			step: index + 1,
+			total: question.steps.length,
+			line: step.line ?? null,
+			kind: onCells ? 'cell' : 'choice',
+			ask: step.ask,
+			pointer: onCells ? step.pointer : null,
+			done: state.picks.map((pick, done) => ({ ...stepOutcome(question, done), correct: checkStep(question, done, pick)?.correct ?? false }))
+		},
 		verdict: result
 			? {
 					correct: result.correct,
