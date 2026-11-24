@@ -1,7 +1,7 @@
 <!--
 	The new lesson screen (FigCraft "Lesson screen" page), on the existing lesson controller. This
 	version runs multiple-choice and tap-the-cell questions: top bar with progress, heading and
-	prompt, then answer tiles, or a code snippet and a strip of cells (screen 5), and Check. With
+	prompt (with a link to the question's worked example, when it has one), then answer tiles, or a code snippet and a strip of cells (screen 5), and Check. With
 	"Immediate feedback" on, a pick is the answer and there is no Check. After Check the footer
 	becomes the feedback panel, and a follow-up opens with a recap of the question. The quit control asks first once anything has been answered. Phone first; from 1024px the same parts sit in a 640px column.
 -->
@@ -70,6 +70,8 @@
 	$effect(() => applyBranch(branch));
 
 	let quitOpen = $state(false);
+	let exampleOpen = $state(false);
+	let exampleLink: HTMLButtonElement | undefined = $state();
 	let heading: HTMLElement | undefined = $state();
 
 	// A new question or follow-up moves focus to its heading, so the change is announced. The first
@@ -123,6 +125,15 @@
 							<h1 class="visually-hidden" tabindex="-1" bind:this={heading}>Question {view.position} of {view.total}</h1>
 						{/if}
 						<Prose source={view.prompt} />
+						{#if view.workedExample}
+							<!-- Lesson Round 2, Example 10: a line under the prompt opens the worked example. -->
+							<p class="help">
+								Need help?
+								<button type="button" class="example-link" bind:this={exampleLink} onclick={() => (exampleOpen = true)}>
+									Walk through a worked example
+								</button>
+							</p>
+						{/if}
 					{/if}
 					{#if view.format === 'tap-cell' && view.board}
 						{#if view.code}<CodeBlock code={view.code} />{/if}
@@ -169,6 +180,15 @@
 	{#snippet actions()}
 		<Button onclick={() => (quitOpen = false)}>Continue</Button>
 		<Button variant="secondary" onclick={leave}>Quit</Button>
+	{/snippet}
+</Sheet>
+
+<!-- Focus goes back to the link by hand: Safari never focuses a tapped button, so the dialog alone
+     would return it to the page. -->
+<Sheet bind:open={exampleOpen} title="Worked example" onclose={() => exampleLink?.focus()}>
+	<div class="worked-example"><Prose source={view?.workedExample ?? ''} /></div>
+	{#snippet actions()}
+		<Button onclick={() => (exampleOpen = false)}>Close</Button>
 	{/snippet}
 </Sheet>
 </div>
@@ -253,5 +273,33 @@
 
 	h1:focus {
 		outline: none;
+	}
+
+	/* "Need help?" in Mist, the link underlined in Frost, 14/20 Medium. */
+	.help {
+		color: var(--color-text-secondary);
+		font-size: var(--text-label-size);
+		line-height: var(--text-label-line);
+		font-weight: var(--text-label-weight);
+	}
+
+	/* 2px of padding each way, taken back by the margin, gives a 24px target without moving the line. */
+	.example-link {
+		margin: -2px 0;
+		padding: 2px 0;
+		border: 0;
+		background: none;
+		color: var(--neutral-frost);
+		font: inherit;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		cursor: pointer;
+	}
+
+	/* Desktop sheet B spaces the example's text and code by the dialog's 16px gap. */
+	@media (min-width: 1024px) {
+		.worked-example :global(.prose) {
+			gap: var(--space-4);
+		}
 	}
 </style>
