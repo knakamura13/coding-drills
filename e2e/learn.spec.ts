@@ -21,6 +21,7 @@ import {
 	questions,
 	primary,
 	runs,
+	seenEveryDeck,
 	shown,
 	violations
 } from './learn-helpers.ts';
@@ -29,6 +30,8 @@ import {
 // FigCraft design. Drag-pointers and step-trace questions are left out until they land.
 
 test.beforeEach(async ({ page }) => {
+	// The worked example's own first-visit opening is covered in learn-auto-example.spec.ts.
+	await seenEveryDeck(page);
 	await page.goto(URL);
 	await expect(page.getByRole('radio').first()).toBeVisible();
 });

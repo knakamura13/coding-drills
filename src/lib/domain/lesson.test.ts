@@ -8,6 +8,7 @@ import {
 	createReviewLesson,
 	isFinished,
 	isPristine,
+	opensWorkedExample,
 	progress,
 	select,
 	summarize,
@@ -138,6 +139,22 @@ describe('createLesson', () => {
 		expect(first.prompt).toBe('First problem.');
 		expect(first.workedExample).toBe('A solved case.');
 		expect(view(advance(answer(start(), 'right')))!.workedExample).toBeNull();
+	});
+
+	it('opens the worked example by itself only on the first question of a deck with no attempts', () => {
+		const first = view(start());
+		const elsewhere = [{ deckId: 'other', questionId: 'q1' }];
+		expect(opensWorkedExample(first, [], 'tiny')).toBe(true);
+		expect(opensWorkedExample(first, elsewhere, 'tiny')).toBe(true);
+		// One answer anywhere in this deck, on any device, means the learner has seen it.
+		expect(opensWorkedExample(first, [{ deckId: 'tiny', questionId: 'q2' }], 'tiny')).toBe(false);
+		// Only the first question: not a later one (q1, which has an example, placed second), nor a follow-up.
+		const later = advance(answer(start(), 'right'));
+		expect(opensWorkedExample(view({ ...later, plan: start().plan.slice().reverse() }), [], 'tiny')).toBe(false);
+		expect(opensWorkedExample(view(advance(answer(start(), 'a'))), [], 'tiny')).toBe(false);
+		// Nothing to open when the first question has no worked example, or the lesson is over.
+		expect(opensWorkedExample({ ...first!, workedExample: null }, [], 'tiny')).toBe(false);
+		expect(opensWorkedExample(null, [], 'tiny')).toBe(false);
 	});
 });
 

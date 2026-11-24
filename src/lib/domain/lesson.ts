@@ -151,6 +151,16 @@ export function isPristine(state: LessonState): boolean {
 	return state.cursor === 0 && state.stage === 'question' && state.selected === null && state.picks.length === 0;
 }
 
+/**
+ * Lesson Round 2: the worked example opens by itself on the first question of a deck the learner
+ * has never answered in. "Seen" comes from the attempt log, so a lesson quit before any answer
+ * opens it again next time, and nothing new is stored.
+ */
+export function opensWorkedExample(screen: LessonView | null, attempts: readonly QuestionRef[], deckId: string): boolean {
+	if (!screen || screen.position !== 1 || screen.stage !== 'question' || !screen.workedExample) return false;
+	return !attempts.some((attempt) => attempt.deckId === deckId);
+}
+
 function currentPlanned(state: LessonState): PlannedQuestion | null {
 	return state.plan[state.cursor] ?? null;
 }

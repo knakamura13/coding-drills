@@ -131,9 +131,24 @@ export function initSync(): Promise<void> {
 		document.addEventListener('visibilitychange', () => {
 			if (document.visibilityState === 'visible') void syncNow();
 		});
-		if (account.status === 'signedIn') void syncNow();
+		void firstSync();
 	})();
 	return initPromise;
+}
+
+let firstSyncPromise: Promise<void> | null = null;
+
+/**
+ * Settles once this page load's first sync has run: right after the account probe when not signed
+ * in, after the first sync when signed in, whether it worked or not. Until then a fresh device's
+ * attempt log may be missing answers made on another device.
+ */
+export function firstSync(): Promise<void> {
+	firstSyncPromise ??= initSync()
+		.then(() => (account.status === 'signedIn' ? syncNow() : undefined))
+		// A failed sync leaves the local log as all there is; callers only need to know it is over.
+		.catch(() => undefined);
+	return firstSyncPromise;
 }
 
 export async function signOut(): Promise<void> {

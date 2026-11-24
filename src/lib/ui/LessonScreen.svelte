@@ -10,10 +10,12 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { tick, untrack } from 'svelte';
+	import type { LessonView } from '$lib/domain/lesson';
 	import type { LessonTrail } from '$lib/domain/trail';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
 	import { preferences } from '$lib/preferences/store.svelte';
+	import { firstSync } from '$lib/sync/store.svelte';
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
 	import CellStrip from './CellStrip.svelte';
@@ -32,13 +34,16 @@
 		title,
 		branch,
 		source,
-		trail
+		trail,
+		opensExample
 	}: {
 		title: string;
 		branch: BranchId | null;
 		source: LessonSource;
 		/** The summary's tree piece, read from saved attempts when the lesson ends. */
 		trail: () => LessonTrail;
+		/** Whether this screen opens its worked example by itself (lesson Round 2), read from saved attempts. */
+		opensExample: (screen: LessonView | null) => boolean;
 	} = $props();
 
 	// The route re-creates this component per lesson, so the initial value is the one that matters.
@@ -71,6 +76,20 @@
 
 	let quitOpen = $state(false);
 	let exampleOpen = $state(false);
+
+	// On a deck the learner has never answered in, the first question's worked example opens by
+	// itself, once. A signed-in device decides after its first sync, so answers from another device
+	// count; if the learner has started answering by then, it stays closed. After that only the link
+	// opens it.
+	$effect(() => {
+		let live = true;
+		void firstSync().then(() => {
+			if (live && lesson.pristine && opensExample(view)) exampleOpen = true;
+		});
+		return () => {
+			live = false;
+		};
+	});
 	let exampleLink: HTMLButtonElement | undefined = $state();
 	let heading: HTMLElement | undefined = $state();
 
