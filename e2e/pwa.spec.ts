@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, deck, firstWrongId } from './helpers';
+import { isChoiceQuestion } from '../src/lib/content/schema.ts';
+import { deck, firstWrongId } from './helpers';
+import { current, optionLabel, pick, playThrough, primary } from './learn-helpers';
+
+const DECK_URL = `/play/${deck.id}`;
 
 /** Waits until the service worker controls the page and has cached `path`. */
 async function waitForOfflineReady(page: Page, path: string) {
@@ -48,9 +52,10 @@ test.describe('installable and offline', () => {
 
 		// A lesson loads and records an answer with the network down.
 		await page.goto(DECK_URL);
-		const question = await currentQuestion(page);
-		await answerMain(page, question, firstWrongId(question));
-		await continuePastWrong(page);
+		const question = await current(page, deck.questions.filter(isChoiceQuestion));
+		await pick(page, optionLabel(question, firstWrongId(question)));
+		await primary(page).click();
+		await primary(page).click();
 		await page.getByText('Follow-up', { exact: true }).waitFor();
 		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
 		expect(saved).toBe(0); // The attempt is written when the follow-up finishes.
@@ -73,13 +78,7 @@ test.describe('installable and offline', () => {
 		await waitForOfflineReady(page, DECK_URL);
 		await context.setOffline(true);
 
-		await page.goto(DECK_URL);
-		for (let index = 0; index < deck.questions.length; index++) {
-			const question = await currentQuestion(page);
-			await answerMain(page, question, question.correct);
-			await continueButton(page).click();
-		}
-		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+		await playThrough(page, deck.id);
 		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
 		expect(saved).toBe(deck.questions.length);
 		await context.setOffline(false);

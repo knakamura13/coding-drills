@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import {
-	DECK_URL,
 	answerFollowUp,
 	answerMain,
 	continueButton,
@@ -13,26 +12,16 @@ import {
 	playDeck
 } from './helpers';
 import { plainText } from '../src/lib/markdown/render.ts';
+import { openOldLesson } from './seed';
+
+// The old lesson screen, which still runs review, weak spots, practice and exams. Deck lessons on
+// /play run the new screen (learn.spec.ts).
 
 const text = (markdown: string) => plainText(markdown, 1000);
 
 test.describe('the lesson loop', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto(DECK_URL);
-	});
-
-	test('starts from the decks page', async ({ page }) => {
-		await page.goto('/decks');
-		await expect(page.getByRole('heading', { name: 'Decks', level: 1 })).toBeVisible();
-		await page.locator(`a[href="/play/${deck.id}"]`).click();
-		await expect(page).toHaveURL(DECK_URL);
-		await expect(page.getByRole('progressbar', { name: 'Lesson progress' })).toHaveAttribute(
-			'aria-valuenow',
-			'0'
-		);
-		// Question order is shuffled, so read which question came up.
-		const first = await currentQuestion(page);
-		await expect(page.getByRole('heading', { level: 2 })).toHaveText(first.heading ?? deck.heading!);
+		await openOldLesson(page);
 	});
 
 	test('a correct answer explains itself inline and skips the follow-up', async ({ page }) => {
@@ -87,7 +76,7 @@ test.describe('the lesson loop', () => {
 		const question = await currentQuestion(page);
 		const prompts = new Set<string>();
 		for (const option of question.options.filter((candidate) => candidate.id !== question.correct)) {
-			await page.goto(DECK_URL);
+			await page.goto('/review');
 			// The shuffled order differs per load, so look up the same question again.
 			let current = await currentQuestion(page);
 			while (current.id !== question.id) {
@@ -150,13 +139,13 @@ test.describe('the lesson loop', () => {
 		await expect(page.getByRole('heading', { name: 'Missed' })).toBeVisible();
 		await expect(page.locator('.miss')).toHaveCount(2);
 
-		const attempts = await page.evaluate(() =>
-			JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]')
-		);
+		const attempts = (
+			await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]'))
+		).filter((attempt: { id: string }) => !attempt.id.startsWith('seed-'));
 		expect(attempts).toHaveLength(deck.questions.length);
 		expect(attempts.filter((attempt: { correct: boolean }) => !attempt.correct)).toHaveLength(2);
+		// Review can swap a due card for a variant from another deck (#41), so the deck is not checked.
 		for (const attempt of attempts) {
-			expect(attempt.deckId).toBe(deck.id);
 			expect(Boolean(attempt.followUp)).toBe(!attempt.correct);
 		}
 	});
@@ -173,7 +162,7 @@ test.describe('the lesson loop', () => {
 
 test.describe('flagging', () => {
 	test('saves a flag, links it to a GitHub issue on the summary, and lists it on /flags', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, question.correct);
 		await page.getByRole('button', { name: 'Flag this question' }).click();
@@ -205,7 +194,7 @@ test.describe('flagging', () => {
 	});
 
 	test('a follow-up can be flagged separately and the home screen counts flags', async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		const wrongId = firstWrongId(question);
 		await answerMain(page, question, wrongId);
@@ -224,7 +213,7 @@ test.describe('flagging', () => {
 
 test.describe('leaving and keyboard use', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 	});
 
 	test('closing before answering leaves without a prompt', async ({ page }) => {
@@ -242,7 +231,7 @@ test.describe('leaving and keyboard use', () => {
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: 'Keep going' }).click();
 		await expect(dialog).toBeHidden();
-		await expect(page).toHaveURL(DECK_URL);
+		await expect(page).toHaveURL('/review');
 
 		await page.getByRole('button', { name: 'Quit lesson' }).click();
 		await dialog.getByRole('button', { name: 'End session' }).click();
@@ -266,12 +255,5 @@ test.describe('leaving and keyboard use', () => {
 		await expect(check).toBeDisabled();
 		await page.getByRole('radio').first().check();
 		await expect(check).toBeEnabled();
-	});
-
-	test('an unknown deck shows the not-found page', async ({ page }) => {
-		await page.goto('/play/does-not-exist');
-		await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
-		await page.getByRole('link', { name: 'Home' }).click();
-		await expect(page).toHaveURL('/');
 	});
 });

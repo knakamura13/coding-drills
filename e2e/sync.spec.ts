@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { createAccount, serverState, signIn } from './account';
-import { DECK_URL, answerMain, continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
+import { answerMain, continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
+import { playThrough } from './learn-helpers';
+import { openOldLesson } from './seed';
 
 const TWO_DAYS_MS = 2 * 86_400_000;
 
@@ -17,9 +19,7 @@ test.describe('accounts and sync', () => {
 		await expect(page.getByText('Progress is on this device only.')).toBeVisible();
 		await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', '/api/auth/google');
 
-		await page.goto(DECK_URL);
-		await playDeck(page, () => ({ main: 'right' }));
-		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+		await playThrough(page, deck.id);
 	});
 
 	test('a client ID that is not a Google client ID is reported instead of failing at Google', async ({ page }) => {
@@ -36,11 +36,7 @@ test.describe('accounts and sync', () => {
 		await signIn(page.context(), account, baseURL!);
 
 		// Device A: answer every question, missing the first one.
-		await page.goto(DECK_URL);
-		await playDeck(page, (question, index) =>
-			index === 0 ? { main: firstWrongId(question), followUpRight: true } : { main: 'right' }
-		);
-		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+		await playThrough(page, deck.id, (index) => index === 0);
 
 		// The page syncs in the background shortly after each answer.
 		await expect
@@ -70,7 +66,8 @@ test.describe('accounts and sync', () => {
 	test('a flag made on one device appears on the other', async ({ browser, page, request, baseURL }) => {
 		const account = await createAccount(request);
 		await signIn(page.context(), account, baseURL!);
-		await page.goto(DECK_URL);
+		// Flagging is on the old lesson screen only, which review still runs.
+		await openOldLesson(page);
 		const question = await currentQuestion(page);
 		await answerMain(page, question, firstWrongId(question));
 		await page.getByRole('button', { name: 'Flag this question' }).click();

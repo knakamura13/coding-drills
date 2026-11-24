@@ -1,7 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { plainText } from '../src/lib/markdown/render.ts';
-import { DECK_URL, answerMain, continueButton, continuePastWrong, currentQuestion, firstWrongId, openMenu, optionOf } from './helpers';
+import { isChoiceQuestion } from '../src/lib/content/schema.ts';
+import { continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, optionOf } from './helpers';
+import { current, optionLabel, panel, pick, primary, violations } from './learn-helpers';
+import { openOldLesson } from './seed';
+
+const DECK_URL = `/play/${deck.id}`;
+const choices = deck.questions.filter(isChoiceQuestion);
 
 async function expectNoViolations(page: Page) {
 	await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
@@ -78,18 +84,20 @@ test.describe('settings', () => {
 		});
 
 		await page.goto(DECK_URL);
-		const first = await currentQuestion(page);
-		await answerMain(page, first, first.correct);
+		const first = await current(page, choices);
+		await pick(page, optionLabel(first, first.correct));
+		await primary(page).click();
 		await expect.poll(() => page.evaluate(() => (window as Window & { __tones: number }).__tones)).toBe(0);
 		await expect.poll(() => page.evaluate(() => (window as Window & { __vibrations: number }).__vibrations)).toBe(0);
-		await continueButton(page).click();
+		await primary(page).click();
 
 		await page.goto('/settings');
 		await page.getByRole('switch', { name: 'Sound effects' }).click();
 		await page.getByRole('switch', { name: 'Haptics' }).click();
 		await page.goto(DECK_URL);
-		const second = await currentQuestion(page);
-		await answerMain(page, second, second.correct);
+		const second = await current(page, choices);
+		await pick(page, optionLabel(second, second.correct));
+		await primary(page).click();
 		await expect.poll(() => page.evaluate(() => (window as Window & { __tones: number }).__tones)).toBeGreaterThan(0);
 		await expect
 			.poll(() => page.evaluate(() => (window as Window & { __vibrations: number }).__vibrations))
@@ -103,7 +111,7 @@ test.describe('settings', () => {
 				JSON.stringify({ sound: false, haptics: false, immediateFeedback: true, theme: 'dark' })
 			);
 		});
-		await page.goto(DECK_URL);
+		await openOldLesson(page);
 		await expect(page.getByRole('button', { name: 'Check', exact: true })).toHaveCount(0);
 		const question = await currentQuestion(page);
 		const wrong = plainText(optionOf(question, firstWrongId(question)).text, 1000);
@@ -143,10 +151,11 @@ test.describe('settings', () => {
 			await expectNoViolations(page);
 
 			await page.goto(DECK_URL);
-			const question = await currentQuestion(page);
-			await answerMain(page, question, firstWrongId(question));
-			await expect(page.getByRole('heading', { name: 'Not quite.' })).toBeVisible();
-			await expectNoViolations(page);
+			const question = await current(page, choices);
+			await pick(page, optionLabel(question, firstWrongId(question)));
+			await primary(page).click();
+			await expect(panel(page)).toHaveAccessibleName('Not quite');
+			expect(await violations(page)).toEqual([]);
 		});
 	}
 });

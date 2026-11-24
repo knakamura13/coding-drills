@@ -41,7 +41,7 @@ test('once an answer is saved it stays closed: on the next question and on the n
 });
 
 test('a deck without worked examples opens nothing', async ({ page }) => {
-	await page.goto(`/learn/${cellsDeck.id}`);
+	await page.goto(`/play/${cellsDeck.id}`);
 	await expect(page.getByRole('radio').first()).toBeVisible();
 	await expect(sheet(page)).toBeHidden();
 });

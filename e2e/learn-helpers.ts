@@ -16,13 +16,13 @@ import {
 import { plainText } from '../src/lib/markdown/render.ts';
 import { seed } from './seed.ts';
 
-// Helpers for driving the new lesson screen on /learn/<deck>, shared by its specs.
+// Helpers for driving the new lesson screen on /play/<deck>, shared by its specs.
 
 export const decks = loadDecks('content/decks');
 export const deck = decks.find((candidate) => candidate.id === 'boundary-search')!;
 export const questions = deck.questions.filter(isChoiceQuestion);
 export const shown = deck.questions;
-export const URL = `/learn/${deck.id}`;
+export const URL = `/play/${deck.id}`;
 export const cellsDeck = decks.find((candidate) => candidate.id === 'tap-the-cell')!;
 export const cellQuestions = cellsDeck.questions.filter(isTapCellQuestion);
 
@@ -221,11 +221,29 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 /** Opens a deck and answers right until the given question is on screen. */
 export async function reach(page: Page, deckId: string, questionId: string): Promise<Question> {
 	const pool = decks.find((candidate) => candidate.id === deckId)!.questions;
-	await page.goto(`/learn/${deckId}`);
+	await page.goto(`/play/${deckId}`);
 	for (let step = 0; step < pool.length; step++) {
 		const question = await onScreen(page, pool);
 		if (question.id === questionId) return question;
 		await answerRight(page, question);
 	}
 	throw new Error(`${questionId} never came up in ${deckId}`);
+}
+
+/** The summary's heading, the first-time score. */
+export const summaryHeading = (page: Page) => page.getByRole('heading', { name: /right the first time$/ });
+
+/**
+ * Opens a deck and answers every question: right, or wrong where `miss(index)` says so, with the
+ * follow-up answered as `followUpRight` says. Ends on the summary.
+ */
+export async function playThrough(page: Page, deckId: string, miss: (index: number) => boolean = () => false, followUpRight = true) {
+	const pool = decks.find((candidate) => candidate.id === deckId)!.questions;
+	await page.goto(`/play/${deckId}`);
+	for (let index = 0; index < pool.length; index++) {
+		const question = await onScreen(page, pool);
+		if (miss(index)) await answerWrong(page, question, followUpRight);
+		else await answerRight(page, question);
+	}
+	await expect(summaryHeading(page)).toBeVisible();
 }

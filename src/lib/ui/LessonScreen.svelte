@@ -16,7 +16,9 @@
 	import type { LessonTrail } from '$lib/domain/trail';
 	import { createLessonController, type LessonSource } from '$lib/lesson/controller.svelte';
 	import { plainText } from '$lib/markdown/render';
+	import { playAnswerSound, vibrateAnswer } from '$lib/preferences/feedback';
 	import { preferences } from '$lib/preferences/store.svelte';
+	import { shortcuts } from '$lib/settings/shortcuts.svelte';
 	import { firstSync } from '$lib/sync/store.svelte';
 	import AnswerTiles from './AnswerTiles.svelte';
 	import Button from './Button.svelte';
@@ -130,6 +132,35 @@
 		if (!first) void tick().then(() => (sameQuestion ? stepAsk : heading)?.focus());
 	});
 
+	// Sound and haptics, as the settings ask, once per checked answer, whichever way it was answered.
+	let heard = '';
+	$effect(() => {
+		const verdict = view?.verdict;
+		if (!verdict) return;
+		const token = `${lesson.stepKey}:${verdict.correct}`;
+		if (heard === token) return;
+		heard = token;
+		if (preferences.sound) playAnswerSound(verdict.correct);
+		if (preferences.haptics) vibrateAnswer(verdict.correct);
+	});
+
+	// A number key picks that answer tile, and Enter checks the pick. Number keys are single-character
+	// shortcuts, so settings can switch them off (WCAG 2.1.4). After Check, focus is on Continue.
+	function onkeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+		if (!view || view.verdict || quitOpen || exampleOpen) return;
+		const target = event.target instanceof HTMLElement ? event.target : null;
+		if (shortcuts.enabled && /^[1-9]$/.test(event.key)) {
+			const option = view.options[Number(event.key) - 1];
+			if (!option) return;
+			event.preventDefault();
+			lesson.select(option.id, atOnce);
+		} else if (event.key === 'Enter' && !atOnce && view.canCheck && !target?.closest('button, a')) {
+			event.preventDefault();
+			lesson.check();
+		}
+	}
+
 	function leave() {
 		void goto(resolve('/'));
 	}
@@ -140,6 +171,8 @@
 	}
 
 </script>
+
+<svelte:window {onkeydown} />
 
 <div class="new-ui" data-new-ui>
 <div class="lesson">

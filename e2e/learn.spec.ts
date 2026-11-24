@@ -25,10 +25,11 @@ import {
 	seenEveryDeck,
 	shown,
 	stepCount,
+	tiles,
 	violations
 } from './learn-helpers.ts';
 
-// The new lesson screen on /learn/<deck>: every question format on the FigCraft design.
+// The new lesson screen on /play/<deck>: every question format on the FigCraft design.
 
 test.beforeEach(async ({ page }) => {
 	// The worked example's own first-visit opening is covered in learn-auto-example.spec.ts.
@@ -119,6 +120,23 @@ test('quitting before any answer leaves at once; after one it asks first', async
 	await page.getByRole('button', { name: 'Quit lesson' }).click();
 	await sheet.getByRole('button', { name: 'Quit' }).click();
 	await expect(page).toHaveURL(/\/$/);
+});
+
+test('a number key picks that answer and Enter checks it', async ({ page }) => {
+	const question = await firstChoice(page);
+	const labels = (await tiles(page).allInnerTexts()).map((label) => label.trim());
+	await page.keyboard.press(String(labels.indexOf(optionLabel(question, question.correct)) + 1));
+	await expect(page.getByRole('radio', { checked: true })).toHaveCount(1);
+	await page.keyboard.press('Enter');
+	await expect(panel(page)).toHaveAccessibleName('Correct');
+	await expect(primary(page)).toBeFocused();
+});
+
+test('an unknown deck shows the not-found page', async ({ page }) => {
+	await page.goto('/play/does-not-exist');
+	await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
+	await page.getByRole('link', { name: 'Home' }).click();
+	await expect(page).toHaveURL('/');
 });
 
 test.describe('the summary', () => {
@@ -340,7 +358,7 @@ test('a deck without headings still gives each question a heading to land on', a
 	);
 	test.skip(!headingless, 'every deck has a heading');
 	const own = headingless!.questions;
-	await page.goto(`/learn/${headingless!.id}`);
+	await page.goto(`/play/${headingless!.id}`);
 	const h1 = page.getByRole('heading', { level: 1 });
 	await expect(h1).toHaveText(`Question 1 of ${own.length}`);
 	await page.getByRole('radio').first().check();
@@ -370,7 +388,7 @@ test('the feedback panel rises in 150 ms, and only fades with reduced motion', a
 test('a long code pick wraps in the recap instead of widening the card', async ({ page }) => {
 	const heaps = decks.find((candidate) => candidate.id === 'bounded-heaps-checkpoint')!;
 	const pool = heaps.questions;
-	await page.goto(`/learn/${heaps.id}`);
+	await page.goto(`/play/${heaps.id}`);
 	// Right answers skip their follow-ups, so answer right until the question with the long pick.
 	for (let step = 0; step < pool.length; step++) {
 		const question = await onScreen(page, pool);
@@ -427,7 +445,7 @@ test.describe('the worked example', () => {
 
 	test('a question without one shows no link', async ({ page }) => {
 		expect(cellQuestions.every((question) => !question.workedExample)).toBe(true);
-		await page.goto(`/learn/${cellsDeck.id}`);
+		await page.goto(`/play/${cellsDeck.id}`);
 		await expect(page.getByRole('radio').first()).toBeVisible();
 		await expect(page.getByText('Need help?')).toHaveCount(0);
 		await expect(exampleLink(page)).toHaveCount(0);
@@ -438,7 +456,7 @@ test.describe('the worked example', () => {
 		const pool = state.questions;
 		const target = pool.find((question) => question.workedExample?.includes('```'))!;
 		const lines = target.workedExample!.split('```python\n')[1]!.split('\n```')[0]!.split('\n');
-		await page.goto(`/learn/${state.id}`);
+		await page.goto(`/play/${state.id}`);
 		for (let step = 0; step < pool.length; step++) {
 			const question = await onScreen(page, pool);
 			if (question.id === target.id) break;
@@ -455,7 +473,7 @@ test.describe('the worked example', () => {
 
 test.describe('tap the cell', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto(`/learn/${cellsDeck.id}`);
+		await page.goto(`/play/${cellsDeck.id}`);
 	});
 
 	test('a tap picks a cell, Check answers, and the right cell takes the result', async ({ page }) => {
@@ -516,7 +534,7 @@ test.describe('tap the cell', () => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		const wide = decks.find((candidate) => candidate.id === 'dp-storage-review')!;
 		const pool = wide.questions;
-		await page.goto(`/learn/${wide.id}`);
+		await page.goto(`/play/${wide.id}`);
 		for (let step = 0; step < pool.length; step++) {
 			const question = await onScreen(page, pool);
 			if (question.id === 'storage-review-tap-oldest') break;
@@ -539,7 +557,7 @@ test.describe('with Immediate feedback on', () => {
 	});
 
 	test('cells are buttons: arrow keys move focus without answering, and Enter answers', async ({ page }) => {
-		await page.goto(`/learn/${cellsDeck.id}`);
+		await page.goto(`/play/${cellsDeck.id}`);
 		const question = (await onScreen(page, cellQuestions)) as TapCellQuestion;
 		await expect(page.getByRole('radio')).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Check' })).toHaveCount(0);

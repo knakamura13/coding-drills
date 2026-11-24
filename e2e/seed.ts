@@ -48,3 +48,12 @@ export function failedHistory(daysAgo: number) {
 		followUp: { pickedId: 'x', correct: false }
 	}));
 }
+
+/**
+ * The old lesson screen still runs review, weak spots, practice and exams. With every question of
+ * the deck due, /review plays the whole deck on it.
+ */
+export async function openOldLesson(page: Page) {
+	await seed(page, history(3));
+	await page.goto('/review');
+}

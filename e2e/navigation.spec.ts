@@ -1,7 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { DECK_URL, allDecks, currentQuestion, deck, openMenu } from './helpers';
+import { isChoiceQuestion } from '../src/lib/content/schema.ts';
+import { allDecks, deck, openMenu } from './helpers';
+import { current } from './learn-helpers';
 import { failedHistory, history, seed } from './seed';
+
+const DECK_URL = `/play/${deck.id}`;
+const choices = deck.questions.filter(isChoiceQuestion);
 
 async function expectNoViolations(page: Page) {
 	await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
@@ -67,8 +72,8 @@ test.describe('decks', () => {
 		await expect(page.getByRole('heading', { name: 'Decks', level: 1 })).toBeVisible();
 		await page.locator(`a[href="/play/${deck.id}"]`).click();
 		await expect(page).toHaveURL(DECK_URL);
-		const first = await currentQuestion(page);
-		await expect(page.getByRole('heading', { level: 2 })).toHaveText(first.heading ?? deck.heading!);
+		const first = await current(page, choices);
+		await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.heading ?? deck.heading!);
 	});
 
 	test('filters by words in the title or description, and "/" moves to the filter', async ({ page }) => {
@@ -103,7 +108,7 @@ test.describe('single-key shortcuts', () => {
 		await page.getByRole('switch', { name: 'Single-key shortcuts' }).uncheck();
 
 		await page.goto(DECK_URL);
-		await currentQuestion(page);
+		await current(page, choices);
 		await page.keyboard.press('1');
 		await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
 
@@ -111,21 +116,20 @@ test.describe('single-key shortcuts', () => {
 		await page.goto('/settings');
 		await page.getByRole('switch', { name: 'Single-key shortcuts' }).check();
 		await page.goto(DECK_URL);
-		await currentQuestion(page);
+		await current(page, choices);
 		await page.keyboard.press('1');
 		await expect(page.getByRole('radio', { checked: true })).toHaveCount(1);
 	});
 });
 
 test.describe('lesson pages', () => {
-	test('practice and a deck name the page and its goal', async ({ page }) => {
+	test('practice names the page and its goal, and a deck lesson its deck', async ({ page }) => {
 		await page.goto('/practice');
 		await expect(page.getByRole('heading', { name: 'Mixed practice', level: 1, exact: true })).toBeVisible();
 		await expect(page.getByText('Random questions from every deck. Nothing needs to be due.')).toBeVisible();
 
 		await page.goto(DECK_URL);
-		await expect(page.getByRole('heading', { name: deck.title, level: 1, exact: true })).toBeVisible();
-		await expect(page.getByText(deck.description)).toBeVisible();
+		await expect(page.getByRole('banner').getByText(deck.title)).toBeVisible();
 	});
 });
 
