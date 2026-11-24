@@ -8,9 +8,14 @@ questions:
     heading: Which end moves?
     tags: [two-pointers]
     workedExample: |-
-      `nums = [2, 3, 6, 8]` is sorted and the target is 11. With `l = 0` and
-      `r = 3` the sum is `2 + 8 = 10`, too small. The 2 can't reach 11 with any partner up to
-      `r`, since 8 is the largest. So the 2 is done, and `l` moves right.
+      Consider the sorted list `nums = [2, 3, 6, 8]` with target `11`, `l = 0` and `r = 3`. In a
+      sorted list, `nums[r]` is the largest value from `l` to `r`.
+
+      1. The sum is `nums[0] + nums[3] = 2 + 8 = 10`, which is below 11.
+      2. Since 8 is the largest value the 2 can pair with, every sum that uses the 2 is at most 10,
+         which is still below 11.
+      3. So the 2 can be in no answer pair, and the scan drops it: `l` moves right to 1. Nothing has
+         ruled out the 8 yet, so `r` stays at 3.
     prompt: |-
       Now `nums = [1, 4, 6, 7, 11]` and the target is 10. With `l = 0` and `r = 4` the sum is
       `1 + 11 = 12`, too large. What is the next move?
@@ -85,9 +90,14 @@ questions:
     heading: Which pairs were skipped safely?
     tags: [two-pointers]
     workedExample: |-
-      In `[1, 4, 6, 9]` with target 7, the first sum is `1 + 9 = 10`. Since 1
-      is the smallest value, 9 overshoots with every partner, and `r` moves left without checking
-      `4 + 9` or `6 + 9`.
+      Consider the sorted list `nums = [1, 4, 6, 9]` with target `7`, `l = 0` and `r = 3`. In a
+      sorted list, `nums[l]` is the smallest value from `l` to `r`.
+
+      1. The first sum is `1 + 9 = 10`, which is above 7.
+      2. Since 1 is the smallest partner the 9 has, every other partner gives a larger sum:
+         `4 + 9 = 13` and `6 + 9 = 15` are even further above 7.
+      3. So no pair that uses the 9 can hit 7, and `r` moves left to 2. That step skips `4 + 9` and
+         `6 + 9` without checking them, and skipping them is safe.
     prompt: |-
       Now `nums = [3, 5, 6, 10]`, the target is 12, `l = 0` and `r = 3`. The sum `3 + 10 = 13`
       is too large, so `r` moves to 2. Which pairs did that step skip without checking them?
@@ -143,8 +153,13 @@ questions:
     heading: Which condition works?
     tags: [two-pointers]
     workedExample: |-
-      With `while l <= r`, `has_pair([2, 5, 9], 10)` reaches `l = r = 1` and
-      adds `5 + 5`. It returns `True` though the list holds only one 5.
+      Consider `has_pair([2, 5, 9], 10)` written with `while l <= r`. The list holds one 5, so no
+      two different items add up to 10.
+
+      1. With `l = 0` and `r = 2`, `2 + 9 = 11` is above 10, so `r` moves to 1.
+      2. With `l = 0` and `r = 1`, `2 + 5 = 7` is below 10, so `l` moves to 1.
+      3. Now `l = r = 1`, and `1 <= 1` holds, so the loop runs again. It adds
+         `nums[1] + nums[1] = 5 + 5 = 10` and returns `True`, using the one 5 twice.
     prompt: |-
       ```python
       def has_pair(nums, target):
@@ -229,8 +244,14 @@ questions:
     heading: What does it return?
     tags: [two-pointers]
     workedExample: |-
-      `pair_indices([1, 3, 3, 6], 6)` returns `(1, 2)`. The two 3s are
-      different items, at indices 1 and 2.
+      Consider `pair_indices([1, 2, 4, 4, 9], 8)`. Two equal values at different indices are two
+      separate items, so they can form a pair.
+
+      1. With `l = 0` and `r = 4`, `1 + 9 = 10` is above 8, so `r` moves to 3.
+      2. With `r = 3`, `1 + 4 = 5` is below 8, so `l` moves to 1. Then `2 + 4 = 6` is still below 8,
+         so `l` moves to 2.
+      3. Now `l = 2` and `r = 3`, so `l < r` holds, and `4 + 4 = 8` matches. The two 4s sit at
+         different indices, so the call returns `(2, 3)`.
     prompt: |-
       ```python
       def pair_indices(nums, target):
@@ -312,9 +333,16 @@ questions:
     heading: Where does the left index stop?
     tags: [two-pointers]
     workedExample: |-
-      To list each pair of values once, stepping `l` by one after a match can
-      land on another copy of the same value. On `[1, 1, 5, 5]` with target 6 that records
-      `(1, 5)` twice.
+      Consider `nums = [1, 1, 5, 5]` with target `6`, where each pair of values should be listed
+      once. Suppose that after a match `l` and `r` each step by one, with no skipping.
+
+      1. With `l = 0` and `r = 3`, `1 + 5 = 6` matches, so `(1, 5)` is recorded. Then `l` moves to 1
+         and `r` moves to 2.
+      2. `nums[1]` is another 1 and `nums[2]` is another 5. So `1 + 5 = 6` matches again, and
+         `(1, 5)` is recorded a second time.
+      3. The repeat came from landing on a copy of the value just used. So after the first match,
+         `l` should step past every copy of 1: from index 0 it moves on to index 2, the first index
+         whose value is not 1.
     prompt: |-
       So after a match, `l` steps over its whole run:
 
@@ -392,11 +420,14 @@ questions:
     heading: What does this step write?
     tags: [two-pointers]
     workedExample: |-
-      The loop below keeps every non-zero value and packs them at the front.
-      `read` visits each slot, and `write` is the next slot to fill.
+      Consider `nums = [3, 0, 8]` in the loop below. `read` visits every slot in turn, and `write`
+      is the next slot to fill, so it starts at 0.
 
-      On `[3, 0, 8]`, read 0 writes 3 into slot 0, read 1 skips the 0, and read 2 writes 8 into
-      slot 1. The list ends as `[3, 8, 8]`.
+      1. At `read = 0`, `nums[0] = 3` is not 0, so it is copied into slot `write = 0`, and `write`
+         becomes 1.
+      2. At `read = 1`, `nums[1]` is 0, so nothing is written and `write` stays 1.
+      3. At `read = 2`, `nums[2] = 8` is not 0, so it is copied into slot `write = 1`, not slot 2,
+         and `write` becomes 2. The list ends as `[3, 8, 8]`.
     prompt: |-
       ```python
       write = 0
@@ -473,9 +504,16 @@ questions:
     heading: What does it give?
     tags: [two-pointers]
     workedExample: |-
-      `dedupe` keeps one copy of each value in a sorted list. On
-      `[2, 5, 5]`, read 0 is written because nothing is kept yet. Read 1 is written because 5
-      differs from the last kept value, 2. Read 2 is skipped. It returns 2.
+      Consider `dedupe([2, 2, 5, 8])`. A value is kept when nothing is kept yet (`write == 0`) or
+      when it differs from the last kept value, `nums[write - 1]`.
+
+      1. At `read = 0`, `write == 0` is true, so the first 2 goes into slot 0, and `write` becomes
+         1.
+      2. At `read = 1`, `nums[1] = 2` equals the last kept value, `nums[0] = 2`, so it is skipped.
+      3. At `read = 2`, 5 differs from 2, so it goes into slot 1. At `read = 3`, 8 differs from 5,
+         so it goes into slot 2, and `write` becomes 3.
+      4. So the call returns 3, and `nums` is `[2, 5, 8, 8]`. Slot 3 was never written, so it keeps
+         its old 8.
     prompt: |-
       ```python
       def dedupe(nums):
