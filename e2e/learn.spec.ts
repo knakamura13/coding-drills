@@ -397,6 +397,68 @@ test('a long code pick wraps in the recap instead of widening the card', async (
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test.describe('the worked example', () => {
+	const exampleLink = (page: Page) => page.getByRole('button', { name: 'Walk through a worked example' });
+	const sheet = (page: Page) => page.getByRole('dialog', { name: 'Worked example' });
+
+	test('the link under the prompt opens it, and Close and Escape return focus to the link', async ({ page }) => {
+		// Every boundary-search question has a worked example.
+		const question = await onScreen(page);
+		await expect(page.getByRole('main').getByText('Need help?')).toBeVisible();
+		await exampleLink(page).click();
+		await expect(sheet(page)).toBeVisible();
+		await expect(sheet(page)).toContainText(plainText(question.workedExample!, 1000));
+		expect(await violations(page)).toEqual([]);
+		await sheet(page).getByRole('button', { name: 'Close' }).click();
+		await expect(sheet(page)).toBeHidden();
+		await expect(exampleLink(page)).toBeFocused();
+
+		await page.keyboard.press('Enter');
+		await expect(sheet(page)).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(sheet(page)).toBeHidden();
+		await expect(exampleLink(page)).toBeFocused();
+	});
+
+	test('the follow-up has no link: its prompt is folded into the recap', async ({ page }) => {
+		const question = await firstChoice(page);
+		await expect(exampleLink(page)).toBeVisible();
+		const wrong = question.options.find((option) => option.id !== question.correct)!;
+		await pick(page, plainText(wrong.text, 1000));
+		await primary(page).click();
+		await primary(page).click();
+		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
+		await expect(exampleLink(page)).toHaveCount(0);
+	});
+
+	test('a question without one shows no link', async ({ page }) => {
+		expect(cellQuestions.every((question) => !question.workedExample)).toBe(true);
+		await page.goto(`/learn/${cellsDeck.id}`);
+		await expect(page.getByRole('radio').first()).toBeVisible();
+		await expect(page.getByText('Need help?')).toHaveCount(0);
+		await expect(exampleLink(page)).toHaveCount(0);
+	});
+
+	test('code in an example keeps every line and its spacing', async ({ page }) => {
+		const state = decks.find((candidate) => candidate.id === 'search-state')!;
+		const pool = state.questions.filter(runs);
+		const target = pool.find((question) => question.workedExample?.includes('```'))!;
+		const lines = target.workedExample!.split('```python\n')[1]!.split('\n```')[0]!.split('\n');
+		await page.goto(`/learn/${state.id}`);
+		for (let step = 0; step < pool.length; step++) {
+			const question = await onScreen(page, pool);
+			if (question.id === target.id) break;
+			await answerRight(page, question);
+		}
+		await exampleLink(page).click();
+		const code = sheet(page).getByLabel('Code');
+		await expect(code).toBeVisible();
+		// innerText follows the CSS, so a collapsed run of spaces would fail here.
+		expect(await code.locator('.line .text').allInnerTexts()).toEqual(lines);
+		expect(await violations(page)).toEqual([]);
+	});
+});
+
 test.describe('tap the cell', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto(`/learn/${cellsDeck.id}`);

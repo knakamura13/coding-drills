@@ -105,13 +105,20 @@ export async function placePointer(page: Page, pointer: string, index: number) {
 	await expect(tab).toHaveAccessibleName(new RegExp(`at index ${index}\\b`));
 }
 
+/** Continue past an answered question, and wait for its card to leave, so the next read sees the next question. */
+export async function next(page: Page) {
+	const card = await page.locator('.content:not([data-leaving])').elementHandle();
+	await primary(page).click();
+	await card?.waitForElementState('hidden');
+}
+
 /** Answers right with Check, then Continues. A right answer never opens a follow-up. */
 export async function answerRight(page: Page, question: Question) {
 	if (isDragPointersQuestion(question)) for (const pointer of question.pointers) await placePointer(page, pointer.name, pointer.correct);
 	else if (isTapCellQuestion(question)) await cell(page, question.correct).check();
 	else if (isChoiceQuestion(question)) await pick(page, optionLabel(question, question.correct));
 	await primary(page).click();
-	await primary(page).click();
+	await next(page);
 }
 
 export const optionLabel = (question: ChoiceQuestion, id: string) => plainText(question.options.find((o) => o.id === id)!.text, 1000);
@@ -131,13 +138,13 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 		const last = question.sequence.cells.length + (question.sequence.pastEnd ? 1 : 0) - 1;
 		await placePointer(page, first!.name, first!.correct === 0 ? 1 : Math.min(last, first!.correct - 1));
 		await primary(page).click();
-		await primary(page).click();
+		await next(page);
 		return;
 	}
 	if (isTapCellQuestion(question)) {
 		await cell(page, question.misses[0]!.index).check();
 		await primary(page).click();
-		await primary(page).click();
+		await next(page);
 		return;
 	}
 	if (!isChoiceQuestion(question)) return;
@@ -149,7 +156,7 @@ export async function answerWrong(page: Page, question: Question, followUpRight 
 	const target = followUp.options.find((option) => (option.id === followUp.correct) === followUpRight)!;
 	await pick(page, plainText(target.text, 1000));
 	await primary(page).click();
-	await primary(page).click();
+	await next(page);
 }
 
 /** Opens a deck and answers right until the given question is on screen. */
