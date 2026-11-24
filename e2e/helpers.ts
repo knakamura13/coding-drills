@@ -91,7 +91,10 @@ export async function currentQuestionAny(page: Page): Promise<{ question: Questi
 	if (candidates.length === 0) throw new Error(`no question has these options: ${shown.join(' | ')}`);
 	if (candidates.length === 1) return candidates[0];
 	const page_text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
-	const match = candidates.find(({ question }) => page_text.includes(markdownParts(question.prompt)[0].replace(/\s+/g, ' ').slice(0, 40)));
+	// Code blocks sit between a prompt's prose parts on the page, so each part is matched on its own.
+	const match = candidates.find(({ question }) =>
+		markdownParts(question.prompt ?? '').every((part) => page_text.includes(part.replace(/\s+/g, ' ').slice(0, 40)))
+	);
 	return match ?? candidates[0];
 }
 
