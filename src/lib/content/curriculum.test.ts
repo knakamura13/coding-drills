@@ -16,15 +16,15 @@ const PATH_TITLES = [
 	'Bit manipulation',
 	'Exact search',
 	'Boundary search',
-	'Feasible limits',
-	'Hash lookups',
-	'Prefix counts',
+	'Pointer scans',
 	'Sort order',
 	'Interval merging',
 	'Event sweeps',
-	'Pointer scans',
+	'Hash lookups',
+	'Prefix counts',
 	'Variable windows',
 	'Window limits',
+	'Feasible limits',
 	'Stack matching',
 	'Monotonic stack',
 	'Priority order',
@@ -55,7 +55,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 3, rewrite: 7, exam: 11, retire: 3 },
+	'sequences-and-search': { keep: 3, rewrite: 6, exam: 9, retire: 6 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -197,9 +197,9 @@ describe('shipped curriculum', () => {
 
 	it('records the follow-up exceptions and no others', () => {
 		expect(curriculum.followUps.map((item) => `${item.questionId}/${item.optionId} ${item.disposition} ${item.pathId}`)).toEqual([
-			'sorted-array-search-loop/lt-inclusive rewrite exact-search',
-			'sorted-array-search-loop/lo-equals-mid exam exact-search',
-			'binary-search-preconditions/linked-list-ok rewrite operation-costs',
+			'sorted-array-search-loop/lt-inclusive retire exact-search',
+			'sorted-array-search-loop/lo-equals-mid retire exact-search',
+			'binary-search-preconditions/linked-list-ok retire operation-costs',
 			'binary-search-preconditions/python-overflow retire exact-search',
 			'subarray-sum-k/sort-sweep rewrite method-selection',
 			'heapq-min-heap/plain-pops keep priority-order',
