@@ -37,7 +37,7 @@
 </script>
 
 <svelte:head>
-	<title>UI pieces · Coding Drills</title>
+	<title>UI pieces · Facet Learning</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
