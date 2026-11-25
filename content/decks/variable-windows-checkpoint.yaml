@@ -277,99 +277,95 @@ questions:
           passes, so it grows with `k`. A dictionary whose size depends on the input is not O(1)
           extra space.
 
-  - id: checkpoint-repair-shrink
+  - id: checkpoint-repair-zero-jump
     heading: Which change fixes it?
     tags: [sliding-window, python]
     prompt: |-
-      This function counts the subarrays of `nums` that hold at most `k` zeros. It shrinks the
-      window with `if`.
+      This function counts the subarrays of `nums` that hold at most `k` zeros. Instead of
+      counting zeros, it keeps the indices of the window's 0s in `zero_at`, oldest first, and
+      moves `left` straight to its new place.
 
       ```python
       def count_few_zeros(nums, k):
-          zeros = left = total = 0
+          zero_at = []
+          left = total = 0
           for right, x in enumerate(nums):
               if x == 0:
-                  zeros += 1
-              if zeros > k:
-                  if nums[left] == 0:
-                      zeros -= 1
-                  left += 1
+                  zero_at.append(right)
+              if len(zero_at) > k:
+                  left = zero_at.pop(0)
               total += right - left + 1
           return total
       ```
 
-      For `[1, 1, 1, 0, 1, 0]` and `k = 1` it returns 20, but the true count is 17. Which change
-      makes it correct for every input?
+      For `[1, 1, 0, 1, 0, 1, 0]` and `k = 1` it returns 20, but the true count is 17. Which
+      change makes it correct for every input?
     options:
-      - id: while-gt
-        text: Replace the `if` with `while zeros > k`
+      - id: past-oldest
+        text: Change the jump to `left = zero_at.pop(0) + 1`
         explanation: >-
-          Removing the value at `left` lowers `zeros` only when that value is a 0. When the second
-          0 arrives, the three 1s and the first 0 all have to leave, four removals. A `while` keeps
-          removing until the window is valid, so every counted window is valid and the total is
-          17.
-      - id: while-ge
-        text: Replace the `if` with `while zeros >= k`
+          The oldest 0 has to leave, so `left` lands one past it. The current line lands on that
+          0 and counts windows that still hold `k + 1` zeros. With the `+ 1`, `left` is 0, 0, 0,
+          0, 3, 3 and 5 after each pass, so the passes add 1, 2, 3, 4, 2, 3 and 2, which is 17.
+      - id: while-loop
+        text: Replace the `if` with `while len(zero_at) > k`
         explanation: >-
-          A window with exactly `k` zeros is valid, but `>= k` shrinks it anyway and loses valid
-          subarrays. Here it returns 7, the count of subarrays with no 0 at all. The limit is "at
-          most `k`", so the test is `> k`.
-      - id: two-ifs
-        text: Repeat the `if` block once more, right after the first one
+          Each pass adds at most one 0, so `zero_at` never holds more than `k + 1` indices, and one
+          pop brings it back to `k`. A `while` runs its body once, just as the `if` does, and
+          still leaves `left` on the 0 that should leave. The call still returns 20.
+      - id: pop-newest
+        text: Change the jump to `left = zero_at.pop() + 1`
         explanation: >-
-          Two removals are enough only when at most two values need to leave. Here four must
-          leave, so the window still holds two 0s after two removals, and the function returns
-          19. How many removals a pass needs depends on the data, so it needs a loop.
-      - id: count-valid-only
-        text: Keep the `if`, but add to `total` only when `zeros <= k`
+          `pop()` takes the newest 0, the one at `right`, so `left` jumps past `right` and the
+          pass counts nothing, while the oldest 0 stays in `zero_at`. The call returns 11.
+      - id: no-pop
+        text: Change the jump to `left = zero_at[0] + 1`
         explanation: >-
-          Skipping the count hides the invalid pass but does not repair the window. The function
-          returns 15 instead of 17.
-    correct: while-gt
+          Without the pop, a 0 that has left stays at the front of `zero_at`, so `left` keeps
+          landing at 3. When the third 0 arrives, the window `1, 0, 1, 0` holds two 0s and is
+          counted anyway. The call returns 19.
+    correct: past-oldest
     followUps:
-      while-ge:
-        prompt: A window holds exactly `k` zeros. Should the left edge move?
+      while-loop:
+        prompt: How many 0s can one pass add to the window?
         options:
-          - id: no-valid
-            text: "No: exactly `k` zeros still meets \"at most `k`\", so every subarray inside it is valid"
-          - id: yes-room
-            text: Yes, the window must hold fewer than `k` zeros to leave room for the next value
-          - id: yes-length
-            text: It depends on how many values the window spans, not on its zeros
-        correct: no-valid
-        explanation: >-
-          The limit is "at most `k`", so a window at the limit is still valid. Shrinking only when
-          the count goes above `k` keeps every valid subarray.
-      two-ifs:
-        prompt: In `[1, 1, 1, 0, 1, 0]` with `k = 1`, how many values must leave when the second 0 arrives?
-        options:
-          - id: four
-            text: Four, the three 1s and then the first 0
           - id: one
-            text: One, because each new value pushes out exactly one old value
-          - id: two
-            text: Two, which is `k + 1`
-        correct: four
+            text: At most one, the value at `right`
+          - id: k
+            text: Up to `k`, the limit
+          - id: any
+            text: Any number, since the window can be long
+        correct: one
         explanation: >-
-          The window stays invalid until the first 0 leaves, and three 1s sit in front of it. The
-          number of removals is set by the data, not by `k`, and over the whole call they still
-          add up to at most `n`.
-      count-valid-only:
-        prompt: >-
-          After one `if` shrink on the last pass, the window is `1, 1, 0, 1, 0`. What does skipping
-          `total +=` leave wrong?
+          Only `nums[right]` arrives on a pass, so one jump is always enough here. What is wrong
+          is where `left` lands, not how many times it moves.
+      pop-newest:
+        prompt: On the pass with `right` at 4, `zero_at` is `[2, 4]`. Which 0 has to leave the window?
         options:
-          - id: left-too-far
-            text: The left edge is still too far left, so the valid `1, 0` and `0` at the end are never counted
-          - id: nothing
-            text: Nothing, because every subarray ending at the last value is invalid
-          - id: zeros
-            text: The `zeros` count, which is now too low
-        correct: left-too-far
+          - id: oldest
+            text: The 0 at index 2, the oldest
+          - id: newest
+            text: The 0 at index 4, the newest
+          - id: either
+            text: Either one, since both are 0s
+        correct: oldest
         explanation: >-
-          The subarrays `1, 0` and `0` hold one 0 each and end at the last value. They are missed
-          because the left edge never reached them. The window has to be repaired before it is
-          counted, which is what the `while` does.
+          Every subarray that ends at `right` contains the value at `right`, so that 0 cannot
+          leave. Dropping the oldest 0 keeps the most values, and `left` lands one past it, at 3.
+      no-pop:
+        prompt: On the last pass, the 0s at indices 2, 4 and 6 have arrived and `k` is 1. Where should `left` land?
+        options:
+          - id: five
+            text: At 5, one past the 0 at index 4
+          - id: three
+            text: At 3, one past the 0 at index 2
+          - id: seven
+            text: At 7, one past the 0 at index 6
+        correct: five
+        explanation: >-
+          The window may keep one 0, the new one at index 6, so the 0 at index 4 has to leave as
+          well. Popping each 0 as it leaves keeps the oldest 0 still in the window at the front of
+          `zero_at`.
 
   - id: checkpoint-debug-record-early
     heading: Which call does it fail on?

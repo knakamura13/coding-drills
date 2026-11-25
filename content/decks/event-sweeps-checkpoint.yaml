@@ -263,16 +263,16 @@ questions:
           A key only decides the order. The sort returns the original tuples, so each change is
           still there for the loop.
 
-  - id: checkpoint-debug-desk-ties
+  - id: checkpoint-debug-studio-ties
     heading: Which call does it fail on?
     tags: [intervals, sorting, python]
     prompt: |-
-      A desk booking `[start, end]` holds its desk at both its start and end hours, so a booking
-      that ends at 4 clashes with one that starts at 4. A suggested solution should return how
-      many desks the bookings need. One detail is slightly off:
+      A studio booking `[start, end]` holds its studio through its end minute, so a session that
+      ends at minute 30 clashes with one that starts at minute 30. A suggested solution should
+      return how many studios the bookings need. One detail is slightly off:
 
       ```python
-      def desks(bookings):
+      def studios(bookings):
           events = []
           for s, e in bookings:
               events.append((s, 1))
@@ -287,37 +287,51 @@ questions:
 
       Which call returns the wrong number?
     options:
-      - id: touching
-        text: "`desks([[1, 4], [4, 7]])`"
+      - id: apart
+        text: "`studios([[30, 45], [10, 20]])`"
         explanation: >-
-          Both bookings hold a desk at 4, so 2 desks are needed. The plain sort puts `(4, -1)`
-          before `(4, 1)`, so `active` drops to 0 before the second booking starts, and the call
-          returns 1. A key that puts starts first at a tie fixes it:
+          No two events share a minute, so the tie order never comes into it. The sort puts
+          `[10, 20]` first, `active` runs 1, 0, 1, 0, and the call returns 1, which is right.
+      - id: touching
+        text: "`studios([[5, 30], [30, 50]])`"
+        explanation: >-
+          Both sessions hold a studio at minute 30, so 2 studios are needed. The plain sort puts
+          `(30, -1)` before `(30, 1)`, so `active` drops to 0 before the second session starts,
+          and the call returns 1. A key that puts starts first at a tie fixes it:
           `events.sort(key=lambda ev: (ev[0], -ev[1]))`.
       - id: same-start
-        text: "`desks([[2, 6], [2, 4]])`"
+        text: "`studios([[5, 25], [5, 15]])`"
         explanation: >-
-          Both events at 2 are starts, so their order cannot change the count: `active` reaches 2
+          Both events at 5 are starts, so their order cannot change the count: `active` reaches 2
           either way. The call returns 2, which is right.
       - id: same-end
-        text: "`desks([[1, 6], [3, 6]])`"
+        text: "`studios([[10, 40], [20, 40]])`"
         explanation: >-
-          Both events at 6 are ends, and `active` reached 2 at time 3, before either of them. The
-          call returns 2, which is right.
-      - id: overlap
-        text: "`desks([[1, 5], [3, 8]])`"
-        explanation: >-
-          No two events share a time, so the tie order never comes into it. `active` runs 1, 2, 1,
-          0 and the call returns 2, which is right.
+          Both events at 40 are ends, and `active` reached 2 at minute 20, before either of them.
+          The call returns 2, which is right.
     correct: touching
     followUps:
+      apart:
+        prompt: Which kind of input can expose a mistake in the tie order?
+        options:
+          - id: end-start
+            text: One where a session ends at the same minute another starts
+          - id: unsorted
+            text: Any input whose bookings are not listed in time order
+          - id: many
+            text: Any input with more than two bookings
+        correct: end-start
+        explanation: >-
+          The sort fixes the listing order before the loop runs, and a key that sorts by time
+          first only changes the order of events that share a minute. Without an end and a start
+          at the same minute, every such key gives the same `peak`.
       same-start:
-        prompt: At time 2, `events` holds `(2, 1)` twice. Can their order change `peak`?
+        prompt: At minute 5, `events` holds `(5, 1)` twice. Can their order change `peak`?
         options:
           - id: either-order
             text: No, both add 1, so `active` is 2 after them in either order
           - id: waits
-            text: Yes, one of them has to wait until the other booking ends
+            text: Yes, one of them has to wait until the other session ends
           - id: plain
             text: Yes, the plain sort applies one of them as an end
         correct: either-order
@@ -325,28 +339,15 @@ questions:
           A tie matters only between a start and an end, because only then does `active` dip or
           rise in between. Two starts, or two ends, give the same count in either order.
       same-end:
-        prompt: For `[[1, 6], [3, 6]]`, when does `active` first reach 2?
+        prompt: For `[[10, 40], [20, 40]]`, when does `active` first reach 2?
         options:
-          - id: three
-            text: At time 3, before either end at 6
-          - id: six
-            text: At time 6, when both bookings end
+          - id: twenty
+            text: At minute 20, before either end at 40
+          - id: forty
+            text: At minute 40, when both sessions end
           - id: never
             text: Never, because the plain sort applies the ends first
-        correct: three
+        correct: twenty
         explanation: >-
-          The second booking starts at 3 while the first is still running, so `active` is 2 from
-          then on. The two ends at 6 only bring it down.
-      overlap:
-        prompt: Which kind of input can expose a mistake in the tie order?
-        options:
-          - id: end-start
-            text: One where a booking ends at the same hour another starts
-          - id: overlap
-            text: Any input where two bookings overlap
-          - id: many
-            text: Any input with more than two bookings
-        correct: end-start
-        explanation: >-
-          A key that sorts by time first only changes the order of events that share a time.
-          Without an end and a start at the same hour, every such key gives the same `peak`.
+          The second session starts at 20 while the first is still running, so `active` is 2 from
+          then on. The two ends at 40 only bring it down.
