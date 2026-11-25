@@ -1,6 +1,6 @@
 id: arrays-and-strings-checkpoint
 title: "Arrays and strings: checkpoint"
-description: Trace a two-pointer edit on a new input. Each item combines reading indices, tracing a scan, and reading a slice.
+description: Trace a two-pointer edit on a new input. Each item combines reading indices and tracing a scan, and one also reads a slice.
 heading: What does this print?
 
 questions:
@@ -234,60 +234,60 @@ questions:
     tags: [arrays-strings, two-pointers]
     prompt: |-
       ```python
-      def reverse(chars):
-          i, j = 0, len(chars) - 1
-          while i < j:
-              chars[i], chars[j] = chars[j], chars[i]
-              i += 1
-              j -= 1
+      def flip(chars, lo, hi):
+          while lo < hi:
+              chars[lo], chars[hi] = chars[hi], chars[lo]
+              lo += 1
+              hi -= 1
           return chars
 
-      print(reverse(list("")), reverse(list("x")))
+      a, b = [], ['x']
+      print(flip(a, 0, len(a) - 1), flip(b, 0, len(b) - 1))
       ```
     options:
       - id: both-unchanged
         text: "Prints `[] ['x']`"
         explanation: >-
-          For the empty list `j` starts at -1, and `0 < -1` is false. For `['x']` it starts at 0,
+          For the empty list `hi` starts at -1, and `0 < -1` is false. For `['x']` it starts at 0,
           and `0 < 0` is false. The loop body never runs, so no cell is read and both lists come
           back as they were.
       - id: empty-raises
         text: "Raises `IndexError` on the empty list"
         explanation: >-
-          `j` starts at -1 there, but an index only fails when it is read. The test `0 < -1` is
-          false, so line 4 never runs.
+          `hi` starts at -1 there, but an index only fails when it is read. The test `0 < -1` is
+          false, so line 3 never runs.
       - id: one-raises
         text: "Raises `IndexError` on the one-letter list"
         explanation: >-
-          `j` starts at 0, a real index, and the test `0 < 0` is false anyway, so nothing is read.
+          `hi` starts at 0, a real index, and the test `0 < 0` is false anyway, so nothing is read.
     correct: both-unchanged
     followUps:
       empty-raises:
-        prompt: For the empty list, `j` starts at -1. Does line 4 ever run?
+        prompt: For the empty list, `hi` starts at -1. Does line 3 ever run?
         options:
           - id: never
             text: No, since `0 < -1` is false
           - id: once
             text: Yes, once, and it reads `chars[-1]`
           - id: until-error
-            text: Yes, until `j` reaches 0
+            text: Yes, until `hi` reaches 0
         correct: never
         explanation: >-
           The `while` test runs before every pass, including the first. When it is false at the
           start, the body never runs and no index is read.
       one-raises:
-        prompt: For `['x']`, what are `i` and `j` before the loop?
+        prompt: For `['x']`, what are `lo` and `hi` before the loop?
         options:
           - id: both-zero
             text: Both 0, which is a real index
           - id: one-past
-            text: "`i` is 0 and `j` is 1, past the end"
+            text: "`lo` is 0 and `hi` is 1, past the end"
           - id: minus-one
-            text: "`i` is 0 and `j` is -1"
+            text: "`lo` is 0 and `hi` is -1"
         correct: both-zero
         explanation: >-
-          `len(chars) - 1` is 0 for a one-item list. The pointers start on the same cell, `0 < 0`
-          is false, and the list comes back unchanged.
+          `len(b) - 1` is 0 for a one-item list. The pointers start on the same cell, `0 < 0` is
+          false, and the list comes back unchanged.
 
   - id: checkpoint-debug-reverse
     heading: Which line is wrong?
@@ -298,6 +298,7 @@ questions:
 
       ```python
       def reverse(chars):
+          # i and j name the first and last cells still to swap
           i, j = 0, len(chars)
           while i < j:
               chars[i], chars[j] = chars[j], chars[i]
@@ -306,22 +307,23 @@ questions:
       ```
     options:
       - id: start-past-end
-        text: "Line 2: `i, j = 0, len(chars)`"
+        text: "Line 3: `i, j = 0, len(chars)`"
         explanation: >-
           `len(chars)` is one past the last index, so on any list that is not empty the first swap
           reads `chars[len(chars)]` and raises `IndexError`. `j` must start at `len(chars) - 1`.
       - id: loop-test
-        text: "Line 3: `while i < j:`"
+        text: "Line 4: `while i < j:`"
         explanation: >-
           With `<`, the loop stops when the pointers meet or cross, which is right: a middle cell
           has no partner. `<=` would only swap it with itself.
       - id: swap-line
-        text: "Line 4: the swap"
+        text: "Line 5: the swap"
         explanation: >-
           Python reads both values on the right before it writes either cell, so this one line
-          swaps two cells safely.
+          swaps two cells safely, and `chars[j]` is the last cell still to swap, as the comment
+          says.
       - id: move-j
-        text: "Line 6: `j -= 1`"
+        text: "Line 7: `j -= 1`"
         explanation: >-
           `j` starts at the right end and has to move left, toward `i`, so subtracting 1 is right.
     correct: start-past-end
