@@ -7,7 +7,7 @@ questions:
       - graph
       - queue
     prompt: |-
-      Kahn's algorithm seeds the queue with every node whose in-degree is 0. For `n = 6` and edges `(0, 1), (1, 2), (2, 1), (2, 3), (4, 5)`, where `(a, b)` means a comes before b, it returns `[0, 4, 5]`.
+      Kahn's algorithm starts the queue with every node whose in-degree is 0. For `n = 6` and edges `(0, 1), (1, 2), (2, 1), (2, 3), (4, 5)`, where `(a, b)` means a comes before b, it returns `[0, 4, 5]`.
 
       Removing which one edge makes it return all six nodes?
     options:
@@ -90,7 +90,7 @@ questions:
       - graph
       - queue
     prompt: |-
-      `start` is a copy of `indeg` taken before the loop. Which check, run after the loop, reports a cycle exactly when the graph has one?
+      Kahn's algorithm below starts the queue with every node whose in-degree is 0. `popleft()` removes the item at the front of the queue, and `append` adds at the back. `start` is a copy of `indeg` taken before the loop. Which check, run after the loop, reports a cycle exactly when the graph has one?
 
       ```python
       start = indeg[:]
@@ -211,3 +211,173 @@ questions:
             text: Yes. Ship links the cycle to them
         correct: 'no'
         explanation: A cycle blocks its own tasks and everything downstream of them. Ship is downstream of docs, but build and test come before ship and do not depend on the cycle.
+
+  - id: dep-exam-final-counts
+    heading: What counts are left?
+    tags: [graph, queue]
+    prompt: |-
+      Kahn's algorithm starts the queue with every node whose in-degree is 0 and repeats the lines below until the queue is empty. For `n = 6` and the edges `(0, 2), (1, 2), (2, 3), (3, 4), (4, 3), (3, 5), (4, 5)`, where `(a, b)` means a comes before b, `indeg[v]` starts as the number of edges that end at `v`, and `out[v]` lists the nodes `v` points to. What is `indeg` when the queue is empty?
+
+      ```python
+      v = queue.popleft()
+      order.append(v)
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+      ```
+    options:
+      - id: stuck-counts
+        text: '`[0, 0, 0, 1, 1, 2]`'
+        explanation: >-
+          `indeg` starts as `[0, 0, 2, 2, 1, 2]`. Processing 0 and then 1 lowers `indeg[2]` to 0, so 2
+          is processed and lowers `indeg[3]` from 2 to 1. Nodes 3 and 4 wait for each other, so
+          neither is processed. Node 5 waits for both of them, so its count stays 2.
+      - id: one-each
+        text: '`[0, 0, 0, 1, 1, 1]`'
+        explanation: >-
+          Node 5 has two prerequisites, 3 and 4, and both sit on the cycle. Neither is processed, so
+          neither lowers its count, which stays 2.
+      - id: cycle-only
+        text: '`[0, 0, 0, 1, 1, 0]`'
+        explanation: >-
+          Node 5 is not on the cycle, but both of its prerequisites are. They are never processed, so
+          nothing lowers its count.
+      - id: start-counts
+        text: '`[0, 0, 0, 2, 1, 2]`'
+        explanation: >-
+          Processing 2 runs `indeg[w] -= 1` for its successor 3, even though 3 never reaches 0. Its
+          count drops from 2 to 1.
+    correct: stuck-counts
+    followUps:
+      one-each:
+        prompt: How many edges end at node 5?
+        options:
+          - id: two
+            text: 2, from 3 and from 4
+          - id: last
+            text: 1, from 4, the last node before it
+          - id: one-at-a-time
+            text: 1, since a node waits for one task at a time
+        correct: two
+        explanation: >-
+          `(3, 5)` and `(4, 5)` both end at 5, so its count starts at 2. Only processing 3 or 4 could
+          lower it.
+      cycle-only:
+        prompt: Processing which nodes would lower `indeg[5]`?
+        options:
+          - id: own-prereq
+            text: 3 and 4, since `(3, 5)` and `(4, 5)` end at 5
+          - id: via-two
+            text: 2 as well, since a path from 2 leads to 5
+          - id: any
+            text: Any node, since each processed node lowers the counts after it
+        correct: own-prereq
+        explanation: >-
+          Processing `v` lowers only the counts of the nodes in `out[v]`. Node 5 is in `out[3]` and
+          `out[4]`, and the cycle keeps both 3 and 4 out of the queue, so nothing lowers its count.
+      start-counts:
+        prompt: When 2 is processed, what happens to `indeg[3]`?
+        options:
+          - id: drops
+            text: It drops from 2 to 1, and 3 keeps waiting for 4
+          - id: unchanged
+            text: Nothing, because 3 does not reach 0
+          - id: joins
+            text: It drops to 0, and 3 joins the queue
+        correct: drops
+        explanation: >-
+          `indeg[w] -= 1` runs for every successor of the processed node. The `if` only decides whether
+          the successor joins the queue.
+
+  - id: dep-exam-debug-seed
+    heading: Which call does it fail on?
+    tags: [graph, queue]
+    prompt: |-
+      A suggested solution should return the tasks `0` to `n - 1` in a topological order. When a cycle blocks some tasks, it should return only the tasks that can finish, in such an order. Each pair `(a, b)` means a comes before b.
+
+      ```python
+      from collections import deque
+
+      def order_tasks(n, pairs):
+          out = [[] for _ in range(n)]
+          indeg = [0] * n
+          for a, b in pairs:
+              out[a].append(b)
+              indeg[b] += 1
+          queue = deque([0])
+          order = []
+          while queue:
+              v = queue.popleft()
+              order.append(v)
+              for w in out[v]:
+                  indeg[w] -= 1
+                  if indeg[w] == 0:
+                      queue.append(w)
+          return order
+      ```
+
+      Which call returns the wrong answer?
+    options:
+      - id: chain
+        text: '`order_tasks(3, [(0, 1), (1, 2)])`'
+        explanation: >-
+          Node 0 is the only task with in-degree 0, so starting the queue as `[0]` happens to be
+          right. It returns `[0, 1, 2]`.
+      - id: fan-out
+        text: '`order_tasks(3, [(0, 1), (0, 2)])`'
+        explanation: >-
+          Task 0 points at both 1 and 2, and each has only that one prerequisite. Processing 0 frees
+          both, and it returns `[0, 1, 2]`, which is right.
+      - id: fan-in
+        text: '`order_tasks(3, [(0, 2), (1, 2)])`'
+        explanation: >-
+          Task 1 has in-degree 0, but the queue starts as `[0]`, so 1 is never processed. Processing
+          0 lowers `indeg[2]` from 2 to 1, and the loop stops with `[0]`. A correct start holds 0 and
+          1 and returns all three tasks.
+      - id: blocked-pair
+        text: '`order_tasks(4, [(0, 1), (2, 3), (3, 2)])`'
+        explanation: >-
+          Tasks 2 and 3 wait for each other, so no correct answer includes them. Task 0 is the only
+          task with in-degree 0, and it returns `[0, 1]`, which is right.
+    correct: fan-in
+    followUps:
+      chain:
+        prompt: In `[(0, 1), (1, 2)]`, which tasks have in-degree 0?
+        options:
+          - id: only-zero
+            text: Only task 0
+          - id: zero-two
+            text: Tasks 0 and 2
+          - id: starters
+            text: Every task that starts a pair
+        correct: only-zero
+        explanation: >-
+          Tasks 1 and 2 each end a pair, so only 0 is free at the start. A call can expose the bug
+          only if some task other than 0 has in-degree 0.
+      fan-out:
+        prompt: Why is starting with task 0 alone enough here?
+        options:
+          - id: free-task
+            text: 0 is the only task no pair makes wait
+          - id: smallest
+            text: 0 is the smallest task number
+          - id: most-pairs
+            text: 0 starts more pairs than any other task
+        correct: free-task
+        explanation: >-
+          Tasks 1 and 2 each wait for 0. The queue must start with every task whose in-degree is 0,
+          and here that is 0 alone.
+      blocked-pair:
+        prompt: Should a correct solution return tasks 2 and 3 for `[(0, 1), (2, 3), (3, 2)]`?
+        options:
+          - id: never-finish
+            text: No, they are on a cycle and can never finish
+          - id: every-task
+            text: Yes, every task must appear in the result
+          - id: any-order
+            text: Yes, after 0 and 1, in any order
+        correct: never-finish
+        explanation: >-
+          A cycle leaves its tasks at counts above 0, so a short result is the right answer here. This
+          call does not expose the bug.

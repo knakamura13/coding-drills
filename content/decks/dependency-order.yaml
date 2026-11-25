@@ -7,12 +7,15 @@ questions:
     tags:
       - graph
     workedExample: |-
-      Consider `pairs = [("wash", "chop")]`. A pair `(a, b)` means `a` finishes before `b` starts,
-      so the second item of a pair has to wait.
+      Dependency order puts tasks in an order where every task comes after the tasks it waits for.
+      Each pair `(a, b)` means `a` finishes before `b` starts, so the second task of a pair has to
+      wait. Here `pairs = [("mix", "bake"), ("heat", "bake")]`.
 
-      1. Chop is the second item of `("wash", "chop")`, so chop waits until wash finishes.
-      2. Wash is not the second item of any pair, so nothing has to finish before it.
-      3. So wash can start now, and chop cannot.
+      1. `bake` is the second task in both pairs, so it waits for `mix` and for `heat`.
+      2. `mix` and `heat` are not the second task of any pair, so nothing has to finish before
+         either of them.
+      3. So `mix` and `heat` can both start now, and `bake` can start only once both are done. One
+         order that works is `mix`, `heat`, `bake`.
     prompt: |-
       Each pair `(a, b)` below means a finishes before b starts. Tap the task that can start now.
     code: |-
@@ -111,7 +114,7 @@ questions:
          before a.
       3. So a starts first, and b follows once a is done.
     prompt: |-
-      Now the pairs are `(a, b)` and `(b, a)`. Which task can start first?
+      A cycle is a chain of pairs that leads from a task back to the same task. The pairs `(a, b)` and `(b, a)` form a cycle of two tasks, where `(x, y)` means x finishes before y starts. Which task can start first?
     options:
       - id: neither
         text: Neither. Each waits for the other to finish
@@ -161,6 +164,54 @@ questions:
         correct: finish-before
         explanation: A prerequisite has to be complete before its successor begins. Starting both together satisfies neither pair.
 
+  - id: dep-count-direct-only
+    tags:
+      - graph
+    workedExample: |-
+      Consider the pairs `(w, x)` and `(x, y)`. The in-degree of a task is the number of pairs, or
+      edges, that end at it.
+
+      1. `(x, y)` ends at y, so it counts once toward y.
+      2. `(w, x)` ends at x, not at y. w does finish before y starts, but only by way of x, so this
+         pair does not count toward y.
+      3. No other pair ends at y, so the in-degree of y is 1.
+    prompt: |-
+      Each task is a node, and each pair `(a, b)` is a directed edge, written `a→b`: it goes one way, from the task that finishes first to the task that waits. The in-degree of a node is the number of edges that end at it. The pairs are `("build", "test")`, `("test", "ship")` and `("docs", "ship")`. What is the in-degree of ship?
+    options:
+      - id: two
+        text: '2'
+        explanation: Two edges end at ship, from test and from docs. Build comes earlier, but its edge ends at test.
+      - id: three
+        text: '3'
+        explanation: This counts every task that must happen earlier, including build. The in-degree counts only edges that end at ship.
+      - id: zero
+        text: '0'
+        explanation: Ship starts no edge, but in-degree counts the edges that end at a node. Two do.
+    correct: two
+    followUps:
+      three:
+        prompt: Is there an edge from build to ship?
+        options:
+          - id: no-edge
+            text: No. Build reaches ship only through test
+          - id: implied
+            text: Yes. It is implied by the other two pairs
+          - id: needed
+            text: Yes. Without it, ship could start before build
+        correct: no-edge
+        explanation: In-degree counts direct edges. Ship still waits for build indirectly, because test cannot finish until build does.
+      zero:
+        prompt: Which edges does an in-degree count?
+        options:
+          - id: ending
+            text: Edges that end at the node
+          - id: leaving
+            text: Edges that leave the node
+          - id: either
+            text: Edges that touch the node at either end
+        correct: ending
+        explanation: The in-degree is the number of edges that end at a node, one for each direct prerequisite. An edge that leaves a node is a task waiting for it, not a task it waits for.
+
   - id: dep-count-trace
     format: step-trace
     tags:
@@ -176,7 +227,7 @@ questions:
       3. No edge ends at 0 or 2, so their counts stay 0 and they have no prerequisite. Node 1 waits
          for two.
     prompt: |-
-      Predict each step as the loop counts incoming edges.
+      Each pair `(a, b)` in `edges` is the directed edge `a→b`, and `indeg[v]` counts the edges that end at node `v`. Predict each step as the loop fills `indeg`.
     code: |-
       indeg = [0, 0, 0, 0]
       for a, b in edges:
@@ -246,53 +297,60 @@ questions:
             explanation: Node 1 also has a count of 0. A label does not make a node wait.
         correct: zero-in
 
-  - id: dep-count-direct-only
+  - id: dep-unlock-at-zero
     tags:
       - graph
+      - queue
     workedExample: |-
-      Consider the pairs `(w, x)` and `(x, y)`. The in-degree of a task is the number of pairs, or
-      edges, that end at it.
+      Say E has one prerequisite, B, so `indeg[E]` starts at 1. Processing a node lowers by one the
+      count of each node it points to, and a node joins the queue when its count reaches 0.
 
-      1. `(x, y)` ends at y, so it counts once toward y.
-      2. `(w, x)` ends at x, not at y. w does finish before y starts, but only by way of x, so this
-         pair does not count toward y.
-      3. No other pair ends at y, so the in-degree of y is 1.
+      1. B is processed. E is one of the nodes B points to, so `indeg[E]` drops by one, from 1 to 0.
+      2. A count of 0 means E has no prerequisite left to wait for.
+      3. So E joins the queue as soon as B is processed.
     prompt: |-
-      The pairs are `("build", "test")`, `("test", "ship")` and `("docs", "ship")`. What is the in-degree of ship?
+      A queue holds the nodes that are ready to start. Processing a node `v` takes it off the queue, adds it to `order` and runs the lines below, where `out[v]` lists the nodes `v` points to, its successors. D has two prerequisites, B and C, so `indeg[D]` starts at 2. B is processed. What happens to D?
+
+      ```python
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+      ```
     options:
-      - id: two
-        text: '2'
-        explanation: Two edges end at ship, from test and from docs. Build comes earlier, but its edge ends at test.
-      - id: three
-        text: '3'
-        explanation: This counts every task that must happen earlier, including build. The in-degree counts only edges that end at ship.
-      - id: zero
-        text: '0'
-        explanation: Ship starts no edge, but in-degree counts the edges that end at a node. Two do.
-    correct: two
+      - id: one-left
+        text: '`indeg[D]` becomes 1, and D keeps waiting for C'
+        explanation: Each processed prerequisite lowers the count by one. D joins the queue only when C is processed too.
+      - id: joins-now
+        text: D joins the queue, since one prerequisite is done
+        explanation: One of two prerequisites is done. Queuing D now would let it run before C has finished.
+      - id: stays-two
+        text: '`indeg[D]` stays 2 until B and C are both done'
+        explanation: The count drops by one for each processed prerequisite. Without that, the loop could not tell when the last one finishes.
+    correct: one-left
     followUps:
-      three:
-        prompt: Is there an edge from build to ship?
+      joins-now:
+        prompt: What count must D reach before it joins the queue?
         options:
-          - id: no-edge
-            text: No. Build reaches ship only through test
-          - id: implied
-            text: Yes. It is implied by the other two pairs
-          - id: needed
-            text: Yes. Without it, ship could start before build
-        correct: no-edge
-        explanation: In-degree counts direct edges. Ship still waits for build indirectly, because test cannot finish until build does.
-      zero:
-        prompt: Which edges does an in-degree count?
+          - id: zero
+            text: 0, meaning no prerequisite is left
+          - id: less
+            text: Any count below its starting value
+          - id: one
+            text: 1, meaning the last prerequisite is running
+        correct: zero
+        explanation: The queue holds nodes with nothing left to wait for. A count of 1 means C has not finished.
+      stays-two:
+        prompt: When does `indeg[w] -= 1` run?
         options:
-          - id: ending
-            text: Edges that end at the node
-          - id: leaving
-            text: Edges that leave the node
-          - id: either
-            text: Edges that touch the node at either end
-        correct: ending
-        explanation: The in-degree is the number of edges that end at a node, one for each direct prerequisite. An edge that leaves a node is a task waiting for it, not a task it waits for.
+          - id: per-edge
+            text: Once for each edge out of the node being processed
+          - id: at-end
+            text: Once for each node, after the queue empties
+          - id: on-pop
+            text: Once for the node that was just taken off the queue
+        correct: per-edge
+        explanation: Processing B runs the loop over `out[B]`, so D loses one for the edge `B→D` right away. C will remove the last one.
 
   - id: dep-unlock-trace
     format: step-trace
@@ -311,7 +369,7 @@ questions:
          so W keeps waiting for Z.
       3. Z is processed next. `indeg[W]` drops from 1 to 0, so W joins the queue now.
     prompt: |-
-      Edges: `A→C`, `B→C`, `B→E`, `C→D`. `out` lists successors in that edge order. The queue starts as `A, B`. Predict each step.
+      Kahn's algorithm puts the nodes in a topological order: an order in which every node comes after the nodes it waits for. `queue` is a `deque` from `collections`, and `deque(items)` builds one from a list. It starts with every node whose in-degree is 0, and the lines below repeat until it is empty. `popleft()` removes the item at the front, and `append` adds at the back, so nodes leave in the order they joined: first in, first out. Edges: `A→C`, `B→C`, `B→E`, `C→D`, and `out[v]` lists the nodes `v` points to, in that edge order. The queue starts as `A, B`. Predict each step.
     code: |-
       v = queue.popleft()
       order.append(v)
@@ -381,50 +439,91 @@ questions:
             explanation: D is not queued yet. It joins after C is processed.
         elsewhere: That node was processed earlier. C is at the front of the queue.
 
-  - id: dep-unlock-at-zero
+  - id: dep-cycle-stalls
     tags:
       - graph
       - queue
     workedExample: |-
-      Say E has one prerequisite, B, so `indeg[E]` starts at 1. Processing a node lowers by one the
-      count of each node it points to, and a node joins the queue when its count reaches 0.
+      Consider the edges `0→1`, `1→0` and `2→3`. Node 2 is the only node with in-degree 0, so the
+      queue starts as `[2]`, and a node joins the queue only when its count reaches 0.
 
-      1. B is processed. E is one of the nodes B points to, so `indeg[E]` drops by one, from 1 to 0.
-      2. A count of 0 means E has no prerequisite left to wait for.
-      3. So E joins the queue as soon as B is processed.
+      1. Processing 2 lowers `indeg[3]` from 1 to 0, so 3 joins the queue. Processing 3 lowers no
+         count, since no edge leaves 3.
+      2. Node 0 waits for 1, and node 1 waits for 0. Each count is 1, and only processing the other
+         node could lower it.
+      3. So the queue empties with `order` as `[2, 3]`. The two nodes on the cycle never join, and
+         the order comes back two nodes short.
     prompt: |-
-      D has two prerequisites, B and C, so `indeg[D]` starts at 2. B is processed. What happens to D?
+      Kahn's algorithm runs on the edges `0→1`, `1→2`, `2→1` and `2→3`. Node 0 is the only node with in-degree 0, so the queue starts as `[0]`. These lines repeat until the queue is empty. What does `order` hold then?
+
+      ```python
+      v = queue.popleft()
+      order.append(v)
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
+      ```
     options:
-      - id: one-left
-        text: '`indeg[D]` becomes 1, and D keeps waiting for C'
-        explanation: Each processed prerequisite lowers the count by one. D joins the queue only when C is processed too.
-      - id: joins-now
-        text: D joins the queue, since one prerequisite is done
-        explanation: One of two prerequisites is done. Queuing D now would let it run before C has finished.
-      - id: stays-two
-        text: '`indeg[D]` stays 2 until B and C are both done'
-        explanation: The count drops by one for each processed prerequisite. Without that, the loop could not tell when the last one finishes.
-    correct: one-left
+      - id: only-zero
+        text: '`[0]`'
+        explanation: >-
+          Processing 0 lowers `indeg[1]` from 2 to 1, which is not 0. Node 1 still waits for 2, and 2
+          waits for 1, so neither count reaches 0. Node 3 waits for 2, so it is stuck too, although
+          it is not on the cycle.
+      - id: zero-one
+        text: '`[0, 1]`'
+        explanation: >-
+          Node 1 has two incoming edges, from 0 and from 2. Processing 0 removes only one of them, so
+          1 keeps waiting.
+      - id: zero-three
+        text: '`[0, 3]`'
+        explanation: >-
+          Node 3 is not on the cycle, but its one prerequisite, 2, is. Node 2 is never processed, so
+          `indeg[3]` stays 1.
+      - id: all-four
+        text: '`[0, 1, 2, 3]`'
+        explanation: >-
+          That needs some node on the cycle to start first. Node 1 waits for 2 and 2 waits for 1, so
+          the queue empties after 0.
+    correct: only-zero
     followUps:
-      joins-now:
-        prompt: What count must D reach before it joins the queue?
+      zero-one:
+        prompt: What is `indeg[1]` after 0 is processed?
         options:
-          - id: zero
-            text: 0, meaning no prerequisite is left
-          - id: less
-            text: Any count below its starting value
           - id: one
-            text: 1, meaning the last prerequisite is running
-        correct: zero
-        explanation: The queue holds nodes with nothing left to wait for. A count of 1 means C has not finished.
-      stays-two:
-        prompt: Which line lowers the count?
+            text: 1, for the edge from 2
+          - id: zero
+            text: 0, since 0 was its prerequisite
+          - id: two
+            text: 2, since counts drop only at the end
+        correct: one
+        explanation: >-
+          Each processed prerequisite lowers the count by one. Node 2 is on the cycle with 1, so it is
+          never processed and never lowers the last one.
+      zero-three:
+        prompt: What must happen before 3 can join the queue?
         options:
-          - id: per-edge
-            text: '`indeg[w] -= 1`, run once for each edge out of the processed node'
-          - id: at-end
-            text: A final pass that clears every count after the queue empties
-          - id: on-pop
-            text: '`queue.popleft()`, which lowers the count of the node it removes'
-        correct: per-edge
-        explanation: Processing B runs the inner loop over `out[B]`, so D loses one for the edge `B→D`. C will remove the last one.
+          - id: two-done
+            text: Node 2 must be processed, which lowers `indeg[3]` to 0
+          - id: zero-done
+            text: Node 0 must be processed, since every node depends on the start
+          - id: nothing
+            text: Nothing, since 3 is not on the cycle
+        correct: two-done
+        explanation: >-
+          A node joins only when every prerequisite has been processed. Node 2 waits on the cycle, so
+          every node after it waits too.
+      all-four:
+        prompt: Which node on the cycle has a count of 0 after 0 is processed?
+        options:
+          - id: neither
+            text: Neither 1 nor 2
+          - id: node-one
+            text: Node 1, since 0 freed it
+          - id: node-two
+            text: Node 2, since it has one incoming edge
+        correct: neither
+        explanation: >-
+          `indeg[1]` is 1, for the edge from 2, and `indeg[2]` is 1, for the edge from 1. Each waits
+          for the other, so the loop never reaches them, and the order comes back short.

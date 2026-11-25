@@ -1,82 +1,139 @@
 id: traversal-layers-review
 title: 'Traversal layers: review'
-description: Recall queue layers, unit distances, and simultaneous starts on fresh problems.
+description: Recall queue layers, fewest-move labels and simultaneous sources on fresh problems.
 questions:
   - id: traversal-review-round-count
-    tags:
-      - bfs
-    prompt: A BFS round starts with six nodes. Processing those six discovers four new nodes. How many nodes
-      belong to the round that just finished?
+    tags: [bfs, queue]
+    prompt: >-
+      A BFS round reads `n = len(queue)` once, then pops `n` nodes. A round starts with six nodes in
+      the queue, and processing them appends four new nodes. How many pops does that round make?
     options:
-      - id: correct
-        text: Six nodes
-        explanation: The round contains the nodes present at its start. Discoveries wait for the next round.
-      - id: other
-        text: Ten nodes
-        explanation: Use the queue length at the beginning of the round.
-    correct: correct
+      - id: six
+        text: '6'
+        explanation: '`n` was 6 when the round began. The four new nodes are one move further out and wait for the next round.'
+      - id: ten
+        text: '10'
+        explanation: >-
+          The new nodes arrive after `n` is read, so they do not join this round. They make up the
+          next layer.
+      - id: five
+        text: 5, since `range(6)` stops before 6
+        explanation: '`range(6)` gives 0 through 5, which is six values, so the round makes six pops.'
+    correct: six
     followUps:
-      other:
-        prompt: Which round processes a new node discovered during the current round?
+      ten:
+        prompt: Which round processes a node appended during the current round?
         options:
-          - id: 'yes'
-            text: The following round
-          - id: 'no'
+          - id: next
+            text: The round after it
+          - id: current
             text: The current round
-        correct: 'yes'
-        explanation: The round contains the nodes present at its start. Discoveries wait for the next round.
+          - id: last
+            text: The last round
+        correct: next
+        explanation: A round pops only the nodes waiting when it began, so everything it appends forms the next layer.
+      five:
+        prompt: How many times does `for _ in range(6)` run?
+        options:
+          - id: six
+            text: Six times
+          - id: five
+            text: Five times
+          - id: seven
+            text: Seven times
+        correct: six
+        explanation: '`range(6)` counts 0, 1, 2, 3, 4, 5: six values, one pop each.'
+
   - id: traversal-review-pending-peer
-    tags:
-      - bfs
-    prompt: A queue holds C, D. You remove C and discover E then F. Which order is the queue in now, front first?
+    tags: [bfs, queue]
+    prompt: >-
+      A queue holds C, then D. `popleft()` removes C, and processing C appends E, then F. What is
+      the queue now, front first?
     options:
-      - id: correct
+      - id: in-order
         text: D, E, F
-        explanation: Removing C leaves D at the front. E and F join behind it, in discovery order.
-      - id: other
+        explanation: Removing C leaves D at the front. `append` adds E and then F at the back, in the order they were found.
+      - id: new-first
         text: E, F, D
-        explanation: Track D after C is removed.
-    correct: correct
+        explanation: '`append` adds at the back, so E and F go behind D, which was already waiting.'
+      - id: reversed
+        text: D, F, E
+        explanation: >-
+          E was appended first, so it is ahead of F. A queue is first in, first out, so nodes keep
+          the order they joined.
+    correct: in-order
     followUps:
-      other:
-        prompt: Is D taken off the queue by the operation that removes C?
+      new-first:
+        prompt: Where does `append` add a node?
         options:
-          - id: 'yes'
-            text: It stays waiting for a later pop
-          - id: 'no'
-            text: It leaves along with C
-        correct: 'yes'
-        explanation: Removing C leaves D at the front. E and F join behind it, in discovery order.
+          - id: back
+            text: At the back, behind every waiting node
+          - id: front
+            text: At the front
+          - id: middle
+            text: Just behind the node that found it
+        correct: back
+        explanation: '`popleft()` removes from the front and `append` adds at the back, so D, which joined earlier, stays ahead.'
+      reversed:
+        prompt: E was appended before F. Which leaves the queue first?
+        options:
+          - id: e
+            text: E, since it joined first
+          - id: f
+            text: F, since it joined last
+          - id: either
+            text: Either, since both are one move further out
+        correct: e
+        explanation: A queue is first in, first out. Only `pop()` on a list takes the item added last.
+
   - id: traversal-review-layer-label
-    tags:
-      - bfs
-    prompt: The queue starts with P and Q, both distance 3. P is processed, discovering R at distance 4. Which
-      nodes can still be processed in the distance-3 layer?
+    tags: [bfs]
+    prompt: >-
+      A round starts with P and Q in the queue, both at distance 3. Processing P finds R and labels
+      it 4. Which nodes are left in the distance-3 layer?
     options:
-      - id: correct
+      - id: q-only
         text: Q only
-        explanation: Only Q still has distance 3. R was discovered across a new edge and belongs to distance
-          4.
-      - id: other
+        explanation: Q still has distance 3 and is waiting. R is one move past P, so it belongs to the distance-4 layer.
+      - id: q-and-r
         text: Q and R
-        explanation: Check the labels of the queued nodes.
-    correct: correct
+        explanation: >-
+          R is in the queue, but its label is 4. The round pops only the nodes waiting when it
+          began, so R waits for the next one.
+      - id: none
+        text: None, since processing P ended the layer
+        explanation: >-
+          A layer holds every node at the same distance. Q is still waiting at distance 3, and this
+          round pops it next.
+    correct: q-only
     followUps:
-      other:
-        prompt: Which label does the edge from P give R?
+      q-and-r:
+        prompt: What label does R get from P?
         options:
-          - id: 'yes'
+          - id: four
             text: 4, one move past P
-          - id: 'no'
+          - id: three
             text: 3, the same as P
-        correct: 'yes'
-        explanation: Only Q still has distance 3. R was discovered across a new edge and belongs to distance
-          4.
+          - id: five
+            text: 5, after Q
+        correct: four
+        explanation: A node found from a node at distance 3 is one move further, so R is in the next layer.
+      none:
+        prompt: When this round began, how many nodes was it set to pop?
+        options:
+          - id: two
+            text: Two, P and Q
+          - id: one
+            text: One, P
+          - id: three
+            text: Three, P, Q and R
+        correct: two
+        explanation: '`n` was 2, so the round pops P and then Q before the distance-4 layer begins.'
+
   - id: traversal-review-count-edges
-    tags:
-      - bfs
+    tags: [bfs, grid]
     prompt: |-
-      On this board you can move up, down, left or right through open cells. How many moves does the shortest walk from S to T use?
+      Moves go up, down, left or right through open cells, and `#` is a wall. What label does BFS from S give T?
 
       ```text
       S#T
@@ -84,30 +141,48 @@ questions:
       ...
       ```
     options:
-      - id: correct
-        text: 6 moves
-        explanation: The walk goes down twice, right twice and up twice. It visits seven cells, including S
-          at distance zero.
-      - id: other
-        text: 7 moves
-        explanation: Count moves between cells, including the final step into T.
-    correct: correct
+      - id: six
+        text: '6'
+        explanation: The shortest route goes down twice, right twice and up twice. That is six moves.
+      - id: seven
+        text: '7'
+        explanation: >-
+          The route passes through seven cells, but S is the start, at 0 moves. A label counts
+          moves between cells, which is one fewer.
+      - id: two
+        text: '2'
+        explanation: >-
+          Two moves would go straight through the wall in column 1. Every route has to go around
+          it through row 2.
+    correct: six
     followUps:
-      other:
-        prompt: How many moves have happened before leaving S?
+      seven:
+        prompt: How many moves have been made at S?
         options:
-          - id: 'yes'
-            text: Zero moves
+          - id: zero
+            text: None, so S's label is 0
+          - id: one
+            text: One, so S's label is 1
+          - id: depends
+            text: It depends on the route
+        correct: zero
+        explanation: A label counts moves, so the start is 0 and each cell on the route adds one.
+      two:
+        prompt: Can a route enter a `#` cell?
+        options:
           - id: 'no'
-            text: One move
-        correct: 'yes'
-        explanation: The walk goes down twice, right twice and up twice. It visits seven cells, including S
-          at distance zero.
+            text: No, a move goes only onto an open cell
+          - id: 'yes'
+            text: Yes, at an extra cost
+          - id: once
+            text: Yes, once per route
+        correct: 'no'
+        explanation: The wall fills column 1 down to row 1, so every route goes around it through row 2.
+
   - id: traversal-review-unreachable-target
-    tags:
-      - bfs
+    tags: [bfs, grid]
     prompt: |-
-      The queue empties and T still has no label. Moves are up, down, left and right. What does this mean on the board below?
+      BFS from S runs until the queue is empty, and T still has no label. Moves go up, down, left or right, and `#` is a wall. What does that mean for this grid?
 
       ```text
       S#T
@@ -115,154 +190,271 @@ questions:
       .#.
       ```
     options:
-      - id: correct
-        text: There is no legal route to T
-        explanation: The entire middle column is blocked. The queue finished exploring the side reachable from
-          S, leaving T undiscovered.
-      - id: other
+      - id: no-route
+        text: There is no route of open cells from S to T
+        explanation: >-
+          The wall fills the whole middle column. BFS labels every cell S can reach before the queue
+          empties, so a missing label means no route exists.
+      - id: stopped
         text: BFS stopped before it reached T
-        explanation: BFS stops only when the queue is empty, and by then every cell reachable from S has a label.
-          T has none, so no route reaches it.
-    correct: correct
+        explanation: >-
+          BFS stops only when the queue is empty, and by then every cell reachable from S has a
+          label. T has none, so no route reaches it.
+      - id: too-far
+        text: A route exists, but it is longer than BFS checks
+        explanation: >-
+          BFS has no length limit. It keeps adding layers until nothing new is found, so a route of
+          any length would label T.
+    correct: no-route
     followUps:
-      other:
+      stopped:
         prompt: When the queue empties, has every cell reachable from S been labeled?
         options:
-          - id: 'yes'
+          - id: every
             text: Yes, every reachable cell
-          - id: 'no'
+          - id: some
             text: No, some may still be waiting
-        correct: 'yes'
-        explanation: A cell joins the queue as soon as a labeled neighbor finds it, so the queue cannot empty while
-          a reachable cell is unlabeled. The middle column is a wall, so T stays undiscovered.
-  - id: traversal-review-first-label
-    tags:
-      - bfs
-    prompt: Every edge costs one. A node was discovered on layer 2. A node processed in layer 3 later offers
-      another route to it. What distance should the first node keep?
-    options:
-      - id: correct
-        text: Keep 2
-        explanation: Layer 3 can only reach a neighbor in at least four moves through that parent. The two-move
-          discovery is already shorter.
-      - id: other
-        text: Replace 2 with 4
-        explanation: Compare the known distance with one more move from layer 3.
-    correct: correct
-    followUps:
-      other:
-        prompt: How long is the route to that neighbor through the layer-3 node?
+          - id: near
+            text: Only the cells near S
+        correct: every
+        explanation: A cell joins the queue as soon as a labeled neighbor finds it, so the queue cannot empty while a reachable cell is unlabeled.
+      too-far:
+        prompt: When does BFS stop adding layers?
         options:
-          - id: 'yes'
-            text: Four edges
-          - id: 'no'
-            text: Three edges
-        correct: 'yes'
-        explanation: Layer 3 can only reach a neighbor in at least four moves through that parent. The two-move
-          discovery is already shorter.
-  - id: traversal-review-no-offset
-    tags:
-      - bfs
-    prompt: R and S begin active together. You put R before S in the initial queue. What time label does S receive?
+          - id: nothing-new
+            text: When a round finds no new cell and the queue empties
+          - id: limit
+            text: After a fixed number of layers
+          - id: grid-size
+            text: After as many layers as the grid has rows
+        correct: nothing-new
+        explanation: BFS runs until the queue is empty. Any cell with a route from S, however long, is found first.
+
+  - id: traversal-review-first-label
+    tags: [bfs]
+    prompt: >-
+      Every edge is one move. A node was labeled 2 when it was found. Later, a node at distance 3 is
+      processed and has an edge to it. What label should the first node keep?
     options:
-      - id: correct
-        text: 0, before any edge traversal
-        explanation: A source’s label is its activation time. Its position only determines which source gets
-          processed first.
-      - id: other
-        text: 1, because its queue position is second
-        explanation: Separate queue position from the starting time.
-    correct: correct
+      - id: keep
+        text: Keep 2
+        explanation: >-
+          A route through the distance-3 node takes 4 moves, which is longer. A node already found
+          is skipped, so its first label stays.
+      - id: four
+        text: Change it to 4
+        explanation: >-
+          4 is the length of the route through the distance-3 node, which is longer than the 2
+          moves it was found with. BFS skips a node that already has a label.
+      - id: three
+        text: Change it to 3
+        explanation: >-
+          A route through a node at distance 3 needs one more move, so it would be 4, not 3. And
+          BFS keeps the first label anyway.
+    correct: keep
     followUps:
-      other:
+      four:
+        prompt: Which is the fewest moves to the first node?
+        options:
+          - id: two
+            text: 2, its first label
+          - id: four
+            text: 4, the later route
+          - id: last
+            text: Whichever route was found last
+        correct: two
+        explanation: BFS finds nodes in order of distance, so the first label is already the fewest moves.
+      three:
+        prompt: How long is the route through the distance-3 node?
+        options:
+          - id: four
+            text: Four edges
+          - id: three
+            text: Three edges
+          - id: five
+            text: Five edges
+        correct: four
+        explanation: The edge from the distance-3 node adds one move, which makes 4, more than the label of 2.
+
+  - id: traversal-review-no-offset
+    tags: [bfs]
+    prompt: R and S are both sources that start at minute 0. The queue starts with R, then S. What label does S get?
+    options:
+      - id: zero
+        text: 0, before any edge is crossed
+        explanation: A source's label is the minute it starts, which is 0. Its place in the queue only decides which source is popped first.
+      - id: one
+        text: 1, since S is second in the queue
+        explanation: >-
+          Queue order is not time. Both sources start at minute 0, so both labels are 0, whichever
+          is popped first.
+      - id: reached
+        text: It depends on whether a route from R reaches S
+        explanation: >-
+          S is a source, so it starts with label 0 on its own. It never waits to be reached from
+          R.
+    correct: zero
+    followUps:
+      one:
+        prompt: What does a source's place in the starting queue decide?
+        options:
+          - id: order
+            text: Only which source is popped first
+          - id: label
+            text: Its label
+          - id: both
+            text: Both its label and its order
+        correct: order
+        explanation: Every source is labeled 0 when it joins the queue. Order within the first layer changes no label.
+      reached:
         prompt: Does S need a route from R to be a source?
         options:
-          - id: 'yes'
-            text: It starts on its own
-          - id: 'no'
-            text: It first needs to be reached
-        correct: 'yes'
-        explanation: A source’s label is its activation time. Its position only determines which source gets
-          processed first.
-  - id: traversal-review-tied-seeds
-    tags:
-      - bfs
+          - id: own
+            text: No, it starts on its own
+          - id: needs
+            text: Yes, it must be reached first
+          - id: adjacent
+            text: Only if R and S are adjacent
+        correct: own
+        explanation: A source starts at minute 0 and goes into the first queue, so its label is 0 before any edge is crossed.
+
+  - id: traversal-review-tied-sources
+    tags: [bfs]
     prompt: |-
-      Two sources at the ends of the row spread left and right, one cell per minute. When does the center cell first become active?
+      Two sources at the ends of this row both start at minute 0 and spread one index per minute. When does X first get reached?
 
       ```text
       S . . X . . S
       ```
     options:
-      - id: correct
+      - id: three
         text: Minute 3
-        explanation: Both routes to the center take three steps. Either one suffices to reach X.
-      - id: other
+        explanation: X is at index 3, and each source is 3 indices away. Either source reaches it at minute 3.
+      - id: six
         text: Minute 6
-        explanation: Count the steps of one route from a source to the center.
-    correct: correct
+        explanation: >-
+          Six adds the two routes together. Both sources spread at the same time, so X is reached
+          when the first one arrives.
+      - id: two
+        text: Minute 2
+        explanation: >-
+          Two dots sit between each source and X, but reaching X takes one more move, onto X
+          itself. That is 3 moves.
+    correct: three
     followUps:
-      other:
-        prompt: If two sources arrive together, how many arrivals does X need to activate?
+      six:
+        prompt: If both sources arrive at the same minute, how many arrivals does X need?
         options:
-          - id: 'yes'
-            text: One arrival is enough
-          - id: 'no'
-            text: Both arrivals must complete in sequence
-        correct: 'yes'
-        explanation: Both routes to the center take three steps. Either one suffices to reach X.
+          - id: one
+            text: One is enough
+          - id: both
+            text: Both, one after the other
+          - id: sum
+            text: Both, with their times added
+        correct: one
+        explanation: X is reached at the earliest arrival. Here both take 3 moves, so X is reached at minute 3.
+      two:
+        prompt: How many moves does the left source need to go from index 0 to index 3?
+        options:
+          - id: three
+            text: Three moves
+          - id: two
+            text: Two moves
+          - id: four
+            text: Four moves
+        correct: three
+        explanation: Each move goes one index, so index 0 to index 3 is `3 - 0`, which is 3 moves.
+
   - id: traversal-review-source-revisit
-    tags:
-      - bfs
-    prompt: You seed two adjacent sources A and B at minute 0 and mark them seen. When A is processed, it sees
-      B beside it. What should it do?
+    tags: [bfs]
+    prompt: >-
+      Two adjacent sources, A and B, are put in the queue at minute 0 and marked seen. When A is
+      processed, it finds B beside it. What should it do?
     options:
-      - id: correct
-        text: Leave B’s zero label and skip it
-        explanation: B is already in the starting frontier. The edge from A offers a slower route to something
-          already active.
-      - id: other
-        text: Replace B’s label with 1 and append B
-        explanation: Remember which cells were marked when the queue was seeded.
-    correct: correct
+      - id: skip
+        text: Skip B, which keeps label 0
+        explanation: B is already seen and waiting in the queue. A route from A takes a move, so it is slower than B's start.
+      - id: relabel
+        text: Label B 1 and append it
+        explanation: >-
+          B was marked seen when the queue was set up, so A skips it. Its label stays 0, the minute
+          it started.
+      - id: append-again
+        text: Append B again, keeping its label 0
+        explanation: >-
+          B already has its place in the first layer. A second entry would only make the search
+          process B twice.
+    correct: skip
     followUps:
-      other:
-        prompt: Is B already scheduled to be processed when A checks the edge?
+      relabel:
+        prompt: When A checks B, is B already seen?
         options:
-          - id: 'yes'
-            text: It joined the initial queue
-          - id: 'no'
-            text: It joins only if A discovers it
-        correct: 'yes'
-        explanation: B is already in the starting frontier. The edge from A offers a slower route to something
-          already active.
+          - id: seen
+            text: Yes, every source is marked as it joins the queue
+          - id: unseen
+            text: No, B has not been processed yet
+          - id: only-a
+            text: Only A was marked
+        correct: seen
+        explanation: Every source is marked seen as it joins the queue, so no neighbor relabels it.
+      append-again:
+        prompt: Is B already set to be processed when A checks it?
+        options:
+          - id: waiting
+            text: Yes, it joined the starting queue
+          - id: not-yet
+            text: No, it joins only if A appends it
+          - id: done
+            text: No, it was processed before A
+        correct: waiting
+        explanation: B joined the queue with A at the start. It has its turn coming, so appending it again repeats work.
+
   - id: traversal-review-separated-sources
-    tags:
-      - bfs
+    tags: [bfs, grid]
     prompt: |-
-      The two left cells are simultaneous sources. The middle column is a wall. Which label will BFS give the top-right open cell?
+      Both cells marked S are sources that start at minute 0, and `#` is a wall. Moves go up, down, left or right. What label does BFS give the top-right cell?
 
       ```text
       S#.
       S#.
       ```
     options:
-      - id: correct
-        text: No distance label
-        explanation: The wall blocks both seeds. Sharing a row with a source is insufficient when no legal path
-          exists.
-      - id: other
-        text: Distance 1 from the source in its row
-        explanation: Look for a route that stays on open cells.
-    correct: correct
+      - id: none
+        text: No label
+        explanation: >-
+          The wall fills the middle column, so no route of open cells leads from either source to
+          the right column. BFS never finds it.
+      - id: one
+        text: 1, from the source in its row
+        explanation: >-
+          Sharing a row is not a route. The step right from that source is into the wall, so it is
+          not allowed.
+      - id: two
+        text: 2, by stepping around the wall
+        explanation: >-
+          The wall runs the full height of the grid, so there is no way around it. The right column
+          is cut off.
+    correct: none
     followUps:
-      other:
-        prompt: Does either source have an open path into the right column?
+      one:
+        prompt: Can the top source step right?
         options:
-          - id: 'yes'
-            text: Neither source can cross the wall
-          - id: 'no'
-            text: The upper source can travel straight right
-        correct: 'yes'
-        explanation: The wall blocks both seeds. Sharing a row with a source is insufficient when no legal path
-          exists.
+          - id: blocked
+            text: No, the wall blocks it
+          - id: allowed
+            text: Yes, onto the wall
+          - id: costly
+            text: Yes, at a cost of two moves
+        correct: blocked
+        explanation: A move goes only onto an open cell, and both cells right of the sources are walls.
+      two:
+        prompt: Does any route of open cells lead around the wall?
+        options:
+          - id: none
+            text: No, the wall fills the column
+          - id: above
+            text: Yes, above the grid
+          - id: below
+            text: Yes, through the bottom row
+        correct: none
+        explanation: The grid has two rows, and the wall fills column 1 in both, so the right column cannot be reached.

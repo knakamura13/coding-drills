@@ -9,7 +9,7 @@ paths:
     title: Reachability
     summary: Find legal neighbors, mark a cell when it is discovered, and finish one region.
     after: [arrays-and-strings]
-    afterNote: The plan also names FIFO and LIFO operations. Those are not separate paths; stack matching and priority order teach them.
+    afterNote: The frontier is a plain list, and `frontier.pop()` takes the item added last. That is all this path needs; Traversal layers teaches the queue.
     levels:
       - id: find-legal-neighbors
         title: Find legal neighbors
@@ -26,14 +26,14 @@ paths:
     title: Traversal layers
     summary: Trace one queue layer, label unit distances, and start from several sources.
     after: [reachability]
-    afterNote: FIFO is named as well and is not a separate path. Priority order introduces FIFO versus priority.
+    afterNote: 'Its first card states the queue rule in its prompt: `popleft()` removes the item at the front, and `append` adds at the back. So Operation costs, which defines the queue, is not needed.'
     levels:
       - id: trace-queue-layer
         title: Trace one queue layer
       - id: label-unit-distances
         title: Label unit distances
       - id: seed-multiple-sources
-        title: Seed multiple sources
+        title: Start from several sources
     checkpoints:
       - id: simultaneous-spread
         title: Time a simultaneous spread
@@ -68,7 +68,7 @@ paths:
     title: Dependency order
     summary: Read a directed prerequisite, count incoming edges, and unlock a successor.
     after: [reachability]
-    afterNote: FIFO is named as well and is not a separate path.
+    afterNote: '`dep-unlock-trace`, the review trace and the checkpoint''s cycle check state the queue rule in their prompts: `popleft()` removes the item at the front, and `append` adds at the back. So Operation costs, which defines the queue, is not needed.'
     levels:
       - id: read-directed-prerequisite
         title: Read a directed prerequisite
@@ -83,26 +83,33 @@ paths:
 
   - id: weighted-paths
     title: Weighted paths
-    summary: Sum edge weights, relax one edge, and see when a distance can be finalized.
+    summary: Sum edge weights, relax every edge in a pass, and find the cheapest route within k stops.
     after: [traversal-layers, priority-order]
+    afterNote: Only the deep Dijkstra fork uses the heap from Priority order. The interview cards need only what Traversal layers teaches.
     levels:
       - id: sum-edge-weights
         title: Sum edge weights
       - id: relax-one-edge
         title: Relax one edge
-      - id: finalize-distance
-        title: Decide when a tentative distance can be finalized
+    forks:
+      - id: dijkstra
+        title: Finalize distances
+        after: relax-one-edge
+        levels:
+          - id: finalize-distance
+            title: Decide when a tentative distance can be finalized
+            depth: deep
     checkpoints:
-      - id: choose-weighted-algorithm
-        title: Choose a weighted algorithm
-        summary: Select an algorithm under the stated weight constraints or diagnose repeated work.
-        mix: [select-algorithm, repeated-work]
+      - id: cheapest-within-stops
+        title: Find the cheapest route within k stops
+        summary: Trace relaxation passes and find the cheapest route that stays within a stop limit.
+        mix: [relax-edges, limit-stops]
 
   - id: tree-walks
     title: Tree walks
     summary: Name the parts of a tree, trace a visit order, and tell height from node count.
     after: [recursive-calls]
-    afterNote: FIFO for level order is named as well and is not a separate path.
+    afterNote: 'Its level-order cards state the queue rule in their prompts: `popleft()` removes the item at the front, and `append` adds at the back. So Operation costs, which defines the queue, is not needed.'
     levels:
       - id: name-tree-parts
         title: Identify root, child, and subtree
@@ -112,12 +119,13 @@ paths:
         title: Distinguish height from node count
     checkpoints:
       - id: traversal-and-depth
-        title: Trace a traversal and its depth
-        summary: Trace a traversal and predict live stack depth.
+        title: Trace a traversal and its live calls
+        summary: Trace a traversal and count the calls still live at one moment.
 
   - id: bst-order
     title: BST order
     summary: Choose an ordered subtree, inherit an ancestor bound, and find where two targets split.
+    depth: deep
     after: [tree-walks]
     levels:
       - id: choose-ordered-subtree
@@ -149,197 +157,213 @@ paths:
         summary: Complete and trace diameter on a fresh tree.
         mix: [complete-code, trace-tree]
 
+  - id: tree-answers
+    title: Tree answers
+    summary: Compare two trees, pass a value down to every child, and return what a search found.
+    after: [tree-walks]
+    levels:
+      - id: compare-two-trees
+        title: Compare two trees
+      - id: pass-down-a-value
+        title: Pass a value down
+      - id: return-what-was-found
+        title: Return what was found
+    checkpoints:
+      - id: answer-from-subtrees
+        title: Answer from subtrees
+        summary: Compare, pass down and return answers on fresh trees.
+        mix: [compare, pass-down, found]
+
 drills:
   - questionId: prep-order-needs-dag
-    disposition: rewrite
+    disposition: retire
     path: dependency-order
-    skill: unlock-successor
-    note: Show three tasks and ask which is ready; introduce a cycle separately.
+    note: 'Not absorbed: `dep-ready-task` asks which task is ready, and `dep-two-task-cycle` names the cycle. The older deck stays as a fixture.'
   - questionId: kahn-short-result
-    disposition: exam
+    disposition: retire
     path: dependency-order
-    tests: [count-incoming-edges, unlock-successor]
-    checkpoint: partial-kahn-result
-    note: Explain a partial order and distinguish a blocked descendant from a cycle member.
+    note: 'Not copied: `dep-cycle-stalls` teaches what a short result means, and `dep-exam-blocked-node` prints it, so the item would be answered from memory. Replaced by `dep-exam-final-counts`. The older deck stays as a fixture.'
   - questionId: union-find-link-stream
-    disposition: rewrite
+    disposition: retire
     path: connectivity
-    skill: test-later-connection
-    note: Trace one union and one same-set query before comparing repeated searches with union-find.
+    note: 'Not absorbed: `connectivity-later-same-trace` traces the unions and same-set queries, and its comparison rests on union by size and amortized cost, which are deep. The older deck stays as a fixture.'
   - questionId: negative-edge-shortest-path
-    disposition: exam
+    disposition: retire
     path: weighted-paths
-    tests: [sum-edge-weights, relax-one-edge, finalize-distance]
-    covers: [select-algorithm]
-    note: Use a negative edge on a fresh graph to distinguish hop count, greedy finalization and repeated relaxation.
+    note: 'Copied unchanged into the Weighted paths checkpoint as `wp-exam-negative-edge`, tagged deep: choosing Bellman-Ford for negative weights is deep. The older deck stays as a fixture.'
   - questionId: dijkstra-stale-entry
-    disposition: exam
+    disposition: retire
     path: weighted-paths
-    tests: [relax-one-edge, finalize-distance]
-    covers: [repeated-work]
-    note: Use a cheaper route discovered later to distinguish correctness from redundant heap work.
+    note: 'Copied unchanged into the Weighted paths checkpoint as `wp-exam-stale-check`, tagged deep with the Dijkstra fork. The older deck stays as a fixture.'
   - questionId: count-components-edge-list
-    disposition: exam
+    disposition: retire
     path: connectivity
-    tests: [read-adjacency-list, separate-components]
-    covers: [static-components]
-    note: Combine adjacency construction, a visited set and isolated vertices.
+    note: 'Not copied: the outer scan is taught by `connectivity-components-restart` and printed by `connectivity-exam-one-way-build`, so the approach item would be answered from memory. Replaced by `connectivity-exam-largest-component`. The older deck stays as a fixture.'
   - questionId: count-islands
-    disposition: exam
+    disposition: retire
     path: reachability
-    tests: [find-legal-neighbors, mark-on-discovery, finish-reachable-region]
-    note: Combine neighbor rules, flood fill and the outer scan; include diagonally touching land.
+    note: 'Not copied: the outer scan is taught by `reachability-next-region` and described by `reachability-checkpoint-next-start`, so its approach item would be answered from memory. `reachability-checkpoint-trapped-land` takes its checkpoint place with a fresh problem. The older deck stays as a fixture.'
   - questionId: shortest-path-grid
-    disposition: keep
+    disposition: retire
     path: traversal-layers
-    skill: label-unit-distances
-    note: After a queue trace, choose a traversal for a maze with unit-cost moves.
+    note: 'Absorbed into Traversal layers as `traversal-stack-first-label`: the stack-first search labels a cell with a longer route than the queue. The Dijkstra comparison is left to Weighted paths. The older deck stays as a fixture.'
   - questionId: bfs-mark-on-enqueue
-    disposition: rewrite
+    disposition: retire
     path: reachability
-    note: Use a diamond or 2-by-2 grid and ask at which enqueue two paths try to claim the same cell.
+    note: 'Its rewrite is done by `reachability-mark-convergence` and `reachability-checkpoint-duplicate-work`, which mark on adding against marking on popping. The older deck stays as a fixture.'
   - questionId: multi-source-bfs
-    disposition: exam
+    disposition: retire
     path: traversal-layers
-    tests: [trace-queue-layer, label-unit-distances, seed-multiple-sources]
-    note: Combine initial sources, layer timing and unreachable cells.
+    note: 'Not copied: one queue started from every source is taught by `traversal-source-zero`, so its approach item would be answered from memory. `traversal-exam-shared-neighbor` takes its checkpoint place with a fresh problem. The older deck stays as a fixture.'
   - questionId: recursive-dfs-depth
-    disposition: rewrite
+    disposition: retire
     path: reachability
-    note: Trace frames on a thin corridor; choose an explicit stack once depth is understood.
+    note: 'Not absorbed: Reachability is not after Recursion, so call depth and `RecursionError` are untaught on its chain. The older deck stays as a fixture.'
   - questionId: grid-bounds-and-cost
-    disposition: rewrite
+    disposition: retire
     path: reachability
-    note: Split Python negative-index wraparound from counting visited cells. Use the former before flood fill.
+    note: 'Its wraparound half is done by `reachability-negative-wraps`, `reachability-reject-negative-row` and `reachability-checkpoint-wraparound`. Its cost half needs Big-O, which is not on the chain. The older deck stays as a fixture.'
   - questionId: postorder-output
-    disposition: rewrite
+    disposition: retire
     path: tree-walks
-    skill: trace-visit-order
-    note: Trace a three-node tree before asking for the complete traversal of an asymmetric tree.
+    note: 'Absorbed into Tree walks as `tree-walks-postorder-list`, which names the walk postorder in its prompt and drops "depth-first". The older deck stays as a fixture.'
   - questionId: bst-bounds-check
-    disposition: exam
+    disposition: retire
     path: bst-order
-    tests: [inherit-ancestor-bound]
-    covers: [validate]
-    note: Combine inherited bounds and recursion to diagnose a deep violation.
+    note: 'Copied unchanged into the BST order checkpoint as `bst-order-exam-bounds-check`, deep with the path. The older deck stays as a fixture.'
   - questionId: level-order-queue
-    disposition: rewrite
+    disposition: retire
     path: tree-walks
-    skill: trace-visit-order
-    note: Draw one frontier and ask where the current level ends before choosing the queue loop.
+    note: 'Not absorbed: `tree-walks-level-order` shows that a queue visits depth by depth, and `tree-walks-round-boundary` finds where one depth ends. The older deck stays as a fixture.'
   - questionId: recursion-cost
-    disposition: exam
+    disposition: retire
     path: tree-walks
-    tests: [height-versus-count]
-    note: Distinguish total visited nodes from maximum active depth across two shapes.
+    note: 'Not copied: it asks for Big-O, which is not on Tree walks'' chain, and `tree-walks-review-calls-and-depth` separates total calls from the most live calls without it. The older deck stays as a fixture.'
   - questionId: bst-lowest-common-ancestor
-    disposition: exam
+    disposition: retire
     path: bst-order
-    tests: [identify-target-split, choose-ordered-subtree]
-    covers: [ancestor]
-    note: Combine ordering, divergence and the case where a target is itself the ancestor.
+    note: 'Copied unchanged into the BST order checkpoint as `bst-order-exam-lca-approach`, deep with the path; its O(h) wording waits for the deep pass. The older deck stays as a fixture.'
   - questionId: diameter-return-vs-record
-    disposition: exam
+    disposition: retire
     path: tree-summaries
-    tests: [height-versus-through-path, track-best-path]
-    covers: [complete-code]
-    note: Combine two child heights with a through-node path and a global maximum.
+    note: 'Copied as a fresh problem, `tree-summaries-exam-swapped-roles`: a straight copy''s correct pair is printed in `tree-summaries-best-node` and `tree-summaries-exam-trace`, so it would be answered from memory. The older deck stays as a fixture.'
 
   - questionId: reachability-tap-east
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
-    note: Move one column to a land neighbor.
+    note: Tap the land cell one step right of the start. Its worked example introduces the path.
   - questionId: reachability-diagonal-neighbor
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
-    note: Distinguish a diagonal from one legal move.
+    note: 'Defines `(r, c)` and `grid[r][c]`, then picks the one legal move against two diagonals and a cell two columns away.'
+  - questionId: reachability-negative-wraps
+    disposition: keep
+    path: reachability
+    skill: find-legal-neighbors
+    note: 'Tap the row `grid[-1]` reads after a step up from row 0: the last row, with no error.'
   - questionId: reachability-reject-negative-row
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
-    note: Check both bounds before indexing.
+    note: 'Pick the bounds test that accepts exactly the cells inside a 2-by-3 grid, against no lower bounds, rows for columns, and `<=`.'
+  - questionId: reachability-frontier-trace
+    disposition: keep
+    path: reachability
+    skill: mark-on-discovery
+    note: 'Defines the frontier and `seen`. Trace one pop, the next cell `pop()` takes, and the final `seen` on a row.'
   - questionId: reachability-mark-convergence
     disposition: keep
     path: reachability
     skill: mark-on-discovery
-    note: Use discovery marks to prevent duplicate work.
+    note: A second neighbor finds a cell still waiting in the frontier. Skip it, because it was marked when it was added.
   - questionId: reachability-mark-start
     disposition: keep
     path: reachability
     skill: mark-on-discovery
-    note: Mark the starting cell on discovery.
+    note: With `seen` starting empty, the start is added back by its neighbor and processed twice.
   - questionId: reachability-stop-at-water
     disposition: keep
     path: reachability
     skill: finish-reachable-region
-    note: Follow a connected patch without crossing water.
+    note: Defines a flood fill. Pick the cells it reaches, against a diagonal join and crossing water.
   - questionId: reachability-empty-frontier
     disposition: keep
     path: reachability
     skill: finish-reachable-region
-    note: Identify what one completed traversal certifies.
+    note: Defines graph, node and edge. An empty frontier means the start's region is found, not the whole graph.
+  - questionId: reachability-next-region
+    disposition: keep
+    path: reachability
+    skill: finish-reachable-region
+    note: Defines an island. Tap where the scan starts the second fill, skipping cells the first fill marked.
   - questionId: reachability-right-edge-review
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
     variant: true
-    note: Check the upper column bound.
+    note: Reject a step past the last column before reading it.
   - questionId: reachability-left-edge-review
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
     variant: true
-    note: Check the lower column bound.
+    note: Tap the cell a step left from column 0 reads when the test has no lower bound.
   - questionId: reachability-water-neighbor-review
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
     variant: true
-    note: Filter in-bounds candidates by land and direction.
+    note: Pick the neighbors a search may add, against a diagonal and a water cell.
   - questionId: reachability-down-edge-review
     disposition: keep
     path: reachability
     skill: find-legal-neighbors
     variant: true
-    note: Use separate row and column lengths.
+    note: Pick the step past the last row, with columns bounded by the row length.
   - questionId: reachability-diamond-review
     disposition: keep
     path: reachability
     skill: mark-on-discovery
     variant: true
-    note: Recognize two parents converging on a waiting node.
+    note: Count how many times a node with two finders joins the frontier.
   - questionId: reachability-stack-mark-review
     disposition: keep
     path: reachability
     skill: mark-on-discovery
     variant: true
-    note: Transfer discovery timing from a queue to a stack.
+    note: Skip a waiting cell rather than add it again so `pop()` takes it sooner.
   - questionId: reachability-return-to-start-review
     disposition: keep
     path: reachability
     skill: mark-on-discovery
     variant: true
-    note: Prevent a back edge from rediscovering the start.
+    note: The start's mark in `seen`, not leaving the frontier, keeps it from being added again.
   - questionId: reachability-round-the-wall-review
     disposition: keep
     path: reachability
     skill: finish-reachable-region
     variant: true
-    note: Trace an indirect route through land.
+    note: A flood fill reaches land past water by a route of land around it.
   - questionId: reachability-diagonal-region-review
     disposition: keep
     path: reachability
     skill: finish-reachable-region
     variant: true
-    note: Identify an isolated cell beside diagonal land.
+    note: Count the cells a flood fill marks when the only other land is diagonal.
   - questionId: reachability-drain-stack-review
     disposition: keep
     path: reachability
     skill: finish-reachable-region
     variant: true
-    note: Trace competing pushes and the remaining frontier on a small grid.
+    note: Trace two pops on a small grid and give the frontier that remains.
+  - questionId: reachability-next-region-review
+    disposition: keep
+    path: reachability
+    skill: finish-reachable-region
+    variant: true
+    note: Tap where the scan starts the third fill on a fresh row.
   - questionId: reachability-checkpoint-corner-patches
     disposition: exam
     path: reachability
@@ -347,7 +371,7 @@ drills:
       - find-legal-neighbors
       - finish-reachable-region
     checkpoint: islands-without-joins
-    note: Combine the neighbor rule with the outer scan.
+    note: Count islands where some land touches only at corners.
   - questionId: reachability-checkpoint-wraparound
     disposition: exam
     path: reachability
@@ -355,117 +379,137 @@ drills:
       - find-legal-neighbors
       - finish-reachable-region
     checkpoint: islands-without-joins
-    note: Diagnose an incorrect component count caused by missing bounds.
+    note: An island counter whose bounds test has no lower bound for columns reports 1 island instead of 2.
   - questionId: reachability-checkpoint-duplicate-work
     disposition: exam
     path: reachability
     tests:
       - mark-on-discovery
     checkpoint: islands-without-joins
-    note: Trace converging arrivals and identify duplicate work.
+    note: Marking on pop with `frontier.pop()` adds `(0, 1)` twice on a 2-by-2 block.
   - questionId: reachability-checkpoint-next-start
     disposition: exam
     path: reachability
     tests:
       - finish-reachable-region
     checkpoint: islands-without-joins
-    note: Use the completed flood-fill state to start the next island.
+    note: Pick the cell where the row-by-row scan starts its second fill.
+  - questionId: reachability-checkpoint-trapped-land
+    disposition: exam
+    path: reachability
+    tests:
+      - find-legal-neighbors
+      - finish-reachable-region
+    checkpoint: islands-without-joins
+    note: Count the land cells whose island reaches no outer row or column, where one inner cell joins an edge island and another island touches it only at a corner.
+  - questionId: reachability-checkpoint-debug-start
+    disposition: exam
+    path: reachability
+    tests:
+      - mark-on-discovery
+    checkpoint: islands-without-joins
+    note: 'Debugging: pick the call a suggested region count gets wrong because the start is never marked.'
 
   - questionId: traversal-layer-pop-trace
     disposition: keep
     path: traversal-layers
     skill: trace-queue-layer
-    note: Predict the front after two pops and an enqueue.
+    note: 'Defines BFS and the queue. Trace the front after two pops: every node one move away leaves before any node two moves away.'
   - questionId: traversal-layer-freeze-length
     disposition: keep
     path: traversal-layers
     skill: trace-queue-layer
-    note: Finish the layer using the initial frontier count.
-  - questionId: traversal-layer-cross-edge
-    disposition: keep
-    path: traversal-layers
-    skill: trace-queue-layer
-    note: Keep the current layer ahead of new discoveries.
+    note: Defines a layer. A round pops the `n` nodes waiting when it began, not the ones it appends.
   - questionId: traversal-distance-one-step
     disposition: keep
     path: traversal-layers
     skill: label-unit-distances
-    note: Add one unit of distance at discovery.
+    note: 'Defines distance. A neighbor found from a node labeled 4 gets `4 + 1`.'
   - questionId: traversal-distance-detour
     disposition: keep
     path: traversal-layers
     skill: label-unit-distances
-    note: Distinguish shortest legal distance from straight-line position.
-  - questionId: traversal-seed-zero
+    note: A wall forces a longer route, so the label is 4, not the straight-line 2.
+  - questionId: traversal-first-label-stays
+    disposition: keep
+    path: traversal-layers
+    skill: label-unit-distances
+    note: A node found again along a same-layer edge keeps its first label and is not appended again.
+  - questionId: traversal-stack-first-label
+    disposition: keep
+    path: traversal-layers
+    skill: label-unit-distances
+    note: 'Defines a stack and depth-first search. With `pop()`, the first label of `(0, 2)` is 4, not its fewest moves.'
+  - questionId: traversal-source-zero
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
-    note: Seed all sources at the same time.
-  - questionId: traversal-nearer-seed
+    note: Defines a source. Every source starts in the queue with label 0.
+  - questionId: traversal-nearer-source
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
-    note: Read distance from the closest simultaneous source.
+    note: Tap the source that reaches X first when both start together.
   - questionId: traversal-review-round-count
     disposition: keep
     path: traversal-layers
     skill: trace-queue-layer
     variant: true
-    note: Separate pops already budgeted from new enqueues.
+    note: Count the pops in a round that appends new nodes.
   - questionId: traversal-review-pending-peer
     disposition: keep
     path: traversal-layers
     skill: trace-queue-layer
     variant: true
-    note: Trace an enqueue while a peer is still waiting.
+    note: Give the queue after one `popleft()` and two appends.
   - questionId: traversal-review-layer-label
     disposition: keep
     path: traversal-layers
     skill: trace-queue-layer
     variant: true
-    note: Recognize different layers in one live queue.
+    note: Tell which waiting nodes are still in the current layer.
   - questionId: traversal-review-count-edges
     disposition: keep
     path: traversal-layers
     skill: label-unit-distances
     variant: true
-    note: Count edges rather than visited cells.
+    note: Count moves, not cells, on a route around a wall.
   - questionId: traversal-review-unreachable-target
     disposition: keep
     path: traversal-layers
     skill: label-unit-distances
     variant: true
-    note: Interpret a missing BFS label after the queue empties.
+    note: A cell with no label after the queue empties has no route from the start.
   - questionId: traversal-review-first-label
     disposition: keep
     path: traversal-layers
     skill: label-unit-distances
     variant: true
-    note: Keep the first unit-distance label when a later path arrives.
+    note: A later, longer route does not change a node's first label.
   - questionId: traversal-review-no-offset
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
     variant: true
-    note: Keep simultaneous seeds in the same layer.
-  - questionId: traversal-review-tied-seeds
+    note: The second source in the queue still has label 0.
+  - questionId: traversal-review-tied-sources
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
     variant: true
-    note: Use the earliest arrival when sources tie.
+    note: The middle cell is reached at the earliest arrival when two sources tie.
   - questionId: traversal-review-source-revisit
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
     variant: true
-    note: Mark every source seen when seeding it.
+    note: A source found by another source keeps label 0 and is skipped.
   - questionId: traversal-review-separated-sources
     disposition: keep
     path: traversal-layers
     skill: seed-multiple-sources
     variant: true
-    note: Recognize an area unreachable from all sources.
+    note: A wall cuts a column off from every source, so it gets no label.
   - questionId: traversal-exam-meeting-fronts
     disposition: exam
     path: traversal-layers
@@ -473,7 +517,7 @@ drills:
       - trace-queue-layer
       - seed-multiple-sources
     checkpoint: simultaneous-spread
-    note: Combine simultaneous starts and full minute layers.
+    note: Time two sources spreading toward each other along a row.
   - questionId: traversal-exam-detour-spread
     disposition: exam
     path: traversal-layers
@@ -481,7 +525,7 @@ drills:
       - label-unit-distances
       - seed-multiple-sources
     checkpoint: simultaneous-spread
-    note: Combine legal detours with distance to the nearest source.
+    note: Find the last cell to activate when a wall forces a detour from the nearer source.
   - questionId: traversal-exam-blocked-completion
     disposition: exam
     path: traversal-layers
@@ -489,22 +533,188 @@ drills:
       - trace-queue-layer
       - seed-multiple-sources
     checkpoint: simultaneous-spread
-    note: Distinguish the last reachable minute from complete coverage.
+    note: Return −1 when a walled-off cell never activates, not the last reachable minute.
   - questionId: traversal-exam-layer-counter
     disposition: exam
     path: traversal-layers
     tests:
       - trace-queue-layer
       - label-unit-distances
+    checkpoint: simultaneous-spread
+    note: A loop that adds a minute per pop records 3 for a node two layers out.
+  - questionId: traversal-exam-shared-neighbor
+    disposition: exam
+    path: traversal-layers
+    tests:
+      - trace-queue-layer
       - seed-multiple-sources
     checkpoint: simultaneous-spread
-    note: Repair elapsed-time accounting when layers contain several nodes.
+    note: 'Two sources start in one queue and share a neighbor: give the pop order.'
+  - questionId: traversal-exam-debug-stack
+    disposition: exam
+    path: traversal-layers
+    tests:
+      - label-unit-distances
+    checkpoint: simultaneous-spread
+    note: 'Debugging: pick the graph a suggested solution that uses `pop()` labels with a distance that is too high.'
 
+  - questionId: connectivity-adj-both-lists
+    disposition: keep
+    path: connectivity
+    skill: read-adjacency-list
+    note: Names the adjacency list. Tap the neighbor an undirected edge writes into the second list. Its worked example introduces the path.
+  - questionId: connectivity-adj-total-entries
+    disposition: keep
+    path: connectivity
+    skill: read-adjacency-list
+    note: Count two adjacency entries for each undirected edge.
+  - questionId: connectivity-components-restart
+    disposition: keep
+    path: connectivity
+    skill: separate-components
+    note: Defines a connected component. Trace where the outer loop restarts and count the starts, including an isolated node.
+  - questionId: connectivity-components-isolated
+    disposition: keep
+    path: connectivity
+    skill: separate-components
+    note: States how a defaultdict adds keys. Find the isolated node a loop over its keys never visits.
+  - questionId: connectivity-find-root
+    disposition: keep
+    path: connectivity
+    skill: follow-representatives
+    note: Defines union-find's parent and root. Drag a pointer along parent links to the root.
+  - questionId: connectivity-compress-path
+    disposition: keep
+    path: connectivity
+    skill: follow-representatives
+    note: Defines path compression. Pick the parent array after one compressing find, leaving another set alone.
+  - questionId: connectivity-union-write-root
+    disposition: keep
+    path: connectivity
+    skill: union-sets
+    note: Tap the root cell a union rewrites, not the argument's own cell.
+  - questionId: connectivity-union-same-root
+    disposition: keep
+    path: connectivity
+    skill: union-sets
+    note: A union whose ends already share a root writes the root into itself and changes nothing, so the set count stays.
+  - questionId: connectivity-later-same-trace
+    disposition: keep
+    path: connectivity
+    skill: test-later-connection
+    note: Trace roots across unions and answer a same-set query before and after a joining link.
+  - questionId: connectivity-review-edges-from-adj
+    disposition: keep
+    path: connectivity
+    skill: read-adjacency-list
+    variant: true
+    note: Recover an undirected edge list from its adjacency list.
+  - questionId: connectivity-review-dict-keys
+    disposition: keep
+    path: connectivity
+    skill: read-adjacency-list
+    variant: true
+    note: Count defaultdict keys when a node has no edges.
+  - questionId: connectivity-review-third-start
+    disposition: keep
+    path: connectivity
+    skill: separate-components
+    variant: true
+    note: Tap where the third search starts on a fresh graph.
+  - questionId: connectivity-review-cycle-count
+    disposition: keep
+    path: connectivity
+    skill: separate-components
+    variant: true
+    note: Count components with a loop of three nodes and two isolated nodes.
+  - questionId: connectivity-review-find-trace
+    disposition: keep
+    path: connectivity
+    skill: follow-representatives
+    variant: true
+    note: Step through find one parent link at a time.
+  - questionId: connectivity-review-same-root
+    disposition: keep
+    path: connectivity
+    skill: follow-representatives
+    variant: true
+    note: Compare roots rather than parents to decide set membership.
+  - questionId: connectivity-review-union-wrong-cell
+    disposition: keep
+    path: connectivity
+    skill: union-sets
+    variant: true
+    note: Trace a union that writes a non-root cell and splits a set.
+  - questionId: connectivity-review-union-count
+    disposition: keep
+    path: connectivity
+    skill: union-sets
+    variant: true
+    note: Lower the set count only when a union merges two roots.
+  - questionId: connectivity-review-redundant-link
+    disposition: keep
+    path: connectivity
+    skill: test-later-connection
+    variant: true
+    note: Tap the first link whose ends already share a root.
+  - questionId: connectivity-review-answer-in-time
+    disposition: keep
+    path: connectivity
+    skill: test-later-connection
+    variant: true
+    note: Answer each same-set query with the links seen so far.
+  - questionId: connectivity-exam-last-start
+    disposition: exam
+    path: connectivity
+    tests:
+      - read-adjacency-list
+      - separate-components
+    covers: [static-components]
+    note: Read an adjacency dict and tap the last search start.
+  - questionId: connectivity-exam-one-way-build
+    disposition: exam
+    path: connectivity
+    tests:
+      - read-adjacency-list
+      - separate-components
+    covers: [static-components]
+    note: Count components when the build stores each undirected edge in one list only.
+  - questionId: connectivity-exam-stream-answers
+    disposition: exam
+    path: connectivity
+    tests:
+      - union-sets
+      - test-later-connection
+    covers: [dynamic-links]
+    note: Answer same-set queries in a link stream, including one redundant link.
+  - questionId: connectivity-exam-count-roots
+    disposition: exam
+    path: connectivity
+    tests:
+      - follow-representatives
+      - union-sets
+    covers: [dynamic-links]
+    note: Count sets from a parent array, including an untouched node.
+  - questionId: connectivity-exam-largest-component
+    disposition: exam
+    path: connectivity
+    tests:
+      - read-adjacency-list
+      - separate-components
+    covers: [static-components]
+    note: Give the size of the largest component from an undirected edge list, where one node appears only second in its edge.
+  - questionId: connectivity-exam-debug-union
+    disposition: exam
+    path: connectivity
+    tests:
+      - union-sets
+    covers: [dynamic-links]
+    note: 'Debugging: pick the call a suggested solution gets wrong when its union writes a node that is no longer a root.'
   - questionId: dep-ready-task
     disposition: keep
     path: dependency-order
     skill: read-directed-prerequisite
-    note: Tap the task no pair makes wait.
+    note: Tap the task no pair makes wait. Its worked example introduces the path.
   - questionId: dep-needs-to-pair
     disposition: keep
     path: dependency-order
@@ -514,27 +724,32 @@ drills:
     disposition: keep
     path: dependency-order
     skill: read-directed-prerequisite
-    note: Recognize that two tasks waiting on each other cannot start.
+    note: Defines a cycle. Recognize that two tasks waiting on each other cannot start.
+  - questionId: dep-count-direct-only
+    disposition: keep
+    path: dependency-order
+    skill: count-incoming-edges
+    note: Defines a directed edge and in-degree. Count direct edges, not every earlier task.
   - questionId: dep-count-trace
     disposition: keep
     path: dependency-order
     skill: count-incoming-edges
     note: Trace the counting loop and find the nodes with no prerequisite.
-  - questionId: dep-count-direct-only
-    disposition: keep
-    path: dependency-order
-    skill: count-incoming-edges
-    note: Count direct edges, not every earlier task.
-  - questionId: dep-unlock-trace
-    disposition: keep
-    path: dependency-order
-    skill: unlock-successor
-    note: Trace which nodes join the queue as their counts reach 0.
   - questionId: dep-unlock-at-zero
     disposition: keep
     path: dependency-order
     skill: unlock-successor
-    note: Lower a count by one per processed prerequisite and queue at 0.
+    note: Shows the decrement lines. Lower a count by one per processed prerequisite and queue at 0.
+  - questionId: dep-unlock-trace
+    disposition: keep
+    path: dependency-order
+    skill: unlock-successor
+    note: Names Kahn's algorithm and a topological order and states the queue rule. Trace which nodes join the queue as their counts reach 0.
+  - questionId: dep-cycle-stalls
+    disposition: keep
+    path: dependency-order
+    skill: unlock-successor
+    note: A cycle leaves its nodes and every node after them above 0, so the order comes back short.
   - questionId: dep-review-ready-course
     disposition: keep
     path: dependency-order
@@ -564,7 +779,7 @@ drills:
     path: dependency-order
     skill: count-incoming-edges
     variant: true
-    note: Seed a node that no edge mentions.
+    note: Start the queue with a node that no edge mentions.
   - questionId: dep-review-direct-count
     disposition: keep
     path: dependency-order
@@ -627,133 +842,22 @@ drills:
       - unlock-successor
     checkpoint: partial-kahn-result
     note: List the tasks a partial order still finishes.
-  - questionId: connectivity-adj-both-lists
-    disposition: keep
-    path: connectivity
-    skill: read-adjacency-list
-    note: Tap the neighbor an undirected edge writes into the second list.
-  - questionId: connectivity-adj-total-entries
-    disposition: keep
-    path: connectivity
-    skill: read-adjacency-list
-    note: Count two adjacency entries for each undirected edge.
-  - questionId: connectivity-components-restart
-    disposition: keep
-    path: connectivity
-    skill: separate-components
-    note: Trace where the outer loop restarts and count the starts, including an isolated node.
-  - questionId: connectivity-components-isolated
-    disposition: keep
-    path: connectivity
-    skill: separate-components
-    note: Find the isolated node a defaultdict loop never visits.
-  - questionId: connectivity-find-root
-    disposition: keep
-    path: connectivity
-    skill: follow-representatives
-    note: Drag a pointer along parent links to the root.
-  - questionId: connectivity-union-write-root
-    disposition: keep
-    path: connectivity
-    skill: union-sets
-    note: Tap the root cell a union rewrites, not the argument's own cell.
-  - questionId: connectivity-later-same-trace
-    disposition: keep
-    path: connectivity
-    skill: test-later-connection
-    note: Trace roots across unions and answer a same-set query before and after a joining link.
-  - questionId: connectivity-review-edges-from-adj
-    disposition: keep
-    path: connectivity
-    skill: read-adjacency-list
-    variant: true
-    note: Recover an undirected edge list from its adjacency list.
-  - questionId: connectivity-review-dict-keys
-    disposition: keep
-    path: connectivity
-    skill: read-adjacency-list
-    variant: true
-    note: Count defaultdict keys when a node has no edges.
-  - questionId: connectivity-review-third-start
-    disposition: keep
-    path: connectivity
-    skill: separate-components
-    variant: true
-    note: Tap where the third search starts on a fresh graph.
-  - questionId: connectivity-review-cycle-count
-    disposition: keep
-    path: connectivity
-    skill: separate-components
-    variant: true
-    note: Count components with a cycle and two isolated nodes.
-  - questionId: connectivity-review-find-trace
-    disposition: keep
-    path: connectivity
-    skill: follow-representatives
-    variant: true
-    note: Step through find one parent link at a time.
-  - questionId: connectivity-review-same-root
-    disposition: keep
-    path: connectivity
-    skill: follow-representatives
-    variant: true
-    note: Compare roots rather than parents to decide set membership.
-  - questionId: connectivity-review-union-wrong-cell
-    disposition: keep
-    path: connectivity
-    skill: union-sets
-    variant: true
-    note: Trace a union that writes a non-root cell and splits a set.
-  - questionId: connectivity-review-union-count
-    disposition: keep
-    path: connectivity
-    skill: union-sets
-    variant: true
-    note: Lower the set count only when a union merges two roots.
-  - questionId: connectivity-review-redundant-link
-    disposition: keep
-    path: connectivity
-    skill: test-later-connection
-    variant: true
-    note: Tap the first link whose ends already share a root.
-  - questionId: connectivity-review-answer-in-time
-    disposition: keep
-    path: connectivity
-    skill: test-later-connection
-    variant: true
-    note: Answer each same-set query with the links seen so far.
-  - questionId: connectivity-exam-last-start
+  - questionId: dep-exam-final-counts
     disposition: exam
-    path: connectivity
+    path: dependency-order
     tests:
-      - read-adjacency-list
-      - separate-components
-    covers: [static-components]
-    note: Read an adjacency dict and tap the last search start.
-  - questionId: connectivity-exam-one-way-build
+      - count-incoming-edges
+      - unlock-successor
+    checkpoint: partial-kahn-result
+    note: Give the counts left when a cycle stalls Kahn's algorithm, including a node off the cycle that waits for two cycle nodes.
+  - questionId: dep-exam-debug-seed
     disposition: exam
-    path: connectivity
+    path: dependency-order
     tests:
-      - read-adjacency-list
-      - separate-components
-    covers: [static-components]
-    note: Diagnose a component count built from one-way adjacency lists.
-  - questionId: connectivity-exam-stream-answers
-    disposition: exam
-    path: connectivity
-    tests:
-      - union-sets
-      - test-later-connection
-    covers: [dynamic-links]
-    note: Answer same-set queries in a link stream, including one redundant link.
-  - questionId: connectivity-exam-count-roots
-    disposition: exam
-    path: connectivity
-    tests:
-      - follow-representatives
-      - union-sets
-    covers: [dynamic-links]
-    note: Count sets from a parent array, including an untouched node.
+      - count-incoming-edges
+      - unlock-successor
+    checkpoint: partial-kahn-result
+    note: 'Debugging: pick the call a suggested solution gets wrong when it starts the queue with node 0 alone.'
   - questionId: tree-walks-follow-links
     disposition: keep
     path: tree-walks
@@ -763,22 +867,37 @@ drills:
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
-    note: List a subtree as its root plus every descendant.
+    note: List a subtree as its root plus every node below it.
+  - questionId: tree-walks-review-leaves
+    disposition: keep
+    path: tree-walks
+    skill: name-tree-parts
+    note: Tell a leaf by its links, not by where it is drawn.
   - questionId: tree-walks-three-node-orders
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
-    note: Place the append between the calls on three nodes.
+    note: Place the append between the calls on three nodes, and name the three walks by where the append sits.
   - questionId: tree-walks-preorder-trace
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
     note: Trace a preorder walk call by call.
+  - questionId: tree-walks-postorder-list
+    disposition: keep
+    path: tree-walks
+    skill: trace-visit-order
+    note: List a postorder walk on an uneven tree, against the preorder, inorder and level lists.
+  - questionId: tree-walks-level-order
+    disposition: keep
+    path: tree-walks
+    skill: trace-visit-order
+    note: A queue loop visits the tree depth by depth, not in preorder and not last-added first.
   - questionId: tree-walks-round-boundary
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
-    note: Find the last pop of a queue round before choosing the level loop.
+    note: Find the last pop of a round when a node joins the queue during it.
   - questionId: tree-walks-height-two-shapes
     disposition: keep
     path: tree-walks
@@ -788,19 +907,19 @@ drills:
     disposition: keep
     path: tree-walks
     skill: height-versus-count
-    note: Count active calls as the recursion goes down and back up.
+    note: Count live calls as the recursion goes down and back up.
   - questionId: tree-walks-review-parent
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
     variant: true
     note: Find a parent one link up.
-  - questionId: tree-walks-review-leaves
+  - questionId: tree-walks-review-leaf-levels
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
     variant: true
-    note: Tell a leaf by its links, not by where it is drawn.
+    note: Tell leaves on two levels from nodes with one child.
   - questionId: tree-walks-review-right-call
     disposition: keep
     path: tree-walks
@@ -842,27 +961,27 @@ drills:
     path: tree-walks
     skill: height-versus-count
     variant: true
-    note: Separate total calls from the most active at once.
+    note: Separate total calls from the most live at once.
   - questionId: tree-walks-review-live-depth-trace
     disposition: keep
     path: tree-walks
     skill: height-versus-count
     variant: true
-    note: Trace a walk and count active calls at two depths.
+    note: Trace a walk and count live calls at two points.
   - questionId: tree-walks-exam-waiting-calls
     disposition: exam
     path: tree-walks
     tests:
       - trace-visit-order
       - height-versus-count
-    note: Name the calls on the stack at one postorder append.
+    note: Name the calls still live at one postorder append.
   - questionId: tree-walks-exam-inorder-depth
     disposition: exam
     path: tree-walks
     tests:
       - trace-visit-order
       - height-versus-count
-    note: Trace an inorder walk and its live depth on a fresh tree.
+    note: Trace an inorder walk and its live calls on a fresh tree.
   - questionId: tree-walks-exam-third-group
     disposition: exam
     path: tree-walks
@@ -876,6 +995,12 @@ drills:
       - name-tree-parts
       - trace-visit-order
     note: Walk only the subtree a call on a child reaches.
+  - questionId: tree-walks-exam-debug-height
+    disposition: exam
+    path: tree-walks
+    tests:
+      - height-versus-count
+    note: 'Debugging: pick the tree a suggested height function gets wrong when it follows the left child alone whenever there is one.'
   - questionId: bst-order-rule-out-subtree
     disposition: keep
     path: bst-order
@@ -995,41 +1120,58 @@ drills:
     tests: [identify-target-split]
     covers: [ancestor]
     note: Trace a walk that uses or instead of and, and name the true split.
+  - questionId: bst-order-exam-bounds-check
+    disposition: exam
+    path: bst-order
+    tests: [inherit-ancestor-bound]
+    covers: [validate]
+    note: 'Copied from `bst-bounds-check`: name the (low, high) range each call must receive to catch a deep violation.'
+  - questionId: bst-order-exam-lca-approach
+    disposition: exam
+    path: bst-order
+    tests: [identify-target-split, choose-ordered-subtree]
+    covers: [ancestor]
+    note: 'Copied from `bst-lowest-common-ancestor`: pick the walk that uses the order to find the lowest common ancestor, including a target that is the ancestor.'
   - questionId: tree-summaries-one-empty-side
     disposition: keep
     path: tree-summaries
     skill: compute-child-heights
-    note: Return a height when one child is a leaf and the other side is empty.
-  - questionId: tree-summaries-combine-line
-    disposition: keep
-    path: tree-summaries
-    skill: compute-child-heights
-    note: Pick the line that adds a node to its taller side.
+    note: Return a height when one child is a leaf and the other side is empty. Its worked example introduces the path.
   - questionId: tree-summaries-heights-trace
     disposition: keep
     path: tree-summaries
     skill: compute-child-heights
     note: Trace the value each call returns, including an empty side.
+  - questionId: tree-summaries-path-edges
+    disposition: keep
+    path: tree-summaries
+    skill: height-versus-through-path
+    note: Pick the expression for the edges on the longest path whose highest node is X; the prompt defines a path, its length and the diameter.
   - questionId: tree-summaries-return-or-path
     disposition: keep
     path: tree-summaries
     skill: height-versus-through-path
-    note: Tell the height a call returns from the path that bends at it.
-  - questionId: tree-summaries-bend-ends
+    note: Tell the height a call returns from the longest path whose highest node it is.
+  - questionId: tree-summaries-path-ends
     disposition: keep
     path: tree-summaries
     skill: height-versus-through-path
-    note: Drag the two ends of the longest path that bends at the root.
+    note: Drag the two ends of the longest path whose highest node is the root.
+  - questionId: tree-summaries-root-only
+    disposition: keep
+    path: tree-summaries
+    skill: track-best-path
+    note: Measure only at the root and miss a longer path whose highest node is lower.
+  - questionId: tree-summaries-nonlocal
+    disposition: keep
+    path: tree-summaries
+    skill: track-best-path
+    note: Predict what a counter returns when an inner function assigns to it through `nonlocal`; the prompt states the rule.
   - questionId: tree-summaries-best-node
     disposition: keep
     path: tree-summaries
     skill: track-best-path
     note: Tap the call that sets best when the longest path is below the root.
-  - questionId: tree-summaries-root-only
-    disposition: keep
-    path: tree-summaries
-    skill: track-best-path
-    note: Measure only the root and miss a longer path that bends lower.
   - questionId: tree-summaries-review-heights-trace
     disposition: keep
     path: tree-summaries
@@ -1041,13 +1183,19 @@ drills:
     path: tree-summaries
     skill: compute-child-heights
     variant: true
-    note: See how a base case of 1 shifts every height.
+    note: See how a stopping case that returns 1 shifts every height.
   - questionId: tree-summaries-review-taller-child
     disposition: keep
     path: tree-summaries
     skill: compute-child-heights
     variant: true
     note: Tap the child whose height decides a call.
+  - questionId: tree-summaries-combine-line
+    disposition: keep
+    path: tree-summaries
+    skill: compute-child-heights
+    variant: true
+    note: Pick the line that adds a node to its taller side.
   - questionId: tree-summaries-review-one-sided
     disposition: keep
     path: tree-summaries
@@ -1090,13 +1238,13 @@ drills:
     skill: track-best-path
     variant: true
     note: Trace best as it rises and stays through the root.
-  - questionId: tree-summaries-exam-edge-heights
+  - questionId: tree-summaries-exam-node-path
     disposition: exam
     path: tree-summaries
     tests:
       - height-versus-through-path
     covers: [complete-code]
-    note: Complete the record line when heights count edges.
+    note: Complete the record line when the answer counts the nodes on the longest path, with heights in nodes.
   - questionId: tree-summaries-exam-pair-return
     disposition: exam
     path: tree-summaries
@@ -1121,147 +1269,317 @@ drills:
       - height-versus-through-path
       - track-best-path
     covers: [trace-tree]
-    note: Drag the ends of a diameter that bends below the root.
+    note: Drag the ends of a diameter whose highest node is below the root.
+  - questionId: tree-summaries-exam-swapped-roles
+    disposition: exam
+    path: tree-summaries
+    tests:
+      - height-versus-through-path
+      - track-best-path
+    covers: [trace-tree]
+    note: 'Fresh problem in place of `diameter-return-vs-record`: predict what a suggested diameter returns when it records the height and returns the path.'
+  - questionId: tree-summaries-exam-debug-one-side
+    disposition: exam
+    path: tree-summaries
+    tests:
+      - height-versus-through-path
+    note: 'Debugging: pick the tree a suggested diameter gets wrong because it records a path only at a node with two children.'
+
+  - questionId: tree-answers-invert-lands
+    disposition: keep
+    path: tree-answers
+    skill: compare-two-trees
+    note: Tap where a node lands after every node swaps its children. Its worked example introduces the path.
+  - questionId: tree-answers-same-first-mismatch
+    disposition: keep
+    path: tree-answers
+    skill: compare-two-trees
+    note: Name the mismatch that ends a same-tree check, given that `and` stops at its first false test.
+  - questionId: tree-answers-mirror-pairs
+    disposition: keep
+    path: tree-answers
+    skill: compare-two-trees
+    note: Complete the mirror check by pairing outer with outer and inner with inner.
+  - questionId: tree-answers-path-sum-trace
+    disposition: keep
+    path: tree-answers
+    skill: pass-down-a-value
+    note: Trace the remaining target each call receives and the leaf that finds 0.
+  - questionId: tree-answers-none-test
+    disposition: keep
+    path: tree-answers
+    skill: pass-down-a-value
+    note: Find the target a path sum gets wrong when it tests at an empty side instead of at a leaf.
+  - questionId: tree-answers-good-nodes
+    disposition: keep
+    path: tree-answers
+    skill: pass-down-a-value
+    note: Count good nodes by passing the largest value so far down to each child.
+  - questionId: tree-answers-lca-trace
+    disposition: keep
+    path: tree-answers
+    skill: return-what-was-found
+    note: Trace what each call of the lowest-common-ancestor search returns; the prompt defines ancestor and lowest common ancestor.
+  - questionId: tree-answers-ancestor-target
+    disposition: keep
+    path: tree-answers
+    skill: return-what-was-found
+    note: Name the node the search returns when one target is an ancestor of the other.
+  - questionId: tree-answers-review-invert-tap
+    disposition: keep
+    path: tree-answers
+    skill: compare-two-trees
+    variant: true
+    note: Tap where a node lands after inverting a fresh tree.
+  - questionId: tree-answers-review-same-shape
+    disposition: keep
+    path: tree-answers
+    skill: compare-two-trees
+    variant: true
+    note: Tell that the same values in a different shape are not the same tree.
+  - questionId: tree-answers-review-leaf-target
+    disposition: keep
+    path: tree-answers
+    skill: pass-down-a-value
+    variant: true
+    note: Name the target a leaf receives after every value above it is taken off.
+  - questionId: tree-answers-review-lca-tap
+    disposition: keep
+    path: tree-answers
+    skill: return-what-was-found
+    variant: true
+    note: Tap the lowest common ancestor of two nodes in different subtrees of a fresh tree.
+  - questionId: tree-answers-review-ancestor-tap
+    disposition: keep
+    path: tree-answers
+    skill: return-what-was-found
+    variant: true
+    note: Tap the node returned when one target is an ancestor of the other on a fresh tree.
+  - questionId: tree-answers-exam-subtree
+    disposition: exam
+    path: tree-answers
+    tests: [compare-two-trees]
+    covers: [compare]
+    note: Complete a subtree search that runs a same-tree check at every node.
+  - questionId: tree-answers-exam-mirror-copy
+    disposition: exam
+    path: tree-answers
+    tests: [compare-two-trees]
+    covers: [compare]
+    note: Pick the tree that equals its inverted copy, the symmetric one.
+  - questionId: tree-answers-exam-path-numbers
+    disposition: exam
+    path: tree-answers
+    tests: [pass-down-a-value]
+    covers: [pass-down]
+    note: Add up the numbers that root-to-leaf paths spell, passing the number so far down.
+  - questionId: tree-answers-exam-debug-good
+    disposition: exam
+    path: tree-answers
+    tests: [pass-down-a-value]
+    covers: [pass-down]
+    note: 'Debugging: pick the tree a suggested good-node count gets wrong because it passes down the node''s value instead of the largest so far.'
+  - questionId: tree-answers-exam-passed-up
+    disposition: exam
+    path: tree-answers
+    tests: [return-what-was-found]
+    covers: [found]
+    note: Tap the node a call passes up when a target sits two levels below it.
+  - questionId: tree-answers-exam-unvisited
+    disposition: exam
+    path: tree-answers
+    tests: [return-what-was-found]
+    covers: [found]
+    note: Count the calls that return a node when the targets sit on opposite sides of the root.
 
   - questionId: wp-cheapest-route
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
-    note: New teaching card. Add up every route from S to T; the cheapest one has the most edges.
+    note: Add up every route from S to T; the cheapest one has the most edges.
   - questionId: wp-tap-costliest
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
-    note: New tap-cell teaching card. Tap the node with the largest cheapest-route cost; the node with the most edges costs less.
+    note: Tap the node with the largest cheapest-route cost; the node with the most edges costs less.
   - questionId: wp-relax-no-gain
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
-    note: New teaching card. A relaxation whose route through u is not cheaper leaves dist[v] alone.
+    note: A relaxation whose route through u is not cheaper leaves dist[v] alone.
   - questionId: wp-bellman-pass-trace
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
-    note: New step-trace teaching card. One Bellman-Ford pass in list order, then tap the node a second pass lowers.
+    note: Trace one pass in list order, including an edge out of a node still at inf, then tap the node a second pass lowers.
+  - questionId: wp-k-stops-copy
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    note: k + 1 passes that read a copy of dist find the cheapest route with at most k stops, not the cheapest overall.
   - questionId: wp-tap-finalize-next
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New tap-cell teaching card. A stale entry sits on top of the heap; tap the node that is final next.
+    note: A stale entry sits on top of the heap; tap the node that is final next.
   - questionId: wp-dijkstra-pop-trace
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New step-trace teaching card. Follow Dijkstra's pops, including one stale entry that is skipped.
+    note: Follow Dijkstra's pops, including one stale entry that is skipped.
   - questionId: wp-negative-early-final
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New teaching card. Of four graphs, only a negative edge into a node already done gives a wrong distance; a negative edge out of the start, a zero edge and a positive cycle do not.
+    note: Of four graphs, only a negative edge into a node already done gives a wrong distance; a negative edge out of the start, a zero edge and a positive cycle do not.
   - questionId: wp-rv-greedy-route
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant on a fresh graph. The cheapest first edge leads to an expensive one.
+    note: Pick the cheapest route when the cheapest first edge leads to an expensive one.
   - questionId: wp-rv-bfs-cost
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant on a fresh graph. Cost of the fewest-edge route BFS finds against the cheapest route.
+    note: Price the fewest-edge route BFS finds against the cheapest route.
   - questionId: wp-rv-cost-function
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant. Read a function that sums edge weights along a route with zip.
+    note: Read a function that sums edge weights along a route with zip.
   - questionId: wp-rv-relax-unreached
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
     variant: true
-    note: Review variant. Relaxing an edge from a node still at inf changes nothing.
-  - questionId: wp-rv-prev-trace
-    disposition: keep
-    path: weighted-paths
-    skill: relax-one-edge
-    variant: true
-    note: Review variant on a fresh input (step-through trace). Follow prev[D] through one pass and rebuild the route.
-  - questionId: wp-rv-reverse-pass
-    disposition: keep
-    path: weighted-paths
-    skill: relax-one-edge
-    variant: true
-    note: Review variant on a fresh input. A pass over a reversed edge list reaches only one node.
+    note: Relaxing an edge from a node still at inf changes nothing.
   - questionId: wp-rv-tap-lowering-edge
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the one edge whose relaxation lowers a distance; equal routes do not.
+    note: Tap the one edge whose relaxation lowers a distance; equal routes do not.
+  - questionId: wp-rv-prev-trace
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    variant: true
+    depth: deep
+    note: Follow prev[D] through one pass and rebuild the route. Recording routes with prev is deep.
+  - questionId: wp-rv-reverse-pass
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    variant: true
+    depth: deep
+    note: A pass over a reversed edge list reaches only one node. It relies on the deep count of passes a route needs.
   - questionId: wp-rv-tap-next-final
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (tap the cell). A stale entry ties the next valid one; tap the node that is final next.
+    note: A stale entry ties the next valid one; tap the node that is final next.
   - questionId: wp-rv-zero-edge-trace
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (step-through trace). A zero-weight edge, three stale entries skipped.
+    note: Follow Dijkstra's pops past a zero-weight edge, and count the three stale entries skipped.
   - questionId: wp-rv-pop-floor
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant. With weights 0 or more, no later pop is below the last one, though it can tie.
+    note: With weights 0 or more, no later pop is below the last one, though it can tie.
   - questionId: wp-rv-tap-wrong-node
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the node a late negative edge leaves wrong when nodes are finalized on first pop.
+    note: Tap the node a late negative edge leaves wrong when nodes are finalized on first pop.
+  - questionId: wp-exam-two-pass-trace
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [relax-edges]
+    note: Trace two passes on a fresh edge list. An edge checked before its start was lowered waits for the second pass, and a later edge in that pass reads the lowered value.
+  - questionId: wp-exam-min-relax
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [relax-edges]
+    note: Pick the min line that relaxes an edge exactly as the test does, against an overwrite, a misplaced weight and a backward edge.
+  - questionId: wp-exam-flight-stops
+    disposition: exam
+    path: weighted-paths
+    tests: [sum-edge-weights, relax-one-edge]
+    covers: [limit-stops]
+    note: Price the cheapest trip with at most one stop, which is neither the cheapest overall nor the direct flight.
+  - questionId: wp-exam-debug-copy
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [limit-stops]
+    note: 'Debugging: pick the call a k-stops solution without a copy of dist gets wrong, when one pass chains two flights into a cheaper trip.'
   - questionId: wp-exam-equal-weights
     disposition: exam
     path: weighted-paths
     tests: [sum-edge-weights]
     covers: [select-algorithm]
-    note: New checkpoint item. Equal positive weights within O(V + E) call for BFS, not a heap or Bellman-Ford.
+    depth: deep
+    note: Equal positive weights within O(V + E) call for BFS, not a heap or Bellman-Ford. Deep, and the Problem-solving patterns PR moves it to Method selection.
   - questionId: wp-exam-zero-weights
     disposition: exam
     path: weighted-paths
     tests: [finalize-distance]
     covers: [select-algorithm]
-    note: New checkpoint item. Tolls of 0 or more within O((V + E) log V) call for Dijkstra; zero weights keep finalizing safe.
+    depth: deep
+    note: Tolls of 0 or more within O((V + E) log V) call for Dijkstra; zero weights keep finalizing safe.
   - questionId: wp-exam-repeat-trace
     disposition: exam
     path: weighted-paths
     tests: [relax-one-edge, finalize-distance]
     covers: [repeated-work]
-    note: New step-trace checkpoint item. Trace Dijkstra's pops on a fresh graph and count the scans the stale check saves.
+    depth: deep
+    note: Trace Dijkstra's pops on a fresh graph and count the scans the stale check saves.
   - questionId: wp-exam-idle-passes
     disposition: exam
     path: weighted-paths
     tests: [relax-one-edge]
     covers: [repeated-work]
-    note: New checkpoint item. Edges in a helpful order finish in one Bellman-Ford pass; stop after a pass that lowers nothing.
+    depth: deep
+    note: Edges in a helpful order finish in one pass; stop after a pass that lowers nothing. It relies on the deep count of passes a route needs.
+  - questionId: wp-exam-negative-edge
+    disposition: exam
+    path: weighted-paths
+    tests: [sum-edge-weights, relax-one-edge, finalize-distance]
+    covers: [select-algorithm]
+    depth: deep
+    note: 'Copied from `negative-edge-shortest-path`: a negative edge on a fresh graph separates hop count, greedy finalization and repeated relaxation.'
+  - questionId: wp-exam-stale-check
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge, finalize-distance]
+    covers: [repeated-work]
+    depth: deep
+    note: 'Copied from `dijkstra-stale-entry`: deleting the stale check keeps the answers right but repeats heap work.'
 
 followUps:
   - questionId: grid-bounds-and-cost
     optionId: quadratic
-    disposition: rewrite
+    disposition: retire
     path: reachability
-    note: Place total visited-cell cost after flood fill; give the bounds lesson a coordinate trace.
+    note: Retired with its question. Its cost argument needs Big-O, which is not on Reachability's chain.
   - questionId: count-components-edge-list
     optionId: one-search
-    disposition: rewrite
+    disposition: retire
     path: reachability
-    note: Promote one completed traversal to Reachability before the connectivity exam.
+    note: Retired with its question. `reachability-empty-frontier` teaches that one search finds only its start's region.
   - questionId: shortest-path-grid
     optionId: dijkstra
-    disposition: rewrite
+    disposition: retire
     path: weighted-paths
-    note: Reserve the priority-queue comparison for Weighted paths after Priority order.
+    note: Retired with its question. The choice between BFS and Dijkstra is left to Weighted paths and Method selection.

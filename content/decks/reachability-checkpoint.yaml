@@ -1,129 +1,387 @@
 id: reachability-checkpoint
 title: 'Reachability: checkpoint'
-description: Combine neighbor rules, discovery marks, and completed flood fills to count islands.
+description: Combine neighbor rules, marks and finished flood fills to count islands, and find the input that breaks a suggested solution.
 questions:
   - id: reachability-checkpoint-corner-patches
-    tags:
-      - bfs
-      - dfs
+    tags: [grid]
     prompt: |-
-      Count the islands. Land joins by an edge only. A flood fill starts whenever the row-by-row scan meets unmarked land.
+      Land joins by an edge only: up, down, left or right. How many islands does this grid hold? `1` is land and `0` is water.
 
       ```text
-      101
-      010
-      101
+      1101
+      0100
+      1011
       ```
     options:
-      - id: valid
-        text: 5 starts, each marking one cell
-        explanation: None of the five land cells shares an edge with another. Each starts its own flood fill.
-      - id: mistake
-        text: 1 start, joining the center to all corners
-        explanation: The center meets each corner only at a point, and its four edge neighbors are water. No fill
-          can cross from one land cell to another.
-    correct: valid
+      - id: four
+        text: '4'
+        explanation: >-
+          The islands are `(0, 0)`, `(0, 1)` and `(1, 1)`; `(0, 3)` alone; `(2, 0)` alone; and
+          `(2, 2)` with `(2, 3)`. `(1, 1)` touches `(2, 0)` and `(2, 2)` only at corners.
+      - id: two
+        text: '2'
+        explanation: >-
+          That count joins cells that touch at a corner. `(1, 1)` meets `(2, 0)` and `(2, 2)` only
+          diagonally, so those stay separate islands.
+      - id: seven
+        text: '7'
+        explanation: >-
+          That counts land cells, not islands. `(0, 0)`, `(0, 1)` and `(1, 1)` share edges, so
+          they form one island, and so do `(2, 2)` and `(2, 3)`.
+    correct: four
     followUps:
-      mistake:
-        prompt: Does (1, 1) share an edge with (0, 0)?
+      two:
+        prompt: Do `(1, 1)` and `(2, 2)` belong to the same island?
         options:
-          - id: right
-            text: No, they meet at a corner
-          - id: wrong
-            text: Yes, the cells meet along an edge
-        correct: right
-        explanation: None of the five land cells shares an edge with another. Each starts its own flood fill.
+          - id: separate
+            text: No, they touch only at a corner
+          - id: joined
+            text: Yes, they touch at a corner
+          - id: land
+            text: Yes, since both are land
+        correct: separate
+        explanation: Land joins by an edge only. Cells that differ in both row and column are two moves apart, so a diagonal does not join them.
+      seven:
+        prompt: How many islands do `(0, 0)`, `(0, 1)` and `(1, 1)` make?
+        options:
+          - id: one
+            text: One, since each shares an edge with the next
+          - id: three
+            text: Three, one per cell
+          - id: two
+            text: Two, one per row
+        correct: one
+        explanation: An island is a group of land joined by legal moves. One flood fill from `(0, 0)` marks all three, so they count once.
+
   - id: reachability-checkpoint-wraparound
-    tags:
-      - bfs
-      - dfs
+    tags: [grid, python]
     prompt: |-
-      The island counter scans rows top to bottom and columns left to right. The Python flood fill turns visited
-      land to water. Its guard checks `0 <= r < 2` and `c < 4` but misses the lower column bound. What count does it report?
+      This island counter marks a cell by setting it to `0` instead of adding it to `seen`. Its flood fill tests `0 <= r < len(grid) and c < len(grid[0])` before it reads `grid[r][c]`, so `c` has no lower bound. What count does it report for this grid?
 
       ```text
       1001
       1001
       ```
     options:
-      - id: valid
-        text: It reports 1 instead of 2
-        explanation: From the left edge, column −1 passes the guard and reads the right column. The walk marks
-          land in both true regions from one start.
-      - id: mistake
-        text: It reports 2 because water separates the columns
-        explanation: Water does separate them, but the guard lets column −1 through. From (0, 0) the left step
-          reads `grid[0][-1]`, land in the right column, so one fill covers both regions.
-    correct: valid
+      - id: one
+        text: 1, though the grid holds 2 islands
+        explanation: >-
+          From `(0, 0)`, a step left gives `c = -1`, which passes the test. `grid[0][-1]` is the
+          last column, which is land, so the first fill marks the right column too and leaves no
+          land for a second fill.
+      - id: two
+        text: 2, since water separates the columns
+        explanation: >-
+          Water does separate them, but the test lets `c = -1` through. `grid[0][-1]` reads land in
+          the right column, so one fill covers both columns.
+      - id: error
+        text: It raises `IndexError` at the left edge
+        explanation: >-
+          A negative index counts back from the end, so `grid[0][-1]` reads the last column instead
+          of raising an error.
+    correct: one
     followUps:
-      mistake:
+      two:
         prompt: What does `grid[0][-1]` read in this grid?
         options:
-          - id: right
-            text: The rightmost land in the first row
-          - id: wrong
-            text: An out-of-bounds location
-        correct: right
-        explanation: From the left edge, column −1 passes the guard and reads the right column. The walk marks
-          land in both true regions from one start.
-  - id: reachability-checkpoint-duplicate-work
-    tags:
-      - bfs
-      - dfs
-    prompt: In a 2×2 block of land, a queue starts at (0, 0) and takes right before down. The first pop queues
-      both neighbors. Every pop marks its cell seen. All four-direction neighbors absent from seen are queued.
-      What happens to (1, 1)?
-    options:
-      - id: valid
-        text: It is queued twice before its first pop
-        explanation: The two neighbors are both popped ahead of (1, 1). Each offers it while it is still missing
-          from seen.
-      - id: mistake
-        text: It is queued once because a pop marks it seen
-        explanation: A pop does mark it, but (1, 1) is popped last. (0, 1) and (1, 0) are both popped before that,
-          and each finds it missing from seen and queues it.
-    correct: valid
-    followUps:
-      mistake:
-        prompt: When the second neighbor is popped, has (1, 1) had its turn yet?
+          - id: right-land
+            text: The land at `(0, 3)`, the last column
+          - id: outside
+            text: A cell outside the grid
+          - id: water
+            text: Water, since it is off the edge
+        correct: right-land
+        explanation: '`-1` counts back from the end, so the left step from column 0 lands on column 3, which is land.'
+      error:
+        prompt: When does indexing a list raise `IndexError`?
         options:
-          - id: right
-            text: No, it is behind that neighbor
-          - id: wrong
-            text: Yes, it is ahead of that neighbor
-        correct: right
-        explanation: The two neighbors are both popped ahead of (1, 1). Each offers it while it is still missing
-          from seen.
+          - id: past-end
+            text: When the index is at or past the length, or below `-len`
+          - id: negative
+            text: Whenever the index is negative
+          - id: never
+            text: Never, an index wraps around
+        correct: past-end
+        explanation: For a row of 4, indices `-4` to `3` are all real. `-1` is the last cell, so the bug reads land instead of failing.
+
+  - id: reachability-checkpoint-duplicate-work
+    tags: [grid, graph]
+    prompt: >-
+      On a 2-by-2 block of land, this flood fill starts with `frontier = [(0, 0)]`. It adds a
+      cell to `seen` when it pops it, not when it adds it, and adds every land neighbor not in
+      `seen`, checking right, down, left, then up. It has no `seen` test at the pop, so every
+      entry it pops is processed. `frontier.pop()` takes the item added last. What happens to
+      `(0, 1)`?
+    options:
+      - id: twice
+        text: It joins the frontier twice and is processed twice
+        explanation: >-
+          `(0, 0)` adds `(0, 1)` and `(1, 0)`. `(1, 0)` pops next and adds `(1, 1)`, which pops and
+          finds `(0, 1)` still missing from `seen`, so it adds it again. Both entries are popped.
+      - id: first-found
+        text: It joins once, since `(0, 0)` added it before any other cell
+        explanation: >-
+          Being added first does not mark it. `(0, 1)` waits until last, and `(1, 1)` finds it
+          missing from `seen` before then.
+      - id: marked-on-pop
+        text: It joins once, since a pop marks it before anyone else checks it
+        explanation: >-
+          `(0, 1)` was added first, so `pop()` takes it last. By then `(1, 1)` has already checked
+          it, found it unmarked, and added it again.
+      - id: three-times
+        text: It joins three times, from `(0, 0)`, `(1, 0)` and `(1, 1)`
+        explanation: >-
+          `(1, 0)` is diagonal from `(0, 1)`, so processing it never checks `(0, 1)`. Only
+          `(0, 0)` and `(1, 1)` add it, so it joins twice and both entries are processed.
+    correct: twice
+    followUps:
+      first-found:
+        prompt: When `(1, 1)` is processed, is `(0, 1)` in `seen`?
+        options:
+          - id: 'no'
+            text: No, it has not been popped yet
+          - id: 'yes'
+            text: Yes, it was added before `(1, 1)`
+          - id: gone
+            text: It is no longer in the frontier
+        correct: 'no'
+        explanation: This version marks a cell only when it is popped. `(0, 1)` is still waiting, so it looks new.
+      marked-on-pop:
+        prompt: Right after `(0, 0)` adds `(0, 1)` and then `(1, 0)`, which cell pops next?
+        options:
+          - id: last
+            text: '`(1, 0)`, the item added last'
+          - id: first
+            text: '`(0, 1)`, the item added first'
+          - id: diagonal
+            text: '`(1, 1)`, the cell furthest away'
+        correct: last
+        explanation: '`pop()` takes the last item, so `(1, 0)` and then `(1, 1)` are processed before `(0, 1)` gets its turn.'
+      three-times:
+        prompt: Does processing `(1, 0)` check `(0, 1)`?
+        options:
+          - id: corner
+            text: No, the two cells touch only at a corner
+          - id: block
+            text: Yes, every cell in the block is its neighbor
+          - id: above
+            text: Yes, `(0, 1)` is one step up from it
+        correct: corner
+        explanation: Up from `(1, 0)` is `(0, 0)`, and right is `(1, 1)`. `(0, 1)` differs from it in both coordinates, so `(1, 0)` never adds it.
+
   - id: reachability-checkpoint-next-start
-    tags:
-      - bfs
-      - dfs
+    tags: [grid]
     prompt: |-
-      The row-by-row island scan has just finished its first flood fill from (0, 0), marking every cell it reached. Which cell should start the next fill?
+      An island counter scans this grid row by row, left to right in each row. Its first flood fill, from `(0, 0)`, has just finished. At which cell does it start its next fill? `1` is land and `0` is water.
 
       ```text
       1100
       0101
-      0001
+      0010
       ```
     options:
-      - id: valid
-        text: (1, 3), the first remaining unmarked land
-        explanation: The first fill goes right then down to (1, 1). The land in column 3 is separated by water,
-          so the scan starts the second fill at (1, 3).
-      - id: mistake
-        text: (1, 1), because it is in a different row
-        explanation: (1, 1) is land below (0, 1), so the first fill already reached and marked it. A new fill
-          starts only at land that is still unmarked.
-    correct: valid
+      - id: row-order
+        text: '`(1, 3)`'
+        explanation: >-
+          The first fill marks `(0, 0)`, `(0, 1)` and `(1, 1)`. Row 0 has no other land, and in
+          row 1 the next land after `(1, 1)` is `(1, 3)`, which no fill has reached.
+      - id: column-order
+        text: '`(2, 2)`'
+        explanation: >-
+          `(2, 2)` is unmarked land, but it is in row 2. The scan finishes row 1 first and meets
+          `(1, 3)` there.
+      - id: marked
+        text: '`(1, 1)`'
+        explanation: >-
+          `(1, 1)` is below `(0, 1)`, one legal move away, so the first fill already marked it. A
+          fill there would count the first island again.
+      - id: none
+        text: None, the first fill marked every land cell
+        explanation: >-
+          The first fill joins `(1, 1)`, but `(2, 2)` and `(1, 3)` touch it only at corners. They
+          stay unmarked.
+    correct: row-order
     followUps:
-      mistake:
-        prompt: Can the first fill reach (1, 1) via (0, 1)?
+      column-order:
+        prompt: In which order does the scan visit the cells?
         options:
-          - id: right
-            text: Yes, through two edge-adjacent steps
-          - id: wrong
-            text: No, the first fill remains in row 0
-        correct: right
-        explanation: The first fill goes right then down to (1, 1). The land in column 3 is separated by water,
-          so the scan starts the second fill at (1, 3).
+          - id: rows
+            text: All of row 1 before any of row 2
+          - id: columns
+            text: All of column 2 before any of column 3
+          - id: near
+            text: The cells nearest the last fill first
+        correct: rows
+        explanation: The scan goes row by row, so `(1, 3)` in row 1 comes before `(2, 2)` in row 2.
+      marked:
+        prompt: Can the first fill reach `(1, 1)` from `(0, 1)`?
+        options:
+          - id: 'yes'
+            text: Yes, by one step down
+          - id: 'no'
+            text: No, the fill stays in row 0
+          - id: diagonal
+            text: Only by a diagonal step
+        correct: 'yes'
+        explanation: '`(1, 1)` is directly below `(0, 1)`, so the first fill marks it, and the scan skips it.'
+      none:
+        prompt: Does `(1, 1)` share an edge with `(2, 2)`?
+        options:
+          - id: corner
+            text: No, they touch only at a corner
+          - id: edge
+            text: Yes, they are next to each other
+          - id: same-row
+            text: Yes, they are in the same row
+        correct: corner
+        explanation: A legal move changes one coordinate by one. `(2, 2)` differs from `(1, 1)` in both, so the first fill does not reach it.
+
+  - id: reachability-checkpoint-trapped-land
+    heading: How many land cells are trapped?
+    tags: [grid]
+    prompt: |-
+      `1` is land and `0` is water, and a walk moves up, down, left or right onto land. A land cell is trapped if no walk from it reaches a cell in the top or bottom row or the leftmost or rightmost column. A land cell already in one of those is not trapped. How many land cells in this grid are trapped?
+
+      ```text
+      10000
+      11000
+      00110
+      00100
+      00000
+      ```
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          The island `(2, 2)`, `(2, 3)` and `(3, 2)` touches no outer row or column, so all three
+          of its cells are trapped. `(1, 1)` is away from the edge too, but it shares an island
+          with `(1, 0)`, which is in the leftmost column.
+      - id: four
+        text: '4'
+        explanation: >-
+          That counts the land cells away from the edge. `(1, 1)` is one of them, but its left
+          neighbor, `(1, 0)`, is land in the leftmost column, so it is not trapped.
+      - id: one
+        text: '1'
+        explanation: >-
+          That counts the trapped islands. The question asks for land cells, and the one trapped
+          island holds three of them.
+      - id: zero
+        text: '0'
+        explanation: >-
+          That joins `(1, 1)` and `(2, 2)`, which touch only at a corner. No legal move links them,
+          so the lower island stays cut off from the edge.
+    correct: three
+    followUps:
+      four:
+        prompt: Can a walk from `(1, 1)` reach a cell in the leftmost column?
+        options:
+          - id: step-left
+            text: Yes, one step left reaches `(1, 0)`
+          - id: inside
+            text: No, since `(1, 1)` is away from the edge
+          - id: corner
+            text: Only by a diagonal step to `(0, 0)`
+        correct: step-left
+        explanation: A cell is trapped only if its whole island stays off the edge. `(1, 1)` shares an island with `(1, 0)` and `(0, 0)`, which are on it.
+      one:
+        prompt: Does the answer go up by one for each trapped island or for each trapped cell?
+        options:
+          - id: per-cell
+            text: Each trapped cell, since the question counts land cells
+          - id: per-island
+            text: Each trapped island, since its cells share one walk
+          - id: per-water
+            text: Each cell next to water, since water traps it
+        correct: per-cell
+        explanation: The lower island holds `(2, 2)`, `(2, 3)` and `(3, 2)`, and each of those cells is trapped, so it adds three.
+      zero:
+        prompt: Can a single legal move go from `(1, 1)` to `(2, 2)`?
+        options:
+          - id: two-changes
+            text: No, it changes both coordinates
+          - id: yes-corner
+            text: Yes, since the cells touch at a corner
+          - id: yes-land
+            text: Yes, since both cells are land
+        correct: two-changes
+        explanation: A legal move changes one coordinate by one. With no diagonal step, no walk from the lower island reaches `(1, 1)` or the edge.
+
+  - id: reachability-checkpoint-debug-start
+    heading: Which call does it fail on?
+    tags: [grid, graph]
+    prompt: |-
+      A suggested solution should return how many land cells a walk can reach from the land cell `(r, c)`, counting `(r, c)` itself. `and` stops at its first false test, so `grid[nr][nc]` is read only inside the grid.
+
+      ```python
+      def region_size(grid, r, c):
+          frontier = [(r, c)]
+          seen = set()
+          while frontier:
+              row, col = frontier.pop()
+              for nr, nc in ((row, col + 1), (row + 1, col),
+                             (row, col - 1), (row - 1, col)):
+                  if (0 <= nr < len(grid) and 0 <= nc < len(grid[0])
+                          and grid[nr][nc] == 1 and (nr, nc) not in seen):
+                      seen.add((nr, nc))
+                      frontier.append((nr, nc))
+          return len(seen)
+      ```
+
+      Which call returns the wrong answer?
+    options:
+      - id: lone-cell
+        text: '`region_size([[1]], 0, 0)`'
+        explanation: >-
+          The right answer is 1. `seen` starts empty, and with no other land in the grid, nothing
+          ever adds the start, so the function returns 0.
+      - id: pair
+        text: '`region_size([[1, 1]], 0, 0)`'
+        explanation: >-
+          The start is not marked, so `(0, 1)` adds it back and it is processed twice. But it does
+          end up in `seen`, so the function returns 2, which is right.
+      - id: block
+        text: '`region_size([[1, 1], [1, 1]], 0, 0)`'
+        explanation: >-
+          A neighbor adds the unmarked start to `seen`, so all four cells end up there, and the
+          function returns 4, which is right.
+      - id: cut-off
+        text: '`region_size([[1, 1, 0, 1]], 0, 1)`'
+        explanation: >-
+          `(0, 0)` adds the start back to `seen`, and the land at `(0, 3)` is cut off by water. The
+          function returns 2, which is right.
+    correct: lone-cell
+    followUps:
+      pair:
+        prompt: In `[[1, 1]]` from `(0, 0)`, how does the start get into `seen`?
+        options:
+          - id: neighbor
+            text: '`(0, 1)` finds it unmarked and adds it'
+          - id: setup
+            text: It is added before the loop
+          - id: never
+            text: It never does, so the answer is 1
+        correct: neighbor
+        explanation: The start is missing at first, but its land neighbor adds it. The count is right, with one wasted pop.
+      block:
+        prompt: When does this function's missing start mark change the answer?
+        options:
+          - id: no-neighbor
+            text: Only when the start has no land neighbor
+          - id: cycle
+            text: Whenever the land forms a loop
+          - id: always
+            text: Always, since the start is never counted
+        correct: no-neighbor
+        explanation: Any land neighbor adds the start to `seen` when it is processed. With none, nothing ever marks the start.
+      cut-off:
+        prompt: Should land cut off by water count toward the answer?
+        options:
+          - id: 'no'
+            text: No, the walk cannot reach it
+          - id: 'yes'
+            text: Yes, every land cell in the row counts
+          - id: same-row
+            text: Yes, if it is in the start's row
+        correct: 'no'
+        explanation: The function counts only the start's region. `(0, 3)` is not reachable, so 2 is the right answer for this call.

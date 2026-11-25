@@ -1,6 +1,6 @@
 id: tree-summaries-review
 title: 'Tree summaries: review'
-description: Fresh trees for child heights, the height a call returns versus the path that bends at it, and the longest path seen.
+description: Fresh trees for child heights, the height a call returns versus the longest path whose highest node it is, and the longest path seen.
 heading: What does the call report?
 
 questions:
@@ -120,7 +120,7 @@ questions:
       - id: three
         text: "`3`"
         explanation: >-
-          3 is the right height. The base case is where every value starts, so a wrong base value
+          3 is the right height. The stopping case is where every value starts, so a wrong base value
           changes every height above it.
       - id: five
         text: "`5`"
@@ -130,7 +130,7 @@ questions:
     correct: four
     followUps:
       three:
-        prompt: With this base case, what does the call on the leaf 7 return?
+        prompt: With this stopping case, what does the call on the leaf 7 return?
         options:
           - { id: leaf-two, text: "2, because both empty sides now report 1" }
           - { id: leaf-one, text: "1, because a leaf is one node" }
@@ -199,8 +199,94 @@ questions:
       - index: 7
         explanation: Y is the bottom of the winning path, but it is three links below L, not a child.
 
+  - id: tree-summaries-combine-line
+    heading: Which line completes it?
+    tags: [tree, recursion]
+    workedExample: |-
+      Say a node's left child reports `left = 2` and its right child reports `right = 1`. A height
+      counts the nodes on the longest path from a node down to a leaf.
+
+      1. A downward path from the node goes into one child only. So below the node it holds either
+         the left side's 2 nodes or the right side's 1 node.
+      2. `2 > 1`, so the longest choice is the left side, with 2 nodes below the node.
+      3. The node itself is on the path too, so the path holds `1 + 2`, which is 3 nodes. The node's
+         height is 3.
+    prompt: |-
+      `height` should count the nodes on the longest path from `node` down to a leaf, with 0 for an
+      empty subtree. Which line completes it?
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          # ??? one line here
+      ```
+
+      ```text
+          4
+         / \
+        2   6
+       /   / \
+      1   5   8
+      ```
+    options:
+      - id: max-plus-one
+        text: "`return 1 + max(left, right)`"
+        explanation: >-
+          The node adds itself to the taller side below it. On this tree, 2 and 6 each return 2, so
+          the root returns 3: a path such as 4, 6, 8.
+      - id: no-plus-one
+        text: "`return max(left, right)`"
+        explanation: >-
+          Without the 1 no node is ever counted. Every leaf returns `max(0, 0)`, and zeros pass all
+          the way up, so the root returns 0.
+      - id: sum
+        text: "`return 1 + left + right`"
+        explanation: >-
+          Adding both sides counts every node in the subtree. On this tree it returns 6, the node
+          count, not the length of one downward path.
+      - id: min
+        text: "`return 1 + min(left, right)`"
+        explanation: >-
+          `min` follows the shorter side. The node 2 has an empty right side, so it returns 1, and
+          the root returns 2 although the path 4, 6, 8 holds 3 nodes.
+    correct: max-plus-one
+    followUps:
+      no-plus-one:
+        prompt: What does a leaf return with `return max(left, right)`?
+        options:
+          - { id: leaf-zero, text: "0, because nothing adds the leaf itself" }
+          - { id: leaf-one, text: "1, because a leaf is one node" }
+          - { id: leaf-error, text: "It raises, because both sides are empty" }
+        correct: leaf-zero
+        explanation: >-
+          A call must add its own node to what it learns from below. Without that, every value in
+          the tree is built from the stopping case's 0.
+      sum:
+        prompt: Does a single downward path from 4 visit both 2 and 6?
+        options:
+          - { id: one-side, text: "No; a downward path takes one child at each node" }
+          - { id: both-sides, text: "Yes; a path from the root passes every child" }
+          - { id: depends, text: "Only when both subtrees have the same height" }
+        correct: one-side
+        explanation: >-
+          Going down from a node means choosing its left or its right child. Height measures the
+          longer choice, so the two sides are compared, not added.
+      min:
+        prompt: Which side does the longest downward path from a node go into?
+        options:
+          - { id: taller-side, text: "The side that reports the larger height" }
+          - { id: shorter-side, text: "The side that reports the smaller height" }
+          - { id: left-side, text: "Always the left side, then the right" }
+        correct: taller-side
+        explanation: >-
+          The node is on top, and the rest of the path is the longest path in one of its subtrees.
+          The longer of the two is the one to keep.
+
   - id: tree-summaries-review-one-sided
-    heading: What leaves the call, and what bends at it?
+    heading: What leaves the call, and how long is the path?
     tags: [tree, recursion]
     prompt: |-
       `height` counts nodes, and a path's length counts edges. The longest path with X as its highest
@@ -249,7 +335,7 @@ questions:
           - { id: must-root, text: "Only when that node is the root" }
         correct: may-end
         explanation: >-
-          A path with an empty side simply stops at its top node. `left + right` still measures it,
+          A path with an empty side simply stops at its highest node. `left + right` still measures it,
           because the empty side adds 0.
       no-self:
         prompt: Which nodes does the longest downward path from X hold?
@@ -292,8 +378,8 @@ questions:
               H
       ```
     code: |
-      # height counts nodes; the longest path whose top
-      # is a node has height(left) + height(right) edges
+      # height counts nodes; the longest path whose highest
+      # node is a node has height(left) + height(right) edges
     sequence:
       kind: array
       name: nodes
@@ -418,7 +504,7 @@ questions:
     misses:
       - index: 0
         explanation: >-
-          A offers 5: B reports 1 and C reports 4. The longest path bends at C, below the root.
+          A offers 5: B reports 1 and C reports 4. The longest path has C as its highest node, below the root.
       - index: 1
         explanation: B is a leaf and offers 0.
       - index: 3

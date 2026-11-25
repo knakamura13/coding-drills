@@ -1,6 +1,6 @@
 id: weighted-paths
 title: Weighted paths
-description: Add up a route's edge weights, relax one edge at a time, and see when a heap entry gives a final distance. Each card asks for one decision, with a worked example on hand.
+description: Add up a route's edge weights, relax every edge in a pass, and find the cheapest route within k stops.
 heading: What does the weighted search do?
 
 questions:
@@ -8,16 +8,20 @@ questions:
     heading: Which route is cheapest?
     tags: [graph]
     workedExample: |-
-      Consider one-way edges `X -> Y` costing 4, `Y -> Z` costing 3 and `X -> Z` costing 6. A route
-      costs the sum of the weights on its edges.
+      In a weighted graph each edge has a cost, its weight, and a route costs the sum of its
+      weights. BFS counts edges, so it finds a route with the fewest edges, which need not be the
+      cheapest. Here the one-way edges are `P -> R` 8, `P -> Q` 2, `Q -> R` 3, `Q -> X` 2 and
+      `X -> R` 4.
 
-      1. The route `X -> Y -> Z` uses two edges, so it costs `4 + 3`, which is 7.
-      2. The route `X -> Z` uses one edge, so it costs 6.
-      3. 6 is less than 7, so `X -> Z` is the cheaper route. It wins because its total weight is
-         smaller, not because it has fewer edges.
+      1. `P -> R` has one edge, the fewest, so BFS finds it. It costs 8.
+      2. `P -> Q -> R` has two edges and costs `2 + 3`, which is 5.
+      3. `P -> Q -> X -> R` has three edges and costs `2 + 2 + 4`, which is 8.
+      4. 5 is the smallest total, so `P -> Q -> R` is the cheapest route. It has neither the
+         fewest edges nor the most: only the totals decide.
     prompt: |-
-      Below, every edge is one-way and each pair is `(next node, weight)`. Which route from
-      `S` to `T` is cheapest?
+      In a weighted graph each edge has a weight, its cost, and a route costs the sum of the
+      weights on its edges. Below, every edge is one-way and each pair is `(next node, weight)`.
+      Which route from `S` to `T` is cheapest?
 
       ```python
       graph = {
@@ -103,9 +107,8 @@ questions:
       2. The route `S -> Y -> X` costs `1 + 1`, which is 2.
       3. These are the only two routes to `X`, and 2 is less than 5. So `X` costs 2, not 5.
     prompt: >-
-      Below, every edge
-      is one-way. Using each node's cheapest route from `S`, which node costs the most to reach?
-      Tap it.
+      Below, every edge is one-way. Using each node's cheapest route from `S`, which node costs
+      the most to reach? Tap it.
     code: |
       graph = {
           "S": [("A", 4), ("B", 1), ("E", 7)],
@@ -152,10 +155,15 @@ questions:
       3. Since the test passes, the assignment runs and `dist[v]` drops from 10 to 7. Had the test
          failed, `dist[v]` would keep its old value.
     prompt: |-
+      `dist` maps each node to the cheapest cost from the start found so far. In a weighted graph
+      that is a node's distance: the cost of its cheapest route, not its fewest edges. Relaxing
+      the edge `u -> v` with weight `w` checks whether going to `u` and then along the edge costs
+      less than `dist[v]`:
+
       ```python
       dist = {"S": 0, "A": 3, "B": 4}
       u, v, w = "A", "B", 2
-      if dist[u] + w < dist[v]:
+      if dist[u] + w < dist[v]:  # relax the edge A -> B
           dist[v] = dist[u] + w
       print(dist["B"])
       ```
@@ -238,10 +246,11 @@ questions:
       3. The pass has now checked each edge once. It ends with `X` at 1 but `Y` still at `inf`,
          because `X -> Y` was checked before `X` had a distance.
     prompt: >-
-      Predict each step of this
-      single pass. The pointer `again` is used only in the last step.
+      One pass relaxes every edge once, in list order. `float('inf')` stands for a node with no
+      known route yet: it is larger than every number, and `inf + w` is still `inf`. Predict each
+      step of this single pass. The pointer `again` is used only in the last step.
     code: |
-      INF = float("inf")
+      INF = float('inf')
       edges = [("B", "C", 1), ("S", "A", 3), ("A", "B", 1),
                ("S", "B", 5), ("A", "C", 4)]
       dist = {"S": 0, "A": INF, "B": INF, "C": INF}
@@ -271,7 +280,9 @@ questions:
               is known yet.
           - id: error
             text: An `OverflowError`
-            explanation: 'Python adds a number to `float("inf")` without an error. The result is `inf`.'
+            explanation: >-
+              Python adds a number to `float('inf')` without an error: `inf + 1` is `inf`. And
+              `inf < inf` is false, so `C` stays `inf`.
         correct: still-inf
       - line: 6
         ask: 'Next come `S -> A` (3) and `A -> B` (1). What is `dist["B"]` after both?'
@@ -325,8 +336,7 @@ questions:
         correct: 3
         explanation: >-
           `B -> C` now sees `dist["B"]` at 4, so `C` drops from 7 to 5. An edge checked before
-          its start was lowered needs another pass, which is why Bellman-Ford repeats the pass up
-          to V - 1 times.
+          its start was lowered needs another pass, which is why the pass is repeated.
         misses:
           - index: 1
             explanation: '`A` is reached only by `S -> A`. `S` is fixed at 0, so `A` stays 3.'
@@ -335,6 +345,90 @@ questions:
               `B` is 4 through `A`, and `S -> B` offers 5. Neither edge into `B` gives less than
               4.
         elsewhere: '`S` is the start at 0, and no edge leads into it.'
+
+  - id: wp-k-stops-copy
+    heading: What is the cheapest cost within one stop?
+    tags: [graph, python]
+    workedExample: |-
+      Consider `edges = [("S", "X", 2), ("X", "Y", 3)]` with `k = 0`, so no stop is allowed, and
+      `dist` with `S` at 0 and `X` and `Y` at `inf`. The loop runs `k + 1` passes, which is 1.
+
+      1. The pass starts by copying `dist` into `before`, so `before` has `S` at 0 and `X` and `Y`
+         at `inf`.
+      2. `S -> X` reads `before["S"]`, which is 0, so `dist["X"]` drops to 2. `before["X"]` is
+         still `inf`, because the copy was made before this write.
+      3. `X -> Y` reads `before["X"]`, which is `inf`, so `dist["Y"]` stays `inf`. Reading
+         `dist["X"]` would have set `Y` to 5, by a route with one stop. With no stop allowed, `Y`
+         has no route.
+    prompt: |-
+      A stop is a node a route passes through between its start and its end, so a route with at
+      most `k` stops uses at most `k + 1` edges. This code runs `k + 1` passes. Each pass reads
+      from `before`, a copy of `dist` made when the pass starts: `dist.copy()` builds a new
+      dictionary with the same keys and values, so writes to `dist` during the pass leave it
+      unchanged.
+
+      ```python
+      INF = float('inf')
+      edges = [("S", "A", 1), ("A", "B", 1), ("B", "T", 1),
+               ("S", "T", 9), ("A", "T", 5)]
+      k = 1
+      dist = {"S": 0, "A": INF, "B": INF, "T": INF}
+      for _ in range(k + 1):
+          before = dist.copy()
+          for u, v, w in edges:
+              if before[u] + w < dist[v]:
+                  dist[v] = before[u] + w
+      print(dist["T"])
+      ```
+
+      What does this print?
+    options:
+      - id: six
+        text: '`6`'
+        explanation: >-
+          Pass 1 reads `before`, where only `S` has a cost, so it sets `A` to 1 and `T` to 9.
+          Pass 2 reads `A` at 1, so `A -> T` lowers `T` to 6, while `B -> T` still reads
+          `before["B"]` as `inf`. The route `S -> A -> B -> T` costs 3, but it has 2 stops.
+      - id: three
+        text: '`3`'
+        explanation: >-
+          3 is the cost of `S -> A -> B -> T`, which has 2 stops. In pass 1, `A -> B` reads
+          `before["A"]`, which is still `inf`, so a pass cannot build on an edge it just relaxed.
+      - id: nine
+        text: '`9`'
+        explanation: >-
+          9 is the direct edge, a route with no stop. `k = 1` allows one stop, so a route of 2
+          edges counts, and `S -> A -> T` costs 1 + 5 = 6.
+    correct: six
+    followUps:
+      three:
+        prompt: >-
+          In pass 1, `A -> B` is checked right after `S -> A` set `dist["A"]` to 1. What does
+          `before["A"]` hold at that moment?
+        options:
+          - id: inf
+            text: '`inf`, the value copied when the pass started'
+          - id: one
+            text: '`1`, since `before` changes whenever `dist` does'
+          - id: zero
+            text: '`0`, the cost of the start'
+        correct: inf
+        explanation: >-
+          `before` is a separate dictionary, copied before `S -> A` ran. So each pass adds at
+          most one edge to a route, and `k + 1` passes allow at most `k + 1` edges.
+      nine:
+        prompt: With `k = 1`, how many edges can a route from `S` to `T` use?
+        options:
+          - id: two
+            text: Up to 2, one into the stop and one out of it
+          - id: one
+            text: Only 1, since `k` is 1
+          - id: any
+            text: Any number, as long as it ends at `T`
+        correct: two
+        explanation: >-
+          One stop is one node between `S` and `T`, so the route uses 2 edges. That is why the
+          loop runs `k + 1` passes.
 
   - format: tap-cell
     id: wp-tap-finalize-next

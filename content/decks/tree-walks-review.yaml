@@ -50,76 +50,61 @@ questions:
       - index: 6
         explanation: That is W itself. Its parent is the node one link above it.
 
-  - id: tree-walks-review-leaves
+  - id: tree-walks-review-leaf-levels
     heading: Which nodes are leaves?
     tags: [tree]
     prompt: |-
       A leaf is a node with no children: both `.left` and `.right` are `None`.
 
       ```text
-              P
-             / \
-            Q   R
-           /   / \
-          S   T   U
-               \
-                W
+            K
+           / \
+          L   M
+           \   \
+            N   P
+           / \
+          Q   R
       ```
 
       Which nodes are leaves?
     options:
-      - id: bottom-row
-        text: S, T, U and W
-        explanation: >-
-          T is drawn on the same level as S and U, but it has a right child, W. A leaf is defined by
-          its links, not by how low it is drawn.
       - id: right
-        text: S, U and W
+        text: P, Q and R
         explanation: >-
-          S, U and W each have `None` on both sides. Every other node has at least one child: P, R and T
-          have one or two, and Q has S.
-      - id: deepest
-        text: W only
+          P, Q and R each have `None` on both sides. K and N have two children, and L and M have
+          one each.
+      - id: lowest
+        text: Q and R only
         explanation: >-
-          W is the deepest node, but leaves can sit at different depths. S and U also have no children,
-          so the walk stops below them too.
+          Q and R are on the lowest level, but P has no children either. A leaf is set by its
+          links, not by how far down it is drawn.
       - id: one-child
-        text: Q, S, U and W
+        text: L, M, P, Q and R
         explanation: >-
-          Q has only one child, but one child is enough to make a node internal. Q's left link points to
-          S.
+          L and M each have one `None` link, but L's right link points to N and M's points to P.
+          One child is enough to make a node not a leaf.
     correct: right
     followUps:
-      bottom-row:
-        prompt: What is `T.right` in this tree?
+      lowest:
+        prompt: What are `P.left` and `P.right`?
         options:
-          - { id: is-w, text: "W, so T has a child" }
-          - { id: is-none, text: "`None`, because T is on the bottom row" }
-          - { id: is-u, text: "U, the node beside it" }
-        correct: is-w
-        explanation: >-
-          A node with any non-`None` link is not a leaf. W hangs from T's right link, so T has a child
-          even though it shares a row with two leaves.
-      deepest:
-        prompt: What are `S.left` and `S.right`?
-        options:
-          - { id: both-none, text: "Both `None`, so S has no children" }
-          - { id: s-has-w, text: "`S.right` is W" }
-          - { id: unknown, text: "They cannot be read, because S is not at the bottom" }
+          - { id: both-none, text: "Both `None`, so P has no children" }
+          - { id: p-has-q, text: "`P.left` is Q" }
+          - { id: unknown, text: "They cannot be read, because P is not on the lowest level" }
         correct: both-none
         explanation: >-
-          Being a leaf depends only on a node's own links. S has no children, so it is a leaf two levels
-          below the root, while W is a leaf three levels below.
+          Being a leaf depends only on a node's own links. P is a leaf two levels below the root,
+          and Q and R are leaves three levels below.
       one-child:
-        prompt: Is a node with exactly one child a leaf?
+        prompt: What is `M.right` in this tree?
         options:
-          - { id: not-leaf, text: "No, because one of its links points to a node" }
-          - { id: half-leaf, text: "Yes, because one of its links is `None`" }
-          - { id: depends, text: "Only if the child is on the left" }
-        correct: not-leaf
+          - { id: is-p, text: "P, so M has a child" }
+          - { id: is-none, text: "`None`, because M has no left child" }
+          - { id: is-n, text: "N, the node beside P" }
+        correct: is-p
         explanation: >-
-          A leaf needs both links to be `None`. A one-child node still passes control down to its child,
-          so a recursive walk continues below it.
+          A leaf needs both links to be `None`. M's left link is `None`, but its right link points
+          to P, so M is not a leaf.
 
   - id: tree-walks-review-right-call
     heading: Which nodes can the call reach?
@@ -190,7 +175,7 @@ questions:
         correct: cannot
         explanation: >-
           A `TreeNode` stores `left` and `right` and no link to its parent. A call on a node reaches only
-          that node and its descendants.
+          that node and the nodes below it.
 
   - id: tree-walks-review-inorder-trace
     format: step-trace
@@ -236,7 +221,7 @@ questions:
             explanation: M's append comes after its left call, so the whole subtree under D is recorded before M.
           - index: 5
             explanation: >-
-              B is the deepest node on M's left side, but D has no left child. D records itself before
+              B is the lowest node on M's left side, but D has no left child. D records itself before
               its right call goes down toward B.
         elsewhere: The first call to reach its append is the one whose left link is `None`.
       - line: 5
@@ -344,7 +329,7 @@ questions:
             explanation: B waits for its right subtree, D with E and F, to be recorded first.
           - index: 2
             explanation: C waits until B's whole subtree and B itself are recorded.
-        elsewhere: After the first leaf, the walk finishes that leaf's sibling subtree before the parent.
+        elsewhere: After the first leaf, the walk finishes the parent's other subtree before the parent.
 
   - id: tree-walks-review-level-groups
     heading: What does the loop return?
@@ -390,11 +375,12 @@ questions:
         explanation: >-
           A group is one depth, not one parent's children. 4 and 5 have different parents, but both
           are in the queue when the third round begins.
-      - id: grows
-        text: "`[[1], [2, 3], [4, 5, 6]]`"
+      - id: first-n
+        text: "`[[1], [2], [3], [4], [5], [6]]`"
         explanation: >-
-          6 is appended while 4 is popped, during the third round. That round's `n` was already 2, so
-          the loop stops after 4 and 5 and leaves 6 for a fourth round.
+          That pops one node per round, as if `n` kept its first value, 1. Each round measures the
+          queue again before its first pop, so the second round starts with `n = 2` and groups 2 with
+          3.
     correct: right
     followUps:
       per-parent:
@@ -407,16 +393,16 @@ questions:
         explanation: >-
           The second round pops 2 and 3 and appends 4 and then 5. The round boundary is set by the queue
           length, so nodes from different parents share a group whenever they share a depth.
-      grows:
-        prompt: When is `n` computed for the third round?
+      first-n:
+        prompt: What is `n` when the second round begins?
         options:
-          - { id: before, text: "Before its first pop, when the queue holds 4 and 5" }
-          - { id: each-pop, text: "Again after every pop, so it grows when 6 is appended" }
-          - { id: at-end, text: "After the round, once 6 has been added" }
-        correct: before
+          - { id: two, text: "2, since 2 and 3 are in the queue" }
+          - { id: one, text: "1, kept from the first round" }
+          - { id: five, text: "5, one for each node not yet printed" }
+        correct: two
         explanation: >-
-          `range(n)` is built once from the value of `n` at the start of the round. Appending to the
-          queue during the round changes `len(queue)` but not the number of pops left.
+          `n = len(queue)` runs at the start of every round, not once for the whole loop. The first
+          round pops 1 and appends 2 and 3, so the second round pops both and groups them.
 
   - id: tree-walks-review-zigzag-inorder
     heading: What is in `out` afterward?
@@ -548,7 +534,7 @@ questions:
         prompt: What is the height of a chain of four nodes, each the left child of the one before?
         options:
           - { id: chain-four, text: "4, one node on each level" }
-          - { id: chain-two, text: "2, about log₂ 4" }
+          - { id: chain-two, text: "2, one level for each end of the chain" }
           - { id: chain-eight, text: "8, because the upper levels count as full" }
         correct: chain-four
         explanation: >-
@@ -577,41 +563,41 @@ questions:
       ```
 
       Counting only calls on real nodes, not calls on `None`: how many calls does `height(root)` make
-      in total, and how many are active at once at most?
+      in total, and how many are live at once at most?
     options:
       - id: right
-        text: 6 calls in total, at most 4 active
+        text: 6 calls in total, at most 4 live
         explanation: >-
-          Each of the 6 nodes gets exactly one call, because `max` needs both heights. The deepest point
+          Each of the 6 nodes gets exactly one call, because `max` needs both heights. The lowest point
           is the call on F, while A, B and E wait for their results: 4 calls, one per node on the
           longest path.
       - id: all-active
-        text: 6 calls in total, at most 6 active
+        text: 6 calls in total, at most 6 live
         explanation: >-
-          A call stops being active when it returns. When F's call runs, the calls on D and C are not
-          active: D has returned and C has not started.
+          A call stops being live when it returns. When F's call runs, the calls on D and C are not
+          live: D has returned and C has not started.
       - id: path-only
-        text: 4 calls in total, at most 4 active
+        text: 4 calls in total, at most 4 live
         explanation: >-
           `max` needs both children's heights, so every node is called, not only those on the longest
           path. D and C get calls too.
       - id: edges
-        text: 6 calls in total, at most 3 active
+        text: 6 calls in total, at most 3 live
         explanation: >-
-          3 is the number of links on the path A, B, E, F. Each node on that path has its own active
-          call, so 4 are active while F's call runs.
+          3 is the number of links on the path A, B, E, F. Each node on that path has its own live
+          call, so 4 are live while F's call runs.
     correct: right
     followUps:
       all-active:
         prompt: When the call on F starts, has the call on D returned?
         options:
           - { id: d-returned, text: "Yes; B finished its left call on D before starting its right call on E" }
-          - { id: d-waits, text: "No; every call stays active until the root returns" }
+          - { id: d-waits, text: "No; every call stays live until the root returns" }
           - { id: d-later, text: "D has not been called yet" }
         correct: d-returned
         explanation: >-
-          Only the chain of calls from the root to the current node is active. Finished subtrees have
-          returned their heights and left the stack.
+          Only the chain of calls from the root to the current node is live. Finished subtrees have
+          returned their heights, and their calls are no longer live.
       path-only:
         prompt: Before it can return, what does the call on B need?
         options:
@@ -621,16 +607,16 @@ questions:
         correct: both-heights
         explanation: >-
           The code cannot tell which child is taller without computing both, so every node is called
-          once. The time grows with the node count, while the stack grows with the height.
+          once. The total grows with the node count, while the most live calls grows with the height.
       edges:
-        prompt: While the call on F runs, which calls on real nodes are active?
+        prompt: While the call on F runs, which calls on real nodes are live?
         options:
           - { id: four-calls, text: "The calls on A, B, E and F" }
           - { id: three-calls, text: "The calls on A, B and E only" }
           - { id: f-only, text: "Only the call on F" }
         correct: four-calls
         explanation: >-
-          The running call is active too. Counting calls means counting nodes on the path, not links
+          The running call is live too. Counting calls means counting nodes on the path, not links
           between them.
 
   - id: tree-walks-review-live-depth-trace
@@ -684,19 +670,19 @@ questions:
             explanation: S is T's right child. T calls its left child first.
         elsewhere: After printing, T calls its left child.
       - line: 4
-        ask: While the call on Q prints, how many real calls are active, counting it?
+        ask: While the call on Q prints, how many real calls are live, counting it?
         options:
           - id: three
             text: "3"
             explanation: The calls on P and T are waiting for their child calls, and Q is running.
           - id: two
             text: "2"
-            explanation: The call on Q is active too. P, T and Q each have a call on the stack.
+            explanation: The call on Q is live too. P, T and Q each have a live call.
           - id: five
             text: "5"
             explanation: >-
               5 is the node count. The calls on S and R have not started yet, so only P, T and Q are
-              active.
+              live.
         correct: three
       - line: 4
         ask: Which node prints after Q?
@@ -710,7 +696,7 @@ questions:
             explanation: P was printed first. The call on P is waiting for its right call and prints nothing more.
         elsewhere: After Q's call returns, T calls its right child.
       - line: 4
-        ask: While the call on R prints, how many real calls are active, counting it?
+        ask: While the call on R prints, how many real calls are live, counting it?
         options:
           - id: four
             text: "4"
@@ -720,7 +706,7 @@ questions:
           - id: five
             text: "5"
             explanation: >-
-              Q's call returned before T called S. Only the calls on the path P, T, S, R are active.
+              Q's call returned before T called S. Only the calls on the path P, T, S, R are live.
           - id: three
             text: "3"
             explanation: >-
