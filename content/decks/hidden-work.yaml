@@ -8,16 +8,17 @@ questions:
     heading: Which line copies?
     tags: [complexity, python]
     workedExample: |-
-      Consider `nums = [4, 7, 1, 9]`. A line that builds a new list has to copy every item it puts
-      into that list, however short the line looks.
+      This path finds the work a short line hides: a call that scans a whole list, or a line that
+      copies one. Such a line can cost as much as a loop. Consider `nums = [4, 7, 1, 9]`. A line
+      that builds a new list copies every item it puts into that list.
 
-      1. `rest = nums[1:]` builds a new list from position 1 onward. So it copies `7`, `1` and `9`,
+      1. `rest = nums[1:]` builds a new list from index 1 onward. So it copies `7`, `1` and `9`,
          which is 3 items.
       2. On a list of `n` items the same line copies `n - 1` items, so its cost grows with the list.
-      3. `first = nums[0]` builds no list. It reads the one slot at position 0 and copies nothing,
-         so it costs the same at any length.
+      3. `first = nums[0]` builds no list. It reads the one cell at index 0 and copies nothing, so
+         it costs the same at any length.
     prompt: |-
-      Now a loop grows a list `out` by one number `x` on each pass. Which line copies every item
+      A loop grows a list `out` by one number `x` on each pass. Which line copies every item
       already in `out`, on every pass?
     options:
       - id: plus
@@ -95,9 +96,7 @@ questions:
       2. One match is enough to make the answer `True`, so no later cell can change it.
       3. So `in` stops at index 0 and returns `True` after reading one cell. It never reads the 2 or
          the 8.
-    prompt: >-
-      Now tap the **last** cell that
-      `nums.count(2)` reads.
+    prompt: Tap the **last** cell that `nums.count(2)` reads.
     code: |
       nums = [5, 2, 8, 2, 7, 1]
       k = nums.count(2)
@@ -125,6 +124,96 @@ questions:
       - index: 4
         explanation: One cell is still unread. `count` reads to the end of the list.
 
+  - id: which-call-scans
+    heading: Which line hides a scan?
+    tags: [complexity, python]
+    workedExample: |-
+      Consider a list `nums` of `n` numbers, `total = sum(nums)` and `size = len(nums)`. To tell
+      whether a call reads every item, ask whether an item it skipped could change its answer.
+
+      1. `sum` adds the items. A skipped item would leave its value out of the total, so `sum`
+         must read all `n` of them.
+      2. A list keeps its length stored and updates it on every change. `len` returns that number,
+         so it reads no items.
+      3. So `total = sum(nums)` hides a scan of `n` items, and `size = len(nums)` costs the same at
+         any `n`.
+    prompt: |-
+      `scores` is a list of `n` numbers and `banned` is a set.
+
+      ```python
+      def report(scores, banned):
+          n = len(scores)
+          first = scores[0]
+          skip = first in banned
+          best = max(scores)
+          return n, skip, best
+      ```
+
+      Which line reads every item of `scores`?
+    options:
+      - id: max-line
+        text: '`best = max(scores)`'
+        explanation: >-
+          `max` cannot know which number is largest until it has seen them all, since a larger one
+          could sit in the last cell. So it reads all `n` items. `count`, `sum` and `in` on a list
+          hide the same kind of scan.
+      - id: len-line
+        text: '`n = len(scores)`'
+        explanation: >-
+          A list keeps its length stored and updates it on every change, so `len` reads one number
+          and no items.
+      - id: index-line
+        text: '`first = scores[0]`'
+        explanation: >-
+          Reading by index goes straight to one cell, so it costs the same for 5 scores or 5
+          million.
+      - id: set-line
+        text: '`skip = first in banned`'
+        explanation: >-
+          `banned` is a set, so the test finds `first` from its hash, in about one place on
+          average. It does not read `scores` at all.
+    correct: max-line
+    followUps:
+      len-line:
+        prompt: How does `len(scores)` get its answer?
+        options:
+          - id: stored
+            text: It returns a length the list keeps up to date
+          - id: counts
+            text: It counts the items one by one
+          - id: last-index
+            text: It searches for the last index that holds a value
+        correct: stored
+        explanation: >-
+          Lists, sets, dictionaries and strings all store their length, so `len` is O(1) on each.
+          A call that must look at the values themselves, such as `max`, is the one that scans.
+      index-line:
+        prompt: '`scores` grows to a million items. How many of them does `scores[0]` read?'
+        options:
+          - id: one
+            text: One, the cell at index 0
+          - id: million
+            text: A million, to be sure it has the start
+          - id: half
+            text: About half a million
+        correct: one
+        explanation: >-
+          An index names a cell, and a list can go straight to any cell by its index. Only finding
+          a value, or reducing all of them to one answer, needs a scan.
+      set-line:
+        prompt: Which object does `first in banned` search, and how?
+        options:
+          - id: set-hash
+            text: The set `banned`, from the hash of `first`, in about one place
+          - id: list-scan
+            text: The list `scores`, item by item from the front
+          - id: set-scan
+            text: The set `banned`, item by item
+        correct: set-hash
+        explanation: >-
+          `in` searches the object on its right. On a set that is a hash lookup, about one step on
+          average. The same test on a list would be a scan.
+
   - id: header-runs-once
     heading: How many times does it run?
     tags: [complexity, python, sorting]
@@ -136,7 +225,7 @@ questions:
       2. `max(nums)` sits in the body, so by the setup it runs on each of those passes.
       3. So `max(nums)` runs 5 times, once per item.
     prompt: |-
-      Now the call sits in the loop header:
+      Here `sorted(nums)` sits in the loop header, after `in`:
 
       ```python
       def spread(nums):
@@ -207,7 +296,7 @@ questions:
       3. So the test ran 4 times: 3 that passed and 1 more that failed. A loop that ends because
          its test turns false always runs the test once more than its body.
     prompt: |-
-      Now a call sits in the test:
+      Here `max(nums)` sits in the loop's test:
 
       ```python
       nums = [3, 1, 4, 1, 5]
@@ -280,94 +369,6 @@ questions:
           Count how often the hidden work runs first, then multiply by what each run costs. Here
           that is 5 calls, each reading all 5 numbers.
 
-  - id: trace-max-in-loop
-    format: step-trace
-    heading: Count the hidden reads
-    tags: [complexity, python]
-    workedExample: |-
-      Consider `max([6, 3, 8])`. `max` reads the cells from left to right and keeps the largest
-      value seen so far.
-
-      1. After index 0 the largest so far is `6`. A later cell could hold a larger value, so `max`
-         cannot stop yet.
-      2. Index 1 holds `3`, which is smaller, so the largest stays `6`. A cell is still unread, so
-         `max` still cannot stop.
-      3. Index 2 holds `8`, which is larger, so the largest becomes `8`. That was the last cell, so
-         `max` returns `8`. A larger value can always sit in the last cell, so `max` reads every
-         cell, here all 3.
-    prompt: >-
-      The loop below calls `max(nums)` on every pass, and `reads` adds the cells each call reads.
-      Predict each step before it is shown.
-    code: |
-      nums = [4, 9, 2, 9, 5]
-      reads = 0
-      out = []
-      for i in range(len(nums)):
-          reads += len(nums)
-          if nums[i] == max(nums):
-              out.append(i)
-    sequence:
-      kind: array
-      name: nums
-      cells: [4, 9, 2, 9, 5]
-    start:
-      - { name: i, at: 0 }
-    steps:
-      - line: 4
-        ask: Where is `i` on the first pass that appends to `out`?
-        pointer: i
-        correct: 1
-        explanation: '`max(nums)` is 9, and the first 9 sits at index 1.'
-        misses:
-          - index: 0
-            explanation: '`nums[0]` is 4, and the largest value is 9, so nothing is appended.'
-          - index: 3
-            explanation: That 9 is appended too, but a 9 comes earlier, at index 1.
-        elsewhere: The first pass that appends is the first one where `nums[i]` equals 9, at index 1.
-      - line: 5
-        ask: What is `reads` after that pass?
-        options:
-          - id: ten
-            text: '10'
-            explanation: Two passes ran, `i` at 0 and at 1, and each call of `max` read all 5 cells.
-          - id: two
-            text: '2'
-            explanation: That counts calls. Each call reads every cell, so each pass adds 5.
-          - id: seven
-            text: '7'
-            explanation: '`max` does not stop at the 9. It cannot know that no larger value comes later.'
-        correct: ten
-      - line: 4
-        ask: What is `reads` when the loop ends?
-        options:
-          - id: twenty-five
-            text: '25'
-            explanation: 5 passes, each with a 5-cell call of `max`, is 5 × 5.
-          - id: five
-            text: '5'
-            explanation: That is one call's reads. The call is in the body, so it runs on every pass.
-          - id: fifteen
-            text: '15'
-            explanation: '`nums` does not shrink, so every call reads all 5 cells, not 5, 4, 3, 2, 1.'
-        correct: twenty-five
-        also:
-          - { name: i, at: 4 }
-      - ask: The same loop runs on 10 numbers. What is `reads`?
-        options:
-          - id: hundred
-            text: '100'
-            explanation: >-
-              10 calls of 10 reads each. Doubling the input made the hidden work four times
-              larger: a scan run once per item grows like n². `top = max(nums)` above the loop
-              would make `max` read the 10 cells once instead of 100 times.
-          - id: fifty
-            text: '50'
-            explanation: That doubles 25. Both the number of calls and each call's reads doubled.
-          - id: ten
-            text: '10'
-            explanation: That is one call's reads. There are 10 calls.
-        correct: hundred
-
   - id: hoist-the-average
     heading: Which change keeps the output?
     tags: [complexity, python]
@@ -381,7 +382,7 @@ questions:
       3. So writing `top = max(nums)` once above the loop and testing `x == top` gives the same
          answer, with one scan instead of one per pass.
     prompt: |-
-      Now `nums` always holds at least one number:
+      `nums` always holds at least one number:
 
       ```python
       def above_mean(nums):
@@ -456,6 +457,107 @@ questions:
         explanation: >-
           A loop appends in the order it visits items. Visiting them sorted keeps the same values
           but returns them in a different order, so the output changes.
+
+  - id: carry-running-min
+    format: step-trace
+    heading: Carry the lowest price
+    tags: [complexity, python]
+    workedExample: |-
+      Consider `nums = [4, 1, 6, 3]` and `high`, the largest value before index `i`. Instead of
+      computing `max(nums[:i])` on every pass, keep `high` and fold in one more value per pass
+      with `high = max(high, nums[i])`, after index `i` has been used.
+
+      1. Before index 1, only index 0 has been seen, so `high` starts as `nums[0]`, which is 4.
+      2. After index 1, `high = max(4, 1)` is still 4. After index 2, `high = max(4, 6)` is 6.
+         Each update compares two values and copies nothing.
+      3. So before index 3, `high` is 6, the same as `max(nums[:3])`, which would copy and read 3
+         cells.
+    prompt: >-
+      `prices[i]` is a stock's price on day `i`. The best profit from one buy and one later sell is
+      the largest `prices[i] - min(prices[:i])`, or 0 if none is positive. Computing that on every
+      pass slices and reads `i` cells each time. The code below carries the lowest earlier price
+      instead: `low` holds the lowest price before day `i`, and each pass folds in one more price.
+      Predict each step before it is shown.
+    code: |
+      def best_trade(prices):
+          low = prices[0]
+          best = 0
+          for i in range(1, len(prices)):
+              best = max(best, prices[i] - low)
+              low = min(low, prices[i])
+          return best
+
+      best_trade([6, 9, 3, 8, 2, 9])
+    sequence:
+      kind: array
+      name: prices
+      cells: [6, 9, 3, 8, 2, 9]
+    start:
+      - { name: i, at: 1 }
+    steps:
+      - line: 5
+        ask: On the pass with `i` at 3, what is `prices[i] - low`?
+        options:
+          - id: five
+            text: '5'
+            explanation: '`low` is 3, the lowest of 6, 9 and 3, so the sale at 8 gives 8 - 3.'
+          - id: two
+            text: '2'
+            explanation: >-
+              8 - 6 keeps the first price. On the pass with `i` at 2, line 6 lowered `low` to 3.
+          - id: minus-one
+            text: '-1'
+            explanation: >-
+              8 - 9 uses the day before. `low` holds the lowest of all the earlier prices, not the
+              latest one.
+        correct: five
+        also:
+          - { name: i, at: 3 }
+      - line: 6
+        ask: On which pass does `low` become 2?
+        pointer: i
+        correct: 4
+        explanation: '`prices[4]` is 2, lower than 3, so line 6 on that pass sets `low` to 2.'
+        misses:
+          - index: 2
+            explanation: '`low` becomes 3 there. The 2 is lower, and it comes later.'
+          - index: 5
+            explanation: '`low` is already 2 by then. Line 6 set it on the pass before.'
+        elsewhere: '`low` takes the 2 on the pass that reads it, with `i` at 4.'
+      - line: 7
+        ask: What does `best_trade` return?
+        options:
+          - id: seven
+            text: '7'
+            explanation: On the last pass, 9 - 2 is 7, larger than the 5 found before.
+          - id: five
+            text: '5'
+            explanation: 5 is `best` after the pass with `i` at 3. The last pass sells at 9 after a buy at 2.
+          - id: six
+            text: '6'
+            explanation: 9 - 3 is 6, but by the last pass `low` is 2, so the sale gives 7.
+        correct: seven
+        also:
+          - { name: i, at: 5 }
+      - ask: Why would `low = min(prices)`, set once above the loop, be wrong on some inputs?
+        options:
+          - id: late-buy
+            text: It can buy at a price that comes after the sale
+            explanation: >-
+              `min(prices)` looks at every day, later ones too. On `[5, 9, 1]` it gives 9 - 1 = 8,
+              a buy on day 2 for a sale on day 1. The answer is 4. The lowest price before day `i`
+              changes as `i` moves, so it has to be carried, not computed once.
+          - id: same
+            text: It gives the same answer, since the lowest price is always the best buy
+            explanation: >-
+              The lowest price can come after the highest one. On `[5, 9, 1]` the best trade is
+              9 - 5 = 4, but `min(prices)` is 1, which comes last.
+          - id: slower
+            text: It is right but slower, since `min` reads every price
+            explanation: >-
+              Set once above the loop, `min(prices)` runs one time, so it is not slow. It is wrong:
+              on `[5, 9, 1]` it gives 8 instead of 4.
+        correct: late-buy
 
   - id: trace-copied-cells
     format: step-trace
@@ -553,8 +655,6 @@ questions:
       3. `n` reads grow with the list and one read does not. So as `n` grows, the `max` line
          outweighs the other, however short it looks.
     prompt: |-
-      Now:
-
       ```python
       def report(nums):
           nums = sorted(nums)

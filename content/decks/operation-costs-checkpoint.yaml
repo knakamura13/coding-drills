@@ -302,3 +302,78 @@ questions:
         explanation: >-
           A missing value costs a full list scan, and `any` runs that scan for every id in `new`.
           Ten scans of 100,000 is about 1,000,000.
+
+  - id: checkpoint-debug-known-ids
+    heading: Which line is wrong?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      A suggested solution should count the ids in `ids` that also appear in `known`, in about
+      n + m steps on average for `n` ids and `m` known ids. Its answers are right, but on long
+      lists it takes far more steps than that. Which line is wrong?
+
+      ```python
+      def count_known(ids, known):
+          known_set = set(known)
+          count = 0
+          for x in ids:
+              if x in known:
+                  count += 1
+          return count
+      ```
+    options:
+      - id: test-line
+        text: 'Line 5: `if x in known:`'
+        explanation: >-
+          The test searches the list `known`, not the set built on line 2. A list test compares
+          `x` with up to `m` items, and the loop runs it `n` times: about n × m. Testing
+          `x in known_set` makes each test about one step, so the call is about m + n.
+      - id: build-line
+        text: 'Line 2: `known_set = set(known)`'
+        explanation: How many times does line 2 run, and what does it cost each time?
+      - id: loop-line
+        text: 'Line 4: `for x in ids:`'
+        explanation: Can any correct version check each id without one pass over `ids`?
+      - id: add-line
+        text: 'Line 6: `count += 1`'
+        explanation: What does adding 1 to a number cost, and how often can it run?
+    correct: test-line
+    followUps:
+      build-line:
+        prompt: How many steps does line 2 take, and how often does it run?
+        options:
+          - id: once
+            text: About `m` steps, once, before the loop
+          - id: per-id
+            text: About `m` steps on every pass of the loop
+          - id: free
+            text: One step, since `set` is built in
+        correct: once
+        explanation: >-
+          Building a set adds every item once, so it costs about `m`. It sits above the loop, so
+          that cost adds to the loop's instead of multiplying it.
+      loop-line:
+        prompt: The target is about n + m steps. How many passes over `ids` does that leave room for?
+        options:
+          - id: one-pass
+            text: One pass, as long as each pass costs about one step
+          - id: none
+            text: None, so the loop must go
+          - id: m-passes
+            text: About `m` passes, one per known id
+        correct: one-pass
+        explanation: >-
+          Every id has to be checked, so `n` passes are needed. What each pass costs decides the
+          total, and here each pass runs a test on a list.
+      add-line:
+        prompt: On a list of `n` ids, how many steps can line 6 take in all?
+        options:
+          - id: at-most-n
+            text: At most `n`, one per id that is found
+          - id: n-times-m
+            text: About n × m, one per comparison
+          - id: m
+            text: About `m`, one per known id
+        correct: at-most-n
+        explanation: >-
+          Adding 1 is one step, and it runs at most once per pass. The cost that grows with both
+          lists is the test on line 5.
