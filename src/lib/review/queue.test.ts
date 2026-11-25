@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { CurriculumDrill } from '$lib/content/curriculum';
+import type { CurriculumDrill, CurriculumPath, CurriculumSkill } from '$lib/content/curriculum';
 import { advance, check, createReviewLesson, select } from '$lib/domain/lesson';
 import { teachingBySkill } from '$lib/domain/mastery';
-import { curriculum } from 'virtual:curriculum';
-import { decks as publishedDecks } from 'virtual:decks';
 import { replay } from '$lib/domain/srs';
 import type { Deck } from '$lib/content/schema';
 import type { Attempt } from '$lib/storage/types';
@@ -175,12 +173,33 @@ describe('fresh review variants', () => {
 	]);
 
 	it('uses the tree’s positional assignment for a legacy drill', () => {
-		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'reachability')!;
-		const resolved = teachingBySkill(path, curriculum.drills);
-		const original = attempt('graph-traversal-grids', 'bfs-mark-on-enqueue', '2026-10-09');
-		const status = reviewStatus(publishedDecks, [original], '2026-10-10', undefined, undefined, resolved);
+		const skill = (id: string): CurriculumSkill => ({
+			kind: 'skill', id, title: id, pathId: 'legacy', branchId: 'branch', line: 'main', after: [], depth: 'interview'
+		});
+		const path: CurriculumPath = {
+			id: 'legacy', title: 'Legacy', summary: 's', branchId: 'branch', after: [], depth: 'interview',
+			skills: [skill('first'), skill('second')], forks: [], checkpoints: []
+		};
+		const older = (questionId: string, disposition: CurriculumDrill['disposition']): CurriculumDrill => ({
+			deckId: 'older-deck', questionId, disposition, pathId: 'legacy', covers: [], depth: 'interview', note: 'drill'
+		});
+		const fresh = (questionId: string, skillId: string): CurriculumDrill => ({
+			...older(questionId, 'keep'), deckId: 'legacy-review', skillId, variant: true
+		});
+		// Skill-less drills pair with skills in order, and a retired one takes no place.
+		const resolved = teachingBySkill(path, [
+			older('retired', 'retire'),
+			older('legacy', 'rewrite'),
+			older('later', 'rewrite'),
+			fresh('first-variant', 'first'),
+			fresh('second-variant', 'second')
+		]);
+		const legacyDecks = [deck('older-deck', ['retired', 'legacy', 'later']), deck('legacy-review', ['first-variant', 'second-variant'])];
+		const original = attempt('older-deck', 'legacy', '2026-10-09');
+		const status = reviewStatus(legacyDecks, [original], '2026-10-10', undefined, undefined, resolved);
 		expect(status.entries[0]).toMatchObject({
-			deckId: 'reachability-review',
+			deckId: 'legacy-review',
+			question: { id: 'first-variant' },
 			reviewOf: { deckId: original.deckId, questionId: original.questionId }
 		});
 	});
