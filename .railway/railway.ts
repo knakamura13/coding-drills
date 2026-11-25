@@ -26,7 +26,7 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  *
  * Custom domains are listed on the app service so an apply keeps them, but this
  * file cannot create one. Add a new domain with `railway domain <name> --port
- * 8080` (the app listens on Railway's PORT, 8080), which prints the DNS records
+ * 8080` (the port the Dockerfile pins), which prints the DNS records
  * to set at the registrar (Namecheap), then list it here.
  *
  * Railway never reads this file during a deploy. Editing or merging it changes
