@@ -82,7 +82,7 @@ describe('attempts', () => {
 			remote(`r${String(i).padStart(6, '0')}`, new Date(Date.UTC(2026, 0, 1, 0, 0, 0, i)).toISOString(), `q${i}`)
 		);
 		const repo = new Repository(memoryStore(), fixedNow);
-		repo.applySync({ sent: [], cursor: 1, attempts: many, flags: [] });
+		repo.applySync({ sentFlags: [], sent: [], cursor: 1, attempts: many, flags: [] });
 		const attempts = repo.attempts();
 		expect(attempts).toHaveLength(MAX_ATTEMPTS);
 		expect(attempts[0].questionId).toBe('q5');
@@ -117,15 +117,15 @@ describe('sync bookkeeping', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
 		repo.recordAttempt(attempt('q2'));
-		expect(repo.syncState()).toEqual({ cursor: 0, pending: ['a000001', 'a000002'] });
+		expect(repo.syncState()).toEqual({ cursor: 0, pending: ['a000001', 'a000002'], pendingFlags: [] });
 		expect(repo.pendingAttempts(1).map((a) => a.id)).toEqual(['a000001']);
 	});
 
 	it('stops treating attempts as pending once the server acknowledges them', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
-		repo.applySync({ sent: ['a000001'], cursor: 4, attempts: [], flags: [] });
-		expect(repo.syncState()).toEqual({ cursor: 4, pending: [] });
+		repo.applySync({ sentFlags: [], sent: ['a000001'], cursor: 4, attempts: [], flags: [] });
+		expect(repo.syncState()).toEqual({ cursor: 4, pending: [], pendingFlags: [] });
 		repo.recordAttempt(attempt('q2'));
 		expect(repo.syncState().pending).toEqual(['a000002']);
 	});
@@ -133,7 +133,7 @@ describe('sync bookkeeping', () => {
 	it('does not send attempts it just received from the server', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
-		const changed = repo.applySync({ sent: ['a000001'], cursor: 2, attempts: [remote('srv1')], flags: [] });
+		const changed = repo.applySync({ sentFlags: [], sent: ['a000001'], cursor: 2, attempts: [remote('srv1')], flags: [] });
 		expect(changed).toBe(true);
 		expect(repo.attempts().map((a) => a.id)).toEqual(['a000001', 'srv1']);
 		expect(repo.syncState().pending).toEqual([]);
@@ -143,7 +143,7 @@ describe('sync bookkeeping', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
 		const held = repo.attempts();
-		expect(repo.applySync({ sent: [], cursor: 1, attempts: held, flags: [] })).toBe(false);
+		expect(repo.applySync({ sentFlags: [], sent: [], cursor: 1, attempts: held, flags: [] })).toBe(false);
 		expect(repo.attempts()).toEqual(held);
 	});
 
@@ -154,6 +154,7 @@ describe('sync bookkeeping', () => {
 		const flag: Flag = { id: 'f', at: AT, deckId: 'd', questionId: 'q', stage: 'question', note: 'n' };
 		const response = {
 			sent: [],
+			sentFlags: [],
 			cursor: 2,
 			attempts: [{ ...good, junk: 'x' }, { ...remote('bad'), questionId: 'q\u0000' }] as Attempt[],
 			flags: [{ ...flag, junk: 1 }, { ...flag, id: 'g', stage: 'later' }] as unknown as Flag[]
@@ -170,7 +171,7 @@ describe('sync bookkeeping', () => {
 		);
 		const malformed = Array.from({ length: 5 }, (_, i) => ({ ...remote(`m${i}`, '2026-12-01T00:00:00.000Z'), pickedId: '' }));
 		const repo = new Repository(memoryStore(), fixedNow);
-		repo.applySync({ sent: [], cursor: 1, attempts: [...many, ...malformed], flags: [] });
+		repo.applySync({ sentFlags: [], sent: [], cursor: 1, attempts: [...many, ...malformed], flags: [] });
 		expect(repo.attempts()).toHaveLength(MAX_ATTEMPTS);
 	});
 
@@ -181,7 +182,7 @@ describe('sync bookkeeping', () => {
 			[KEYS.sync]: JSON.stringify({ cursor: 1, pending: ['a1', 'a2'] })
 		});
 		const repo = new Repository(store, fixedNow, counter('n'));
-		repo.applySync({ sent: [], cursor: 1, attempts: [], flags: [] });
+		repo.applySync({ sentFlags: [], sent: [], cursor: 1, attempts: [], flags: [] });
 		expect(repo.syncState().pending).toEqual(['a1']);
 
 		store.data.set(KEYS.sync, JSON.stringify({ cursor: 1, pending: ['a1', 'ghost'] }));
@@ -189,10 +190,37 @@ describe('sync bookkeeping', () => {
 		expect(repo.syncState().pending).toEqual(['a1', 'n000001']);
 	});
 
+	it('counts every flag as pending before the first sync, and only edits and deletions after it', () => {
+		const repo = new Repository(memoryStore(), fixedNow);
+		const one = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'a' });
+		const two = repo.upsertFlag({ deckId: 'd', questionId: 'q2', stage: 'question', note: 'b' });
+		expect(repo.syncState().pendingFlags).toEqual([one.id, two.id]);
+		repo.applySync({ sent: [], sentFlags: [one, two], cursor: 1, attempts: [], flags: [one, two] });
+		expect(repo.pendingFlags()).toEqual([]);
+		repo.removeFlag(one.id);
+		expect(repo.pendingFlags()).toMatchObject([{ id: one.id, removed: true }]);
+	});
+
+	it('keeps a flag pending when it changed after it was sent', () => {
+		let now = new Date('2026-10-10T12:00:00.000Z');
+		const repo = new Repository(memoryStore(), () => now);
+		const sent = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'a' });
+		now = new Date('2026-10-10T12:01:00.000Z');
+		const edited = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'b' });
+		repo.applySync({ sent: [], sentFlags: [sent], cursor: 1, attempts: [], flags: [sent] });
+		expect(repo.pendingFlags()).toEqual([edited]);
+	});
+
+	it('treats every flag as pending when the saved sync state predates pending flags', () => {
+		const flag: Flag = { id: 'f', at: AT, deckId: 'd', questionId: 'q', stage: 'question', note: 'n' };
+		const store = memoryStore({ [KEYS.flags]: JSON.stringify([flag]), [KEYS.sync]: JSON.stringify({ cursor: 3, pending: [] }) });
+		expect(new Repository(store).syncState()).toEqual({ cursor: 3, pending: [], pendingFlags: ['f'] });
+	});
+
 	it('never moves the cursor backwards', () => {
 		const repo = new Repository(memoryStore(), fixedNow);
-		repo.applySync({ sent: [], cursor: 9, attempts: [], flags: [] });
-		repo.applySync({ sent: [], cursor: 3, attempts: [], flags: [] });
+		repo.applySync({ sentFlags: [], sent: [], cursor: 9, attempts: [], flags: [] });
+		repo.applySync({ sentFlags: [], sent: [], cursor: 3, attempts: [], flags: [] });
 		expect(repo.syncState().cursor).toBe(9);
 	});
 });
@@ -286,26 +314,26 @@ describe('flags', () => {
 
 		it('takes the newer copy', () => {
 			const repo = withFlag(older);
-			expect(repo.applySync({ sent: [], cursor: 0, attempts: [], flags: [newer] })).toBe(true);
+			expect(repo.applySync({ sentFlags: [], sent: [], cursor: 0, attempts: [], flags: [newer] })).toBe(true);
 			expect(repo.flags()[0].note).toBe('new');
 		});
 
 		it('keeps the local copy when it is newer or equal', () => {
 			const repo = withFlag(newer);
-			expect(repo.applySync({ sent: [], cursor: 0, attempts: [], flags: [older, newer] })).toBe(false);
+			expect(repo.applySync({ sentFlags: [], sent: [], cursor: 0, attempts: [], flags: [older, newer] })).toBe(false);
 			expect(repo.flags()[0].note).toBe('new');
 		});
 
 		it('applies a remote deletion that is newer than the local edit', () => {
 			const repo = withFlag(older);
 			const tombstone: Flag = { ...newer, note: '', removed: true };
-			repo.applySync({ sent: [], cursor: 0, attempts: [], flags: [tombstone] });
+			repo.applySync({ sentFlags: [], sent: [], cursor: 0, attempts: [], flags: [tombstone] });
 			expect(repo.flags()).toEqual([]);
 		});
 
 		it('adds flags created on another device', () => {
 			const repo = new Repository(memoryStore());
-			repo.applySync({ sent: [], cursor: 0, attempts: [], flags: [older] });
+			repo.applySync({ sentFlags: [], sent: [], cursor: 0, attempts: [], flags: [older] });
 			expect(repo.flags()).toEqual([older]);
 		});
 	});

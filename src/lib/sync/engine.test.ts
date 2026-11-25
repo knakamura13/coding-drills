@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { replay } from '$lib/domain/srs';
 import { createMemoryRepo } from '$lib/testing/memoryRepo';
 import { KEYS, Repository, type KeyValueStore } from '$lib/storage/repository';
-import type { Attempt } from '$lib/storage/types';
+import type { Attempt, Flag } from '$lib/storage/types';
 import type { SyncApi, SyncResult } from './api';
 import { runSync } from './engine';
-import { SYNC_BATCH, SYNC_PAGE, type SyncRequest } from './protocol';
+import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, SYNC_PAGE, type SyncRequest } from './protocol';
+
+const requestBytes = (request: SyncRequest) => new TextEncoder().encode(JSON.stringify(request)).length;
 
 function memoryStore(initial: Record<string, string> = {}): KeyValueStore {
 	const data = new Map<string, string>(Object.entries(initial));
@@ -35,6 +37,8 @@ async function server() {
 			calls.push(structuredClone(request));
 			if (state.down) return { kind: 'failed' };
 			if (!state.signedIn) return { kind: 'unauthorized' };
+			// The caps POST /api/sync enforces with a 400.
+			if (request.flags.length > MAX_FLAGS || requestBytes(request) > MAX_SYNC_BODY_BYTES) return { kind: 'failed' };
 			const response = await repo.sync(user.id, request);
 			if (state.dropResponses) return { kind: 'failed' };
 			return { kind: 'ok', response };
@@ -201,5 +205,98 @@ describe('records stored before #158', () => {
 		const held = await server_.sync(userId, { cursor: 0, attempts: [], flags: [] });
 		expect(held.attempts).toEqual([good]);
 		expect(held.flags.map((flag) => flag.note)).toEqual(['see this\uFFFD']);
+	});
+});
+
+function manyFlags(count: number, note = 'n'): Flag[] {
+	return Array.from({ length: count }, (_, i) => ({
+		id: `deck/q${i}/question`,
+		at: new Date(Date.UTC(2026, 9, 1, 0, 0, 0, i)).toISOString(),
+		deckId: 'deck',
+		questionId: `q${i}`,
+		stage: 'question',
+		note
+	}));
+}
+
+/** A device whose storage already holds these flags. */
+function deviceWithFlags(flags: Flag[]) {
+	return new Repository(memoryStore({ [KEYS.flags]: JSON.stringify(flags) }), () => new Date('2026-10-02T00:00:00.000Z'));
+}
+
+describe('flags beyond one request', () => {
+	it('syncs more than MAX_FLAGS flags to another device, never over the flag cap', async () => {
+		const { api, calls } = await server();
+		const flags = manyFlags(MAX_FLAGS + 500);
+		expect(await runSync(deviceWithFlags(flags), api)).toMatchObject({ status: 'ok' });
+		expect(calls.every((call) => call.flags.length <= MAX_FLAGS)).toBe(true);
+
+		const other = device('2026-10-03T00:00:00.000Z', 'b');
+		expect(await runSync(other.repo, api)).toEqual({ status: 'ok', changed: true });
+		expect(other.repo.allFlags()).toHaveLength(flags.length);
+	});
+
+	it('keeps every request under the body cap when notes are long', async () => {
+		const { api, calls } = await server();
+		const flags = manyFlags(600, 'é'.repeat(1000));
+		expect(await runSync(deviceWithFlags(flags), api)).toMatchObject({ status: 'ok' });
+		expect(calls.length).toBeGreaterThan(1);
+		expect(calls.every((call) => requestBytes(call) <= MAX_SYNC_BODY_BYTES)).toBe(true);
+
+		const other = device('2026-10-03T00:00:00.000Z', 'b');
+		await runSync(other.repo, api);
+		expect(other.repo.allFlags()).toHaveLength(flags.length);
+	});
+
+	it('sends a flag until the server holds it, then only edits and deletions', async () => {
+		const { api, calls } = await server();
+		const one = device('2026-10-01T00:00:00.000Z', 'a');
+		const flag = one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'unclear' });
+		await runSync(one.repo, api);
+		await runSync(one.repo, api);
+		expect(calls.map((call) => call.flags.length)).toEqual([1, 0]);
+
+		one.clock.now = new Date('2026-10-01T01:00:00.000Z');
+		one.repo.removeFlag(flag.id);
+		await runSync(one.repo, api);
+		expect(calls.at(-1)!.flags).toEqual([{ ...flag, at: '2026-10-01T01:00:00.000Z', note: '', removed: true }]);
+
+		const other = device('2026-10-02T00:00:00.000Z', 'b');
+		await runSync(other.repo, api);
+		expect(other.repo.allFlags()).toMatchObject([{ id: flag.id, removed: true }]);
+		expect(other.repo.flags()).toEqual([]);
+	});
+
+	it('sends a flag again when it was edited while its request was in flight', async () => {
+		const backend = await server();
+		const one = device('2026-10-01T00:00:00.000Z', 'a');
+		one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'first' });
+		let edited = false;
+		const api: SyncApi = {
+			...backend.api,
+			async sync(request) {
+				const result = await backend.api.sync(request);
+				if (!edited) {
+					edited = true;
+					one.clock.now = new Date('2026-10-01T00:05:00.000Z');
+					one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'second' });
+				}
+				return result;
+			}
+		};
+		expect(await runSync(one.repo, api)).toMatchObject({ status: 'ok' });
+		const held = await backend.repo.sync(backend.userId, { cursor: 0, attempts: [], flags: [] });
+		expect(held.flags.map((flag) => flag.note)).toEqual(['second']);
+	});
+
+	it('sends every flag once from a device whose saved sync state predates pending flags', async () => {
+		const { api, calls } = await server();
+		const flags = manyFlags(3);
+		const repo = new Repository(
+			memoryStore({ [KEYS.flags]: JSON.stringify(flags), [KEYS.sync]: JSON.stringify({ cursor: 0, pending: [] }) })
+		);
+		await runSync(repo, api);
+		await runSync(repo, api);
+		expect(calls.map((call) => call.flags.length)).toEqual([3, 0]);
 	});
 });

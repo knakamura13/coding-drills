@@ -3,7 +3,10 @@ import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMemoryRepo } from '$lib/testing/memoryRepo';
-import { SYNC_PAGE } from '$lib/sync/protocol';
+import { MAX_FLAGS, SYNC_PAGE, type SyncRequest } from '$lib/sync/protocol';
+import { runSync } from '$lib/sync/engine';
+import type { SyncApi } from '$lib/sync/api';
+import { KEYS, Repository } from '$lib/storage/repository';
 import type { Attempt, Flag } from '$lib/storage/types';
 import { migrate, type Sql } from './db';
 import { createRepo, type Repo, type SessionUser } from './repo';
@@ -38,14 +41,37 @@ const flag = (at: string, note: string, over: Partial<Flag> = {}): Flag => ({
 });
 
 /** Calls `POST /api/sync` as the signed-in user; the handler only reads `locals` and `request`. */
-async function postSync(repo: Repo, user: SessionUser, body: unknown): Promise<number> {
+function callSync(repo: Repo, user: SessionUser, body: unknown): Promise<Response> {
 	const request = new Request('http://localhost/api/sync', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify(body)
 	});
-	const res = await (syncRoute as unknown as (event: unknown) => Promise<Response>)({ locals: { repo, user }, request });
-	return res.status;
+	return (syncRoute as unknown as (event: unknown) => Promise<Response>)({ locals: { repo, user }, request });
+}
+
+async function postSync(repo: Repo, user: SessionUser, body: unknown): Promise<number> {
+	return (await callSync(repo, user, body)).status;
+}
+
+/** The browser's sync API, answered by the real route instead of fetch. */
+function routeApi(repo: Repo, user: SessionUser): SyncApi {
+	return {
+		async me() {
+			return { kind: 'signedIn', user: { email: user.email, name: user.name } };
+		},
+		async sync(request: SyncRequest) {
+			const res = await callSync(repo, user, request);
+			return res.ok ? { kind: 'ok', response: await res.json() } : { kind: 'failed' };
+		},
+		async signOut() {}
+	};
+}
+
+/** A device: its own browser storage, already holding these flags. */
+function deviceStore(flags: Flag[] = []) {
+	const data = new Map<string, string>([[KEYS.flags, JSON.stringify(flags)]]);
+	return new Repository({ getItem: (key) => data.get(key) ?? null, setItem: (key, value) => void data.set(key, value) });
 }
 
 // Strings Postgres refuses inside jsonb: a null character, and half of a surrogate pair.
@@ -191,6 +217,18 @@ function contract(name: string, make: () => Promise<Repo>) {
 			const back = await repo.sync(user.id, { cursor: 0, attempts: [], flags: [] });
 			expect(back.attempts).toEqual([clean]);
 			expect(back.flags).toEqual([cleanFlag]);
+		});
+
+		it('syncs more than 1,000 flags completely across two devices through the route', async () => {
+			const user = await repo.upsertUser(`sub-${name}-many-flags`, 'f@example.com', null);
+			const flags = Array.from({ length: MAX_FLAGS + 200 }, (_, i) =>
+				flag(new Date(Date.UTC(2026, 9, 1, 0, 0, 0, i)).toISOString(), `note ${i}`, { id: `deck/q${i}/question`, questionId: `q${i}` })
+			);
+			expect(await runSync(deviceStore(flags), routeApi(repo, user))).toMatchObject({ status: 'ok' });
+
+			const other = deviceStore();
+			expect(await runSync(other, routeApi(repo, user))).toEqual({ status: 'ok', changed: true });
+			expect(new Set(other.allFlags().map((f) => f.id))).toEqual(new Set(flags.map((f) => f.id)));
 		});
 
 		it('pages a large history and reports when more remains', async () => {

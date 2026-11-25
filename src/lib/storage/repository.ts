@@ -27,6 +27,8 @@ export interface SyncState {
 	cursor: number;
 	/** Local attempts the server has not acknowledged yet. */
 	pending: string[];
+	/** Ids of local flags (edits and deletions) the server has not acknowledged yet. */
+	pendingFlags: string[];
 }
 
 export function flagId(deckId: string, questionId: string, stage: FlagStage, optionId?: string): string {
@@ -143,6 +145,7 @@ export class Repository {
 			note: cleanNote(input.note)
 		};
 		this.#write(KEYS.flags, [...this.allFlags().filter((existing) => existing.id !== flag.id), flag]);
+		this.#markFlagPending(flag.id);
 		return flag;
 	}
 
@@ -151,6 +154,15 @@ export class Repository {
 		if (!existing || existing.removed) return;
 		const tombstone: Flag = { ...existing, at: this.#now().toISOString(), note: '', removed: true };
 		this.#write(KEYS.flags, [...this.allFlags().filter((flag) => flag.id !== id), tombstone]);
+		this.#markFlagPending(id);
+	}
+
+	/** Before the first sync every flag counts as pending, so there is nothing to add. */
+	#markFlagPending(id: string): void {
+		const meta = this.#readSyncMeta();
+		if (meta && !meta.pendingFlags.includes(id)) {
+			this.#write(KEYS.sync, { ...meta, pendingFlags: [...meta.pendingFlags, id] });
+		}
 	}
 
 	#readSyncMeta(): SyncState | null {
@@ -161,15 +173,28 @@ export class Repository {
 			typeof (meta as SyncState).cursor === 'number' &&
 			Array.isArray((meta as SyncState).pending)
 		) {
-			const { cursor, pending } = meta as SyncState;
-			return { cursor, pending: pending.filter((id) => typeof id === 'string') };
+			const { cursor, pending, pendingFlags } = meta as Partial<SyncState> & Pick<SyncState, 'cursor' | 'pending'>;
+			return {
+				cursor,
+				pending: pending.filter((id) => typeof id === 'string'),
+				// State saved before flags had a pending list: send every flag once, as the old client did on every sync.
+				pendingFlags: Array.isArray(pendingFlags)
+					? pendingFlags.filter((id) => typeof id === 'string')
+					: this.allFlags().map((flag) => flag.id)
+			};
 		}
 		return null;
 	}
 
 	/** Never synced means the whole local history is pending: signing in adopts it. */
 	syncState(): SyncState {
-		return this.#readSyncMeta() ?? { cursor: 0, pending: this.attempts().map((attempt) => attempt.id) };
+		return (
+			this.#readSyncMeta() ?? {
+				cursor: 0,
+				pending: this.attempts().map((attempt) => attempt.id),
+				pendingFlags: this.allFlags().map((flag) => flag.id)
+			}
+		);
 	}
 
 	pendingAttempts(limit: number): Attempt[] {
@@ -179,19 +204,40 @@ export class Repository {
 			.slice(0, limit);
 	}
 
+	/** Flags, deletions included, that the server has not acknowledged. */
+	pendingFlags(): Flag[] {
+		const pending = new Set(this.syncState().pendingFlags);
+		return this.allFlags().filter((flag) => pending.has(flag.id));
+	}
+
 	/**
-	 * Folds one server response into local data. `sent` are the attempt ids the
-	 * server just acknowledged. Returns whether anything the UI shows changed.
+	 * Folds one server response into local data. `sent` are the attempt ids and
+	 * `sentFlags` the flags the server just acknowledged. Returns whether
+	 * anything the UI shows changed.
 	 */
-	applySync(result: { sent: string[]; cursor: number; attempts: Attempt[]; flags: Flag[] }): boolean {
+	applySync(result: {
+		sent: string[];
+		sentFlags: readonly Pick<Flag, 'id' | 'at'>[];
+		cursor: number;
+		attempts: Attempt[];
+		flags: Flag[];
+	}): boolean {
 		const before = this.syncState();
 		const acknowledged = new Set(result.sent);
 		const local = this.attempts();
 		const known = new Set(local.map((attempt) => attempt.id));
+		const flags = new Map(this.allFlags().map((flag) => [flag.id, flag]));
+		const sentAt = new Map(result.sentFlags.map((flag) => [flag.id, flag.at]));
 		this.#write(KEYS.sync, {
 			cursor: Math.max(before.cursor, result.cursor),
 			// An id whose attempt no longer reads back (dropped as malformed) can never be sent.
-			pending: before.pending.filter((id) => !acknowledged.has(id) && known.has(id))
+			pending: before.pending.filter((id) => !acknowledged.has(id) && known.has(id)),
+			// A flag edited again while its request was in flight is newer than what was sent, so it stays pending.
+			pendingFlags: before.pendingFlags.filter((id) => {
+				const held = flags.get(id);
+				const sent = sentAt.get(id);
+				return held !== undefined && (sent === undefined || held.at > sent);
+			})
 		});
 
 		let changed = false;
@@ -207,7 +253,6 @@ export class Repository {
 			changed = true;
 		}
 
-		const flags = new Map(this.allFlags().map((flag) => [flag.id, flag]));
 		let flagsChanged = false;
 		for (const remote of result.flags.map(readFlag).filter((flag) => flag !== null)) {
 			const held = flags.get(remote.id);

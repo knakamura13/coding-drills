@@ -6,6 +6,7 @@ import type { Attempt, Flag } from '$lib/storage/types';
 export const SYNC_BATCH = 500;
 /** Attempts the server returns per response. */
 export const SYNC_PAGE = 2000;
+/** Flags per request. More sync over several rounds. */
 export const MAX_FLAGS = 1000;
 /** Ceiling on a request body, in bytes. */
 export const MAX_SYNC_BODY_BYTES = 1_000_000;
@@ -15,7 +16,7 @@ export interface SyncRequest {
 	cursor: number;
 	/** Attempts the server has not acknowledged yet. */
 	attempts: Attempt[];
-	/** Every flag, including deletions. The set is small. */
+	/** Flags, deletions included, the server has not acknowledged, batched under `MAX_FLAGS` and the body cap. */
 	flags: Flag[];
 }
 
