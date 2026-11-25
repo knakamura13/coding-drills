@@ -430,6 +430,17 @@ describe('compileCurriculum', () => {
 		);
 	});
 
+	it('makes an exam drill list the skills it tests when the path holds deeper skills', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', note: 'Exam.' }])];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" must list the skills it tests, because path "alpha" has skills deeper than the drill'
+		);
+		const named = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', tests: ['alpha-a'], note: 'Exam.' }])];
+		expect(() => compileCurriculum(named, questions('one'))).not.toThrow();
+	});
+
 	it('rejects a skill that requires a deeper skill', () => {
 		const files = [branch('foundations', 1, [deepPath('alpha'), path('beta', ['alpha'])])];
 		expect(() => compileCurriculum(files, [])).toThrow(

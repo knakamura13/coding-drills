@@ -612,6 +612,10 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			const item = `drill "${drill.questionId}"`;
 			assertNotShallower(item, drillDepth, `its ${parent.kind}`, `"${parent.id}"`, parent.depth);
 			for (const tested of drill.tests ?? []) assertNotShallower(item, drillDepth, 'the skill it tests,', `"${tested}"`, skillDepth(tested));
+			// A missed exam drill with no tests sends the learner back to every skill on the path.
+			if (drill.disposition === 'exam' && !drill.tests?.length && drillPath.skills.some((skill) => shallower(drillDepth, skill.depth))) {
+				throw new ContentError(`${item} must list the skills it tests, because path "${drill.path}" has skills deeper than the drill`);
+			}
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,
