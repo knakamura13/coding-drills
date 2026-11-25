@@ -174,68 +174,55 @@ questions:
     prompt: >-
       A sorted list `a` may hold copies of a value. You need the first index `i` with
       `a[i] >= x`, or `len(a)` when there is none, which is what `bisect_left(a, x)` returns. For
-      `a = [2, 4, 4, 4, 9, 11]` and `x = 4` it is 1. Each loop starts with `lo, hi = 0, len(a)`
-      unless its option says otherwise, and ends with `return lo`. Which loop returns the right
-      index for every sorted list and every `x`?
+      `a = [2, 4, 4, 4, 9, 11]` and `x = 4` it is 1. Each loop starts `lo` at 0, probes
+      `mid = (lo + hi) // 2`, moves either `lo` or `hi` after each probe, and ends with
+      `return lo`. All four move `lo` the same way, after the same probes, and that part is right.
+      They differ only in where `hi` starts, the loop test, and what `hi` becomes when it moves.
+      Which loop returns the right index for every sorted list and every `x`?
     options:
-      - id: return-on-equal
-        text: "`while lo < hi`; return `mid` if equal, `lo = mid + 1` if below `x`, else `hi = mid`"
+      - id: lt-moves-right
+        text: "`hi` starts at `len(a)`, the loop runs while `lo < hi`, and `hi` moves to `mid`"
         explanation: >-
-          Returning on the first equal probe stops at whichever copy the probe lands on. On this
-          list with `x = 4` the first probe is index 3, so the loop returns 3, not 1. With
-          distinct values it works, but with copies an equal probe has to keep searching left.
+          The answer always lies from `lo` to `hi`, both included, and with `hi` starting at
+          `len(a)` that covers the answer past the end. `hi` moves only after a probe that may be
+          the answer, so `hi = mid` keeps it. When `lo == hi`, one index is left, and it is the
+          answer, possibly `len(a)`.
       - id: le-loop
-        text: "`while lo <= hi`; `lo = mid + 1` if `a[mid] < x`, else `hi = mid`"
+        text: "`hi` starts at `len(a)`, the loop runs while `lo <= hi`, and `hi` moves to `mid`"
         explanation: >-
-          With `lo <= hi` the loop runs again when `lo == hi`. On this list with `x = 4` it
-          reaches `lo = hi = 1`, probes the 4, and `hi = mid` leaves the range as it is, so it
-          loops forever. With `x = 20` it reads `a[6]`, past the end.
+          With `lo <= hi` the loop runs again when `lo == hi`, though that index is already the
+          answer. On this list with `x = 20`, `lo` reaches 6 and the loop reads `a[6]`, past the
+          end. With `x = 10`, it reaches `lo = hi = 5`, probes the 11, and `hi` moves to 5 again,
+          so it loops forever.
       - id: hi-len-minus-one
-        text: "`hi = len(a) - 1`, `while lo < hi`; `lo = mid + 1` if `a[mid] < x`, else `hi = mid`"
+        text: "`hi` starts at `len(a) - 1`, the loop runs while `lo < hi`, and `hi` moves to `mid`"
         explanation: >-
           Starting `hi` at `len(a) - 1` means the loop can never end on `len(a)`, so it can't
           report that every value is below `x`. With `x = 20` it returns 5, but the right answer
           is 6.
-      - id: lt-moves-right
-        text: "`while lo < hi`; `lo = mid + 1` if `a[mid] < x`, else `hi = mid`"
+      - id: hi-minus-one
+        text: "`hi` starts at `len(a)`, the loop runs while `lo < hi`, and `hi` moves to `mid - 1`"
         explanation: >-
-          Every index before `lo` holds a value below `x`, and `hi` is either `len(a)` or an index
-          whose value is at least `x`. A probe below `x` rules out itself and everything left of
-          it. Any other probe may be the answer, so `hi = mid` keeps it. When `lo == hi`, that
-          index is the first with `a[i] >= x`, possibly `len(a)`.
+          `hi` moves after a probe that may be the answer, and `mid - 1` throws that probe away.
+          On this list with `x = 10`, the probe at index 5 reads 11, larger than 10, so `hi` drops
+          to 4 and the call returns 4. The right answer is 5, the 11.
     correct: lt-moves-right
     followUps:
-      return-on-equal:
-        prompt: >-
-          You want the first index with `a[i] >= x`, and copies are allowed. When
-          `a[mid] == x`, what does that tell you?
-        options:
-          - id: candidate-keep-left
-            text: "`mid` may be the answer, but an earlier copy may exist, so keep `mid` and search left"
-          - id: any-equal-fine
-            text: Any equal index answers the question, so return it at once
-          - id: first-is-right
-            text: The first copy must lie right of `mid`
-        correct: candidate-keep-left
-        explanation: >-
-          An equal probe is a candidate, not a finished answer, since earlier copies may exist.
-          `hi = mid` keeps it while dropping the right side. Returning on equality is right only
-          when any matching index will do.
       le-loop:
         prompt: >-
-          On `[2, 4, 4, 4, 9, 11]` with `x = 4`, the loop reaches `lo = hi = 1`. What does
+          On `[2, 4, 4, 4, 9, 11]` with `x = 20`, `lo` reaches 6 while `hi` is 6. What does
           `while lo <= hi` do next?
         options:
-          - id: repeats
-            text: It probes index 1 again, and `hi = mid` keeps `hi` on 1 forever
+          - id: past-end
+            text: It probes index 6, past the end, and raises `IndexError`
           - id: returns
-            text: It returns 1, since the bounds have met
-          - id: moves-on
-            text: It moves `lo` to 2 and stops
-        correct: repeats
+            text: It returns 6, since the bounds have met
+          - id: moves-hi
+            text: It moves `hi` to 5 and stops
+        correct: past-end
         explanation: >-
-          Here `lo == hi` means one candidate is left, and it is already known to be at least
-          `x`, so there is nothing left to read. `while lo < hi` stops there and returns it.
+          `hi` starts at `len(a)`, which is never a real cell, so when `lo == hi` nothing is left
+          to read. `while lo < hi` stops there and returns 6.
       hi-len-minus-one:
         prompt: How many insertion points does a list of `len(a)` values have?
         options:
@@ -250,6 +237,19 @@ questions:
           An insertion point can sit in front of each value or after the last one, which is
           `len(a) + 1` choices. Starting at `hi = len(a) - 1` offers only `len(a)` of them and
           never the one after the end.
+      hi-minus-one:
+        prompt: On `[2, 4, 4, 4, 9, 11]` with `x = 10`, a probe reads 11 at index 5. Can index 5 be the answer?
+        options:
+          - id: keep
+            text: Yes, 11 is larger than 10, so `hi` has to keep index 5
+          - id: drop
+            text: No, 11 is not 10, so index 5 can go
+          - id: last
+            text: Only because 11 is the last value
+        correct: keep
+        explanation: >-
+          The answer is the first index whose value is at least `x`, so a probe larger than `x`
+          can be it. Moving `hi` to `mid` keeps it, and `mid - 1` throws it away.
 
   - id: checkpoint-debug-contains
     heading: Which call does it fail on?
