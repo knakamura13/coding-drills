@@ -133,6 +133,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Pointer scans: teaching levels | `pointer-scans` | done |
 | Sequences and search #11 | Pointer scans: review variants | `pointer-scans-review` | done |
 | Sequences and search #11 | Pointer scans: checkpoint | `pointer-scans-checkpoint` | done |
+| Sequences and search #11 | Palindromes: teaching levels | `palindromes` | done |
+| Sequences and search #11 | Palindromes: review variants | `palindromes-review` | done |
+| Sequences and search #11 | Palindromes: checkpoint | `palindromes-checkpoint` | done |
 | Sequences and search #11 | Pointer scans: dragging the pointers through one step | `drag-the-pointers` | in review |
 | Sequences and search #11 | Exact search: teaching levels | `exact-search` | done |
 | Sequences and search #11 | Exact search: review variants | `exact-search-review` | done |

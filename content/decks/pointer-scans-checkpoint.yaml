@@ -1,6 +1,6 @@
 id: pointer-scans-checkpoint
 title: "Pointer scans: checkpoint"
-description: Return unique pairs or trace an in-place compaction on new inputs. Each item combines moving the right end, keeping indices apart, and handling repeats.
+description: Return unique pairs or triples, trace an in-place compaction, or find the call that breaks a suggested scan, on new inputs. Each item combines two or more of the path's skills.
 heading: What does this print?
 
 questions:
@@ -45,7 +45,7 @@ questions:
         text: "`[(1, 7)]`"
         explanation: >-
           This drops `(4, 4)`. Check what `l` and `r` are after the first match, and whether
-          they name the same slot.
+          they name the same cell.
     correct: both-pairs
     followUps:
       repeated:
@@ -96,8 +96,8 @@ questions:
         text: "`4 [0, 3, 5, 8, 3, 5, 8, 8]`"
         explanation: >-
           The first 0 is written because nothing is kept yet. Each later item is written only
-          when it differs from the last kept value, so 3, 5 and 8 fill slots 1 to 3 and
-          `write` ends at 4. Slots 4 to 7 are never written and keep their old values.
+          when it differs from the last kept value, so 3, 5 and 8 fill indices 1 to 3 and
+          `write` ends at 4. Indices 4 to 7 are never written and keep their old values.
       - id: shrunk
         text: "`4 [0, 3, 5, 8]`"
         explanation: >-
@@ -105,7 +105,7 @@ questions:
       - id: dupes-to-back
         text: "`4 [0, 3, 5, 8, 0, 3, 3, 8]`"
         explanation: >-
-          This moves the skipped copies to the back. Check which slots the loop ever assigns.
+          This moves the skipped copies to the back. Check which cells the loop ever assigns.
       - id: in-place
         text: "`4 [0, 0, 3, 3, 3, 5, 8, 8]`"
         explanation: >-
@@ -121,20 +121,20 @@ questions:
           - id: four
             text: 4, the values kept
           - id: zero-four
-            text: 5, slots 0 to `write`
+            text: 5, indices 0 to `write`
         correct: eight
         explanation: >-
-          Assigning to a slot never adds or removes slots, so `vals` still has 8. The answer is
+          Assigning to a cell never adds or removes cells, so `vals` still has 8. The answer is
           `vals[:k]`, and the rest of the list is leftover.
       dupes-to-back:
-        prompt: Which slots does `compact` assign to on this input?
+        prompt: Which cells does `compact` assign to on this input?
         options:
           - id: front
-            text: Only slots 0 to 3, one for each kept value
+            text: Only indices 0 to 3, one for each kept value
           - id: all
-            text: All eight slots, kept values at the front and copies at the back
+            text: All eight cells, kept values at the front and copies at the back
           - id: read-slots
-            text: The slots where the skipped copies were read
+            text: The cells where the skipped copies were read
         correct: front
         explanation: >-
           The only assignment is `nums[write] = ...`, and `write` stops at 4. A skipped copy is
@@ -143,14 +143,14 @@ questions:
         prompt: When the first 3 is read at `read = 2`, what is `write`?
         options:
           - id: one
-            text: 1, so the 3 goes into slot 1
+            text: 1, so the 3 goes into index 1
           - id: two
-            text: 2, so the 3 stays in slot 2
+            text: 2, so the 3 stays at index 2
           - id: zero
             text: 0, because only the 0s have been read
         correct: one
         explanation: >-
-          One value, the first 0, has been kept. So the 3 is copied into slot 1, over the second
+          One value, the first 0, has been kept. So the 3 is copied into index 1, over the second
           0.
 
   - id: checkpoint-keep-two
@@ -176,12 +176,12 @@ questions:
         text: "`[1, 1, 2, 2, 6]`"
         explanation: >-
           The first two items are written because fewer than two values are kept. After that, an
-          item is written only when it differs from the value two kept slots back. So the third
+          item is written only when it differs from the value two kept cells back. So the third
           1 and the third and fourth 2s are skipped, and the 6 is kept.
       - id: one-each
         text: "`[1, 2, 6]`"
         explanation: >-
-          This keeps one copy of each value. Check which kept slot `nums[write - 2]` reads.
+          This keeps one copy of each value. Check which kept cell `nums[write - 2]` reads.
       - id: three-free
         text: "`[1, 1, 1, 2, 2, 6]`"
         explanation: >-
@@ -190,19 +190,19 @@ questions:
       - id: read-back
         text: "`[1, 1, 2, 6]`"
         explanation: >-
-          This compares with the item two reads back instead of two kept slots back. Check
+          This compares with the item two reads back instead of two kept cells back. Check
           which cursor the test uses.
     correct: two-each
     followUps:
       one-each:
-        prompt: "`write` is 3 and the kept slots hold `[1, 1, 2]`. Which value is `nums[write - 2]`?"
+        prompt: "`write` is 3 and the kept cells hold `[1, 1, 2]`. Which value is `nums[write - 2]`?"
         options:
           - id: second
-            text: The 1 in slot 1, two kept slots back
+            text: The 1 at index 1, two kept cells back
           - id: last
-            text: The 2 in slot 2, the most recent kept value
+            text: The 2 at index 2, the most recent kept value
           - id: first
-            text: The 1 in slot 0, the first kept value
+            text: The 1 at index 0, the first kept value
         correct: second
         explanation: >-
           `nums[write - 1]` is the newest kept value and `nums[write - 2]` is the one before it.
@@ -220,9 +220,9 @@ questions:
         explanation: >-
           The kept prefix has fewer than two items only while `write` is 0 or 1, so only the first
           two reads skip the comparison. The third 1 is read with `write` at 2, so it is compared
-          with slot 0 and skipped.
+          with index 0 and skipped.
       read-back:
-        prompt: In `nums[read] != nums[write - 2]`, which cursor picks the slot being compared with?
+        prompt: In `nums[read] != nums[write - 2]`, which cursor picks the cell being compared with?
         options:
           - id: write
             text: "`write`, so the comparison looks at kept values"
@@ -232,8 +232,8 @@ questions:
             text: Either one, because they always match
         correct: write
         explanation: >-
-          Slots before `write` hold the kept values, so `nums[write - 2]` is a kept value. Once
-          an item is skipped, `read` runs ahead of `write`, and the two give different slots.
+          Cells before `write` hold the kept values, so `nums[write - 2]` is a kept value. Once
+          an item is skipped, `read` runs ahead of `write`, and the two give different cells.
 
   - id: checkpoint-compact-then-pair
     tags: [two-pointers]
@@ -289,3 +289,263 @@ questions:
         explanation: >-
           The list keeps its length, so the return value is the only way to know where the kept
           values end. Here that is 4.
+
+  - id: checkpoint-duplicate-strategy
+    heading: Which handling of duplicates is correct?
+    tags: [two-pointers]
+    prompt: >-
+      A sorted list may repeat values: `[3, 3, 5, 6, 6, 6, 9, 9]`. The task is to report every
+      distinct pair of values `(a, b)` with `a <= b` that adds up to 12, each pair once. A value
+      may pair with a second copy of itself, so the answer here is `(3, 9)` and `(6, 6)`. The scan
+      starts `l = 0` and `r = len(nums) - 1`, moves `l` right when the sum is too small and `r`
+      left when it is too large. Which handling of duplicates is correct for every sorted list?
+    options:
+      - id: no-skip
+        text: "Nothing special: after recording a pair, `l += 1` and `r -= 1`"
+        explanation: >-
+          One step lands on the next copy at each end, and those copies still add up to 12. On
+          this list it records `(3, 9)` twice and `(6, 6)` once, which breaks "each pair once".
+      - id: skip-first
+        text: "Before each test, move `l` to its run's last copy and `r` to its run's first copy"
+        explanation: >-
+          This collapses every run of copies to one item, so a pair of two equal values can never
+          form. The three 6s shrink to one, and the scan returns only `(3, 9)`.
+      - id: dedupe-input
+        text: "Build `sorted(set(nums))` first, then run the same scan on that list"
+        explanation: >-
+          A `set` keeps one copy of each value, so a pair that needs two copies is lost. Here
+          `(6, 6)` disappears, and on `[2, 4, 4, 7, 9]` with target 8 the scan finds nothing,
+          though `(4, 4)` works.
+      - id: skip-after-match
+        text: "After a match, move `l` past every copy of `nums[l]` and `r` past every copy of `nums[r]`"
+        explanation: >-
+          With a sorted list and a fixed target, a recorded pair `(v, w)` is the only pair that
+          uses `v` or `w`, so their other copies can only repeat it. The skip runs after the
+          match, while the pointers sit on two separate copies, so `(6, 6)` is recorded before
+          the run is stepped over.
+    correct: skip-after-match
+    followUps:
+      no-skip:
+        prompt: >-
+          With only `l += 1` and `r -= 1`, what happens right after `(3, 9)` is recorded on
+          `[3, 3, 5, 6, 6, 6, 9, 9]`?
+        options:
+          - id: twin-match
+            text: The pointers land on the second 3 and the second 9, which add up to 12, so `(3, 9)` is recorded again
+          - id: never-revisits
+            text: Nothing repeats, because the scan never looks at a value it has already used
+          - id: next-different
+            text: The next pair recorded is `(5, 6)`, because each move skips to the next different value
+        correct: twin-match
+        explanation: >-
+          Each end of a run has a twin with the same value, and the twins add up to the same
+          target. The pair repeats until one run is used up, which is why the run is stepped over
+          as a whole.
+      skip-first:
+        prompt: >-
+          `(6, 6)` needs two copies of 6. Before each test, this option moves `l` to the last copy
+          of its run and `r` to the first copy of its run. What does that do to the three 6s?
+        options:
+          - id: one-copy
+            text: It collapses them to one copy, so `l` and `r` meet on it and `l < r` ends the scan
+          - id: still-two
+            text: Nothing is lost, because the later sum test still sees two 6s
+          - id: stops-early
+            text: It ends the scan as soon as the first sum is too small
+        correct: one-copy
+        explanation: >-
+          Jumping to the inner edge of each run removes the second copy a pair of equal values
+          needs. Skipping is safe only once the pair has been recorded.
+      dedupe-input:
+        prompt: >-
+          After `sorted(set(nums))` on `[2, 4, 4, 7, 9]`, the scan for target 8 runs on
+          `[2, 4, 7, 9]`. What does it find?
+        options:
+          - id: nothing
+            text: Nothing, because `(4, 4)` needs two 4s and only one is left
+          - id: half-target
+            text: "`(4, 4)`, because a value equal to half the target pairs with itself"
+          - id: closest
+            text: "`(2, 4)`, because the scan settles for the closest sum"
+        correct: nothing
+        explanation: >-
+          `set` drops repeats, and a pair of equal values is built from repeats. The scan needs
+          `l < r`, so a single 4 can't pair with itself.
+
+  - id: checkpoint-three-sum
+    heading: What does this print?
+    tags: [two-pointers]
+    prompt: |-
+      `nums` is sorted. Each `i` fixes `nums[i]`, and a scan from both ends over the later
+      indices finds totals of 0. `continue` skips an `i` that repeats the value before it.
+
+      ```python
+      def three_sum(nums):
+          out = []
+          for i in range(len(nums) - 2):
+              if i > 0 and nums[i] == nums[i - 1]:
+                  continue
+              l, r = i + 1, len(nums) - 1
+              while l < r:
+                  s = nums[i] + nums[l] + nums[r]
+                  if s < 0:
+                      l += 1
+                  elif s > 0:
+                      r -= 1
+                  else:
+                      out.append((nums[i], nums[l], nums[r]))
+                      l += 1
+                      r -= 1
+                      while l < r and nums[l] == nums[l - 1]:
+                          l += 1
+          return out
+
+      print(three_sum([-4, -1, -1, 0, 1, 2, 2]))
+      ```
+    options:
+      - id: three-triples
+        text: "`[(-4, 2, 2), (-1, -1, 2), (-1, 0, 1)]`"
+        explanation: >-
+          With `i = 0` the scan ends on `-4 + 2 + 2`, two separate 2s. With `i = 1` it finds
+          `-1 + -1 + 2`, then `-1 + 0 + 1`. `i = 2` repeats -1 and is skipped, and `i = 3` and
+          `i = 4` find nothing.
+      - id: repeated-triple
+        text: "`[(-4, 2, 2), (-1, -1, 2), (-1, 0, 1), (-1, 0, 1)]`"
+        explanation: >-
+          That runs a scan for the second -1 too. Check the line that compares `nums[2]` with
+          `nums[1]`.
+      - id: no-equal-pair
+        text: "`[(-1, -1, 2), (-1, 0, 1)]`"
+        explanation: >-
+          That drops `(-4, 2, 2)`. The two 2s sit at indices 5 and 6, so they are separate items.
+      - id: lost-outer-pair
+        text: "`[(-4, 2, 2), (-1, 0, 1)]`"
+        explanation: >-
+          That drops `(-1, -1, 2)`. The skip looks back at `nums[i - 1]`, so `i = 1` still runs
+          and its scan starts on the second -1.
+    correct: three-triples
+    followUps:
+      repeated-triple:
+        prompt: "At `i = 2`, `nums[2]` and `nums[1]` are both -1. What does the first line of the loop body do?"
+        options:
+          - id: skips
+            text: "`continue` skips `i = 2`, since its triples were found at `i = 1`"
+          - id: runs
+            text: Nothing, so the scan for `i = 2` runs
+          - id: stops
+            text: It ends the whole loop
+        correct: skips
+        explanation: >-
+          A repeated fixed value needs the same partners, so its scan could only record triples
+          already found. Skipping it keeps each triple once.
+      no-equal-pair:
+        prompt: "With `i = 0`, `l` reaches index 5 and `r` sits on index 6. Is `-4 + 2 + 2` a triple of separate items?"
+        options:
+          - id: separate
+            text: Yes, the 2s sit at two different indices
+          - id: same
+            text: No, two equal values count as one item
+          - id: skipped
+            text: No, the copy loop skipped the second 2
+        correct: separate
+        explanation: >-
+          Equal values at different indices are separate items, and `l < r` holds. The sum is
+          0, so the triple is recorded.
+      lost-outer-pair:
+        prompt: "At `i = 1`, the test is `nums[1] == nums[0]`. What does it give?"
+        options:
+          - id: differ
+            text: False, since -1 and -4 differ, so the scan for `i = 1` runs
+          - id: next-copy
+            text: True, since index 2 holds another -1
+          - id: skip-first
+            text: True, since the first copy of a value is always skipped
+        correct: differ
+        explanation: >-
+          The skip looks back, so the first copy of a value always gets its scan, and that scan
+          can still use the next copy as `nums[l]`.
+
+  - id: checkpoint-debug-unsorted
+    heading: Which call does it fail on?
+    tags: [two-pointers]
+    prompt: |-
+      A suggested solution answers whether two items at different indices of `nums` add up to
+      `target`. Here `nums` can be in any order.
+
+      ```python
+      def has_pair(nums, target):
+          l, r = 0, len(nums) - 1
+          while l < r:
+              s = nums[l] + nums[r]
+              if s == target:
+                  return True
+              if s < target:
+                  l += 1
+              else:
+                  r -= 1
+          return False
+      ```
+
+      Which call returns the wrong answer?
+    options:
+      - id: misses-pair
+        text: "`has_pair([5, 1, 9, 2], 10)`"
+        explanation: >-
+          `1 + 9` is 10, so the answer is `True`. But `5 + 2` is too small, `l` drops the 5, then
+          `1 + 2` drops the 1, and `9 + 2` is too large, so `l` and `r` meet and it returns
+          `False`. Dropping a value is safe only in a sorted list. Sorting first fixes it.
+      - id: outer-pair
+        text: "`has_pair([6, 1, 9, 4], 10)`"
+        explanation: >-
+          The first sum is `6 + 4`, which is 10, so it returns `True`, which is right.
+      - id: inner-pair
+        text: "`has_pair([2, 8, 9, 1], 10)`"
+        explanation: >-
+          `2 + 1` and `8 + 1` are too small, so `l` moves twice, and `9 + 1` is 10. It returns
+          `True`, which is right.
+      - id: no-pair
+        text: "`has_pair([7, 2, 5, 4], 10)`"
+        explanation: >-
+          No two items add up to 10, so `False` is right, and a scan can never report a pair
+          that isn't there.
+    correct: misses-pair
+    followUps:
+      outer-pair:
+        prompt: For `has_pair([6, 1, 9, 4], 10)`, what is the first sum, and what happens?
+        options:
+          - id: match
+            text: "`6 + 4 = 10`, so it returns `True` at once"
+          - id: small
+            text: "`6 + 1 = 7`, so `l` moves"
+          - id: large
+            text: "`6 + 9 = 15`, so `r` moves"
+        correct: match
+        explanation: >-
+          The scan starts with the first and last items. Here they are the pair, so the order of
+          the rest never matters.
+      inner-pair:
+        prompt: For `has_pair([2, 8, 9, 1], 10)`, which items does each sum use?
+        options:
+          - id: walks-to-pair
+            text: "2 and 1, then 8 and 1, then 9 and 1, which is 10"
+          - id: drops-one
+            text: "2 and 1, then 2 and 9, which is 11, then it stops"
+          - id: never-nine
+            text: "2 and 1, then 8 and 1, then it stops"
+        correct: walks-to-pair
+        explanation: >-
+          Each too-small sum moves `l`, and the 1 at `r` stays. Its partner, 9, is reached before
+          the pointers meet, so this call gets lucky.
+      no-pair:
+        prompt: When no two items add up to `target`, what can `has_pair` return?
+        options:
+          - id: only-false
+            text: Only `False`, since it returns `True` only on a real sum
+          - id: either
+            text: Either, depending on the order
+          - id: error
+            text: It raises an error
+        correct: only-false
+        explanation: >-
+          `True` comes only from a sum it actually computed. A missing sort can make it miss a
+          pair, never invent one.

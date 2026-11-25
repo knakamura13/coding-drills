@@ -1,0 +1,402 @@
+id: palindromes-checkpoint
+title: "Palindromes: checkpoint"
+description: Check a phrase, allow one deletion, grow from the right center, and find the call that breaks a suggested solution, on new inputs.
+heading: What does this print?
+
+questions:
+  - id: checkpoint-clean-digits
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `ch.isalnum()` is `True` only for a letter or a digit, and `ch.lower()` gives the lowercase
+      form.
+
+      ```python
+      def is_clean_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              while l < r and not s[l].isalnum():
+                  l += 1
+              while l < r and not s[r].isalnum():
+                  r -= 1
+              if s[l].lower() != s[r].lower():
+                  return False
+              l += 1
+              r -= 1
+          return True
+
+      print(is_clean_palindrome("Step 1 on no pets"))
+      ```
+    options:
+      - id: digit-counts
+        text: "`False`, because the `1` is compared with an `o`"
+        explanation: >-
+          The spaces are skipped, and `S` matches `s` once lowered. `t`, `e` and `p` match their
+          partners too. Then the `1` meets the `o` of `on`. A digit is `isalnum()`, so it is
+          compared like a letter, and the call returns `False`.
+      - id: digits-skipped
+        text: "`True`, because only the letters are compared"
+        explanation: >-
+          `isalnum()` is `True` for digits as well as letters, so the `1` is not skipped. With the
+          `1` removed the phrase would read the same both ways, but it is there.
+      - id: case-fails
+        text: "`False`, because `S` and `s` differ"
+        explanation: >-
+          Both sides are lowered before the comparison, so `S` matches `s`. The first pair that
+          differs comes later.
+      - id: spaces-fail
+        text: "`False`, because a space meets a letter"
+        explanation: >-
+          `isalnum()` is `False` for a space, so the inner loops skip every space before any
+          comparison runs.
+    correct: digit-counts
+    followUps:
+      digits-skipped:
+        prompt: What does `"1".isalnum()` return?
+        options:
+          - id: is-true
+            text: "`True`, since `1` is a digit"
+          - id: is-false
+            text: "`False`, since `1` is not a letter"
+          - id: error
+            text: It raises an error
+        correct: is-true
+        explanation: >-
+          `isalnum()` accepts letters and digits. So a digit stays in the check and must match its
+          mirrored partner.
+      case-fails:
+        prompt: What does the comparison line compare for `S` and `s`?
+        options:
+          - id: lowered
+            text: "`\"s\"` with `\"s\"`, so they match"
+          - id: exact
+            text: "`\"S\"` with `\"s\"`, so they differ"
+          - id: skipped
+            text: Nothing, uppercase letters are skipped
+        correct: lowered
+        explanation: >-
+          `lower()` runs on both sides, so case never decides a comparison here.
+      spaces-fail:
+        prompt: "When `s[l]` is a space, what does `while l < r and not s[l].isalnum()` do?"
+        options:
+          - id: steps
+            text: It moves `l` on, since a space is not a letter or digit
+          - id: compares
+            text: Nothing, a space is compared like any other character
+          - id: stops
+            text: It ends the check
+        correct: steps
+        explanation: >-
+          The inner loops skip anything `isalnum()` rejects, spaces included, so only letters and
+          digits ever reach the comparison.
+
+  - id: checkpoint-one-deletion
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `almost(s)` returns `True` when deleting at most one character makes `s` a palindrome. It
+      compares mirrored pairs from the outside in, and at the first pair that differs it tries
+      leaving out either one of the two characters.
+
+      ```python
+      print(almost("deeee"), almost("abecbea"))
+      ```
+    options:
+      - id: true-false
+        text: "`True False`"
+        explanation: >-
+          In `deeee`, `d` differs from the last `e`, and leaving out the `d` leaves `eeee`. In
+          `abecbea`, `b` at index 1 differs from `e` at index 5. Leaving out the `b` leaves
+          `ecbe`, and leaving out the `e` leaves `becb`. Neither reads the same both ways, so the
+          second call is `False`.
+      - id: true-true
+        text: "`True True`"
+        explanation: >-
+          After leaving out one character of `abecbea`'s first pair that differs, another pair
+          differs inside: `c` against `b`, or `e` against `c`. Only one deletion is allowed.
+      - id: false-false
+        text: "`False False`"
+        explanation: >-
+          `deeee` needs only one deletion. Leaving out the `d` leaves `eeee`, a palindrome.
+      - id: false-true
+        text: "`False True`"
+        explanation: >-
+          The two answers are the other way round. `deeee` is fixed by deleting the `d`, and no
+          single deletion fixes `abecbea`.
+    correct: true-false
+    followUps:
+      true-true:
+        prompt: "In `abecbea`, the first pair that differs is `b` and `e`. With the `b` left out, which pair differs next?"
+        options:
+          - id: c-b
+            text: "`c` and `b`, inside `ecbe`"
+          - id: none
+            text: None, `ecbe` is a palindrome
+          - id: e-a
+            text: "`e` and `a`"
+        correct: c-b
+        explanation: >-
+          `ecbe` matches `e` with `e`, then `c` against `b` differs. A second difference needs a
+          second deletion, so that check fails.
+      false-false:
+        prompt: What is `"deeee"` with its first character deleted?
+        options:
+          - id: eeee
+            text: "`eeee`, which reads the same both ways"
+          - id: deee
+            text: "`deee`, which does not"
+          - id: unchanged
+            text: The same string, since `d` is not repeated
+        correct: eeee
+        explanation: >-
+          One deletion turns `deeee` into `eeee`, a palindrome, so `almost` returns `True`.
+      false-true:
+        prompt: "Which single deletion would make `abecbea` a palindrome?"
+        options:
+          - id: none
+            text: None, every one leaves a pair that differs
+          - id: middle
+            text: The middle `c`
+          - id: first
+            text: The first `a`
+        correct: none
+        explanation: >-
+          Deleting the `b` or the `e` from the first pair that differs leaves another pair that
+          differs, and deleting any other character leaves `b` against `e`.
+
+  - id: checkpoint-longest
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `grow(s, l, r)` steps `l` left and `r` right while the characters match, and returns the
+      palindrome between them. `longest` tries every center: each index and each gap between
+      neighbors.
+
+      ```python
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+
+      def longest(s):
+          best = ""
+          for i in range(len(s)):
+              for p in (grow(s, i, i), grow(s, i, i + 1)):
+                  if len(p) > len(best):
+                      best = p
+          return best
+
+      print(longest("abccbaxyx"))
+      ```
+    options:
+      - id: even-wins
+        text: "`abccba`"
+        explanation: >-
+          The call that starts between indices 2 and 3 matches `c` with `c`, `b` with `b`, and
+          `a` with `a` at indices 0 and 5, so it returns `abccba`. Its 6 characters beat `xyx`,
+          which has 3.
+      - id: odd-only
+        text: "`xyx`"
+        explanation: >-
+          `xyx` is the longest palindrome around an index, but `longest` also tries the gaps, and
+          the gap between the two `c`s grows longer.
+      - id: stops-early
+        text: "`bccb`"
+        explanation: >-
+          After `bccb`, the next pair is `a` at index 0 and `a` at index 5. They match, so the
+          palindrome grows once more.
+      - id: center-pair
+        text: "`cc`"
+        explanation: >-
+          `cc` is where the gap center starts. It keeps growing while the next pair out matches.
+    correct: even-wins
+    followUps:
+      odd-only:
+        prompt: "Where is the middle of `abccba`?"
+        options:
+          - id: gap
+            text: "Between the two `c`s, which `grow(s, 2, 3)` starts on"
+          - id: index
+            text: "On index 2, which `grow(s, 2, 2)` starts on"
+          - id: none
+            text: It has none, so no center grows it
+        correct: gap
+        explanation: >-
+          The inner loop calls `grow(s, i, i + 1)` too, so every gap is a center, and an even
+          palindrome like `abccba` is found from its gap.
+      stops-early:
+        prompt: "When `grow` has reached `bccb`, which pair does it test next?"
+        options:
+          - id: as
+            text: "Index 0 and index 5, both `a`, so it grows again"
+          - id: stop
+            text: None, it stops after two matches
+          - id: ax
+            text: "Index 0 and index 6, `a` and `x`"
+        correct: as
+        explanation: >-
+          Each match moves both pointers out by one. `bccb` covers indices 1 to 4, so the next
+          pair is 0 and 5.
+      center-pair:
+        prompt: "After the two `c`s match, what does `grow` do?"
+        options:
+          - id: grows
+            text: It moves both pointers out one step and tests `b` against `b`
+          - id: returns
+            text: It returns `cc` at once
+          - id: restarts
+            text: It moves on to the next center
+        correct: grows
+        explanation: >-
+          The loop runs as long as the next pair out matches. It returns only once a pair differs
+          or a pointer passes an end.
+
+  - id: checkpoint-center
+    heading: Which center grows it?
+    tags: [two-pointers, arrays-strings]
+    prompt: >-
+      A palindrome grows from a center: one index, as in `grow(s, i, i)`, or the gap between two
+      neighbors, as in `grow(s, i, i + 1)`. Each step compares the next pair out and keeps going
+      while they match. The longest palindrome in `"cbaabd"` is `baab`. Which center grows it?
+    options:
+      - id: gap-two-three
+        text: The gap between indices 2 and 3
+        explanation: >-
+          `baab` covers indices 1 to 4, so its middle falls between the two `a`s at indices 2 and
+          3. `grow(s, 2, 3)` matches `a` with `a`, then `b` with `b`, then stops at `c` against
+          `d`.
+      - id: index-two
+        text: Index 2
+        explanation: >-
+          `grow(s, 2, 2)` compares `b` at index 1 with `a` at index 3, which differ, so it returns
+          one `a`. An even-length palindrome has no middle index.
+      - id: index-three
+        text: Index 3
+        explanation: >-
+          From index 3, the first pair out is indices 2 and 4. They hold different characters, so
+          the call returns just the `a` it started on.
+      - id: gap-one-two
+        text: The gap between indices 1 and 2
+        explanation: >-
+          That gap compares `b` with `a`, which differ, so it returns nothing.
+    correct: gap-two-three
+    followUps:
+      index-two:
+        prompt: "How long is `baab`, and what does that say about its middle?"
+        options:
+          - id: even
+            text: 4 characters, so its middle falls between two indices
+          - id: odd
+            text: 4 characters, so its middle is index 2
+          - id: five
+            text: 5 characters, so its middle is an index
+        correct: even
+        explanation: >-
+          A palindrome of even length has two middle characters and a gap between them, so it
+          can only grow from that gap.
+      index-three:
+        prompt: "`grow(s, 3, 3)` starts on the second `a`. Which pair does it compare after the center?"
+        options:
+          - id: a-b
+            text: "`a` at index 2 and `b` at index 4, which differ"
+          - id: a-a
+            text: "`a` at index 2 and `a` at index 3"
+          - id: b-b
+            text: "`b` at index 1 and `b` at index 4"
+        correct: a-b
+        explanation: >-
+          From one index, the next pair is one step out on each side, 2 and 4. They differ, so the
+          call returns the single `a`.
+      gap-one-two:
+        prompt: "Which characters does `grow(s, 1, 2)` compare first?"
+        options:
+          - id: b-a
+            text: "`b` at index 1 and `a` at index 2, which differ"
+          - id: b-b
+            text: "`b` at index 1 and `b` at index 4"
+          - id: a-a
+            text: The two `a`s
+        correct: b-a
+        explanation: >-
+          A gap center compares its two neighbors first. `b` and `a` differ, so this gap grows
+          nothing.
+
+  - id: checkpoint-debug-one-side
+    heading: Which call does it fail on?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      A suggested solution should return `True` when deleting at most one character makes `s` a
+      palindrome. `is_pal(s, l, r)` checks whether indices `l` to `r` read the same both ways.
+
+      ```python
+      def almost(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return is_pal(s, l + 1, r)
+              l += 1
+              r -= 1
+          return True
+      ```
+
+      Which call returns the wrong answer?
+    options:
+      - id: needs-right
+        text: "`almost(\"abccbda\")`"
+        explanation: >-
+          Deleting the `d` at index 5 leaves `abccba`, so the answer is `True`. At the first pair
+          that differs, `b` and `d`, the code only tries leaving out the `b`, which leaves `ccbd`,
+          and returns `False`. It never tries leaving out the right character.
+      - id: needs-left
+        text: "`almost(\"adbccba\")`"
+        explanation: >-
+          At the first pair that differs, `d` and `b`, leaving out the `d` leaves `bccb`, a
+          palindrome. The code tries exactly that and returns `True`, which is right.
+      - id: already
+        text: "`almost(\"abccba\")`"
+        explanation: >-
+          Every mirrored pair matches, so the loop finishes and returns `True`, which is right.
+      - id: two-needed
+        text: "`almost(\"abcdeba\")`"
+        explanation: >-
+          `c` and `e` differ, and leaving out either one still leaves a pair that differs. So the
+          right answer is `False`, and the code returns `False` too.
+    correct: needs-right
+    followUps:
+      needs-left:
+        prompt: "In `adbccba`, which character of the first pair that differs must be deleted?"
+        options:
+          - id: left
+            text: The left one, `d` at index 1, which the code tries
+          - id: right
+            text: The right one, `b` at index 5
+          - id: neither
+            text: Neither, a deletion elsewhere fixes it
+        correct: left
+        explanation: >-
+          Leaving out the `d` leaves `bccb` between the matching outer pairs. The code checks only
+          that side, and here that side is the one that works.
+      already:
+        prompt: When every mirrored pair of `s` matches, which line returns?
+        options:
+          - id: last-line
+            text: The last line, `return True`, after the loop ends
+          - id: is-pal
+            text: The `is_pal` line
+          - id: none
+            text: Neither, the loop never ends
+        correct: last-line
+        explanation: >-
+          The `if` never fires, so the code never calls `is_pal`. The loop ends and returns
+          `True`.
+      two-needed:
+        prompt: "What is the right answer for `abcdeba`?"
+        options:
+          - id: cannot-fix
+            text: "`False`, since one deletion can't fix both `c` against `e` and what is left"
+          - id: true-c
+            text: "`True`, by deleting the `c`"
+          - id: true-e
+            text: "`True`, by deleting the `e`"
+        correct: cannot-fix
+        explanation: >-
+          Leaving out the `c` leaves `d` against `e`, and leaving out the `e` leaves `c` against
+          `d`. Each needs a second deletion, so `False` is right, and the code agrees.

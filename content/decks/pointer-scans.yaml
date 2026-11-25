@@ -8,16 +8,23 @@ questions:
     heading: Which end moves?
     tags: [two-pointers]
     workedExample: |-
-      Consider the sorted list `nums = [2, 3, 6, 8]` with target `11`, `l = 0` and `r = 3`. In a
-      sorted list, `nums[r]` is the largest value from `l` to `r`.
+      Given a sorted list and a target, the task is to find two values at different indices that
+      add up to the target. A scan from both ends starts `l` at the first index and `r` at the
+      last, and each step moves one of them inward. Consider `nums = [2, 3, 6, 8]` with target
+      `11`, `l = 0` and `r = 3`. The list is sorted, so `nums[r]` is the largest value from `l` to
+      `r`.
 
       1. The sum is `nums[0] + nums[3] = 2 + 8 = 10`, which is below 11.
       2. Since 8 is the largest value the 2 can pair with, every sum that uses the 2 is at most 10,
-         which is still below 11.
-      3. So the 2 can be in no answer pair, and the scan drops it: `l` moves right to 1. Nothing has
-         ruled out the 8 yet, so `r` stays at 3.
+         still below 11.
+      3. So the 2 can be in no answer pair, and the scan drops it: `l` moves right to 1. Nothing
+         has ruled out the 8 yet, so `r` stays at 3.
     prompt: |-
-      Now `nums = [1, 4, 6, 7, 11]` and the target is 10. With `l = 0` and `r = 4` the sum is
+      In a sorted list, the task is to find two values at different indices that add up to a
+      target. A scan from both ends starts `l` at the first index and `r` at the last, and each
+      step moves one of them inward.
+
+      `nums = [1, 4, 6, 7, 11]` and the target is 10. With `l = 0` and `r = 4` the sum is
       `1 + 11 = 12`, too large. What is the next move?
     options:
       - id: move-r
@@ -99,8 +106,9 @@ questions:
       3. So no pair that uses the 9 can hit 7, and `r` moves left to 2. That step skips `4 + 9` and
          `6 + 9` without checking them, and skipping them is safe.
     prompt: |-
-      Now `nums = [3, 5, 6, 10]`, the target is 12, `l = 0` and `r = 3`. The sum `3 + 10 = 13`
-      is too large, so `r` moves to 2. Which pairs did that step skip without checking them?
+      A scan from both ends looks for two values in a sorted list that add up to a target.
+      `nums = [3, 5, 6, 10]`, the target is 12, `l = 0` and `r = 3`. The sum `3 + 10 = 13` is too
+      large, so `r` moves to 2. Which pairs did that step skip without checking them?
     options:
       - id: pairs-with-ten
         text: "`5 + 10` and `6 + 10`, the other pairs that use 10"
@@ -149,6 +157,124 @@ questions:
           scan stops after at most 3 sums, not one for each of the 6 pairs. The other pairs are
           skipped, each one because a sum proved it can't hit the target.
 
+  - format: step-trace
+    id: trace-scan-to-target
+    heading: Predict each step
+    tags: [python, two-pointers]
+    workedExample: |-
+      Consider `nums = [2, 4, 7, 10]` with target `11`, `l = 0` and `r = 3`. Each pass sums
+      `nums[l] + nums[r]`, moves one pointer one cell, or runs `break` on a match.
+
+      1. `2 + 10 = 12` is above 11, so `r` moves left to 2 and `l` stays on 0.
+      2. `2 + 7 = 9` is below 11, so `l` moves right to 1 and `r` stays on 2.
+      3. `4 + 7 = 11` equals the target. The equality test runs first, so `break` ends the loop
+         and neither pointer moves again.
+    prompt: >-
+      The scan from both ends runs until the sum equals the target, and `break` ends the loop.
+      Step through it one pass at a time. Before each step is shown, predict where a pointer sits
+      or what happens on that pass. Every step starts from the true state.
+    code: |
+      nums = [3, 5, 8, 10, 14, 19, 26]
+      target = 24
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total == target:
+              break
+          if total < target:
+              l += 1
+          else:
+              r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 5, 8, 10, 14, 19, 26]
+    start:
+      - name: l
+        at: 0
+      - name: r
+        at: 6
+    steps:
+      - line: 5
+        ask: Where does `l` sit when the first pass ends?
+        pointer: l
+        correct: 0
+        explanation: >-
+          The first sum is 3 + 26 = 29, above 24. Only moving `r` left can lower it, so `r` steps to
+          index 5 and `l` stays on index 0.
+        misses:
+          - index: 1
+            explanation: >-
+              The sum 3 + 26 = 29 is above 24. Moving `l` right swaps 3 for 5 and raises the sum
+              further, so this pass moves `r`, not `l`.
+        elsewhere: >-
+          `l` moves at most one cell per pass, and only when the sum is too small. 29 is too large,
+          so `l` stays on index 0.
+        also:
+          - name: r
+            at: 5
+      - line: 5
+        ask: What is `total` on the second pass?
+        options:
+          - id: twenty-two
+            text: '22'
+            explanation: '`l` is still on 3 and `r` moved onto 19, so the second sum is 3 + 19 = 22.'
+          - id: twenty-nine
+            text: '29'
+            explanation: >-
+              29 was the first pass's sum. That pass moved `r` from 26 to 19, so the second pass adds
+              3 + 19.
+          - id: twenty-four
+            text: '24'
+            explanation: >-
+              5 + 19 is 24, but `l` has not moved yet. The first pass moved only `r`, so `l` still reads
+              3 and the sum is 3 + 19.
+          - id: seventeen
+            text: '17'
+            explanation: >-
+              3 + 14 would need `r` to move twice. Each pass moves one pointer by one cell, so `r` is on
+              19 and the sum is 3 + 19.
+        correct: twenty-two
+      - line: 5
+        ask: Where does `r` sit when the second pass ends?
+        pointer: r
+        correct: 5
+        explanation: >-
+          22 is below 24, so this pass moves `l` right onto 5. `r` stays on 19 at index 5, because
+          moving it would only shrink the sum.
+        misses:
+          - index: 4
+            explanation: >-
+              22 is too small. Moving `r` left swaps 19 for 14 and makes the sum smaller still, so this
+              pass moves `l` instead.
+          - index: 6
+            explanation: >-
+              `r` never moves right. 26 was ruled out on the first pass, when even the smallest value
+              made 3 + 26 = 29.
+        elsewhere: 'A sum below the target moves `l`, not `r`, so `r` stays on index 5.'
+        also:
+          - name: l
+            at: 1
+      - line: 5
+        ask: What happens on the third pass?
+        options:
+          - id: match-breaks
+            text: '`total` is 24, and `break` ends the loop'
+            explanation: >-
+              `l` reads 5 and `r` reads 19, so the sum is 24. The equality test comes first, so `break`
+              runs and neither pointer moves again.
+          - id: stale-sum
+            text: '`total` is 22 again, so `l` steps right'
+            explanation: >-
+              22 was the second pass's sum, read before `l` moved. `l` now sits on 5, so the third pass
+              adds 5 + 19.
+          - id: jumped-sum
+            text: '`total` is 27, so `r` steps left'
+            explanation: >-
+              8 + 19 would need `l` on index 2. The second pass moved `l` one cell, from index 0 to
+              index 1, so the sum is 5 + 19.
+        correct: match-breaks
+
   - id: self-pair
     heading: Which condition works?
     tags: [two-pointers]
@@ -158,7 +284,7 @@ questions:
 
       1. With `l = 0` and `r = 2`, `2 + 9 = 11` is above 10, so `r` moves to 1.
       2. With `l = 0` and `r = 1`, `2 + 5 = 7` is below 10, so `l` moves to 1.
-      3. Now `l = r = 1`, and `1 <= 1` holds, so the loop runs again. It adds
+      3. With `l = r = 1`, `1 <= 1` holds, so the loop runs again. It adds
          `nums[1] + nums[1] = 5 + 5 = 10` and returns `True`, using the one 5 twice.
     prompt: |-
       ```python
@@ -175,7 +301,9 @@ questions:
           return False
       ```
 
-      Which condition is right for every sorted list, including `[5, 5]` with target 10?
+      `has_pair` should say whether two items at different indices of the sorted list `nums` add
+      up to `target`. Which condition is right for every sorted list, including `[5, 5]` with
+      target 10?
     options:
       - id: lt
         text: "`l < r`"
@@ -186,17 +314,17 @@ questions:
       - id: le
         text: "`l <= r`"
         explanation: >-
-          This is the worked example's version. When `l` equals `r`, the sum adds one item to
-          itself.
+          When `l` equals `r`, the loop still runs and adds one item to itself. On `[5]` with
+          target 10 it returns `True` from a single 5.
       - id: values
         text: "`nums[l] < nums[r]`"
         explanation: >-
-          This compares values, not positions. On `[5, 5]` the test is false at once, so the
+          This compares values, not indices. On `[5, 5]` the test is false at once, so the
           call returns `False` though two 5s add up to 10.
       - id: gap
         text: "`l < r - 1`"
         explanation: >-
-          This stops while `l` and `r` are still neighbours, so the last pair is never tried.
+          This stops while `l` and `r` are still neighbors, so the last pair is never tried.
           On `[5, 5]` the loop never runs and the call returns `False`.
     correct: lt
     followUps:
@@ -206,13 +334,13 @@ questions:
           - id: itself
             text: One item added to itself
           - id: copies
-            text: Two equal items at different positions
+            text: Two equal items at different indices
           - id: skipped
             text: Nothing, because the loop has already stopped
         correct: itself
         explanation: >-
-          Equal indices name the same slot, so the sum doubles one value. A pair needs two
-          different positions.
+          Equal indices name the same cell, so the sum doubles one value. A pair needs two
+          different indices.
       values:
         prompt: In `[5, 5]`, are `nums[0]` and `nums[1]` one item or two?
         options:
@@ -224,34 +352,34 @@ questions:
             text: It depends on the target
         correct: two
         explanation: >-
-          Each index is its own slot, whatever it stores. "Not the same item" is a question about
+          Each index is its own cell, whatever it stores. "Not the same item" is a question about
           indices, so the loop test should compare `l` and `r`.
       gap:
         prompt: "`l = 0` and `r = 1` on `[5, 5]`. Is there still a pair to check?"
         options:
           - id: can-pair
             text: Yes, the items at indices 0 and 1
-          - id: no-neighbours
-            text: No, neighbours have already been compared
+          - id: no-neighbors
+            text: No, neighbors have already been compared
           - id: no-gap
             text: No, a pair needs at least one index between its items
         correct: can-pair
         explanation: >-
-          Two neighbouring indices are still two items, and nothing has added them yet. The scan
+          Two neighboring indices are still two items, and nothing has added them yet. The scan
           is done only when `l` reaches `r`.
 
   - id: equal-copies
     heading: What does it return?
     tags: [two-pointers]
     workedExample: |-
-      Consider `pair_indices([1, 2, 4, 4, 9], 8)`. Two equal values at different indexes are two
+      Consider `pair_indices([1, 2, 4, 4, 9], 8)`. Two equal values at different indices are two
       separate items, so they can form a pair.
 
       1. With `l = 0` and `r = 4`, `1 + 9 = 10` is above 8, so `r` moves to 3.
       2. With `r = 3`, `1 + 4 = 5` is below 8, so `l` moves to 1. Then `2 + 4 = 6` is still below 8,
          so `l` moves to 2.
-      3. Now `l = 2` and `r = 3`, so `l < r` holds, and `4 + 4 = 8` matches. The two 4s sit at
-         different indexes, so the call returns `(2, 3)`.
+      3. With `l = 2` and `r = 3`, `l < r` holds, and `4 + 4 = 8` matches. The two 4s sit at
+         different indices, so the call returns `(2, 3)`.
     prompt: |-
       ```python
       def pair_indices(nums, target):
@@ -267,12 +395,13 @@ questions:
           return None
       ```
 
-      What does `pair_indices([2, 4, 4, 5], 8)` return?
+      `pair_indices` scans the sorted list `nums` from both ends and returns the indices of a
+      pair that adds up to `target`. What does `pair_indices([2, 4, 4, 5], 8)` return?
     options:
       - id: one-two
         text: "`(1, 2)`"
         explanation: >-
-          `2 + 5` is too small, so `l` moves to 1. `4 + 5` is too large, so `r` moves to 2. Now
+          `2 + 5` is too small, so `l` moves to 1. `4 + 5` is too large, so `r` moves to 2. Then
           `4 + 4` is 8, and the 4s are separate items at indices 1 and 2.
       - id: none
         text: "`None`"
@@ -300,7 +429,7 @@ questions:
             text: Only if the list has no other pair
         correct: can-pair
         explanation: >-
-          A pair is two positions, not two distinct values. Only adding an item to itself is
+          A pair is two indices, not two distinct values. Only adding an item to itself is
           ruled out.
       one-one:
         prompt: Can `pair_indices` ever return a result with `l == r`?
@@ -314,12 +443,12 @@ questions:
         correct: never
         explanation: >-
           The return sits inside the loop, and the loop stops as soon as the indices meet. So
-          every result names two different slots.
+          every result names two different indices.
       values:
         prompt: "`pair_indices` returns `(l, r)`. What are `l` and `r`?"
         options:
           - id: positions
-            text: Positions in `nums`
+            text: Indices into `nums`
           - id: stored
             text: Values stored in `nums`
           - id: counts
@@ -344,7 +473,8 @@ questions:
          `l` should step past every copy of 1: from index 0 it moves on to index 2, the first index
          whose value is not 1.
     prompt: |-
-      So after a match, `l` steps over its whole run:
+      A scan from both ends lists each pair of values that adds up to the target, and lists each
+      pair only once. So after a match, `l` steps over its whole run of copies:
 
       ```python
       l += 1
@@ -352,8 +482,8 @@ questions:
           l += 1
       ```
 
-      Now `nums = [1, 1, 1, 4, 6, 7, 7]` and the target is 8. A match is recorded with `l = 0`
-      and `r = 6`. Where is `l` after these lines run, before `r` moves?
+      `nums = [1, 1, 1, 4, 6, 7, 7]` and the target is 8. A match is recorded with `l = 0` and
+      `r = 6`. Where is `l` after these lines run, before `r` moves?
     options:
       - id: three
         text: "`l = 3`"
@@ -416,19 +546,139 @@ questions:
           The loop skips copies of the value just paired, nothing else. The 4 hasn't been tried
           yet, so the scan must test it.
 
+  - format: step-trace
+    id: trace-distinct-pairs
+    heading: Predict each step
+    tags: [python, two-pointers]
+    workedExample: |-
+      Consider `nums = [2, 2, 5, 7, 7]` with target `9`. After a match, `l` steps over its run of
+      copies, looking back at `nums[l - 1]`, and `r` steps over its run, looking at `nums[r + 1]`.
+
+      1. With `l = 0` and `r = 4`, `2 + 7 = 9` matches, so `(2, 7)` is recorded.
+      2. `l += 1` lands on index 1, which holds another 2, so the loop moves `l` on to index 2.
+         `nums[2]` is 5, which differs from the 2 before it, so `l` stops there.
+      3. `r -= 1` lands on index 3, another 7, so the loop moves `r` to 2. `l < r` is now false,
+         so the loop stops there, and so does the scan. `out` holds one pair.
+    prompt: >-
+      The scan collects each distinct pair of values once: after a match, both pointers step over
+      their runs of copies. Step through it and predict each step before it is shown. Every step
+      starts from the true state.
+    code: |
+      nums = [1, 3, 3, 4, 5, 6, 6, 8]
+      target = 9
+      out = []
+      l, r = 0, len(nums) - 1
+      while l < r:
+          total = nums[l] + nums[r]
+          if total < target:
+              l += 1
+          elif total > target:
+              r -= 1
+          else:
+              out.append((nums[l], nums[r]))
+              l += 1
+              while l < r and nums[l] == nums[l - 1]:
+                  l += 1
+              r -= 1
+              while l < r and nums[r] == nums[r + 1]:
+                  r -= 1
+    sequence:
+      kind: array
+      name: nums
+      cells: [1, 3, 3, 4, 5, 6, 6, 8]
+    start:
+      - name: l
+        at: 0
+      - name: r
+        at: 7
+    steps:
+      - line: 6
+        ask: Where does `r` sit at the second sum test?
+        pointer: r
+        correct: 6
+        explanation: >-
+          1 + 8 = 9 is a match, so the pair is recorded and both pointers move. `r -= 1` lands on
+          the 6 at index 6, which is not a copy of the 8 after it, so the loop leaves `r` there.
+        misses:
+          - index: 7
+            explanation: >-
+              After a match both pointers move, not only `l`. 8 pairs only with 1, and (1, 8) is
+              recorded, so `r` has to leave index 7.
+          - index: 5
+            explanation: >-
+              The loop skips copies of the value `r` just left, which is 8, not the 6s ahead. Index 6
+              holds 6, not 8, so `r` stops on it.
+        elsewhere: '`r` steps one cell after the match, from index 7 to index 6.'
+        also:
+          - name: l
+            at: 1
+      - line: 6
+        ask: Where does `l` sit at the third sum test?
+        pointer: l
+        correct: 3
+        explanation: >-
+          3 + 6 = 9 is recorded. `l += 1` lands on the second 3 at index 2, a copy of the 3 before
+          it, so the loop moves `l` on to the 4 at index 3. `r` likewise clears its 6s and lands on
+          index 4.
+        misses:
+          - index: 1
+            explanation: >-
+              3 + 6 is a match, so `l` must move. It has to clear every 3, because a 3 left in range
+              would meet the other 6 and record (3, 6) a second time.
+          - index: 2
+            explanation: >-
+              `l += 1` lands on index 2, but it holds another 3, the same as `nums[1]`. So the loop
+              runs and moves `l` on to 4.
+          - index: 4
+            explanation: >-
+              Only copies of 3 are skipped. Index 3 holds 4, which differs from the 3 before it, so
+              `l` stops there. The 4 still pairs with 5.
+        elsewhere: '`l` clears the run of 3s and stops on the first new value, at index 3.'
+        also:
+          - name: r
+            at: 4
+      - line: 5
+        ask: How many pairs does `out` hold when the loop ends?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              The third test reads 4 + 5, which is 9, so it records a third pair before `l` and `r`
+              cross.
+          - id: three
+            text: '3'
+            explanation: >-
+              The scan records (1, 8), (3, 6), and (4, 5). After the third match `l` moves to 4 and `r`
+              to 3, so `l < r` fails and the loop ends.
+          - id: four
+            text: '4'
+            explanation: >-
+              The skips stop (3, 6) from being recorded twice. Without them the second 3 would meet the
+              second 6, but here the next test is 4 + 5.
+        correct: three
+        also:
+          - name: l
+            at: 4
+          - name: r
+            at: 3
+
   - id: read-then-write
     heading: What does this step write?
     tags: [two-pointers]
     workedExample: |-
-      Consider `nums = [3, 0, 8]` in the loop below. `read` visits every slot in turn, and `write`
-      is the next slot to fill, so it starts at 0.
+      Two pointers can also remove items from a list in place. `read` visits every index in turn,
+      and `write` is the next index to fill, so it starts at 0. Consider `nums = [3, 0, 8]` run
+      through the same loop.
 
-      1. At `read = 0`, `nums[0] = 3` is not 0, so it is copied into slot `write = 0`, and `write`
+      1. At `read = 0`, `nums[0] = 3` is not 0, so it is copied into index `write = 0`, and `write`
          becomes 1.
       2. At `read = 1`, `nums[1]` is 0, so nothing is written and `write` stays 1.
-      3. At `read = 2`, `nums[2] = 8` is not 0, so it is copied into slot `write = 1`, not slot 2,
+      3. At `read = 2`, `nums[2] = 8` is not 0, so it is copied into index `write = 1`, not index 2,
          and `write` becomes 2. The list ends as `[3, 8, 8]`.
     prompt: |-
+      This loop removes the zeros from `nums` in place and keeps the other values in order.
+      `read` visits every index in turn, and `write` is the next index to fill.
+
       ```python
       write = 0
       for read in range(len(nums)):
@@ -437,26 +687,26 @@ questions:
               write += 1
       ```
 
-      Now `nums = [4, 0, 0, 7, 0, 5]`. Just before the step with `read = 3`, `write` is 1. What
-      does that step do?
+      `nums = [4, 0, 0, 7, 0, 5]`. Just before the step with `read = 3`, `write` is 1. What does
+      that step do?
     options:
       - id: seven-into-one
-        text: Writes 7 into slot 1
+        text: Writes 7 into index 1
         explanation: >-
-          `nums[3]` is 7, which is not 0, so it is kept. It goes to `nums[write]`, slot 1, right
+          `nums[3]` is 7, which is not 0, so it is kept. It goes to `nums[write]`, index 1, right
           after the 4 kept earlier. Then `write` becomes 2.
       - id: three-into-one
-        text: Writes 3 into slot 1
+        text: Writes 3 into index 1
         explanation: >-
-          3 is the read position. The step copies what that slot holds.
+          3 is the value of `read`, an index. The step copies the value stored there.
       - id: seven-into-three
-        text: Writes 7 into slot 3
+        text: Writes 7 into index 3
         explanation: >-
-          Slot 3 is where 7 already sits. The assignment targets the slot that `write` names.
+          Index 3 is where 7 already sits. The assignment targets the index that `write` names.
       - id: seven-into-two
-        text: Writes 7 into slot 2
+        text: Writes 7 into index 2
         explanation: >-
-          That treats `write` as the last filled slot. Check what `write` counts after the 4 was
+          That treats `write` as the last filled index. Check what `write` counts after the 4 was
           kept.
     correct: seven-into-one
     followUps:
@@ -471,34 +721,168 @@ questions:
             text: "`nums[write]`, which is 0"
         correct: item
         explanation: >-
-          `read` is a position. The test and the copy both use `nums[read]`, the value stored
+          `read` is an index. The test and the copy both use `nums[read]`, the value stored
           there.
       seven-into-three:
-        prompt: In `nums[write] = nums[read]`, which variable picks the slot that changes?
+        prompt: In `nums[write] = nums[read]`, which variable picks the index that changes?
         options:
           - id: write
             text: "`write`, on the left of the `=`"
           - id: read
             text: "`read`, since that is where the 7 sits"
           - id: both
-            text: Both, because the 7 moves and its old slot is cleared
+            text: Both, because the 7 moves and its old cell is cleared
         correct: write
         explanation: >-
           The left side is written and the right side is only read. `nums[read]` keeps its 7, and
-          the slot at `write` gets a copy.
+          the cell at `write` gets a copy.
       seven-into-two:
-        prompt: "`write` is 1. Which slots hold kept values so far?"
+        prompt: "`write` is 1. Which indices hold kept values so far?"
         options:
           - id: zero-only
-            text: Slot 0 only
+            text: Index 0 only
           - id: zero-and-one
-            text: Slots 0 and 1
+            text: Indices 0 and 1
           - id: one-only
-            text: Slot 1 only
+            text: Index 1 only
         correct: zero-only
         explanation: >-
-          `write` counts the values kept so far. Slots 0 up to `write - 1` are filled, and `write`
-          itself is the next free slot.
+          `write` counts the values kept so far. Indices 0 up to `write - 1` are filled, and
+          `write` itself is the next index to fill.
+
+  - format: step-trace
+    id: trace-remove-value
+    heading: Predict each step
+    tags: [python, two-pointers]
+    workedExample: |-
+      Consider `drop_value([5, 2, 5, 1], 5)`. `read` visits every index, a value that is not
+      `val` is copied into index `write`, and `write` counts the values kept.
+
+      1. Index 0 holds 5, which is `val`, so it is skipped and `write` stays 0.
+      2. Index 1 holds 2, so it is copied into index 0 and `write` becomes 1. Index 2 holds 5,
+         skipped again.
+      3. Index 3 holds 1, so it is copied into index 1 and `write` becomes 2. The call returns 2,
+         and `nums` is `[2, 1, 5, 1]`: indices 2 and 3 were never written, so they keep their old
+         values.
+    prompt: >-
+      `drop_value` removes every copy of `val` in place and returns how many values it kept.
+      Step through the call and predict each step before it is shown. The cells show `nums` as the
+      call received it. The board does not redraw a cell when line 5 copies a value into it, so keep
+      track of overwritten cells yourself.
+    code: |
+      def drop_value(nums, val):
+          write = 0
+          for read in range(len(nums)):
+              if nums[read] != val:
+                  nums[write] = nums[read]
+                  write += 1
+          return write
+
+      drop_value([9, 4, 4, 6, 4, 1], 4)
+    sequence:
+      kind: array
+      name: nums
+      cells: [9, 4, 4, 6, 4, 1]
+    start:
+      - name: read
+        at: 0
+      - name: write
+        at: 0
+    steps:
+      - line: 3
+        ask: The passes for indices 0, 1, and 2 run. Where is `write` when `read` reaches index 3?
+        pointer: write
+        correct: 1
+        explanation: >-
+          9 is not 4, so it is copied onto index 0 and `write` moves to 1. The 4s at indices 1 and 2
+          match `val`, so both are skipped and `write` stays on 1.
+        misses:
+          - index: 0
+            explanation: >-
+              9 is not 4, so line 5 runs even though it copies 9 onto itself, and line 6 moves `write`
+              to 1.
+          - index: 2
+            explanation: >-
+              Both 4s match `val`, so neither one is written. Only the 9 has been kept, which leaves
+              `write` on 1.
+          - index: 3
+            explanation: >-
+              `write` does not follow `read`. It counts the kept values, and only the 9 has been kept so
+              far.
+        elsewhere: One value, the 9, has been kept, so `write` sits on index 1.
+        also:
+          - name: read
+            at: 3
+      - line: 4
+        ask: The pass with `read` at index 3 ends. What does `nums[1]` hold now?
+        options:
+          - id: six
+            text: '6'
+            explanation: >-
+              `nums[3]` is 6, which is not 4, so line 5 copies 6 into `nums[write]`, which is index 1.
+              The 4 that sat there is gone. `write` then moves to 2.
+          - id: four
+            text: '4'
+            explanation: >-
+              The board still draws 4 there, but it is a leftover. 6 is not `val`, so line 5 writes it
+              into index 1, the index `write` names, over the 4.
+          - id: nine
+            text: '9'
+            explanation: >-
+              9 sits at index 0, kept on the first pass. This pass writes at `write`, which is index 1,
+              so index 1 now holds the 6 read from index 3.
+        correct: six
+        also:
+          - name: write
+            at: 2
+      - line: 7
+        ask: The loop finishes. Where is `write` when line 7 returns it?
+        pointer: write
+        correct: 3
+        explanation: >-
+          The 4 at index 4 is skipped. The 1 at index 5 is kept: it is copied into index 2 and `write`
+          moves to 3. Three values were kept, 9, 6, and 1, so the call returns 3.
+        misses:
+          - index: 2
+            explanation: >-
+              The last value, 1, is not 4, so it is kept too. It is copied into index 2 and `write`
+              moves on to 3.
+          - index: 4
+            explanation: >-
+              The 4 at index 4 matches `val`, so it is skipped and does not move `write`. Only the 1
+              after it is kept.
+          - index: 5
+            explanation: >-
+              `write` does not end where `read` ends. It counts the kept values: 9, 6, and 1, so it stops
+              on 3.
+        elsewhere: 'Three values are kept, 9, 6, and 1, so `write` ends on index 3.'
+        also:
+          - name: read
+            at: 5
+      - line: 7
+        ask: What does `nums[write]` hold when the call returns?
+        options:
+          - id: leftover-six
+            text: '6'
+            explanation: >-
+              Writes landed only in indices 0 to 2. Index 3 was never written, so it still holds the
+              original 6. The return value, 3, tells the caller to ignore everything from index 3 on.
+          - id: removed-four
+            text: '4'
+            explanation: >-
+              The loop never moves the removed values anywhere. It only copies kept values forward, so
+              index 3 keeps the 6 it started with.
+          - id: last-kept
+            text: '1'
+            explanation: >-
+              1 went to index 2, the index `write` held during that pass. Line 6 then moved `write` to 3,
+              which was never written and still holds 6.
+          - id: shortened
+            text: Nothing, because the call shortens `nums` to 3 items
+            explanation: >-
+              The function only assigns into existing cells, so `nums` keeps all 6 items. Index 3 still
+              holds the original 6.
+        correct: leftover-six
 
   - id: first-write
     heading: What does it give?
@@ -507,15 +891,18 @@ questions:
       Consider `dedupe([2, 2, 5, 8])`. A value is kept when nothing is kept yet (`write == 0`) or
       when it differs from the last kept value, `nums[write - 1]`.
 
-      1. At `read = 0`, `write == 0` is true, so the first 2 goes into slot 0, and `write` becomes
+      1. At `read = 0`, `write == 0` is true, so the first 2 goes into index 0, and `write` becomes
          1.
       2. At `read = 1`, `nums[1] = 2` equals the last kept value, `nums[0] = 2`, so it is skipped
          and `write` stays 1.
-      3. At `read = 2`, 5 differs from `nums[0] = 2`, so it goes into slot 1 and `write` becomes 2.
-         At `read = 3`, 8 differs from `nums[1] = 5`, so it goes into slot 2, and `write` becomes 3.
-      4. So the call returns 3, and `nums` is `[2, 5, 8, 8]`. Slot 3 was never written, so it keeps
-         its old 8.
+      3. At `read = 2`, 5 differs from `nums[0] = 2`, so it goes into index 1 and `write` becomes 2.
+         At `read = 3`, 8 differs from `nums[1] = 5`, so it goes into index 2, and `write` becomes 3.
+      4. So the call returns 3, and `nums` is `[2, 5, 8, 8]`. Index 3 was never written, so it
+         keeps its old 8.
     prompt: |-
+      `dedupe` keeps one copy of each value in the sorted list `nums`, in place, and returns how
+      many values it kept.
+
       ```python
       def dedupe(nums):
           write = 0
@@ -526,14 +913,14 @@ questions:
           return write
       ```
 
-      Now `nums = [6, 6, 6, 9]`. What does `dedupe(nums)` return, and what is `nums` after it?
+      `nums = [6, 6, 6, 9]`. What does `dedupe(nums)` return, and what is `nums` after it?
     options:
       - id: two-shifted
         text: "`2`, and `nums` is `[6, 9, 6, 9]`"
         explanation: >-
-          Read 0 is written into slot 0 because nothing is kept yet. Reads 1 and 2 equal the last
-          kept 6 and are skipped. Read 3 holds 9, which differs, so it goes into slot 1. The
-          last two slots are never written, so they keep their old 6 and 9.
+          Read 0 is written into index 0 because nothing is kept yet. Reads 1 and 2 equal the last
+          kept 6 and are skipped. Read 3 holds 9, which differs, so it goes into index 1. The
+          last two indices are never written, so they keep their old 6 and 9.
       - id: no-first
         text: "`0`, and `nums` is `[6, 6, 6, 9]`"
         explanation: >-
@@ -542,12 +929,12 @@ questions:
       - id: shrinks
         text: "`2`, and `nums` is `[6, 9]`"
         explanation: >-
-          The function never removes slots. The answer lives in `nums[:2]`, and the slots after
+          The function never removes cells. The answer lives in `nums[:2]`, and the cells after
           it keep whatever they held.
       - id: stays-put
         text: "`2`, and `nums` is `[6, 6, 6, 9]`"
         explanation: >-
-          That leaves the 9 where it was read. Check which slot `nums[write]` names when read 3
+          That leaves the 9 where it was read. Check which index `nums[write]` names when read 3
           is kept.
     correct: two-shifted
     followUps:
@@ -555,7 +942,7 @@ questions:
         prompt: At `read = 0`, `write` is 0. What does `write == 0 or ...` give?
         options:
           - id: is-true
-            text: True, so the first 6 is written into slot 0
+            text: True, so the first 6 is written into index 0
           - id: is-false
             text: False, because no earlier value exists to differ from
           - id: error
@@ -575,17 +962,17 @@ questions:
             text: 1, the number of values removed
         correct: four
         explanation: >-
-          Assigning to `nums[write]` replaces one slot and never deletes any. The return value
+          Assigning to `nums[write]` replaces one cell and never deletes any. The return value
           says how much of the front counts.
       stays-put:
         prompt: When read 3 keeps the 9, what is `write`?
         options:
           - id: one
-            text: 1, so the 9 goes into slot 1
+            text: 1, so the 9 goes into index 1
           - id: three
-            text: 3, so the 9 stays in slot 3
+            text: 3, so the 9 stays at index 3
           - id: two
-            text: 2, so the 9 goes into slot 2
+            text: 2, so the 9 goes into index 2
         correct: one
         explanation: >-
           Only the first 6 was kept before this step, so `write` is 1. The 9 is copied down next

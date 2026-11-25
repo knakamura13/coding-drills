@@ -1,0 +1,455 @@
+id: palindromes-review
+title: "Palindromes: review"
+description: Fresh inputs for the Palindromes skills, for recall on later days. No worked examples this time.
+heading: What does this give?
+
+questions:
+  - id: exact-case-review
+    heading: What does it return?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      ```python
+      def is_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return False
+              l += 1
+              r -= 1
+          return True
+      ```
+
+      What does `is_palindrome("Racecar")` return?
+    options:
+      - id: false-first
+        text: "`False`, at the first pair, indices 0 and 6"
+        explanation: >-
+          `s[0]` is `R` and `s[6]` is `r`. The test compares characters exactly, and an uppercase
+          letter differs from its lowercase form, so the first pair already fails.
+      - id: reads-same
+        text: "`True`, since it reads the same both ways"
+        explanation: >-
+          Only once case is ignored. This version compares `s[l]` with `s[r]` as they are, with no
+          `lower()`.
+      - id: false-middle
+        text: "`False`, at indices 2 and 4"
+        explanation: >-
+          `s[2]` and `s[4]` are both `c`. The check stops much earlier, at the first pair that
+          differs.
+      - id: error
+        text: It raises an error on the uppercase letter
+        explanation: >-
+          Comparing two characters never raises an error. `"R" != "r"` is simply `True`.
+    correct: false-first
+    followUps:
+      reads-same:
+        prompt: Is `"R" == "r"` true in Python?
+        options:
+          - id: different
+            text: No, an uppercase letter and its lowercase form are different characters
+          - id: same
+            text: Yes, letters compare without case
+          - id: depends
+            text: Only inside a string
+        correct: different
+        explanation: >-
+          Characters compare exactly. To ignore case, a check has to lower both sides first, as
+          in `s[l].lower() != s[r].lower()`.
+      false-middle:
+        prompt: Which pair does `is_palindrome` compare first?
+        options:
+          - id: ends
+            text: The first and last characters
+          - id: middle
+            text: The two characters next to the middle
+          - id: all
+            text: All pairs at once
+        correct: ends
+        explanation: >-
+          The check starts from both ends and moves inward, returning at the first pair that
+          differs. Here that is the very first pair.
+      error:
+        prompt: What does `"R" != "r"` give?
+        options:
+          - id: is-true
+            text: "`True`, since the characters differ"
+          - id: raises
+            text: It raises `TypeError`
+          - id: is-false
+            text: "`False`, since they are the same letter"
+        correct: is-true
+        explanation: >-
+          Any two strings can be compared. The comparison is exact, so `R` and `r` differ.
+
+  - id: clean-guard-review
+    heading: What does it return?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `ch.isalnum()` is `True` only for a letter or a digit, and `ch.lower()` gives the lowercase
+      form.
+
+      ```python
+      def is_clean_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              while l < r and not s[l].isalnum():
+                  l += 1
+              while l < r and not s[r].isalnum():
+                  r -= 1
+              if s[l].lower() != s[r].lower():
+                  return False
+              l += 1
+              r -= 1
+          return True
+      ```
+
+      What does `is_clean_palindrome("?!")` return?
+    options:
+      - id: returns-true
+        text: "`True`"
+        explanation: >-
+          The first inner loop moves `l` from 0 to 1, then `l < r` is false, so it stops on index
+          1. The second loop does not run. The comparison reads `s[1]` on both sides, which
+          matches, and the pointers cross, so the call returns `True`.
+      - id: returns-false
+        text: "`False`"
+        explanation: >-
+          `?` and `!` are never compared with each other. Both pointers end on index 1, so the one
+          comparison reads the same character twice.
+      - id: index-error
+        text: It raises `IndexError`
+        explanation: >-
+          Each inner loop also tests `l < r`, so `l` stops at index 1 instead of running off the
+          end of the string.
+      - id: forever
+        text: It never stops
+        explanation: >-
+          Every pass of the outer loop ends with `l += 1` and `r -= 1`, so the pointers cross and
+          the loop ends.
+    correct: returns-true
+    followUps:
+      returns-false:
+        prompt: After the first inner loop, where are `l` and `r`?
+        options:
+          - id: both-one
+            text: Both on index 1, so the comparison reads `s[1]` twice
+          - id: zero-one
+            text: "`l` on 0 and `r` on 1, so `?` meets `!`"
+          - id: crossed
+            text: "`l` on 2 and `r` on 1"
+        correct: both-one
+        explanation: >-
+          `l` skips the `?` and stops when it reaches `r`. A character always matches itself, so
+          the call cannot fail there.
+      index-error:
+        prompt: "`l` is 1 and `r` is 1. Does `while l < r and not s[l].isalnum()` run again?"
+        options:
+          - id: stops
+            text: No, `l < r` is false, so the right side is never read
+          - id: runs
+            text: Yes, `!` is not a letter, so `l` moves to 2
+          - id: error
+            text: It reads `s[2]` and raises an error
+        correct: stops
+        explanation: >-
+          `and` stops at its first false side. The `l < r` test keeps the pointers from passing
+          each other or leaving the string.
+      forever:
+        prompt: What do the last two lines of the outer loop do on every pass?
+        options:
+          - id: move
+            text: Move `l` right and `r` left, so the pointers close in
+          - id: reset
+            text: Reset the pointers to the ends
+          - id: nothing
+            text: Nothing when the characters were skipped
+        correct: move
+        explanation: >-
+          Each pass moves both pointers inward at least once, so `l < r` turns false after at most
+          a few passes.
+
+  - id: right-deletion-review
+    heading: What does it return?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `almost(s)` returns `True` when deleting at most one character makes `s` a palindrome.
+      `is_pal(s, l, r)` checks whether indices `l` to `r` read the same both ways.
+
+      ```python
+      def almost(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return is_pal(s, l + 1, r) or is_pal(s, l, r - 1)
+              l += 1
+              r -= 1
+          return True
+      ```
+
+      What does `almost("cbbcc")` return?
+    options:
+      - id: true-right
+        text: "`True`, by deleting the `c` at index 3"
+        explanation: >-
+          The first pair, `c` and `c`, matches. Then `s[1]` is `b` and `s[3]` is `c`. Leaving out
+          the `b` gives `bc` at indices 2 to 3, which fails. Leaving out the `c` gives `bb` at
+          indices 1 to 2, which passes, so the call returns `True`.
+      - id: true-left
+        text: "`True`, by deleting the `b` at index 1"
+        explanation: >-
+          With the `b` gone, `c` still faces `c`, but then `b` faces `c`. The check that leaves out
+          the `b` is `bc`, and it fails.
+      - id: false-left
+        text: "`False`, since leaving out the left character fails"
+        explanation: >-
+          The left check fails, but `or` then runs the right check, and that one passes.
+      - id: false-needs-two
+        text: "`False`, since two characters differ"
+        explanation: >-
+          Only one pair differs here: `b` at index 1 against `c` at index 3. One deletion is
+          enough.
+    correct: true-right
+    followUps:
+      true-left:
+        prompt: What is `"cbbcc"` with index 1 deleted?
+        options:
+          - id: cbcc
+            text: "`cbcc`, which is not a palindrome"
+          - id: cbbc
+            text: "`cbbc`, a palindrome"
+          - id: bbcc
+            text: "`bbcc`, not a palindrome"
+        correct: cbcc
+        explanation: >-
+          Deleting the `b` leaves `c` against `c`, then `b` against `c`. The deletion that works is
+          the `c` at index 3, which leaves `cbbc`.
+      false-left:
+        prompt: When the left side of `or` is `False`, what happens?
+        options:
+          - id: right-runs
+            text: The right side runs, and its result is returned
+          - id: false-returned
+            text: "`False` is returned at once"
+          - id: error
+            text: An error is raised
+        correct: right-runs
+        explanation: >-
+          `or` gives its right side a turn whenever the left side is false. So both deletions are
+          tried before the call can return `False`.
+      false-needs-two:
+        prompt: Which mirrored pairs of `"cbbcc"` differ?
+        options:
+          - id: one-pair
+            text: Only indices 1 and 3, `b` and `c`
+          - id: two-pairs
+            text: Indices 0 and 4, and indices 1 and 3
+          - id: none
+            text: None, it is already a palindrome
+        correct: one-pair
+        explanation: >-
+          Indices 0 and 4 are both `c`. Only the next pair differs, and one deletion inside it can
+          fix that.
+
+  - id: two-deletions-review
+    heading: What does it return?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      `almost(s)` returns `True` when deleting at most one character makes `s` a palindrome. At
+      the first mirrored pair that differs, it checks the rest with the left character left out,
+      then with the right character left out. Each check must match with no further deletion.
+
+      What does `almost("abxcyba")` return?
+    options:
+      - id: needs-two
+        text: "`False`"
+        explanation: >-
+          The first two pairs match. Then `x` at index 2 differs from `y` at index 4. Leaving out
+          the `x` gives `cy`, and leaving out the `y` gives `xc`. Neither is a palindrome, so the
+          call returns `False`.
+      - id: true-x
+        text: "`True`, by deleting the `x`"
+        explanation: >-
+          Leaving out the `x` leaves `c` against `y`, a second pair that differs. A check after the
+          one deletion allows no more.
+      - id: true-y
+        text: "`True`, by deleting the `y`"
+        explanation: >-
+          Leaving out the `y` leaves `x` against `c`, which still differ. Fixing that would take a
+          second deletion.
+      - id: true-c
+        text: "`True`, by deleting the middle `c`"
+        explanation: >-
+          The middle character has no partner, so deleting it changes no pair. `x` and `y` would
+          still face each other.
+    correct: needs-two
+    followUps:
+      true-x:
+        prompt: After the `x` is left out, which characters does the check compare?
+        options:
+          - id: c-y
+            text: "`c` at index 3 and `y` at index 4, which differ"
+          - id: c-c
+            text: "`c` with itself"
+          - id: b-b
+            text: "`b` and `b` again"
+        correct: c-y
+        explanation: >-
+          The check covers indices 3 to 4, and `c` differs from `y`. One deletion is used up, so
+          the check returns `False`.
+      true-y:
+        prompt: After the `y` is left out, which characters does the check compare?
+        options:
+          - id: x-c
+            text: "`x` at index 2 and `c` at index 3, which differ"
+          - id: x-x
+            text: "`x` with itself"
+          - id: c-b
+            text: "`c` and `b`"
+        correct: x-c
+        explanation: >-
+          The check covers indices 2 to 3, and `x` differs from `c`. The call needs a second
+          deletion, so it returns `False`.
+      true-c:
+        prompt: "Deleting the `c` from `abxcyba` gives `abxyba`. Which pair differs there?"
+        options:
+          - id: x-y
+            text: "`x` and `y`, the same pair as before"
+          - id: none
+            text: None, it is a palindrome
+          - id: a-b
+            text: "`a` and `b`"
+        correct: x-y
+        explanation: >-
+          A deletion helps only if it removes one of the two characters that differ. The middle
+          `c` is neither.
+
+  - format: drag-pointers
+    id: grow-even-review
+    heading: How far does it grow?
+    tags: [two-pointers, arrays-strings]
+    prompt: >-
+      `grow` steps `l` left and `r` right while the characters match, and returns `s[l + 1:r]`.
+      This call starts on the gap between indices 2 and 3. Drag `first` and `last` onto the first
+      and last characters of the palindrome it returns.
+    code: |
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+
+      s = "zabbaq"
+      grow(s, 2, 3)
+    sequence:
+      kind: string
+      name: s
+      cells: [z, a, b, b, a, q]
+    pointers:
+      - name: first
+        start: 2
+        correct: 1
+        explanation: >-
+          `b` matches `b` at indices 2 and 3, and `a` matches `a` at 1 and 4. Then `z` and `q`
+          differ, so `l` stops on 0 and the palindrome starts at index 1.
+        misses:
+          - index: 2
+            explanation: >-
+              The two `b`s match, so the loop grows to indices 1 and 4, where `a` matches `a`.
+          - index: 0
+            explanation: >-
+              `z` and `q` differ, so the loop stops there and index 0 is outside the palindrome.
+        elsewhere: 'The palindrome is `abba`, from index 1 to index 4.'
+      - name: last
+        start: 3
+        correct: 4
+        explanation: >-
+          The loop stops with `r = 5`, on the `q` that failed to match, and the slice stops before
+          `r`. So the last character is at index 4.
+        misses:
+          - index: 3
+            explanation: >-
+              Indices 1 and 4 also match, so the palindrome reaches index 4.
+          - index: 5
+            explanation: >-
+              `q` did not match `z`, so it is outside. The slice stops before `r`.
+        elsewhere: 'The palindrome is `abba`, from index 1 to index 4.'
+
+  - id: hardest-string-review
+    heading: Which makes the most comparisons?
+    tags: [two-pointers, arrays-strings]
+    prompt: |-
+      To find the longest palindrome, `grow` is called on all 9 centers of a 5-character string:
+      each index, with `grow(s, i, i)`, and each gap between neighbors, with
+      `grow(s, i, i + 1)`.
+
+      ```python
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+      ```
+
+      Which string makes `s[l] == s[r]` run the most times over all 9 centers?
+    options:
+      - id: all-same
+        text: "`aaaaa`"
+        explanation: >-
+          Every pair matches, so each center grows until a pointer passes an end: 15 comparisons.
+          `ababa` and `abcba` make 13 each, and `abcde` makes 12.
+      - id: alternating
+        text: "`ababa`"
+        explanation: >-
+          Its index centers grow far, but each gap compares an `a` with a `b` and stops at once.
+          That gives 13, against 15 for `aaaaa`.
+      - id: one-palindrome
+        text: "`abcba`"
+        explanation: >-
+          Only the middle grows all the way. The other centers stop at their first pair that
+          differs, for 13 in all, against 15 for `aaaaa`.
+      - id: all-different
+        text: "`abcde`"
+        explanation: >-
+          Every center stops at its first pair that differs, so this string makes 12, the fewest
+          of the four.
+    correct: all-same
+    followUps:
+      alternating:
+        prompt: "On `ababa`, how many comparisons does `grow(s, 1, 2)` make?"
+        options:
+          - id: one
+            text: "1: `b` against `a`, which differ"
+          - id: three
+            text: "3: it grows to both ends"
+          - id: zero
+            text: "0: a gap compares nothing"
+        correct: one
+        explanation: >-
+          Neighbors in `ababa` always differ, so every gap center stops after one comparison.
+          In `aaaaa` the gaps keep growing.
+      one-palindrome:
+        prompt: "On `abcba`, how many comparisons does `grow(s, 1, 1)` make?"
+        options:
+          - id: two
+            text: "2: `b` with itself, then `a` against `c`"
+          - id: one
+            text: "1: just `b` with itself"
+          - id: three
+            text: "3: it grows to both ends"
+        correct: two
+        explanation: >-
+          After the center matches itself, `s[0]` and `s[2]` differ, so the center stops. Every
+          center grows furthest when every pair it reaches matches.
+      all-different:
+        prompt: "When does a center make the most comparisons it can?"
+        options:
+          - id: all-match
+            text: When every pair it reaches matches, so it grows until an end
+          - id: first-differs
+            text: When its first pair differs
+          - id: always-same
+            text: Every center makes the same number
+        correct: all-match
+        explanation: >-
+          A center stops at the first pair that differs. With no such pair, it runs until a pointer
+          passes an end, the most it can do.
