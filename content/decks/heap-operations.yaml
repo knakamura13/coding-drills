@@ -499,16 +499,16 @@ questions:
           log n levels cost less than O(n).
           Here all `n` come out, and `n` paths of about log n levels add up to more than the
           O(n) build.
-      - id: linear
-        text: Neither, since both are O(n), so the whole run is O(n)
+      - id: pops-linear
+        text: Neither, since `n` pops are `n` steps, O(n), the same as the build
         explanation: >-
-          The build is O(n), but the pops are not. Reading `n` numbers out in order this way would
-          be a linear-time comparison sort, which cannot exist.
-      - id: both-n-log-n
-        text: Both equally, since `heapify` costs O(n log n) as well
+          A pop is one call but not one step. Each call walks a path of about log n levels, so `n`
+          of them cost about n log n, which grows faster than the O(n) build.
+      - id: build-per-pop
+        text: Both together, since each pop pays the O(n) build again, O(n²) in all
         explanation: >-
-          The total is O(n log n), but not because of the build. `heapify` is O(n): it does not
-          sift every item from the top, so its work is far less than `n` full paths.
+          `heapify` runs a single time at the start. A pop repairs one path of the heap that
+          already exists and never rebuilds it, so the build's O(n) is paid only once.
     correct: pops
     followUps:
       build:
@@ -525,34 +525,34 @@ questions:
           A pop moves the last item to the root and sifts it down, up to the height of the heap.
           The heap shrinks, but for the first half of the pops it is still about log n levels tall,
           so the total is O(n log n).
-      linear:
-        prompt: How many levels can a single `heappop` walk in a heap of `n` items?
+      pops-linear:
+        prompt: A heap of a million numbers is about 20 levels deep. Popping all of them, about how many comparisons do the pops make?
         options:
-          - id: height
-            text: Up to about log n, from the root down to a leaf
-          - id: one
-            text: One, since only the root changed
-          - id: none
-            text: None, since `heapify` already put the items in order
-        correct: height
+          - id: millions
+            text: About 18.6 million, since most pops still walk nearly 20 levels
+          - id: one-each
+            text: About a million, one per pop
+          - id: twenty
+            text: About 20, since only the root is replaced each time
+        correct: millions
         explanation: >-
-          After `heapify` the list is a heap, not a sorted list. Each pop sends the last item from
-          the root down to its place, which can take every level of the tree.
-      both-n-log-n:
-        prompt: A heap of 1,023 items has 512 leaves. How many sift-downs does `heapify` start at a leaf?
+          The heap shrinks as items come out, but it stays 19 or 20 levels tall for most of the run.
+          Counted on a million random numbers, the pops make about 18.6 million comparisons, far
+          more than the build's 1.6 million.
+      build-per-pop:
+        prompt: How many times does this code run the O(n) build?
         options:
-          - id: not-at-all
-            text: None, only parents are sifted
-          - id: to-root
-            text: One for each leaf, 512 in all
-          - id: one-level
-            text: Only one, at the last leaf
-        correct: not-at-all
+          - id: once
+            text: Once, before the first pop
+          - id: per-pop
+            text: Once per pop, to keep the heap valid
+          - id: per-pop-rest
+            text: Once per pop, on the items still left
+        correct: once
         explanation: >-
-          The build starts at the last parent, so the 512 leaf positions never start a sift. A leaf
-          item can still move up when a parent sifts past it, but each sift walks down at most the
-          height of its start: 256 sifts at most one level, 128 at most two, and so on. That sum
-          stays below a small multiple of `n`, which makes `heapify` O(n).
+          `heapify` builds the heap at the start. Each `heappop` keeps the heap rule itself by
+          sifting one item down one path, so the pops add about n log n and the build adds O(n)
+          one time.
 
   - format: tap-cell
     id: tied-tuple-pop
