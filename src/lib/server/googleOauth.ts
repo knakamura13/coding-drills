@@ -12,6 +12,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+/** The one external origin sign-in redirects to. Kit 3's `redirect()` refuses any other. */
+export const GOOGLE_AUTHORIZE_ORIGIN = new URL(AUTHORIZE_URL).origin;
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 export interface GoogleIdentity {

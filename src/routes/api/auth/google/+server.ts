@@ -7,7 +7,12 @@ import { dev } from '$app/env';
 import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { googleAuthorizeUrl, isGoogleClientId, randomToken } from '$lib/server/googleOauth';
+import {
+	GOOGLE_AUTHORIZE_ORIGIN,
+	googleAuthorizeUrl,
+	isGoogleClientId,
+	randomToken
+} from '$lib/server/googleOauth';
 
 export const prerender = false;
 
@@ -42,6 +47,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 			redirectUri: `${url.origin}/api/auth/google/callback`,
 			state,
 			codeVerifier
-		})
+		}),
+		{ external: [GOOGLE_AUTHORIZE_ORIGIN] }
 	);
 };
