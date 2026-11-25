@@ -216,7 +216,7 @@ questions:
           `-5`, so the counter decides, and `fix` was pushed first of the three, with 1.
       - id: audit
         text: "`audit`"
-        explanation: Check which field follows the urgency in each entry.
+        explanation: Check which item follows the urgency in each entry.
       - id: pay
         text: "`pay`"
         explanation: Check whether a larger counter value pops before a smaller one.
@@ -236,7 +236,7 @@ questions:
             text: Nothing, so either can come out
         correct: counter
         explanation: >-
-          The name is the third field. The comparison stops at the second, the counter, because 1
+          The name is the third item. The comparison stops at the second, the counter, because 1
           and 3 already differ, so the names never take part.
       pay:
         prompt: 'Which is smaller, `(-5, 1, "fix")` or `(-5, 4, "pay")`?'
@@ -264,3 +264,160 @@ questions:
         explanation: >-
           Negation reverses the order, so the most urgent jobs hold the smallest numbers and
           `heapq` pops them first.
+
+  - id: checkpoint-build-for-arrivals
+    heading: Which build fits each job?
+    tags: [heap, complexity]
+    prompt: |-
+      Two jobs each need a min-heap of up to `n` numbers:
+
+      - Job A: all `n` numbers are already in a list before any is read out.
+      - Job B: numbers arrive one at a time, and the smallest is popped between arrivals.
+
+      Which choice does the least work in the worst case?
+    options:
+      - id: heapify-then-push
+        text: "A: `heapify` once, O(n). B: `heappush` each arrival, O(log n) each"
+        explanation: >-
+          A has every number up front, so one bottom-up build costs O(n), where `n` pushes could
+          cost O(n log n). B already has a heap when each number arrives, so a push moves only the
+          new item along one path.
+      - id: push-both
+        text: "A and B: `heappush` each number, O(log n) each"
+        explanation: Check what `n` pushes cost in A, where the whole list is already there.
+      - id: heapify-both
+        text: "A and B: `heapify`, which for B means again after each arrival"
+        explanation: Check what one `heapify` costs when only one number is new.
+      - id: swapped
+        text: "A: `heappush` each number. B: `heapify` after each arrival"
+        explanation: Check which job has every number before the first pop.
+    correct: heapify-then-push
+    followUps:
+      push-both:
+        prompt: In A, all `n` numbers are in the list from the start. What do `n` pushes cost against one `heapify`?
+        options:
+          - id: log-vs-linear
+            text: O(n log n) for the pushes against O(n) for `heapify`
+          - id: same
+            text: O(n log n) for both, since each item can move log n levels
+          - id: pushes-cheaper
+            text: O(n) for the pushes against O(n log n) for `heapify`
+        correct: log-vs-linear
+        explanation: >-
+          Each push can climb every level, so in the worst case `n` pushes cost O(n log n). The
+          bottom-up build gives most items short sifts near the bottom, which adds up to O(n).
+      heapify-both:
+        prompt: B's heap holds `n` numbers and one more arrives. What does a fresh `heapify` cost against one push?
+        options:
+          - id: linear-vs-log
+            text: O(n), since it sifts every parent again, against O(log n) for the push
+          - id: both-log
+            text: O(log n) for both, since only one number is new
+          - id: heapify-free
+            text: O(1) for `heapify`, since the list is nearly a heap already
+        correct: linear-vs-log
+        explanation: >-
+          `heapify` does not know which number is new, so it visits all the parents again. Over
+          `n` arrivals that is O(n²), against O(n log n) for one push per arrival.
+      swapped:
+        prompt: Which job has every number in hand before the first pop?
+        options:
+          - id: job-a
+            text: A, so it can build once from the whole list
+          - id: job-b
+            text: B, since its numbers arrive in order
+          - id: both
+            text: Both, since each ends with `n` numbers
+        correct: job-a
+        explanation: >-
+          A one-time build fits a list that is complete before it is read. B has to be a valid heap
+          after every arrival, which is what a push keeps for O(log n).
+
+  - id: checkpoint-debug-sift-child
+    heading: Which call does it fail on?
+    tags: [heap, python]
+    prompt: |-
+      A suggested `sift_down` should swap `h[i]` with its smaller child for as long as that child
+      is smaller. `and` stops at its first false part, so `h[c]` is read only when `c < n`. One
+      detail is slightly off:
+
+      ```python
+      def sift_down(h, i):
+          n = len(h)
+          while True:
+              small = i
+              for c in (2 * i + 1, 2 * i + 2):
+                  if c < n and h[c] < h[i]:
+                      small = c
+              if small == i:
+                  return
+              h[i], h[small] = h[small], h[i]
+              i = small
+      ```
+
+      In each list below, only the root is out of place. After `sift_down(h, 0)`, which list
+      breaks the heap rule?
+    options:
+      - id: left-smaller
+        text: "`h = [9, 2, 5]`"
+        explanation: >-
+          Both children, 2 and 5, are smaller than 9. Each child is compared with `h[i]`, not with
+          the smallest so far, so the 5 replaces the 2 as `small`, and the 9 swaps with 5. `h`
+          becomes `[5, 2, 9]`, with 5 above the smaller 2. Comparing with `h[small]` would pick
+          the 2.
+      - id: right-smaller
+        text: "`h = [9, 5, 2]`"
+        explanation: >-
+          Both children are smaller than 9, and the right one, 2, is checked last, so it ends up as
+          `small`. It is also the smaller child, so `h` becomes `[2, 5, 9]`, which is right.
+      - id: one-smaller
+        text: "`h = [6, 8, 1]`"
+        explanation: >-
+          Only the right child, 1, is smaller than 6, so it is the only one that can become
+          `small`. `h` becomes `[1, 8, 6]`, which is right.
+      - id: two-swaps
+        text: "`h = [7, 3, 8, 4]`"
+        explanation: >-
+          At each step only one child is smaller than the 7: first the 3, then the 4. `h` becomes
+          `[3, 4, 8, 7]`, which is right.
+    correct: left-smaller
+    followUps:
+      right-smaller:
+        prompt: "In `[9, 5, 2]`, which child does the loop leave in `small`?"
+        options:
+          - id: right
+            text: The right child, 2, which is also the smaller one
+          - id: left
+            text: The left child, 5, since it is checked first
+          - id: neither
+            text: Neither, since the loop stops at the first smaller child
+        correct: right
+        explanation: >-
+          Both children pass the test, so the later one, index 2, is kept. Here the later child is
+          also the smaller, so the slip does no harm.
+      one-smaller:
+        prompt: "In `[6, 8, 1]`, how many children are smaller than the root?"
+        options:
+          - id: one
+            text: One, the 1, so `small` can only be that child
+          - id: two
+            text: Two, the 8 and the 1
+          - id: none
+            text: None, so nothing moves
+        correct: one
+        explanation: >-
+          The slip matters only when both children are smaller than `h[i]` and the left one is the
+          smaller. With one candidate there is nothing to get wrong.
+      two-swaps:
+        prompt: "In `[7, 3, 8, 4]`, is the 7 ever larger than both of its children at once?"
+        options:
+          - id: never
+            text: No, it has one smaller child at the root and one at index 1
+          - id: at-root
+            text: Yes, at the root, where its children are 3 and 8
+          - id: at-one
+            text: Yes, at index 1, where its children are 4 and 8
+        correct: never
+        explanation: >-
+          At the root, only the 3 is smaller than 7. At index 1 the only child is the 4. The slip
+          needs two smaller children, so this list comes out right.

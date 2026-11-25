@@ -140,7 +140,7 @@ questions:
   - id: which-rule-needs-priority-review
     heading: Which rule needs a priority queue?
     tags: [queue, heap]
-    prompt: Which rule calls for a priority queue, rather than a FIFO queue or a stack?
+    prompt: Which rule calls for a priority queue, rather than serving first in, first out or newest first?
     options:
       - id: deadline
         text: Run the job with the earliest deadline first
@@ -153,8 +153,8 @@ questions:
       - id: undo
         text: Undo the most recent edit first
         explanation: >-
-          The most recent item first is last in, first out. Nothing has to be compared, since the
-          newest edit is always the one on top.
+          The most recent edit first is newest first. Nothing has to be compared, since the newest
+          edit is always the last one added.
       - id: tickets
         text: Serve the lowest ticket number, with tickets numbered as people arrive
         explanation: >-
@@ -169,8 +169,8 @@ questions:
             text: A FIFO queue, which hands items out in arrival order
           - id: by-size
             text: A priority queue keyed on document size
-          - id: stack
-            text: A stack, so the newest document prints first
+          - id: newest
+            text: A list with `append` and `pop()`, so the newest document prints first
         correct: fifo
         explanation: >-
           Arrival order is first in, first out. A `deque` with `append` and `popleft` gives it in
@@ -178,13 +178,13 @@ questions:
       undo:
         prompt: Undo reverses the latest edit, then the one before it. Which structure fits?
         options:
-          - id: stack
-            text: A stack, where the last edit in is the first out
+          - id: newest
+            text: A list with `append` and `pop()`, which hands out the newest edit first
           - id: by-length
             text: A priority queue keyed on edit length
           - id: fifo
-            text: A FIFO queue, where the first edit in is the first out
-        correct: stack
+            text: A FIFO queue, which hands out the oldest edit first
+        correct: newest
         explanation: >-
           Undo walks backwards through time, newest first. A list with `append` and `pop()` does
           that without comparing anything.
@@ -203,41 +203,43 @@ questions:
           arrival order already serves the lowest number first.
 
   - format: tap-cell
-    id: heapify-root-review
+    id: pushed-root-review
     heading: Which value is the root?
     tags: [heap, python]
     prompt: >-
-      The cells show `nums` before the call. Which value does `nums[0]` hold after
-      `heapify(nums)`? Tap it.
+      The cells show `nums`, pushed one at a time into an empty heap. Which value sits at `h[0]`
+      after the last push? Tap it.
     code: |
-      from heapq import heapify
+      from heapq import heappush
 
       nums = [9, 4, 7, 1, 8]
-      heapify(nums)
-      print(nums[0])
+      h = []
+      for x in nums:
+          heappush(h, x)
+      print(h[0])
     sequence:
       kind: array
       name: nums
       cells: [9, 4, 7, 1, 8]
     correct: 3
     explanation: >-
-      `heapify` rearranges the list in place so the smallest value sits at index 0. That is 1, so
-      the code prints 1. The list becomes `[1, 4, 7, 9, 8]`.
+      The root, `h[0]`, always holds the smallest value in the heap. That is 1, so the code prints
+      1. The pushes leave `h` as `[1, 4, 7, 9, 8]`.
     misses:
       - index: 0
         explanation: >-
-          9 is first and also the largest, and `heapify` keeps neither at the front. It works in
-          place and moves the smallest value to index 0.
+          9 was pushed first and was the root until 4 arrived. The root holds the smallest value,
+          not the oldest.
       - index: 1
         explanation: >-
-          4 ends up at index 1, a child of the root. The root holds the smallest value, and 1 is
-          smaller.
+          4 was the root after the second push, but 1 is smaller, and the root always holds the
+          smallest value.
       - index: 2
-        explanation: 7 stays at index 2. The root holds the smallest value, and 7 is not it.
+        explanation: 7 is neither the first value nor the smallest, and only the smallest sits at the root.
       - index: 4
         explanation: >-
-          8 is the last value, not the smallest. Where a value starts in the list does not decide
-          the root.
+          8 was pushed last, but push order does not decide the root. 1 is smaller and was already
+          in the heap.
 
   - id: which-list-breaks-review
     heading: Which list is not a heap?
@@ -345,8 +347,8 @@ questions:
         correct: no-children
         explanation: >-
           Every child is at least as large as its parent, so nothing larger can sit below the
-          largest value, and it is in a cell with no children. When the last level is not full,
-          some of those cells are one level up, as index 2 is in `[1, 2, 9, 3, 4]`.
+          largest value, and it is in a cell with no children. Those cells are not all at the end
+          of the list: in `[1, 2, 9, 3, 4]`, index 2 has no children either.
       root:
         prompt: Which value does `h[0]` hold in a `heapq` heap?
         options:
@@ -462,7 +464,7 @@ questions:
           9 sits next to the root in the list, but the list is not sorted. Of the values left, 4 is
           smaller.
       - index: 3
-        explanation: 11 is larger than 4, and it sits two levels down.
+        explanation: 11 is larger than 4, and it is not even a child of the root.
       - index: 4
         explanation: 10 is larger than 4.
       - index: 5
@@ -562,7 +564,7 @@ questions:
       - id: five
         text: "`heappush(h, 5)`"
         explanation: >-
-          5 is smaller than its parent, 9, so it moves up one level. It stops there, because 4 is
+          5 is smaller than its parent, 9, so it swaps up once. It stops there, because 4 is
           smaller, and `h[0]` is still 4.
       - id: none
         text: None of them, since only `heappop` changes `h[0]`
@@ -589,8 +591,8 @@ questions:
         options:
           - id: parent-smaller
             text: Its new parent, 4, is not larger than it
-          - id: one-level
-            text: A push moves an item up one level at most
+          - id: one-swap
+            text: A push moves an item up one swap at most
           - id: only-pop
             text: Only `heappop` writes to `h[0]`
         correct: parent-smaller
@@ -610,3 +612,80 @@ questions:
         explanation: >-
           The push appends 1 and swaps it up while it is smaller than its parent. It passes 9 and
           then 4, and takes the root.
+
+  - id: negated-pops-review
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      ```python
+      from heapq import heappush, heappop
+
+      h = []
+      for x in [6, 14, 2, 9]:
+          heappush(h, -x)
+      print(-heappop(h), -heappop(h))
+      ```
+
+      What does this print?
+    options:
+      - id: largest-two
+        text: "`14 9`"
+        explanation: >-
+          The heap stores -6, -14, -2 and -9. The first pop returns -14 and the second -9, the two
+          smallest stored values, and negating each gives 14 and 9.
+      - id: smallest-two
+        text: "`2 6`"
+        explanation: >-
+          These are the two smallest numbers pushed. The heap stores them negated, as -2 and -6,
+          which are the two largest stored values, so they come out last.
+      - id: still-negated
+        text: "`-14 -9`"
+        explanation: >-
+          These are the values `heappop` returns. The code negates each one again before printing,
+          which turns them back into 14 and 9.
+      - id: push-order
+        text: "`6 14`"
+        explanation: >-
+          6 and 14 were pushed first. Pops ignore push order and return the smallest stored values,
+          -14 and then -9.
+    correct: largest-two
+    followUps:
+      smallest-two:
+        prompt: The heap stores -6, -14, -2 and -9. Which stored value does the first pop return?
+        options:
+          - id: minus-fourteen
+            text: '-14, the smallest stored value'
+          - id: minus-two
+            text: '-2, since 2 is the smallest number pushed'
+          - id: minus-six
+            text: '-6, since it was stored first'
+        correct: minus-fourteen
+        explanation: >-
+          Negation flips the order, so the largest number has the smallest negation. The heap pops
+          -14 first, and negating it back gives 14.
+      still-negated:
+        prompt: "The first `heappop(h)` returns -14. What does `-heappop(h)` print for it?"
+        options:
+          - id: positive
+            text: The number that was pushed, since the second minus cancels the first
+          - id: negative
+            text: The stored value, printed with its minus sign
+          - id: smallest
+            text: The smallest number that was pushed
+        correct: positive
+        explanation: >-
+          Each number went in negated, and the minus in front of each call negates it again on the
+          way out, which restores the number that was pushed.
+      push-order:
+        prompt: What decides which stored value `heappop` returns?
+        options:
+          - id: smallest
+            text: Which stored value is smallest
+          - id: first-stored
+            text: Which value was stored first
+          - id: last-stored
+            text: Which value was stored last
+        correct: smallest
+        explanation: >-
+          A heap ranks what it stores by value. Push order changes only where items sit in the
+          list, never which one comes out.

@@ -57,7 +57,7 @@ const PATH_TITLES = [
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 10, rewrite: 6, exam: 5, retire: 0 },
+	'data-structures': { keep: 10, rewrite: 3, exam: 4, retire: 4 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
 };
@@ -211,7 +211,7 @@ describe('shipped curriculum', () => {
 			'binary-search-preconditions/linked-list-ok retire operation-costs',
 			'binary-search-preconditions/python-overflow retire exact-search',
 			'subarray-sum-k/sort-sweep retire method-selection',
-			'heapq-min-heap/plain-pops keep priority-order',
+			'heapq-min-heap/plain-pops retire priority-order',
 			'grid-bounds-and-cost/quadratic rewrite reachability',
 			'count-components-edge-list/one-search rewrite reachability',
 			'shortest-path-grid/dijkstra rewrite weighted-paths',
@@ -248,7 +248,9 @@ describe('shipped curriculum', () => {
 			'sort-order',
 			'interval-merging',
 			'stack-matching',
-			'monotonic-stack'
+			'monotonic-stack',
+			'priority-order',
+			'heap-operations'
 		]) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
