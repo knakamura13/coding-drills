@@ -8,60 +8,50 @@ questions:
     heading: What does this print?
     tags: [hash-map, python]
     workedExample: |-
-      Consider `ages = {"ana": 31}`. Its only key is `"ana"`, and the value stored under that key is
-      `31`.
+      A dictionary stores values under keys, and a set stores keys alone. Either one answers "is
+      this key here?" without scanning, which lets a loop remember what it has already seen.
+      Consider `ages = {"ana": 31}`. Its only key is `"ana"`, and `31` is the value stored under
+      it.
 
-      1. `x in ages` checks only the keys. `"ana"` is a key, so `"ana" in ages` is `True`.
-      2. `31` is stored under `"ana"`, but it is a value, not a key, so `31 in ages` is `False`.
-      3. `ages.get(k, default)` returns the stored value when `k` is a key, and the default only
-         when it is not. So `ages.get("ana", 0)` is `31`, and `ages.get("bo", 0)` is `0`, because
-         `"bo"` is not a key.
+      1. `in` checks only the keys. `"ana"` is a key, so `"ana" in ages` is `True`, and `31` is a
+         value, not a key, so `31 in ages` is `False`.
+      2. `ages.get(k, default)` returns the value stored under `k` when `k` is a key. `"ana"` is a
+         key, so `ages.get("ana", 0)` is `31`.
+      3. It returns the default only when `k` is not a key. `"bo"` is not a key, so
+         `ages.get("bo", 0)` is `0`.
     prompt: |-
-      Now:
+      `d.get(k, default)` returns the value stored under the key `k`, or `default` when `k` is not
+      a key of `d`.
 
       ```python
       stock = {"pen": 4, "cup": 0}
-      print(4 in stock, stock.get("cup", 9), stock.get("ink", 9))
+      print(stock.get("cup", 9), stock.get("ink", 9))
       ```
 
       What does it print?
     options:
       - id: right
-        text: "`False 0 9`"
+        text: "`0 9`"
         explanation: >-
-          4 is stored under `"pen"`, but it is a value, so the membership test is `False`.
           `"cup"` is a key, so `get` hands back what is stored there, 0, and ignores the default.
           `"ink"` is not a key, so `get` gives the default, 9.
-      - id: in-values
-        text: "`True 0 9`"
-        explanation: >-
-          `stock` does hold a 4, but as the value under `"pen"`. Membership on a dictionary
-          tests its keys, and the keys here are `"pen"` and `"cup"`.
       - id: falsy-default
-        text: "`False 9 9`"
+        text: "`9 9`"
         explanation: >-
           `"cup"` is a key, and its stored value happens to be 0. `get` returns whatever is
-          stored, so the second value printed is that 0.
+          stored, so the first value printed is that 0.
+      - id: none-missing
+        text: "`0 None`"
+        explanation: >-
+          `get` gives `None` for a missing key only when no default is passed. Here the default
+          is 9, so `stock.get("ink", 9)` is 9.
       - id: get-raises
         text: It raises `KeyError` on the missing `"ink"`
         explanation: >-
           `get` is the reading method that tolerates a missing key. It returns its default
-          instead of failing, so the third value printed is 9.
+          instead of failing, so the second value printed is 9.
     correct: right
     followUps:
-      in-values:
-        prompt: What does `x in d` test when `d` is a dictionary?
-        options:
-          - id: keys
-            text: Whether `x` is one of its keys
-          - id: either
-            text: Whether `x` is a key or a value
-          - id: values
-            text: Whether `x` is one of its values
-        correct: keys
-        explanation: >-
-          Membership on a dictionary uses the same hash lookup as `d[x]`, so it only finds keys.
-          To search the values, write `x in d.values()`, which checks them one by one.
       falsy-default:
         prompt: '`stock["cup"]` is 0. When would `stock.get("cup", 9)` return the 9?'
         options:
@@ -75,6 +65,19 @@ questions:
         explanation: >-
           The default stands in for a missing key and nothing else. A stored 0 is a real value,
           so `get` returns it.
+      none-missing:
+        prompt: '`"ink"` is not a key of `stock`. What does `stock.get("ink", 9)` return?'
+        options:
+          - id: default
+            text: 9, the default that was passed
+          - id: none
+            text: '`None`, since the key is missing'
+          - id: zero
+            text: 0, the value stored under `"cup"`
+        correct: default
+        explanation: >-
+          A missing key gives the second argument of `get`. `None` comes back only when that
+          argument is left out.
       get-raises:
         prompt: Which of these raises `KeyError` when `"ink"` is not a key of `stock`?
         options:
@@ -104,8 +107,7 @@ questions:
          line stores 2.
       3. Both passes used the same key, so `counts` ends as `{"ab": 2}`: one key, not two.
     prompt: >-
-      Step through the
-      loop below and predict each value before it is shown.
+      Step through the loop below and predict each value before it is shown.
     code: |
       words = ["ox", "elk", "ox", "yak", "elk", "ox"]
       counts = {}
@@ -182,21 +184,25 @@ questions:
     heading: Which key does it look up?
     tags: [hash-map]
     workedExample: |-
-      Consider the target `10` and the loop at `x = 7`. It needs a partner `y`, a value seen
+      Consider the target `10` and the loop at `x = 7`. It needs the complement `y`, a value seen
       earlier, with `x + y == target`.
 
       1. `7 + y == 10`. Subtracting 7 from both sides gives `y == 10 - 7`.
       2. `10 - 7` is 3, so the key to look up is 3. Check: `7 + 3` is 10.
-      3. So the lookup key is `target - x`. If 3 is in the dictionary, 7 has a partner. If not, the
-         loop stores 7 and moves on.
+      3. So the lookup key is `target - x`. If 3 is in the dictionary, 7 has a complement. If not,
+         the loop stores 7 and moves on.
     prompt: |-
-      Now the target is 9 and the loop reaches `x = 13`. The values may be negative. Which key
-      should it look up to find a partner for 13?
+      The two-sum problem asks for two values in a list that add up to a target. A one-pass search
+      keeps the values it has seen in a dictionary, and for each `x` it looks up the complement of
+      `x`: the value that adds up to the target with `x`.
+
+      The target is 9 and the loop reaches `x = 13`. The values may be negative. Which key should
+      it look up?
     options:
       - id: minus-four
         text: '`-4`'
         explanation: >-
-          The partner has to bring 13 down to 9, so it is -4, and 13 + (-4) is 9. Negative keys
+          The complement has to bring 13 down to 9, so it is -4, and 13 + (-4) is 9. Negative keys
           are fine. The key is always `target - x`.
       - id: four
         text: '`4`'
@@ -205,16 +211,16 @@ questions:
       - id: target
         text: '`9`'
         explanation: >-
-          That looks for the target as a single value. The partner is what 13 still needs to
+          That looks for the target as a single value. The complement is what 13 still needs to
           make 9, not the 9 itself.
       - id: sum
         text: '`22`'
         explanation: >-
-          13 + 22 is 35. 13 is already above 9, so the partner has to pull the sum down.
+          13 + 22 is 35. 13 is already above 9, so the complement has to pull the sum down.
     correct: minus-four
     followUps:
       four:
-        prompt: Which expression gives the partner `y` that makes `13 + y == 9`?
+        prompt: Which expression gives the complement `y` that makes `13 + y == 9`?
         options:
           - id: right
             text: '`y = 9 - 13`'
@@ -224,7 +230,7 @@ questions:
             text: '`y = 9 + 13`'
         correct: right
         explanation: >-
-          Subtract `x` from both sides of `x + y == target`. The partner is `target - x`, and
+          Subtract `x` from both sides of `x + y == target`. The complement is `target - x`, and
           swapping the two gives a value with the wrong sign.
       target:
         prompt: The loop is at 13 and finds a 9 stored in the dictionary. What do 13 and 9 add to?
@@ -240,7 +246,7 @@ questions:
           Finding the target itself helps only when `x` is 0. The key to look up is what the
           target still needs on top of `x`.
       sum:
-        prompt: 13 is already larger than the target 9. What kind of number must its partner be?
+        prompt: 13 is already larger than the target 9. What kind of number must its complement be?
         options:
           - id: negative
             text: A negative number, so the sum drops to 9
@@ -250,8 +256,8 @@ questions:
             text: A number larger than 13
         correct: negative
         explanation: >-
-          Adding a positive value to 13 only moves further from 9. The partner is `9 - 13`, and a
-          dictionary stores a negative key like any other.
+          Adding a positive value to 13 only moves further from 9. The complement is `9 - 13`, and
+          a dictionary stores a negative key like any other.
 
   - id: key-keeps-repeats
     heading: What is the key?
@@ -262,11 +268,15 @@ questions:
 
       1. `sorted("tops")` returns the list `['o', 'p', 's', 't']`, one item for each letter of the
          word.
-      2. `"".join` glues that list into one string, `"opst"`. A string can be a dictionary key, and a
-         list can't.
+      2. `"".join` glues that list into one string, `"opst"`. A string can be a dictionary key, and
+         a list can't.
       3. `"spot"` has the same four letters, so it sorts to the same list and its key is also
          `"opst"`. The two words land in one group.
     prompt: |-
+      To group anagrams, words made of the same letters such as `"listen"` and `"silent"`, every
+      anagram of a word must get the same key. `sorted(w)` returns the letters of `w` as a list in
+      order, and `"".join` glues that list into one string.
+
       With `key = "".join(sorted(w))`, what is the key for `w = "tattoo"`?
     options:
       - id: all-letters
@@ -303,32 +313,114 @@ questions:
       list:
         prompt: Why does the grouping code join the sorted letters into a string?
         options:
-          - id: hashable
+          - id: not-a-key
             text: A list can't be a dictionary key, and a string can
           - id: resort
             text: Joining sorts the letters a second time
           - id: memory
             text: To save memory, though a list key would also work
-        correct: hashable
+        correct: not-a-key
         explanation: >-
-          A list can change, so it has no hash, and `d[sorted(w)]` raises `TypeError`. The
-          joined string, or `tuple(sorted(w))`, can be hashed.
+          A list can change, so it cannot be a key, and `d[sorted(w)]` raises `TypeError`. The
+          joined string, or `tuple(sorted(w))`, cannot change, so either one works.
 
-  - id: predecessor-lookup
+  - id: anagram-key-choice
+    heading: What goes in the dictionary?
+    tags: [hash-map, python]
+    workedExample: |-
+      Consider counting visits by date, where each date arrives as a list `[month, day]`. A
+      dictionary files each entry under its key's hash, so a key must be a value that cannot
+      change: a key that changed would no longer be found where it was filed.
+
+      1. A list can change, so `visits[[3, 14]] = 1` raises `TypeError`.
+      2. `tuple([3, 14])` is `(3, 14)`. A tuple cannot change, so `visits[(3, 14)] = 1` works.
+      3. Two visits on March 14 both give the key `(3, 14)`, and equal keys find the same entry,
+         so both visits land in one entry.
+    prompt: >-
+      A dictionary can group anagrams, words with the same letters in the same amounts such as
+      `"stop"` and `"pots"`, under one key per group. A key must be a value that cannot change,
+      such as a string, a number or a tuple. A list can change, so it cannot be a key. Which key
+      should each word get?
+    options:
+      - id: sorted-list
+        text: "`sorted(word)`, the list of its letters in order"
+        explanation: >-
+          Two anagrams do give equal sorted lists, so the idea is right. But a list can change,
+          so using it as a key raises `TypeError`. Joining it into a string fixes that.
+      - id: letter-set
+        text: "`frozenset(word)`, a `frozenset` (a set that cannot change) of its letters"
+        explanation: >-
+          A `frozenset` can be a key, but like any set it keeps which letters appear and forgets
+          how many. `"noon"` and `"no"` would share a key, though they are not anagrams.
+      - id: word-length
+        text: "`len(word)`, the number of letters in it"
+        explanation: >-
+          Anagrams do share a length, but so do `"cat"` and `"dog"`. The key must be equal exactly
+          when two words are anagrams.
+      - id: sorted-string
+        text: "`\"\".join(sorted(word))`, its letters in order as one string"
+        explanation: >-
+          A string cannot change, so it can be a key, and sorting keeps every letter with its
+          count. Two words share this key exactly when they are anagrams.
+    correct: sorted-string
+    followUps:
+      sorted-list:
+        prompt: What happens when a list is used as a dictionary key?
+        options:
+          - id: raises
+            text: It raises `TypeError`, because a list can change
+          - id: identity
+            text: It keys on the list object, so equal lists get separate entries
+          - id: converts
+            text: Python turns the list into a tuple first
+        correct: raises
+        explanation: >-
+          Python refuses a key that could change after it is stored, since the entry could no
+          longer be found. `tuple(sorted(word))` or the joined string works instead.
+      letter-set:
+        prompt: Which two words would `frozenset(word)` put under one key, though they are not anagrams?
+        options:
+          - id: noon-no
+            text: '`"noon"` and `"no"`, since a set keeps each letter once'
+          - id: stop-pots
+            text: '`"stop"` and `"pots"`, since a set forgets the order of letters'
+          - id: cat-cart
+            text: '`"cat"` and `"cart"`, since they share most of their letters'
+        correct: noon-no
+        explanation: >-
+          Both words use only n and o, so their sets are equal, yet the counts differ. `"stop"`
+          and `"pots"` are anagrams, so sharing a key is right for them, and `"cart"` has an r
+          that `"cat"` lacks.
+      word-length:
+        prompt: Anagrams always have equal length. Why is length alone a bad key?
+        options:
+          - id: not-enough
+            text: Words of equal length need not be anagrams, so unrelated words share a group
+          - id: changes
+            text: A number can change, so it cannot be a key
+          - id: differ
+            text: Two anagrams can have different lengths
+        correct: not-enough
+        explanation: >-
+          A key has to keep non-anagrams apart as well as bring anagrams together. Length does the
+          second but not the first.
+
+  - id: one-below-lookup
     format: tap-cell
     heading: Tap the value it finds
     tags: [hash-map]
     workedExample: |-
-      Consider `s = {4, 5, 6}`. A value starts a run of consecutive numbers only when the value just
-      below it, `x - 1`, is not in `s`.
+      Consider `s = {4, 5, 6}`. A value `x` starts a run of consecutive numbers only when the value
+      one below, `x - 1`, is not in `s`.
 
       1. The check for `x = 5` computes `x - 1`, which is 4. So it looks up 4, not 5 and not 6.
       2. 4 is in `s`, so `x - 1 in s` is `True`.
-      3. Since 5 has its predecessor, 5 continues the run 4, 5, 6 instead of starting it. Only 4,
-         whose predecessor 3 is missing, starts that run.
+      3. Since the value one below 5 is present, 5 continues the run 4, 5, 6 instead of starting
+         it. Only 4, whose value one below, 3, is missing, starts that run.
     prompt: >-
-      Below, the
-      check runs for `x = 8`. Tap the cell holding the value it finds.
+      A run of consecutive numbers is a group of values that each go up by 1, such as 7, 8, 9. A
+      value `x` starts a run only when the value one below, `x - 1`, is missing. The check below
+      runs for `x = 8`. Tap the cell holding the value that shows 8 does not start a run.
     code: |
       nums = [7, 2, 9, 3, 8]
       s = set(nums)
@@ -340,8 +432,8 @@ questions:
       cells: [7, 2, 9, 3, 8]
     correct: 0
     explanation: >-
-      `x - 1` is 7, which sits at index 0, so the check prints `True`. 8 has a predecessor, so
-      it continues a run, 7, 8, 9, instead of starting one.
+      `x - 1` is 7, which sits at index 0, so the check prints `True`. The value one below 8 is
+      present, so 8 continues the run 7, 8, 9 instead of starting one.
     misses:
       - index: 1
         explanation: 2 is no neighbor of 8. The check looks up `8 - 1`.
@@ -353,8 +445,126 @@ questions:
         explanation: 3 belongs to the other run, 2 and 3. The check for 8 looks up `8 - 1`.
       - index: 4
         explanation: >-
-          That is `x` itself. The check looks up the value just below it, to see whether 8
+          That is `x` itself. The check looks up the value one below it, to see whether 8
           continues a run.
+
+  - id: count-walk-steps
+    format: step-trace
+    heading: Predict each step
+    tags: [hash-map, python]
+    workedExample: |-
+      Consider `s = {1, 2, 3}` and a walk that starts at `x` and runs `y += 1` while `y + 1` is in
+      `s`. Each `y += 1` steps onto the next value.
+
+      1. The walk from 1 steps onto 2, then 3, and stops because 4 is not in `s`. That is 2 steps.
+      2. Without a start test, 2 also starts a walk. It steps onto 3 again, 1 more step, and the
+         walk from 3 takes none. The total is 2 + 1 + 0, which is 3.
+      3. With the start test `if x - 1 not in s`, only 1 starts a walk, since 0 is missing and 1
+         and 2 are present. The total is 2: each of 2 and 3 is stepped onto once.
+    prompt: >-
+      To find the longest run of consecutive numbers, a walk starts at a value `x` and runs
+      `y += 1` while `y + 1` is in the set, so each `y += 1` steps onto the next value. With the
+      start test `if x - 1 not in s`, only a run's first value starts a walk, so each value is
+      stepped onto at most once in all. The version below has no start test, so every value starts
+      a walk. The pass with `i` at 0 has run: 10 is not in `s`, so the walk from 9 took no steps.
+      Predict each step before it is shown.
+    code: |
+      def count_steps(nums):
+          s = set(nums)
+          steps = 0
+          for i, x in enumerate(nums):
+              y = x
+              while y + 1 in s:
+                  y += 1
+                  steps += 1
+          return steps
+
+      count_steps([9, 6, 7, 8, 2, 3])
+    sequence:
+      kind: array
+      name: nums
+      cells: [9, 6, 7, 8, 2, 3]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: On the pass with `i` at 1, `x` is 6. How many times does line 7 run on this pass?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              7, 8 and 9 are all in `s`, so the walk steps onto each of them. Then 10 is missing,
+              and the walk stops.
+          - id: four
+            text: '4'
+            explanation: >-
+              That counts the last test too. `10 in s` is false, so line 7 does not run for it.
+          - id: one
+            text: '1'
+            explanation: >-
+              The walk does not stop after one step. It keeps going while `y + 1` is in `s`, and
+              7, 8 and 9 all are.
+        correct: three
+        also:
+          - { name: i, at: 1 }
+      - line: 5
+        ask: On the pass with `i` at 2, `x` is 7. How many times does line 7 run on this pass?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              The walk from 7 steps onto 8 and 9, values the walk from 6 already stepped onto.
+          - id: zero
+            text: '0'
+            explanation: >-
+              7 is not a run's first value, since 6 is in `s`. With no start test, it still starts
+              a walk.
+          - id: three
+            text: '3'
+            explanation: >-
+              That repeats the walk from 6. Starting at 7, only 8 and 9 are left above it.
+        correct: two
+        also:
+          - { name: i, at: 2 }
+      - line: 9
+        ask: What does the call return?
+        options:
+          - id: seven
+            text: '7'
+            explanation: >-
+              The walks take 0, 3, 2, 1, 1 and 0 steps. 8 is stepped onto twice and 9 three times,
+              which is where the extra steps come from.
+          - id: four
+            text: '4'
+            explanation: >-
+              That is the count with the start test. Here 7 and 8 start walks too, and they step
+              onto values that were already stepped onto.
+          - id: six
+            text: '6'
+            explanation: >-
+              6 is the number of values, one walk each. The walks take different numbers of
+              steps: 0, 3, 2, 1, 1 and 0.
+        correct: seven
+        also:
+          - { name: i, at: 5 }
+      - ask: With the start test put back, so only a run's first value starts a walk, what does the call return?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              Only 6 and 2 start walks, taking 3 steps and 1 step. 7, 8, 9 and 3 are each stepped
+              onto once, and the run starts never.
+          - id: seven
+            text: '7'
+            explanation: >-
+              That is the count without the start test. With it, the walks from 9, 7, 8 and 3
+              never start.
+          - id: six
+            text: '6'
+            explanation: >-
+              That counts every value once. The run starts, 6 and 2, are where walks begin, so no
+              step lands on them.
+        correct: four
 
   - id: trace-seen-pairs
     format: step-trace
@@ -410,7 +620,7 @@ questions:
               line 5, so on this pass `seen` is empty.
         correct: empty
       - line: 5
-        ask: Each later pass looks up its partner too. Where is `i` when line 6 returns?
+        ask: Each later pass looks up its complement too. Where is `i` when line 6 returns?
         pointer: i
         correct: 2
         explanation: >-
@@ -426,7 +636,7 @@ questions:
           - index: 0
             explanation: >-
               On the first pass `seen` was empty, so the 5 could not pair with itself.
-        elsewhere: The second 5 is the first value whose partner is already stored, at index 2.
+        elsewhere: The second 5 is the first value whose complement is already stored, at index 2.
       - line: 6
         ask: What does `seen` hold when line 6 runs?
         options:
@@ -438,7 +648,7 @@ questions:
           - id: no-one
             text: '`{5: 0}`'
             explanation: >-
-              The 1 found no partner, but line 7 still stored it. Every value that misses is
+              The 1 found no complement, but line 7 still stored it. Every value that misses is
               stored before the loop moves on.
           - id: overwritten
             text: '`{5: 2, 1: 1}`'

@@ -56,7 +56,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 2, rewrite: 4, exam: 7, retire: 11 },
+	'sequences-and-search': { keep: 1, rewrite: 1, exam: 5, retire: 17 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }

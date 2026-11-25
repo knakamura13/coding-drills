@@ -144,8 +144,8 @@ paths:
   - id: hash-lookups
     title: Hash lookups
     summary: Read a set or dictionary, pick a key, and track what has been seen.
-    after: [arrays-and-strings]
-    afterNote: Basic equality is assumed and is not a separate path yet.
+    after: [operation-costs]
+    afterNote: Operation costs prices a set or dict key test.
     levels:
       - id: read-set-or-dictionary
         title: Read a set or dictionary
@@ -155,9 +155,9 @@ paths:
         title: Maintain what has been seen
     checkpoints:
       - id: recognize-run-starts
-        title: Recognize run starts
-        summary: Recognize run starts and explain why each value needs one visit.
-        mix: [run-starts, one-visit]
+        title: Run starts and pairs
+        summary: Recognize run starts, explain why each value needs one visit, and choose the lookups for a pair search.
+        mix: [run-starts, one-visit, pair-lookup]
 
   - id: prefix-counts
     title: Prefix counts
@@ -250,35 +250,30 @@ drills:
     skill: shrink-answer-range
     note: After a feasibility scan is familiar, this isolates the cost of one scan times the number of probes.
   - questionId: two-sum-unsorted
-    disposition: rewrite
+    disposition: retire
     path: hash-lookups
-    skill: maintain-seen
-    note: Ask for the missing complement, then trace lookup-before-insert with a repeated value.
+    note: 'Absorbed into the Hash lookups checkpoint as `checkpoint-debug-store-first`, the store-first bug on a concrete call. The older deck stays as a fixture.'
   - questionId: group-anagrams-key
-    disposition: keep
+    disposition: retire
     path: hash-lookups
-    skill: select-key-or-complement
-    note: After character counts and valid keys, choose a canonical key that preserves multiplicity.
+    note: 'Absorbed into the Hash lookups teaching deck as `anagram-key-choice`, with the key rule in its prompt. The older deck stays as a fixture.'
   - questionId: longest-consecutive-set
-    disposition: exam
+    disposition: retire
     path: hash-lookups
-    covers: [run-starts, one-visit]
-    note: Combine membership, run starts and counting each value once.
+    note: '`checkpoint-why-linear` explains the same approach, so this item could be answered from memory. The older deck stays as a fixture.'
   - questionId: subarray-sum-equals-k
     disposition: exam
     path: prefix-counts
     tests: [build-prefix, subtract-prefixes, count-prior-prefixes]
     note: Combine a prefix difference, earlier-prefix frequencies and the empty prefix on signed input.
   - questionId: contains-duplicate-tradeoff
-    disposition: rewrite
+    disposition: retire
     path: hash-lookups
-    skill: maintain-seen
-    note: Practice a single membership test before comparing early exit, space and sorting.
+    note: 'Absorbed into the Hash lookups review deck as `duplicate-check-cost-review`, with each cost named from Operation costs. The older deck stays as a fixture.'
   - questionId: hash-map-cost-model
-    disposition: rewrite
+    disposition: retire
     path: hash-lookups
-    skill: select-key-or-complement
-    note: Separate valid keys, key length and collision cost into distinct decisions.
+    note: '`anagram-key-choice` teaches its valid-key half. The key-length cost is past what Operation costs teaches. The older deck stays as a fixture.'
   - questionId: subarray-sum-k
     disposition: retire
     path: prefix-counts
@@ -300,10 +295,9 @@ drills:
     path: sort-order
     note: '`pair-comparison`, `two-record-tie`, `sort-returns-none` and `trace-sort-names` teach its three parts one at a time. The older deck stays as a fixture.'
   - questionId: sweep-line-minimum-rooms
-    disposition: exam
+    disposition: retire
     path: event-sweeps
-    tests: [translate-events, order-event-ties, track-active-peak]
-    note: Combine event signs, equal-time ordering and peak occupancy.
+    note: 'Its choice, an end before a start at the same time, is the answer to `tie-rule-review`, so it could be answered from memory. The older deck stays as a fixture.'
   - questionId: too-large-sum
     disposition: keep
     path: pointer-scans
@@ -765,117 +759,149 @@ drills:
     disposition: keep
     path: hash-lookups
     skill: read-set-or-dictionary
-    note: New teaching card for reading a dictionary. Membership tests keys, and get returns a stored 0 or the default for a missing key.
+    note: 'With `d.get(k, default)` stated, predict a stored 0 and a missing key. The worked example introduces the path.'
   - questionId: count-with-get
     disposition: keep
     path: hash-lookups
     skill: read-set-or-dictionary
-    note: New step-trace teaching card for updating a frequency. Predict what get returns, how many keys there are, and the final counts.
+    note: 'Step through `counts[w] = counts.get(w, 0) + 1`: what `get` returns, how many keys there are, and the final counts.'
   - questionId: missing-complement
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
-    note: New teaching card for the missing complement. Look up target - x when x is larger than the target. Part of the two-sum-unsorted rewrite.
+    note: 'With two-sum and the complement stated, pick the key to look up when `x` is larger than the target: `target - x`, a negative number.'
   - questionId: key-keeps-repeats
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
-    note: New teaching card for repeated letters in keys. Build the sorted key of a word with repeated letters.
-  - questionId: predecessor-lookup
+    note: 'With `sorted` and `"".join` stated, build the anagram key of a word with repeated letters: every letter stays.'
+  - questionId: anagram-key-choice
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
-    note: New tap-cell teaching card for predecessor membership. Tap the value that the x - 1 check finds.
+    note: 'With the rule that a key cannot change stated, pick the anagram key over a list, a `frozenset` that drops counts, and the length.'
+  - questionId: one-below-lookup
+    disposition: keep
+    path: hash-lookups
+    skill: select-key-or-complement
+    note: 'With a run of consecutive numbers and its start test stated, tap the value one below, `x - 1`, that shows 8 does not start a run.'
+  - questionId: count-walk-steps
+    disposition: keep
+    path: hash-lookups
+    skill: select-key-or-complement
+    note: 'Trace the walk with the start test removed and count the repeated steps, then the total with it: each value is stepped onto at most once in all.'
   - questionId: trace-seen-pairs
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
-    note: New step-trace teaching card. Trace lookup-before-insert with a repeated value. Part of the two-sum-unsorted rewrite.
+    note: 'Trace lookup before insert on a two-sum call with a repeated value: the first 5 cannot find itself, and the second finds it.'
   - questionId: first-repeat-stop
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
-    note: New tap-cell teaching card. Tap where a seen-set scan stops early. The single membership test the contains-duplicate-tradeoff rewrite asks for.
+    note: 'Tap where a seen-set scan returns: the first value already in the set.'
   - questionId: dict-read-review
     disposition: keep
     path: hash-lookups
     skill: read-set-or-dictionary
     variant: true
-    note: Review variant on a fresh input. get with no default, and membership on a value.
+    note: 'Predict `get` with no default and membership on a value, on a fresh dictionary.'
   - questionId: set-add-review
     disposition: keep
     path: hash-lookups
     skill: read-set-or-dictionary
     variant: true
-    note: Review variant on a fresh input. A single insert of a value the set already holds.
+    note: 'Predict the size of a set after adding a value it already holds.'
   - questionId: frequency-update-review
     disposition: keep
     path: hash-lookups
     skill: read-set-or-dictionary
     variant: true
-    note: Review variant on a fresh input. Choose the line that updates a frequency.
+    note: 'Pick the line that counts letters, against `+=` on a missing key, a plain assignment and an unstored sum.'
   - questionId: complement-review
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
     variant: true
-    note: Review variant on a fresh input. The complement of a negative value.
+    note: 'Pick the complement of a negative value, `6 - (-2)`.'
   - questionId: key-groups-review
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
     variant: true
-    note: Review variant on a fresh input. Count the groups a sorted key makes when the words repeat letters.
-  - questionId: predecessor-review
+    note: 'Count the groups a sorted key makes when the words use the same letters in different amounts.'
+  - questionId: one-below-review
     disposition: keep
     path: hash-lookups
     skill: select-key-or-complement
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the value that the x - 1 check finds.
+    note: 'Tap the value one below, `x - 1`, that the start test finds for 15.'
   - questionId: seen-scan-trace-review
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
     variant: true
-    note: Review variant on a fresh input (step-through trace). Where a seen-set scan returns, the set's size there, and the value returned.
+    note: 'Step through a seen-set scan: where it returns, the set size there, and the value returned.'
   - questionId: overwrite-review
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
     variant: true
-    note: Review variant on a fresh input. A repeated value overwrites its stored index before its partner arrives.
+    note: 'A repeated value overwrites its stored index before its complement arrives, so the call returns the later index.'
   - questionId: pair-drag-review
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place both indices a lookup-before-insert pair search returns.
+    note: 'Drag both indices a lookup-before-insert two-sum call returns, before a later copy is read.'
   - questionId: add-before-test-review
     disposition: keep
     path: hash-lookups
     skill: maintain-seen
     variant: true
-    note: Review variant on a fresh input. Adding before testing makes every value its own match.
+    note: 'Adding before testing makes every value its own match: only the empty list gives `False`.'
+  - questionId: duplicate-check-cost-review
+    disposition: keep
+    path: hash-lookups
+    skill: maintain-seen
+    variant: true
+    note: 'Pick the repeat check that is O(n) on average, against nested loops, sorting first and a list of seen values, with each cost named.'
   - questionId: checkpoint-which-starts
     disposition: exam
     path: hash-lookups
     covers: [run-starts]
-    note: New checkpoint item. Name every value whose predecessor is missing, including a lone value.
+    tests: [select-key-or-complement]
+    note: 'Name every value whose value one below is missing, including a lone value.'
   - questionId: checkpoint-longest-start
     disposition: exam
     path: hash-lookups
     covers: [run-starts]
-    note: New tap-cell checkpoint item. Tap the start of the longest run, not its end or its first value in the list.
+    tests: [select-key-or-complement]
+    note: 'Tap the start of the longest run, not its end or its first value in the list.'
   - questionId: checkpoint-why-linear
     disposition: exam
     path: hash-lookups
     covers: [one-visit]
-    note: New checkpoint item. Explain why only run starts beginning a walk keeps the whole scan linear.
+    tests: [select-key-or-complement]
+    note: 'Explain why a `while` inside the `for` stays O(n) on average: only run starts begin a walk.'
   - questionId: checkpoint-list-duplicates
     disposition: exam
     path: hash-lookups
     covers: [one-visit]
-    note: New checkpoint item. Count the repeated walks when the loop visits the list's duplicate run starts instead of the set.
+    tests: [select-key-or-complement]
+    note: 'Count the `while` tests when the loop visits the list, so each copy of a run start walks the run again.'
+  - questionId: checkpoint-gap-lookup
+    disposition: exam
+    path: hash-lookups
+    covers: [pair-lookup]
+    tests: [select-key-or-complement, maintain-seen]
+    note: 'Pick the test for two values that differ by `k`: an earlier value can sit above or below, so look up `x - k` and `x + k`.'
+  - questionId: checkpoint-debug-store-first
+    disposition: exam
+    path: hash-lookups
+    covers: [pair-lookup]
+    tests: [maintain-seen]
+    note: 'Debugging: pick the call a suggested two-sum gets wrong because it stores each value before its lookup, so a value half the target finds itself.'
 
   - questionId: key-by-remainder
     disposition: keep
@@ -1417,117 +1443,122 @@ drills:
     disposition: keep
     path: event-sweeps
     skill: translate-events
-    note: New teaching card for translating meetings to events. Predict the list the loop appends, a start with 1 and an end with -1, before any sort.
+    note: 'With the rooms goal and the `(time, change)` event stated, predict the list the loop appends, before any sort. The worked example introduces the path.'
   - questionId: end-event-tap
     disposition: keep
     path: event-sweeps
     skill: translate-events
-    note: New tap-cell teaching card. Tap the end event of one meeting when another meeting's end shares its start time.
+    note: 'Tap the end event of one meeting when another meeting ends at its start time.'
   - questionId: ends-before-starts
     disposition: keep
     path: event-sweeps
     skill: order-event-ties
-    note: New teaching card for simultaneous arrival and departure. The plain tuple sort puts (7, -1) ahead of (7, 1), whatever the append order.
+    note: 'Predict which time-7 event a plain sort puts first: `(7, -1)` before `(7, 1)`, whatever the append order.'
   - questionId: inclusive-end-key
     disposition: keep
     path: event-sweeps
     skill: order-event-ties
-    note: New teaching card for the opposite tie rule. Choose the (time, -change) key over reverse=True, a time-only key and the plain sort.
+    note: 'When an end time is still busy, pick `key=lambda ev: (ev[0], -ev[1])` over `reverse=True`, a time-only key and the plain sort.'
   - questionId: one-event-update
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
-    note: New teaching card for a single event update. An end lowers active and leaves peak where it was.
+    note: 'With `active` and `peak` stated, predict one end event: `active` drops and `peak` stays.'
   - questionId: trace-active-count
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
-    note: New step-trace teaching card. Predict active over a tie at 9, then the final peak.
+    note: 'Step through `active` across an end and a start at 9, then the final `peak`.'
   - questionId: peak-span-drag
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
-    note: New drag-pointers teaching card. Place the event that first reaches the peak and the first event that lowers it.
+    note: 'Drag to the event that first lifts `active` to the peak and the first event after it that lowers `active`.'
   - questionId: event-count-review
     disposition: keep
     path: event-sweeps
     skill: translate-events
     variant: true
-    note: Review variant. Six meetings give twelve events, six of them ends, with repeated times kept.
+    note: 'Count the events six meetings give and how many are ends, with repeated times kept.'
   - questionId: swapped-signs-review
     disposition: keep
     path: event-sweeps
     skill: translate-events
     variant: true
-    note: Review variant on a fresh input. Swapped signs drive active below zero, so peak stays 0.
+    note: 'Swapped signs drive `active` below zero, so `peak` stays 0.'
   - questionId: free-room-tap-review
     disposition: keep
     path: event-sweeps
     skill: translate-events
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the end event of a meeting when another meeting starts at that time.
+    note: 'Tap the end event of a meeting when another meeting starts at that time.'
   - questionId: tie-landing-tap-review
     disposition: keep
     path: event-sweeps
     skill: order-event-ties
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the event the plain sort puts at index 4, a start that follows an end at the same time.
+    note: 'Tap the event the plain sort puts at index 4: a start that follows an end at the same time.'
   - questionId: inclusive-rooms-review
     disposition: keep
     path: event-sweeps
     skill: order-event-ties
     variant: true
-    note: Review variant on a fresh input. The (time, -change) key counts a chain of touching meetings as two rooms.
+    note: 'The starts-first key counts a chain of touching meetings as two rooms.'
   - questionId: tie-rule-review
     disposition: keep
     path: event-sweeps
     skill: order-event-ties
     variant: true
-    note: Review variant. Read a stated rule and choose to apply the end first at a shared time.
+    note: 'Read a stated rule and choose to apply the end first at a shared time.'
   - questionId: trace-peak-review
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
     variant: true
-    note: Review variant on a fresh input (step-through trace). Predict active across an end, then a start, then peak after a drop.
+    note: 'Step through `active` across an end, then a start, then `peak` after a drop.'
   - questionId: peak-event-tap-review
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the event that first reaches the peak, not the later start that returns to it.
+    note: 'Tap the event that first reaches the peak, not the later start that returns to it.'
   - questionId: return-active-review
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
     variant: true
-    note: Review variant on a fresh input. Returning active instead of peak always gives 0.
+    note: 'Returning `active` instead of `peak` always gives 0.'
   - questionId: start-update-review
     disposition: keep
     path: event-sweeps
     skill: track-active-peak
     variant: true
-    note: Review variant. A start that only matches the old peak leaves peak unchanged.
+    note: 'A start that only matches the old peak leaves `peak` unchanged.'
   - questionId: checkpoint-rooms-count
     disposition: exam
     path: event-sweeps
     tests: [translate-events, order-event-ties, track-active-peak]
-    note: New checkpoint item. Count the rooms for five meetings with ties at 11 and 13, against start-first, one-per-meeting and merged-block answers.
+    note: 'Count the rooms for five meetings with ties at 11 and 13, against starts-first, one-per-meeting and merged-interval answers.'
   - questionId: checkpoint-peak-meeting
     disposition: exam
     path: event-sweeps
     tests: [translate-events, order-event-ties, track-active-peak]
-    note: New tap-cell checkpoint item. Tap the meeting whose start first reaches the peak, where a start-first tie would pick another.
+    note: 'Tap the meeting whose start first reaches the peak, where a starts-first tie would pick another.'
   - questionId: checkpoint-inclusive-bookings
     disposition: exam
     path: event-sweeps
     tests: [order-event-ties, track-active-peak]
-    note: New checkpoint item. Count instruments when an end hour is still busy, so starts go first at a tie.
+    note: 'Count instruments when an end hour is still busy, so starts go first at a tie.'
   - questionId: checkpoint-time-only-key
     disposition: exam
     path: event-sweeps
     tests: [order-event-ties, track-active-peak]
-    note: New checkpoint item. A time-only key keeps the append order at a tie and reports one room too many.
+    note: 'A time-only key keeps the append order at a tie and reports one room too many.'
+  - questionId: checkpoint-debug-desk-ties
+    disposition: exam
+    path: event-sweeps
+    tests: [order-event-ties]
+    note: 'Debugging: pick the call a suggested desk count gets wrong because the plain sort applies an end before a start when end hours are busy.'
   - questionId: pack-one-limit
     disposition: keep
     path: feasible-limits

@@ -1,6 +1,6 @@
 id: hash-lookups-checkpoint
 title: "Hash lookups: checkpoint"
-description: Recognize where runs of consecutive values start, and explain why each value needs only one visit, on new inputs. Each item combines all three Hash lookups skills.
+description: Find where runs of consecutive numbers start, explain why each value needs only one visit, and choose the lookups for a pair search, on new inputs.
 heading: Which one is right?
 
 questions:
@@ -29,7 +29,7 @@ questions:
         explanation: Which neighbor does the test look up?
       - id: smallest
         text: Only 4, the smallest value
-        explanation: A start needs only its own predecessor to be missing.
+        explanation: A start needs only the value one below it, `x - 1`, to be missing.
     correct: right
     followUps:
       skip-lone:
@@ -101,7 +101,7 @@ questions:
       missing 53, a run of 4. The other walks start at 17 and 30 and count 3 and 1.
     misses:
       - index: 0
-        explanation: 52 is where the longest run ends. The walk starts at the value with no predecessor.
+        explanation: 52 is where the longest run ends. The walk starts where the value one below, `x - 1`, is missing.
       - index: 1
         explanation: 17 is in the set, so 18 never starts a walk. It belongs to the run 17 to 19.
       - index: 2
@@ -139,7 +139,7 @@ questions:
         explanation: >-
           The walk from a start covers that run alone, and no other value in the run starts one.
           So the `for` loop does n start tests and all the walks together take about n more
-          steps, each an O(1) average lookup.
+          steps, each lookup O(1) on average.
       - id: constant-lookups
         text: Each `in` test is O(1), so the two loops together cost O(n)
         explanation: Count the `while` tests if the start test were removed.
@@ -256,13 +256,13 @@ questions:
             text: '`4 in s`, `5 in s` and `6 in s`'
         correct: three-tests
         explanation: >-
-          A `while` test runs once more than its body. The false test is the one that ends the
-          walk.
+          This `while` has no `break`, so its test runs once more than its body: the last test
+          comes out false and ends the walk.
       fifteen:
         prompt: 4 is in the set. Does 5 start a walk?
         options:
           - id: no
-            text: No, its predecessor is present, so it fails the start test
+            text: No, the value one below it, 4, is present, so it fails the start test
           - id: yes-all
             text: Yes, every value in the list starts a walk
           - id: yes-once
@@ -271,3 +271,170 @@ questions:
         explanation: >-
           Only the copies of 4 pass the start test. 5 and 6 never start walks, so all the
           repeated work here comes from the repeated 4s.
+
+  - id: checkpoint-gap-lookup
+    heading: Which test belongs in the if?
+    tags: [hash-map, python]
+    prompt: |-
+      `has_gap(nums, k)` should return `True` when two values in `nums` differ by exactly `k`,
+      where `k` is greater than 0. It keeps the values it has passed in a set and tests each new
+      value against them:
+
+      ```python
+      def has_gap(nums, k):
+          seen = set()
+          for x in nums:
+              if ...:  # one test goes here
+                  return True
+              seen.add(x)
+          return False
+      ```
+
+      Which test in place of `...` makes it right for every input?
+    options:
+      - id: both
+        text: "`x - k in seen or x + k in seen`"
+        explanation: >-
+          An earlier value that differs from `x` by `k` is either `x - k`, below it, or `x + k`,
+          above it. The scan cannot know which one came first, so it tests both, each in O(1) on
+          average.
+      - id: plus-only
+        text: "`x + k in seen`"
+        explanation: >-
+          That finds a pair only when the larger value comes first. `has_gap([2, 5], 3)` tests
+          5 for 8, misses the 2, and returns `False`.
+      - id: minus-only
+        text: "`x - k in seen`"
+        explanation: >-
+          That finds a pair only when the smaller value comes first. `has_gap([5, 2], 3)` tests
+          2 for -1, misses the 5, and returns `False`.
+      - id: flipped
+        text: "`k - x in seen`"
+        explanation: >-
+          `k - x` is the complement for a sum of `k`, not a difference. `has_gap([1, 2], 3)`
+          returns `True`, though 1 and 2 differ by 1.
+    correct: both
+    followUps:
+      plus-only:
+        prompt: With the test `x + k in seen`, what does `has_gap([2, 5], 3)` return?
+        options:
+          - id: no-pair
+            text: "`False`, since 5 looks for 8"
+          - id: found
+            text: "`True`, since 5 and 2 differ by 3"
+          - id: error
+            text: It raises an error on the missing 8
+        correct: no-pair
+        explanation: >-
+          When 5 arrives, the earlier value it pairs with is 2, which is `x - k`. A test for
+          `x + k` alone misses it, so a pair whose larger value comes second is never found.
+      minus-only:
+        prompt: With the test `x - k in seen`, what does `has_gap([5, 2], 3)` return?
+        options:
+          - id: no-pair
+            text: "`False`, since 2 looks for -1"
+          - id: found
+            text: "`True`, since 5 and 2 differ by 3"
+          - id: error
+            text: It raises an error, because -1 is negative
+        correct: no-pair
+        explanation: >-
+          When 2 arrives, the earlier value it pairs with is 5, which is `x + k`. A test for
+          `x - k` alone misses it, so a pair whose smaller value comes second is never found.
+      flipped:
+        prompt: For which task is `k - x` the value to look up?
+        options:
+          - id: sum
+            text: Finding two values that add up to `k`
+          - id: difference
+            text: Finding two values that differ by `k`
+          - id: product
+            text: Finding two values whose product is `k`
+        correct: sum
+        explanation: >-
+          `x + y == k` gives `y == k - x`, the two-sum complement. A difference of `k` gives
+          `y == x - k` or `y == x + k`, depending on which value is larger.
+
+  - id: checkpoint-debug-store-first
+    heading: Which call does it fail on?
+    tags: [hash-map, python]
+    prompt: |-
+      A suggested solution to two-sum should return the indices of two different positions whose
+      values add up to `target`. Each call below has exactly one such pair. One detail is slightly
+      off:
+
+      ```python
+      def pair(nums, target):
+          seen = {}
+          for i, x in enumerate(nums):
+              seen[x] = i
+              need = target - x
+              if need in seen:
+                  return [seen[need], i]
+          return None
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: half-first
+        text: "`pair([4, 2, 6], 8)`"
+        explanation: >-
+          The 4 is stored before its lookup, and `8 - 4` is 4, so the lookup finds the 4 itself
+          and the call returns `[0, 0]`, one position twice. The real pair is `[1, 2]`. Looking up
+          `need` before storing `x` fixes it, since `seen` then holds only earlier values.
+      - id: half-last
+        text: "`pair([-1, 9, 4], 8)`"
+        explanation: >-
+          4 is half of 8 here too, but the 9 finds the -1 first, and the call returns `[0, 1]`
+          before it reaches the 4. That is right.
+      - id: no-half
+        text: "`pair([1, 5, 3], 8)`"
+        explanation: >-
+          No value is half of 8, so no value can find itself. The 3 finds the 5 stored at index
+          1, and the call returns `[1, 2]`, which is right.
+      - id: two-values
+        text: "`pair([2, 7], 9)`"
+        explanation: >-
+          The 2 looks for 7, which is not stored yet. The 7 then finds the 2, and the call returns
+          `[0, 1]`, which is right.
+    correct: half-first
+    followUps:
+      half-last:
+        prompt: For `pair([-1, 9, 4], 8)`, on which pass does the call return?
+        options:
+          - id: nine
+            text: On the pass for 9, before the 4 is read
+          - id: four
+            text: On the pass for 4, which finds itself
+          - id: never
+            text: It never returns a pair, and gives `None`
+        correct: nine
+        explanation: >-
+          The 9 needs -1, which is stored at index 0, so the call returns `[0, 1]`. A value that
+          could find itself causes harm only if the loop reaches it before the real pair.
+      no-half:
+        prompt: In this code, when can a value find itself in `seen`?
+        options:
+          - id: half
+            text: Only when it is half of the target, so `need` equals `x`
+          - id: stored
+            text: Every time, since each value is stored before its lookup
+          - id: never
+            text: Never, since `need` is a different variable from `x`
+        correct: half
+        explanation: >-
+          Every value is stored before its lookup, but the lookup asks for `need`. The value just
+          stored is found only when `need == x`, which means `x` is half of the target.
+      two-values:
+        prompt: What does `pair([2, 7], 9)` return?
+        options:
+          - id: right
+            text: "`[0, 1]`, the 2 and the 7"
+          - id: self
+            text: "`[1, 1]`, the 7 found twice"
+          - id: none
+            text: "`None`, since the 2 finds nothing"
+        correct: right
+        explanation: >-
+          The 2 misses and stays stored. The 7 needs 2, which is stored at index 0. Neither value
+          is half of 9, so neither can find itself.
