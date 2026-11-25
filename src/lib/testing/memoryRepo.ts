@@ -2,6 +2,17 @@ import type { Repo, SessionUser } from '$lib/server/repo';
 import { newestFlags } from '$lib/server/repo';
 import { SYNC_PAGE } from '$lib/sync/protocol';
 import type { Attempt, Flag } from '$lib/storage/types';
+import { isStorableText } from '$lib/storage/guards';
+
+/** Whether Postgres can hold the value as jsonb: no string or key in it has unstorable text. */
+function storable(value: unknown): boolean {
+	if (typeof value === 'string') return isStorableText(value);
+	if (Array.isArray(value)) return value.every(storable);
+	if (typeof value === 'object' && value !== null) {
+		return Object.entries(value).every(([key, item]) => isStorableText(key) && storable(item));
+	}
+	return true;
+}
 
 /**
  * An in-memory `Repo` for tests of the routes and the sync engine. It follows
@@ -41,6 +52,10 @@ export function createMemoryRepo(): Repo {
 			sessions.delete(tokenHash);
 		},
 		async sync(userId, request) {
+			// Postgres rejects the jsonb and rolls back the whole transaction, so refuse before changing anything.
+			if (!storable(request.attempts) || !storable(request.flags)) {
+				throw new Error('invalid input syntax for type json');
+			}
 			const mine = attempts.get(userId) ?? [];
 			attempts.set(userId, mine);
 			const held = new Set(mine.map((entry) => entry.attempt.id));

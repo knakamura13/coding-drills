@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { replay } from '$lib/domain/srs';
 import { createMemoryRepo } from '$lib/testing/memoryRepo';
 import { KEYS, Repository, type KeyValueStore } from '$lib/storage/repository';
-import type { Attempt } from '$lib/storage/types';
+import type { Attempt, Flag } from '$lib/storage/types';
 import type { SyncApi, SyncResult } from './api';
-import { runSync } from './engine';
-import { SYNC_BATCH, SYNC_PAGE, type SyncRequest } from './protocol';
+import { fitRequest, runSync } from './engine';
+import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, SYNC_PAGE, type SyncRequest } from './protocol';
+
+const requestBytes = (request: SyncRequest) => new TextEncoder().encode(JSON.stringify(request)).length;
 
 function memoryStore(initial: Record<string, string> = {}): KeyValueStore {
 	const data = new Map<string, string>(Object.entries(initial));
@@ -24,7 +26,7 @@ function device(now: string, counterPrefix: string, history: Attempt[] = []) {
 
 async function server() {
 	const repo = createMemoryRepo();
-	const user = await repo.upsertUser('sub', 'me@example.com', null);
+	let user = await repo.upsertUser('sub', 'me@example.com', null);
 	const calls: SyncRequest[] = [];
 	const state = { down: false, signedIn: true, dropResponses: false };
 	const api: SyncApi = {
@@ -35,13 +37,20 @@ async function server() {
 			calls.push(structuredClone(request));
 			if (state.down) return { kind: 'failed' };
 			if (!state.signedIn) return { kind: 'unauthorized' };
-			const response = await repo.sync(user.id, request);
+			// The caps POST /api/sync enforces with a 400.
+			if (request.flags.length > MAX_FLAGS || requestBytes(request) > MAX_SYNC_BODY_BYTES) return { kind: 'failed' };
+			const response = { ...(await repo.sync(user.id, request)), account: user.id };
 			if (state.dropResponses) return { kind: 'failed' };
 			return { kind: 'ok', response };
 		},
 		async signOut() {}
 	};
-	return { api, calls, state, repo, userId: user.id };
+	/** Signs this browser into another account, as after a sign-out and sign-in. */
+	async function signInAs(sub: string) {
+		user = await repo.upsertUser(sub, `${sub}@example.com`, null);
+		return user.id;
+	}
+	return { api, calls, state, repo, userId: user.id, signInAs };
 }
 
 function bulk(count: number, prefix: string): Attempt[] {
@@ -102,7 +111,7 @@ describe('runSync', () => {
 		a.repo.recordAttempt(answer('q1'));
 
 		state.dropResponses = true;
-		expect(await runSync(a.repo, api)).toEqual({ status: 'failed' });
+		expect(await runSync(a.repo, api)).toEqual({ status: 'failed', changed: false });
 		expect(a.repo.syncState().pending).toHaveLength(1);
 
 		state.dropResponses = false;
@@ -117,7 +126,7 @@ describe('runSync', () => {
 		const a = device('2026-10-10T10:00:00.000Z', 'a');
 		state.down = true;
 		a.repo.recordAttempt(answer('q1'));
-		expect(await runSync(a.repo, api)).toEqual({ status: 'failed' });
+		expect(await runSync(a.repo, api)).toEqual({ status: 'failed', changed: false });
 		a.repo.recordAttempt(answer('q2'));
 		state.down = false;
 		await runSync(a.repo, api);
@@ -181,5 +190,197 @@ describe('runSync', () => {
 		const b = device('2026-10-11T10:00:00.000Z', 'b');
 		await runSync(b.repo, api);
 		expect(b.repo.attempts().map((attempt) => attempt.questionId)).toEqual(['q1', 'q2']);
+	});
+});
+
+describe('records stored before #158', () => {
+	it('syncs to completion instead of failing on every run, cleaning a bad note and dropping an unusable attempt', async () => {
+		const { api, repo: server_, userId } = await server();
+		const good = bulk(1, 'g')[0];
+		const store = memoryStore({
+			[KEYS.attempts]: JSON.stringify([good, { ...bulk(1, 'bad')[0], questionId: 'q\u0000' }]),
+			[KEYS.flags]: JSON.stringify([
+				{ id: 'deck/q0/question', at: '2026-10-01T00:00:00.000Z', deckId: 'deck', questionId: 'q0', stage: 'question', note: 'see\u0000 this\ud83d' }
+			])
+		});
+		const repo = new Repository(store, () => new Date('2026-10-02T00:00:00.000Z'));
+
+		expect(await runSync(repo, api)).toEqual({ status: 'ok', changed: false });
+		expect(repo.pendingAttempts(10)).toEqual([]);
+		const held = await server_.sync(userId, { cursor: 0, attempts: [], flags: [] });
+		expect(held.attempts).toEqual([good]);
+		expect(held.flags.map((flag) => flag.note)).toEqual(['see this\uFFFD']);
+	});
+});
+
+function manyFlags(count: number, note = 'n'): Flag[] {
+	return Array.from({ length: count }, (_, i) => ({
+		id: `deck/q${i}/question`,
+		at: new Date(Date.UTC(2026, 9, 1, 0, 0, 0, i)).toISOString(),
+		deckId: 'deck',
+		questionId: `q${i}`,
+		stage: 'question',
+		note
+	}));
+}
+
+/** A device whose storage already holds these flags. */
+function deviceWithFlags(flags: Flag[]) {
+	return new Repository(memoryStore({ [KEYS.flags]: JSON.stringify(flags) }), () => new Date('2026-10-02T00:00:00.000Z'));
+}
+
+describe('flags beyond one request', () => {
+	it('syncs more than MAX_FLAGS flags to another device, never over the flag cap', async () => {
+		const { api, calls } = await server();
+		const flags = manyFlags(MAX_FLAGS + 500);
+		expect(await runSync(deviceWithFlags(flags), api)).toMatchObject({ status: 'ok' });
+		expect(calls.every((call) => call.flags.length <= MAX_FLAGS)).toBe(true);
+
+		const other = device('2026-10-03T00:00:00.000Z', 'b');
+		expect(await runSync(other.repo, api)).toEqual({ status: 'ok', changed: true });
+		expect(other.repo.allFlags()).toHaveLength(flags.length);
+	});
+
+	it('keeps every request under the body cap when notes are long', async () => {
+		const { api, calls } = await server();
+		const flags = manyFlags(600, 'é'.repeat(1000));
+		expect(await runSync(deviceWithFlags(flags), api)).toMatchObject({ status: 'ok' });
+		expect(calls.length).toBeGreaterThan(1);
+		expect(calls.every((call) => requestBytes(call) <= MAX_SYNC_BODY_BYTES)).toBe(true);
+
+		const other = device('2026-10-03T00:00:00.000Z', 'b');
+		await runSync(other.repo, api);
+		expect(other.repo.allFlags()).toHaveLength(flags.length);
+	});
+
+	it('sends a flag until the server holds it, then only edits and deletions', async () => {
+		const { api, calls } = await server();
+		const one = device('2026-10-01T00:00:00.000Z', 'a');
+		const flag = one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'unclear' });
+		await runSync(one.repo, api);
+		await runSync(one.repo, api);
+		expect(calls.map((call) => call.flags.length)).toEqual([1, 0]);
+
+		one.clock.now = new Date('2026-10-01T01:00:00.000Z');
+		one.repo.removeFlag(flag.id);
+		await runSync(one.repo, api);
+		expect(calls.at(-1)!.flags).toEqual([{ ...flag, at: '2026-10-01T01:00:00.000Z', note: '', removed: true }]);
+
+		const other = device('2026-10-02T00:00:00.000Z', 'b');
+		await runSync(other.repo, api);
+		expect(other.repo.allFlags()).toMatchObject([{ id: flag.id, removed: true }]);
+		expect(other.repo.flags()).toEqual([]);
+	});
+
+	it('sends a flag again when it was edited while its request was in flight', async () => {
+		const backend = await server();
+		const one = device('2026-10-01T00:00:00.000Z', 'a');
+		one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'first' });
+		let edited = false;
+		const api: SyncApi = {
+			...backend.api,
+			async sync(request) {
+				const result = await backend.api.sync(request);
+				if (!edited) {
+					edited = true;
+					one.clock.now = new Date('2026-10-01T00:05:00.000Z');
+					one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'second' });
+				}
+				return result;
+			}
+		};
+		expect(await runSync(one.repo, api)).toMatchObject({ status: 'ok' });
+		const held = await backend.repo.sync(backend.userId, { cursor: 0, attempts: [], flags: [] });
+		expect(held.flags.map((flag) => flag.note)).toEqual(['second']);
+	});
+
+	it('sends every flag once from a device whose saved sync state predates pending flags', async () => {
+		const { api, calls, userId } = await server();
+		const flags = manyFlags(3);
+		const repo = new Repository(
+			memoryStore({
+				[KEYS.flags]: JSON.stringify(flags),
+				[KEYS.sync]: JSON.stringify({ account: userId, cursor: 0, pending: [] })
+			})
+		);
+		await runSync(repo, api);
+		await runSync(repo, api);
+		expect(calls.map((call) => call.flags.length)).toEqual([3, 0]);
+	});
+});
+
+describe('sync state per account', () => {
+	it('sends every attempt and flag again after signing in to another account on the same device', async () => {
+		const backend = await server();
+		const one = device('2026-10-01T00:00:00.000Z', 'a');
+		const attempt = one.repo.recordAttempt(answer('q1'));
+		const flag = one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'unclear' });
+		await runSync(one.repo, backend.api);
+
+		const second = await backend.signInAs('sub-b');
+		expect(await runSync(one.repo, backend.api)).toMatchObject({ status: 'ok' });
+		const held = await backend.repo.sync(second, { cursor: 0, attempts: [], flags: [] });
+		expect(held.attempts).toEqual([attempt]);
+		expect(held.flags).toEqual([flag]);
+	});
+});
+
+describe('rounds that make progress', () => {
+	const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+	const empty = { cursor: 0, attempts: [], flags: [] };
+
+	it('fits exactly SYNC_BATCH attempts and exactly MAX_FLAGS flags', () => {
+		const request = fitRequest(0, bulk(SYNC_BATCH + 1, 'a'), manyFlags(MAX_FLAGS + 1));
+		expect(request.attempts).toHaveLength(SYNC_BATCH);
+		expect(request.flags).toHaveLength(MAX_FLAGS);
+	});
+
+	it('fills the body to exactly the byte cap, and leaves out a record that cannot fit', () => {
+		const [blank] = manyFlags(1, '');
+		const room = MAX_SYNC_BODY_BYTES - bytes(empty) - bytes(blank);
+		const exact = fitRequest(0, [], [{ ...blank, note: 'x'.repeat(room) }]);
+		expect(exact.flags).toHaveLength(1);
+		expect(bytes(exact)).toBe(MAX_SYNC_BODY_BYTES);
+		expect(fitRequest(0, [], [{ ...blank, note: 'x'.repeat(room + 1) }]).flags).toEqual([]);
+	});
+
+	it('sends long attempts and flags in rounds that each fit the body cap', async () => {
+		const { api, calls, repo: backend, userId } = await server();
+		const long = (n: number) => 'é'.repeat(n);
+		const history = bulk(SYNC_BATCH, 'x').map((attempt) => ({
+			...attempt,
+			id: `${attempt.id}${long(180)}`,
+			deckId: long(200),
+			questionId: `${attempt.questionId}${long(150)}`,
+			pickedId: long(200),
+			correct: false,
+			followUp: { pickedId: long(200), correct: true },
+			reviewOf: { deckId: long(200), questionId: long(200) }
+		}));
+		expect(bytes({ ...empty, attempts: history })).toBeGreaterThan(MAX_SYNC_BODY_BYTES);
+		const one = device('2026-10-02T00:00:00.000Z', 'a', history);
+		one.repo.upsertFlag({ deckId: 'deck', questionId: 'q1', stage: 'question', note: 'unclear' });
+
+		expect(await runSync(one.repo, api)).toMatchObject({ status: 'ok' });
+		expect(calls.every((call) => bytes(call) <= MAX_SYNC_BODY_BYTES)).toBe(true);
+		const held = await backend.sync(userId, { cursor: 0, attempts: [], flags: [] });
+		expect(held.attempts).toHaveLength(SYNC_BATCH);
+		expect(held.flags).toHaveLength(1);
+	});
+
+	it('reports changes from earlier rounds when a later round fails', async () => {
+		const backend = await server();
+		const other = device('2026-10-01T00:00:00.000Z', 'b');
+		other.repo.recordAttempt(answer('q1'));
+		await runSync(other.repo, backend.api);
+
+		let round = 0;
+		const api: SyncApi = {
+			...backend.api,
+			async sync(request) {
+				return ++round === 2 ? { kind: 'failed' } : backend.api.sync(request);
+			}
+		};
+		expect(await runSync(deviceWithFlags(manyFlags(MAX_FLAGS + 1)), api)).toEqual({ status: 'failed', changed: true });
 	});
 });

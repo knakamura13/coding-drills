@@ -94,13 +94,15 @@ export async function syncNow(): Promise<void> {
 			again = false;
 			const outcome = await runSync(getRepository(), api);
 			if (outcome.status === 'signedOut') {
+				getRepository().resetSync();
 				account.status = 'signedOut';
 				account.user = null;
 				account.failed = false;
 				return;
 			}
 			account.failed = outcome.status === 'failed';
-			if (outcome.status === 'ok' && outcome.changed) account.version += 1;
+			// A failed run may still have applied changes from earlier rounds.
+			if (outcome.changed) account.version += 1;
 		} while (again);
 	} finally {
 		running = false;
@@ -154,6 +156,7 @@ export function firstSync(): Promise<void> {
 export async function signOut(): Promise<void> {
 	clearTimeout(timer);
 	await api.signOut();
+	getRepository().resetSync();
 	account.status = 'signedOut';
 	account.user = null;
 	account.failed = false;

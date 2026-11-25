@@ -58,7 +58,7 @@ describe('POST /api/sync', () => {
 	it('stores attempts and answers with the cursor and flags', async () => {
 		const res = await call(sync, signedIn(), post({ cursor: 0, attempts: [attempt], flags: [] }));
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ cursor: 1, attempts: [attempt], flags: [], more: false });
+		expect(await res.json()).toEqual({ cursor: 1, attempts: [attempt], flags: [], more: false, account: 1 });
 	});
 
 	it.each([
