@@ -147,6 +147,48 @@ describe('sync bookkeeping', () => {
 		expect(repo.attempts()).toEqual(held);
 	});
 
+	it('keeps only well-formed server records, without unknown keys, and counts only those as a change', () => {
+		const store = memoryStore();
+		const repo = new Repository(store, fixedNow);
+		const good = remote('srv1');
+		const flag: Flag = { id: 'f', at: AT, deckId: 'd', questionId: 'q', stage: 'question', note: 'n' };
+		const response = {
+			sent: [],
+			cursor: 2,
+			attempts: [{ ...good, junk: 'x' }, { ...remote('bad'), questionId: 'q\u0000' }] as Attempt[],
+			flags: [{ ...flag, junk: 1 }, { ...flag, id: 'g', stage: 'later' }] as unknown as Flag[]
+		};
+		expect(repo.applySync(response)).toBe(true);
+		expect(store.data.get(KEYS.attempts)).toBe(JSON.stringify([good]));
+		expect(JSON.parse(store.data.get(KEYS.flags)!)).toEqual([flag]);
+		expect(repo.applySync(response)).toBe(false);
+	});
+
+	it('does not let malformed server attempts push real ones past the cap', () => {
+		const many = Array.from({ length: MAX_ATTEMPTS }, (_, i) =>
+			remote(`r${String(i).padStart(6, '0')}`, new Date(Date.UTC(2026, 0, 1, 0, 0, 0, i)).toISOString(), `q${i}`)
+		);
+		const malformed = Array.from({ length: 5 }, (_, i) => ({ ...remote(`m${i}`, '2026-12-01T00:00:00.000Z'), pickedId: '' }));
+		const repo = new Repository(memoryStore(), fixedNow);
+		repo.applySync({ sent: [], cursor: 1, attempts: [...many, ...malformed], flags: [] });
+		expect(repo.attempts()).toHaveLength(MAX_ATTEMPTS);
+	});
+
+	it('forgets a pending id whose attempt no longer reads back', () => {
+		const good = remote('a1');
+		const store = memoryStore({
+			[KEYS.attempts]: JSON.stringify([good, { ...remote('a2'), questionId: 'q\u0000' }]),
+			[KEYS.sync]: JSON.stringify({ cursor: 1, pending: ['a1', 'a2'] })
+		});
+		const repo = new Repository(store, fixedNow, counter('n'));
+		repo.applySync({ sent: [], cursor: 1, attempts: [], flags: [] });
+		expect(repo.syncState().pending).toEqual(['a1']);
+
+		store.data.set(KEYS.sync, JSON.stringify({ cursor: 1, pending: ['a1', 'ghost'] }));
+		repo.recordAttempt(attempt('q2'));
+		expect(repo.syncState().pending).toEqual(['a1', 'n000001']);
+	});
+
 	it('never moves the cursor backwards', () => {
 		const repo = new Repository(memoryStore(), fixedNow);
 		repo.applySync({ sent: [], cursor: 9, attempts: [], flags: [] });

@@ -1,5 +1,5 @@
 import { localDay } from '$lib/domain/days';
-import { cleanNote, compareAttempts, readAttempt, readFlag } from './guards';
+import { cleanNote, compareAttempts, parseAttempt, readAttempt, readFlag } from './guards';
 import type { Attempt, Flag, FlagStage } from './types';
 
 /** The slice of the Web Storage API this app uses. */
@@ -98,7 +98,14 @@ export class Repository {
 	}
 
 	#writeAttempts(attempts: Attempt[]): void {
-		this.#write(KEYS.attempts, [...attempts].sort(compareAttempts).slice(-MAX_ATTEMPTS));
+		const kept = [...attempts].sort(compareAttempts).slice(-MAX_ATTEMPTS);
+		this.#write(KEYS.attempts, kept);
+		// A pending id whose attempt was trimmed or dropped can never be sent, so forget it.
+		const meta = this.#readSyncMeta();
+		if (!meta) return;
+		const held = new Set(kept.map((attempt) => attempt.id));
+		const pending = meta.pending.filter((id) => held.has(id));
+		if (pending.length !== meta.pending.length) this.#write(KEYS.sync, { ...meta, pending });
 	}
 
 	recordAttempt(input: Omit<Attempt, 'id' | 'at' | 'day'>): Attempt {
@@ -179,16 +186,22 @@ export class Repository {
 	applySync(result: { sent: string[]; cursor: number; attempts: Attempt[]; flags: Flag[] }): boolean {
 		const before = this.syncState();
 		const acknowledged = new Set(result.sent);
+		const local = this.attempts();
+		const known = new Set(local.map((attempt) => attempt.id));
 		this.#write(KEYS.sync, {
 			cursor: Math.max(before.cursor, result.cursor),
-			pending: before.pending.filter((id) => !acknowledged.has(id))
+			// An id whose attempt no longer reads back (dropped as malformed) can never be sent.
+			pending: before.pending.filter((id) => !acknowledged.has(id) && known.has(id))
 		});
 
 		let changed = false;
 
-		const local = this.attempts();
-		const known = new Set(local.map((attempt) => attempt.id));
-		const incoming = result.attempts.filter((attempt) => !known.has(attempt.id));
+		// The server's records go through the same checks as local storage, so only what
+		// the readers keep is written, and only that counts as a change.
+		const incoming = result.attempts
+			.map(parseAttempt)
+			.filter((attempt) => attempt !== null)
+			.filter((attempt) => !known.has(attempt.id));
 		if (incoming.length > 0) {
 			this.#writeAttempts([...local, ...incoming]);
 			changed = true;
@@ -196,7 +209,7 @@ export class Repository {
 
 		const flags = new Map(this.allFlags().map((flag) => [flag.id, flag]));
 		let flagsChanged = false;
-		for (const remote of result.flags) {
+		for (const remote of result.flags.map(readFlag).filter((flag) => flag !== null)) {
 			const held = flags.get(remote.id);
 			const winner = newerFlag(held, remote);
 			if (winner !== held) {

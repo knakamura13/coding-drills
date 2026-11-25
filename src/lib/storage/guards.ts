@@ -20,8 +20,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const UNSTORABLE = /[\u0000\p{Cs}]/u;
 /** Any control character (C0, DEL, C1) or half of a surrogate pair. Deck ids are kebab-case, so a real id has none. */
 const NOT_ID_TEXT = /[\p{Cc}\p{Cs}]/u;
-/** What a note may not hold: control characters other than tab, newline and carriage return, or half of a surrogate pair. */
-const NOT_NOTE_TEXT = /(?![\t\n\r])\p{Cc}|\p{Cs}/u;
+/** Control characters a note may not hold: every one but tab, newline and carriage return. */
+const NOTE_CONTROL = String.raw`(?![\t\n\r])\p{Cc}`;
+/** What a note may not hold: those control characters, or half of a surrogate pair. */
+const NOT_NOTE_TEXT = new RegExp(String.raw`${NOTE_CONTROL}|\p{Cs}`, 'u');
+const NOTE_CONTROLS = new RegExp(NOTE_CONTROL, 'gu');
 
 /** Whether a string can be stored by the server. The fake repo uses this to refuse what Postgres refuses. */
 export const isStorableText = (value: string): boolean => !UNSTORABLE.test(value);
@@ -39,7 +42,7 @@ const isNote = (value: unknown): value is string =>
  */
 export function cleanNote(raw: string): string {
 	let note = raw
-		.replace(/(?![\t\n\r])\p{Cc}/gu, '')
+		.replace(NOTE_CONTROLS, '')
 		.replace(/\p{Cs}/gu, '\uFFFD')
 		.trim();
 	if (note.length > MAX_NOTE_LENGTH) {
@@ -104,9 +107,14 @@ export function parseAttempt(value: unknown): Attempt | null {
  * existed get a deterministic id and the day they happened on this device, so
  * every read of the same record yields the same attempt.
  *
- * An attempt with a control character in an id is dropped, not repaired: deck
- * ids are kebab-case, so it names no question and counts toward no schedule,
- * and stripping the character could make it name a real one.
+ * An attempt with a control character in any id is dropped, not repaired.
+ * The deck and question ids come from kebab-case deck ids; the attempt id is a
+ * UUID or the legacy form above; `pickedId`, `followUp.pickedId` and
+ * `reviewOf` are built by the app from deck ids, cell indexes and marker names
+ * (`src/lib/domain/lesson.ts`). So an attempt the app recorded never carries
+ * one, and only tampered storage can. A bad `pickedId` or `reviewOf` still
+ * names a real question, so dropping it loses that answer; no users exist yet,
+ * and guessing the stripped id could record the wrong answer.
  */
 export function readAttempt(value: unknown): Attempt | null {
 	if (!isRecord(value) || !isIsoTime(value.at) || !isId(value.deckId) || !isId(value.questionId)) {

@@ -28,6 +28,7 @@ export interface Repo {
 	/**
 	 * Stores the request's attempts (ignoring ids already held) and flags (the
 	 * newer copy wins), then returns what the device is missing.
+	 * Precondition: every record has been through `parseAttempt` or `parseFlag`.
 	 */
 	sync(userId: number, request: SyncRequest): Promise<SyncResponse>;
 }

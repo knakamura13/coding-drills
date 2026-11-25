@@ -172,6 +172,12 @@ function contract(name: string, make: () => Promise<Repo>) {
 			expect(await postSync(repo, user, { cursor: 0, attempts: [followUp], flags: [] })).toBe(400);
 		});
 
+		it('answers 400 to a cursor past the integer seq column, and accepts the largest one', async () => {
+			const user = { id: userId, email: 'me@example.com', name: 'Me' };
+			expect(await postSync(repo, user, { cursor: 2 ** 31, attempts: [], flags: [] })).toBe(400);
+			expect(await postSync(repo, user, { cursor: 2 ** 31 - 1, attempts: [], flags: [] })).toBe(200);
+		});
+
 		it('stores only the known fields of an attempt or flag sent to the route', async () => {
 			const user = await repo.upsertUser(`sub-${name}-extra`, 'x@example.com', null);
 			const clean = attempt('extra', { reviewOf: { deckId: 'deck', questionId: 'q0' } });

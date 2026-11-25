@@ -13,10 +13,13 @@ import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, type SyncRequest } from '$l
 
 export const prerender = false;
 
+/** `attempts.seq` is a Postgres `integer`, so a larger cursor would fail in SQL. */
+const MAX_CURSOR = 2_147_483_647;
+
 function parseRequest(body: unknown): SyncRequest | null {
 	if (typeof body !== 'object' || body === null) return null;
 	const { cursor, attempts, flags } = body as Record<string, unknown>;
-	if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0) return null;
+	if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0 || cursor > MAX_CURSOR) return null;
 	if (!Array.isArray(attempts) || attempts.length > SYNC_BATCH * 2) return null;
 	if (!Array.isArray(flags) || flags.length > MAX_FLAGS) return null;
 	// Rebuilt from known fields, so unknown keys never reach storage or another device.

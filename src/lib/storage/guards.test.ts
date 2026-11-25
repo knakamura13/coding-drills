@@ -155,6 +155,14 @@ describe('cleanNote', () => {
 		expect(isFlag({ id: 'f', at: '2026-10-10T12:00:00.000Z', deckId: 'd', questionId: 'q', stage: 'question', note })).toBe(true);
 	});
 
+	it('agrees with the flag check on every UTF-16 code unit: it keeps exactly what the check accepts', () => {
+		const flag = { id: 'f', at: '2026-10-10T12:00:00.000Z', deckId: 'd', questionId: 'q', stage: 'question' };
+		for (let unit = 0; unit <= 0xffff; unit++) {
+			const note = `a${String.fromCharCode(unit)}b`;
+			expect(cleanNote(note) === note, `U+${unit.toString(16)}`).toBe(isFlag({ ...flag, note }));
+		}
+	});
+
 	it('always yields text the server can store', () => {
 		for (const raw of ['\u0000', '\ud800\udc00\ud800', '😀'.repeat(600), 'a\u0000'.repeat(700)]) {
 			const note = cleanNote(raw);
