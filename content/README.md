@@ -212,7 +212,7 @@ Highlight the line that starts a step, not the line that moves a pointer, or the
 
 ## Mapping a deck onto the tree
 
-Every question in `content/decks` is mapped to a skill path in `content/curriculum/<branch>.yaml`, under `drills:`. The build fails for a question that is not mapped.
+Every question in `content/decks` is mapped to a skill path in `content/curriculum/<branch>.yaml`, under `drills:`. The build fails for a question that is not mapped. A path's main line holds two to four skills (`MAX_PATH_SKILLS` in `src/lib/content/curriculum.ts`), so its checkpoint comes after a short run of skills.
 
 ```yaml
 - questionId: trace-sum-to-target

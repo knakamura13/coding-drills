@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadDecks } from './loadDecks.ts';
 import { loadCurriculum } from './loadCurriculum.ts';
-import { compileCurriculum, type BranchFile, type SourceQuestion } from './curriculum.ts';
+import { branchSchema, compileCurriculum, MAX_PATH_SKILLS, type BranchFile, type SourceQuestion } from './curriculum.ts';
 
 const PATH_TITLES = [
 	'Arrays and strings',
@@ -105,6 +105,18 @@ function branch(id: string, order: number, paths: BranchFile['paths'], drills: B
 function questions(...ids: string[]): SourceQuestion[] {
 	return ids.map((questionId) => ({ deckId: 'deck', questionId, followUpIds: [] }));
 }
+
+describe('path length', () => {
+	it(`allows up to ${MAX_PATH_SKILLS} skills on a path and rejects one more`, () => {
+		const withSkills = (count: number) => {
+			const long = path('long');
+			long.levels = Array.from({ length: count }, (_, index) => level(`long-${index}`));
+			return branch('foundations', 1, [long]);
+		};
+		expect(branchSchema.safeParse(withSkills(MAX_PATH_SKILLS)).success).toBe(true);
+		expect(branchSchema.safeParse(withSkills(MAX_PATH_SKILLS + 1)).success).toBe(false);
+	});
+});
 
 describe('shipped curriculum', () => {
 	const curriculum = loadCurriculum('content/curriculum', 'content/decks');
