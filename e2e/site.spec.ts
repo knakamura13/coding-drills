@@ -17,7 +17,7 @@ test.describe('deployment surface', () => {
 		expect(response.status()).toBe(200);
 		const manifest = await response.json();
 		expect(manifest).toMatchObject({
-			name: 'Coding Drills',
+			name: 'Facet Learning',
 			display: 'standalone',
 			start_url: '/',
 			theme_color: '#f6f7fb',
@@ -72,7 +72,7 @@ async function expectNoViolations(page: Page) {
 test.describe('accessibility', () => {
 	test('home', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByRole('heading', { name: 'Coding Drills', level: 1 })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Facet Learning', level: 1 })).toBeVisible();
 		// The next-up card names its deck, so its "Start" says where it leads.
 		await expect(page.getByRole('link', { name: /^Start / })).toBeVisible();
 		await expectNoViolations(page);

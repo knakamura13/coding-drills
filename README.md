@@ -1,4 +1,4 @@
-# coding-drills
+# Facet Learning
 
 Quiz drills for coding-interview topics, built around one rule: **a wrong answer is always followed by a follow-up question that checks why it was wrong.**
 
