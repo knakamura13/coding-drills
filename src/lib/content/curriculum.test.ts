@@ -56,7 +56,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 1, rewrite: 0, exam: 2, retire: 21 },
+	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -178,7 +178,15 @@ describe('shipped curriculum', () => {
 		}
 
 		const feasible = byId.get('feasible-limits')!.checkpoints[0]!;
-		for (const skillId of ['discard-sorted-half', 'identify-local-rule', 'price-primitive', 'evaluate-one-limit']) {
+		for (const skillId of [
+			'locate-insertion-boundary',
+			'retain-equal-side',
+			'identify-sorted-half',
+			'choose-rotated-side',
+			'identify-local-rule',
+			'price-primitive',
+			'evaluate-one-limit'
+		]) {
 			expect(feasible.requires, skillId).toContain(skillId);
 		}
 		expect(feasible.requires).not.toContain('follow-reference');

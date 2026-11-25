@@ -1,6 +1,6 @@
 id: feasible-limits-checkpoint
 title: "Feasible limits: checkpoint"
-description: Find the smallest feasible limit on new inputs, and count what the search reads. Each item combines the skills that lead into the checkpoint.
+description: Find the smallest feasible limit, choose a search for a new task, find a pass that miscounts, and count what the search reads. Most items combine the Feasible limits skills.
 heading: Which one is right?
 
 questions:
@@ -102,8 +102,8 @@ questions:
     tags: [binary-search, greedy]
     prompt: >-
       The files stay in order and can't be split, and a session's load may equal the limit. The
-      cells are the limits 11 to 18. Tap the smallest limit that fits the files in at most `d`
-      sessions.
+      cells are the limits 11 to 18. Tap the smallest feasible limit, the smallest that fits the
+      files into at most `d` sessions.
     code: |
       sizes = [2, 11, 4, 6, 3, 7]
       d = 3
@@ -122,99 +122,17 @@ questions:
       - index: 1
         explanation: Run the pass at 12. Can the 2 and the 11 share a session?
       - index: 3
-        explanation: 14 fits. Does a smaller limit fit too?
+        explanation: 14 is feasible. Is a smaller limit feasible too?
       - index: 4
-        explanation: 15 fits. Does a smaller limit fit too?
+        explanation: 15 is feasible. Is a smaller limit feasible too?
       - index: 5
-        explanation: 16 fits. Does a smaller limit fit too?
+        explanation: 16 is feasible. Is a smaller limit feasible too?
       - index: 6
         explanation: >-
           17 is the first limit that needs only two sessions. Does the question ask for exactly
           `d`, or at most `d`?
       - index: 7
-        explanation: 18 fits, but it is not the smallest that does.
-
-  - id: checkpoint-fewer-than-d
-    heading: Which fix works?
-    tags: [binary-search]
-    prompt: |-
-      ```python
-      def smallest_limit(sizes, d):
-          lo, hi = max(sizes), sum(sizes)
-          while lo < hi:
-              mid = (lo + hi) // 2
-              if sessions(sizes, mid) < d:
-                  hi = mid
-              else:
-                  lo = mid + 1
-          return lo
-      ```
-
-      `smallest_limit([2, 6, 7, 9, 4, 3], 3)` returns 16, but 15 already fits: [2, 6, 7], [9, 4]
-      and [3]. Which one-line change makes it correct for every list and every `d`?
-    options:
-      - id: at-most
-        text: "`if sessions(sizes, mid) <= d:`"
-        explanation: >-
-          With `<`, a limit that needs exactly `d` sessions counts as failing, so the search finds
-          the first limit that needs fewer. `<=` asks "at most `d`?", whose answers turn from no
-          to yes once. The call then returns 15.
-      - id: exactly
-        text: "`if sessions(sizes, mid) == d:`"
-        explanation: The first probe is 20, which needs 2 sessions. Which way does the search go?
-      - id: minus-one
-        text: "`return lo - 1`"
-        explanation: Try the same sizes with `d = 2`.
-      - id: hi-minus
-        text: "`hi = mid - 1`"
-        explanation: Which limits does the test still treat as failing?
-    correct: at-most
-    followUps:
-      exactly:
-        prompt: >-
-          With `== d`, the first probe, 20, needs 2 sessions, not 3. What does the search do
-          next?
-        options:
-          - id: goes-up
-            text: It moves `lo` up to 21
-          - id: goes-down
-            text: It moves `hi` down to 20
-          - id: stops
-            text: It stops, since 20 fits
-        correct: goes-up
-        explanation: >-
-          A no moves `lo` to 21, away from 15, and the call ends up returning 31. "Exactly `d`"
-          holds only on a stretch in the middle, so a no can mean too small or too
-          large. "At most `d`" says no, then yes, so every answer tells the search which way to
-          go.
-      minus-one:
-        prompt: With `return lo - 1`, what does `smallest_limit([2, 6, 7, 9, 4, 3], 2)` return?
-        options:
-          - id: thirty
-            text: '30'
-          - id: fifteen
-            text: '15'
-          - id: sixteen
-            text: '16'
-        correct: thirty
-        explanation: >-
-          It returns 30, although 16 already fits in 2 sessions: [2, 6, 7] and [9, 4, 3]. The
-          strict test finds the first limit that needs fewer than `d` sessions. That can be far
-          past the answer, so subtracting 1 patches one list and not the next.
-      hi-minus:
-        prompt: With `< d` still in place, does a limit that needs exactly 3 sessions pass?
-        options:
-          - id: still-fails
-            text: No, it still fails
-          - id: passes
-            text: Yes, now it passes
-          - id: last-probe
-            text: Only on the last probe
-        correct: still-fails
-        explanation: >-
-          `< d` still rejects a limit that needs exactly 3, so 15 fails and the call still returns
-          16. The bug is the question the loop asks, not the bound it moves. `hi = mid - 1` also
-          throws away a probe that passed, which can be the answer.
+        explanation: 18 is feasible, but it is not the smallest feasible limit.
 
   - id: checkpoint-reads-per-search
     heading: How many reads?
@@ -258,10 +176,10 @@ questions:
           - id: one-read
             text: One read, as with `a[mid]` in a sorted list
           - id: log-reads
-            text: About 9 reads, the log of 300
+            text: About 9 reads, one for each halving of 300
         correct: full-pass
         explanation: >-
-          A probe asks "does this limit fit?", and only a pass over every file can answer. The
+          A probe asks "is this limit feasible?", and only a pass over every file can answer. The
           total is the number of probes times that pass.
       halves-files:
         prompt: What does each probe cut in half?
@@ -288,4 +206,158 @@ questions:
         correct: settles-side
         explanation: >-
           Feasibility turns from no to yes once, so one probe settles half the range. That is
-          why the probe count grows with log R, not with R.
+          why doubling the range adds only one probe.
+
+  - id: checkpoint-pick-speed-search
+    heading: Which search finds it?
+    tags: [binary-search]
+    prompt: >-
+      A reader must finish `n` chapters, `pages[i]` pages each, within `h` days, where `h` is at
+      least `n`. Each day they read at most `k` pages, all from one chapter, so a 7-page chapter
+      takes 3 days at `k = 3`. The task is the smallest `k` that finishes in time. For
+      `pages = [4, 9, 5, 12]` and `h = 8` the answer is 5. Which search finds `k` for every input?
+    options:
+      - id: right
+        text: Search 1 to `max(pages)`, testing whether the days needed are at most `h`
+        explanation: >-
+          At `k = max(pages)` each chapter takes one day, so `n` days are enough and that `k`
+          works. A larger `k` never needs more days, so the answers turn from no to yes once.
+          Here the search finds 5, since at 4 the reader needs 9 days.
+      - id: copy-bounds
+        text: Search `max(pages)` to `sum(pages)`, testing whether the days needed are at most `h`
+        explanation: Here that search returns 12. Can the answer be below the longest chapter?
+      - id: exactly
+        text: Search 1 to `max(pages)`, testing whether the days needed are exactly `h`
+        explanation: The first probe is 6, which needs 6 days. Which way does the search move?
+      - id: total
+        text: Search 1 to `max(pages)`, testing whether `sum(pages) <= k * h`
+        explanation: That test accepts 4. How many days does the reader need at 4?
+    correct: right
+    followUps:
+      copy-bounds:
+        prompt: A file had to fit whole in one session. Does a chapter have to be read in one day?
+        options:
+          - id: spread
+            text: No, a long chapter can take several days, so `k` can be below `max(pages)`
+          - id: one-day
+            text: Yes, so `k` must be at least the longest chapter
+          - id: last-only
+            text: Only the last chapter
+        correct: spread
+        explanation: >-
+          Reading a chapter can spread over days, so the lower bound the sessions search needed
+          does not carry over. Starting at the longest chapter skips the answer 5 and returns 12.
+      exactly:
+        prompt: As `k` goes from 1 to 6, the days needed are 30, 16, 11, 9, 7 and 6. Does any `k` need exactly 8 days?
+        options:
+          - id: skips
+            text: No, the count jumps from 9 to 7, so the test never says yes
+          - id: five
+            text: Yes, `k = 5`
+          - id: from-five
+            text: Yes, every `k` from 5 up
+        correct: skips
+        explanation: >-
+          The days needed can step over `h`. "Exactly `h`" then says no at every probe, and the
+          search climbs to 12. "At most `h`" turns from no to yes once, which is what the search
+          needs.
+      total:
+        prompt: "At `k = 4` the total test holds, since 30 is at most 4 × 8 = 32. How many days does the reader need?"
+        options:
+          - id: nine
+            text: '9, which is 1 + 3 + 2 + 3, more than 8'
+          - id: eight
+            text: 8, since 32 pages fit in 8 days
+          - id: seven
+            text: 7, since 30 / 4 rounds down to 7
+        correct: nine
+        explanation: >-
+          A day's reading stays in one chapter, so a chapter's last day is often not full. The
+          total test treats the pages as one pile and accepts a speed that is too slow.
+
+  - id: checkpoint-debug-sessions
+    heading: Which call does it fail on?
+    tags: [binary-search, greedy, python]
+    prompt: |-
+      A suggested solution counts the sessions the greedy pass needs at limit `x`: files stay in
+      order and whole, and a new session opens when the next file would push the load over `x`.
+      One detail is slightly off:
+
+      ```python
+      def sessions(sizes, x):
+          count, load = 1, 0
+          for s in sizes:
+              if load + s > x:
+                  count += 1
+                  load = 0
+              else:
+                  load += s
+          return count
+      ```
+
+      Which call returns a wrong count?
+    options:
+      - id: lost-load
+        text: '`sessions([3, 8, 9], 10)`'
+        explanation: >-
+          The 8 opens the second session, but the `else` skips `load += s`, so `load` stays 0
+          instead of 8. Then 0 + 9 is not over 10, so the 9 joins and the call returns 2. The real
+          sessions are [3], [8] and [9], which is 3. Moving `load += s` out of the `else`, below
+          the `if`, fixes it.
+      - id: small-tail
+        text: '`sessions([7, 4, 1, 1], 10)`'
+        explanation: >-
+          The 4 opens the second session with `load` at 0 instead of 4. The two 1s join either
+          way, since 4 + 1 + 1 is 6, so the call returns 2, which is right.
+      - id: exact-tail
+        text: '`sessions([6, 6, 2], 8)`'
+        explanation: >-
+          The second 6 opens a session with `load` at 0 instead of 6. The 2 joins either way,
+          since 6 + 2 is 8, not over 8, so the call returns 2, which is right.
+      - id: last-opens
+        text: '`sessions([5, 5, 6], 10)`'
+        explanation: >-
+          The 6 opens the second session, and no file comes after it, so the load it should have
+          added is never read. The call returns 2, which is right.
+    correct: lost-load
+    followUps:
+      small-tail:
+        prompt: In `sessions([7, 4, 1, 1], 10)` the second session should hold 4, 1 and 1. Does the lost 4 change any decision?
+        options:
+          - id: no
+            text: No, the 1s join whether the load counts the 4 or not
+          - id: third
+            text: Yes, the 1s open a third session
+          - id: twice
+            text: Yes, the 4 is counted twice
+        correct: no
+        explanation: >-
+          A load that is too small changes the count only when a later file would not fit beside
+          the real load but fits beside the smaller one. Here 4 + 1 + 1 is only 6.
+      exact-tail:
+        prompt: With the real load, does the 2 fit beside the second 6 at limit 8?
+        options:
+          - id: fits
+            text: Yes, 6 + 2 is 8, which is not over 8
+          - id: over
+            text: No, 6 + 2 is over 8
+          - id: always-opens
+            text: No, a file after a new session always opens another
+        correct: fits
+        explanation: >-
+          The real load, 6, and the buggy one, 0, both let the 2 join, so the count comes out the
+          same.
+      last-opens:
+        prompt: When does skipping `load += s` for the file that opens a session change the count?
+        options:
+          - id: later-file
+            text: When a later file would not fit beside the file that opened the session
+          - id: exact-load
+            text: Whenever a load equals the limit exactly
+          - id: any-open
+            text: Whenever a new session opens
+        correct: later-file
+        explanation: >-
+          In `[5, 5, 6]` the 6 opens the last session and nothing follows it, so its load is never
+          compared again. In `[3, 8, 9]` the 9 would not fit beside the 8, and the lost load lets
+          it in.
