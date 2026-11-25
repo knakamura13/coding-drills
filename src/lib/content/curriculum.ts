@@ -33,7 +33,7 @@ const text = (max: number) => z.string().trim().min(1).max(max);
  */
 export const DEPTHS = ['interview', 'deep'] as const;
 export type Depth = (typeof DEPTHS)[number];
-/** The depth of a path, skill or drill that does not set one. */
+/** The depth of a path that does not set one. A skill or drill without one takes its parent's. */
 const DEFAULT_DEPTH: Depth = 'interview';
 
 const depth = z.enum(DEPTHS).optional();
@@ -397,6 +397,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		const needs = dedupe(path.needs ?? []);
 		const entrance = [...path.after.map((prerequisite) => lastMain.get(prerequisite)!), ...needs];
 		const skills: CurriculumSkill[] = [];
+		const pathDepth = path.depth ?? DEFAULT_DEPTH;
 		path.levels.forEach((level, index) => {
 			const skill: CurriculumSkill = {
 				kind: 'skill',
@@ -406,7 +407,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				branchId: branch.id,
 				line: 'main',
 				after: index === 0 ? [...entrance] : [path.levels[index - 1]!.id],
-				depth: level.depth ?? DEFAULT_DEPTH
+				depth: level.depth ?? pathDepth
 			};
 			skills.push(skill);
 			skillIndex.set(skill.id, skill);
@@ -421,13 +422,12 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					branchId: branch.id,
 					line: fork.id,
 					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id],
-					depth: level.depth ?? DEFAULT_DEPTH
+					depth: level.depth ?? pathDepth
 				};
 				skills.push(skill);
 				skillIndex.set(skill.id, skill);
 			});
 		}
-		const pathDepth = path.depth ?? DEFAULT_DEPTH;
 		for (const skill of skills) {
 			if (shallower(skill.depth, pathDepth)) {
 				throw new ContentError(`skill "${skill.id}" is ${skill.depth}, shallower than its path "${pathId}" (${pathDepth})`);
@@ -593,11 +593,11 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					throw new ContentError(`drill "${drill.questionId}" names skill "${drill.skill}", which is not on path "${drill.path}"`);
 				}
 			}
-			const drillDepth = drill.depth ?? DEFAULT_DEPTH;
 			const drillPath = compiledPaths.get(drill.path)!;
 			const parent = drill.skill
 				? { kind: 'skill', id: drill.skill, depth: drillPath.skills.find((skill) => skill.id === drill.skill)!.depth }
 				: { kind: 'path', id: drill.path, depth: drillPath.depth };
+			const drillDepth = drill.depth ?? parent.depth;
 			if (shallower(drillDepth, parent.depth)) {
 				throw new ContentError(
 					`drill "${drill.questionId}" is ${drillDepth}, shallower than its ${parent.kind} "${parent.id}" (${parent.depth})`

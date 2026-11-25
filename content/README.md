@@ -220,7 +220,7 @@ Every question in `content/decks` is mapped to a skill path in `content/curricul
   path: pointer-scans
   skill: choose-moving-end # keep and rewrite only: the skill it teaches. Without it, drills pair with skills by list position.
   # variant: true # keep only, with an explicit skill. Use this on fresh review examples.
-  # depth: deep # interview (the default) or deep; never shallower than its skill, or its path when it names none
+  # depth: deep # interview or deep; defaults to its skill's depth, or its path's when it names none, and is never shallower
   note: What the drill asks.
 - questionId: checkpoint-unique-pairs
   disposition: exam
@@ -233,7 +233,7 @@ Every question in `content/decks` is mapped to a skill path in `content/curricul
 
 A checkpoint can list `mix: [kind, ...]` (only on a path with one checkpoint). Every exam then includes at least one item whose `covers` names each kind, and a checkpoint is passed only when each kind was answered right. A skill needs at least three drills, since it is mastered only while its latest answer on every drill was right.
 
-A path, each skill (an entry in a path's or a fork's `levels`) and each drill can set a `depth`. `interview` is the default when it is left out: what a learner most likely needs for a coding interview. `deep` is algorithms-course material beyond that. The levels are ordered, shallowest first (`DEPTHS` in `src/lib/content/curriculum.ts`), so a third can be added later, and a learner will see everything at or below the level they choose (#155). An item can be deeper than what holds it, never shallower: a skill is at least as deep as its path, and a drill at least as deep as the skill it names, or its path when it names none. So on a deep path, set `depth: deep` on every skill and drill too. The build fails on an item that is shallower.
+A path, each skill (an entry in a path's or a fork's `levels`) and each drill can set a `depth`. A path that leaves it out is `interview`: what a learner most likely needs for a coding interview. A skill or drill that leaves it out takes its parent's depth. `deep` is algorithms-course material beyond that. The levels are ordered, shallowest first (`DEPTHS` in `src/lib/content/curriculum.ts`), so a third can be added later, and a learner will see everything at or below the level they choose (#155). An item can be deeper than what holds it, never shallower: a skill is at least as deep as its path, and a drill at least as deep as the skill it names, or its path when it names none. So setting `depth: deep` on a path makes its skills and drills deep too. The build fails on an item set shallower than its parent.
 
 ## Tags
 
