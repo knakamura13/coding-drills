@@ -1,6 +1,6 @@
 id: boundary-search-checkpoint
 title: "Boundary search: checkpoint"
-description: Repair a boundary update, pick the call that breaks a suggested solution, and search a rotated list, on new values. Each item combines the two skills that lead into its checkpoint.
+description: Repair a boundary update, pick the call that breaks a suggested solution, and search a rotated list, on new values. Most items combine the two skills that lead into its checkpoint.
 heading: Which one is right?
 
 questions:
@@ -34,7 +34,9 @@ questions:
           the `hi` side. The call then returns 1.
       - id: minus-one
         text: "`return lo - 1`"
-        explanation: Try an `x` that is not in the list.
+        explanation: >-
+          That returns 3 here, the last 9, not the first. The `<=` test still sends `lo` past
+          every copy, so changing the return only lands on a different wrong cell.
       - id: hi-minus
         text: "`hi = mid - 1` in the `else` branch"
         explanation: Trace the call again. Which cells does the first probe drop?
@@ -253,19 +255,16 @@ questions:
     heading: Which call does it fail on?
     tags: [binary-search]
     prompt: |-
-      A suggested solution checks whether the sorted list `a` holds `x`. It finds the first index
-      with `a[i] >= x` and then compares that cell with `x`, but one line is slightly off:
+      A suggested solution checks whether the sorted list `a` holds `x`. `bisect_left(a, x)`
+      returns the first index whose value is at least `x`, or `len(a)` when no value is. One line
+      is slightly off:
 
       ```python
+      from bisect import bisect_left
+
       def contains(a, x):
-          lo, hi = 0, len(a)
-          while lo < hi:
-              mid = (lo + hi) // 2
-              if a[mid] < x:
-                  lo = mid + 1
-              else:
-                  hi = mid
-          return a[lo] == x
+          i = bisect_left(a, x)
+          return a[i] == x
 
       a = [4, 9, 15, 22]
       ```
@@ -275,14 +274,15 @@ questions:
       - id: above-all
         text: "`contains(a, 30)`"
         explanation: >-
-          No value is at least 30, so the loop ends with `lo = 4`, which is `len(a)`. The last line
+          No value is at least 30, so `bisect_left` returns 4, which is `len(a)`. The last line
           then reads `a[4]`, past the end, and raises `IndexError`. The fix is
-          `return lo < len(a) and a[lo] == x`.
+          `return i < len(a) and a[i] == x`: `and` stops at a false `i < len(a)`, so `a[i]` is
+          read only when `i` is a real index.
       - id: below-all
         text: "`contains(a, 2)`"
         explanation: >-
-          Every value is at least 2, so `lo` stays on 0. `a[0]` is 4, not 2, so the call returns
-          `False`, which is right.
+          Every value is at least 2, so `bisect_left` returns 0. `a[0]` is 4, not 2, so the call
+          returns `False`, which is right.
       - id: between
         text: "`contains(a, 12)`"
         explanation: >-
@@ -296,33 +296,33 @@ questions:
     correct: above-all
     followUps:
       below-all:
-        prompt: For `contains(a, 2)`, where does the loop leave `lo`, and what happens next?
+        prompt: For `contains(a, 2)`, which index does `bisect_left` return, and what happens next?
         options:
           - id: zero-false
-            text: On index 0, and `a[0]` is 4, so it returns `False`
+            text: Index 0, and `a[0]` is 4, so it returns `False`
           - id: minus-one
-            text: On index -1, so it raises an error
+            text: Index -1, so it raises an error
           - id: zero-true
-            text: On index 0, and it returns `True`
+            text: Index 0, and it returns `True`
         correct: zero-false
         explanation: >-
-          `lo` never goes below 0. A target smaller than every value leaves `lo` on the first
+          `bisect_left` never returns less than 0. An `x` smaller than every value gives the first
           cell, a real cell, so comparing it is safe.
       between:
-        prompt: When `x` is missing but some value is larger, which index does the loop end on?
+        prompt: When `x` is missing but some value is larger, which index does `bisect_left` return?
         options:
           - id: first-larger
-            text: The first value larger than `x`, a real cell
+            text: The index of the first value larger than `x`, a real cell
           - id: last-smaller
-            text: The last value smaller than `x`
+            text: The index of the last value smaller than `x`
           - id: past-end
-            text: The slot past the end
+            text: "`len(a)`, past the end"
         correct: first-larger
         explanation: >-
           That cell exists, so the comparison reads a real value and returns `False`. Only an `x`
-          larger than every value leaves `lo` past the end.
+          larger than every value gives `len(a)`, past the end.
       last-value:
-        prompt: "`contains(a, 22)` ends with `lo = 3`. Is index 3 a real cell of `a`?"
+        prompt: "`bisect_left(a, 22)` returns 3. Is index 3 a real cell of `a`?"
         options:
           - id: real
             text: Yes, the last one, so the comparison is safe
@@ -332,8 +332,8 @@ questions:
             text: Only if `a` holds more than four values
         correct: real
         explanation: >-
-          A four-item list has indices 0 to 3. The loop ends past the end only when no value is at
-          least `x`, and 22 is in the list.
+          A four-item list has indices 0 to 3. `bisect_left` returns `len(a)` only when no value is
+          at least `x`, and 22 is in the list.
 
   - id: checkpoint-rotated-trace
     format: step-trace
