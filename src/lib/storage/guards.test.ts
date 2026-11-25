@@ -19,6 +19,11 @@ describe('isAttempt', () => {
 		expect(isAttempt({ ...valid, followUp: undefined })).toBe(true);
 	});
 
+	it('accepts an older attempt that still carries the retired examRulesVersion key', () => {
+		expect(isAttempt({ ...valid, examRulesVersion: 16 })).toBe(true);
+		expect(readAttempt({ ...valid, examRulesVersion: 6 })).not.toBeNull();
+	});
+
 	it('accepts a tap-cell attempt whose picked id is a cell index and that has no follow-up', () => {
 		expect(isAttempt({ ...valid, pickedId: '0', correct: true, followUp: undefined })).toBe(true);
 		expect(isAttempt({ ...valid, pickedId: '12', correct: false, followUp: undefined })).toBe(true);

@@ -90,8 +90,6 @@ const drillSchema = z
 		 * checkpoints needs it, or the drills are paired with them by list position.
 		 */
 		checkpoint: id.optional(),
-		/** A correct older attempt passed the original single-item checkpoint. */
-		legacyPassBefore: z.number().int().min(2).optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
 		note: text(400)
@@ -215,7 +213,6 @@ export interface CurriculumDrill {
 	tests?: readonly string[];
 	/** For an exam drill: the checkpoint it belongs to, when the mapping names one. */
 	checkpointId?: string;
-	legacyPassBefore?: number;
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
 	note: string;
@@ -533,9 +530,6 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			}
 			const source = questionsById.get(drill.questionId);
 			if (!source) throw new ContentError(`drill "${drill.questionId}" is not a question id in content/decks`);
-			if (drill.legacyPassBefore && drill.disposition !== 'exam') {
-				throw new ContentError(`drill "${drill.questionId}" sets legacyPassBefore, which only an exam drill can do`);
-			}
 			if (drill.covers && drill.disposition !== 'exam') {
 				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
 			}
@@ -578,7 +572,6 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				...(drill.skill ? { skillId: drill.skill } : {}),
 				...(drill.variant ? { variant: drill.variant } : {}),
 				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
-				...(drill.legacyPassBefore ? { legacyPassBefore: drill.legacyPassBefore } : {}),
 				...(drill.checkpoint ? { checkpointId: drill.checkpoint } : {}),
 				covers: dedupe(drill.covers ?? []),
 				note: drill.note

@@ -1,20 +1,3 @@
-/**
- * Version 4 expands several one-item checkpoints to full five-item sittings.
- * Version 5 expands the top-K-or-merge checkpoint from two items to a full sitting.
- * Version 6 expands the select-window-method checkpoint from one item to a full sitting.
- * Version 7 expands the validate-or-ancestor checkpoint from two items to a full sitting.
- * Version 8 grows the Greedy choices checkpoint pool.
- * Version 9 grows the Tree summaries checkpoint pool.
- * Version 10 grows the DP storage checkpoint pool.
- * Version 11 grows the Grid tables checkpoint pool.
- * Version 12 grows the Greedy scheduling checkpoint pool.
- * Version 13 grows the Weighted paths checkpoint pool.
- * Version 14 grows the One-dimensional tables checkpoint pool.
- * Version 15 grows the Subsequence tables checkpoint pool.
- * Version 16 grows the Enumerating choices checkpoint pool.
- */
-export const EXAM_RULES_VERSION = 16;
-
 export interface QuestionRef {
 	deckId: string;
 	questionId: string;
@@ -33,8 +16,6 @@ export interface Attempt extends QuestionRef {
 	day: string;
 	/** The due drill this fresh example reviewed. */
 	reviewOf?: QuestionRef;
-	/** Exam rules in effect when the attempt was saved. Older attempts omit this. */
-	examRulesVersion?: number;
 	/**
 	 * The option picked on a multiple-choice question, or the cell index for a
 	 * tap-cell question (`"0"`, `"1"`, …).
