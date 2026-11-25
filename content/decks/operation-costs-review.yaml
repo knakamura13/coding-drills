@@ -48,7 +48,7 @@ questions:
         correct: keys-hash
         explanation: >-
           Membership on a dictionary is about keys, which are hashed. Only the values view has to
-          be scanned, because nothing indexes the values.
+          be scanned, because the values are not stored by hash.
       read-key:
         prompt: How does `ages['cy']` find 45?
         options:
@@ -119,8 +119,9 @@ questions:
     heading: Which pair fits?
     tags: [complexity, python, queue]
     prompt: >-
-      A print server takes new jobs at the back and always prints the oldest job next. Which pair
-      of calls makes both steps O(1) and prints the oldest job first?
+      A print server takes new jobs at the back and always prints the oldest job next. A deque's
+      `appendleft` adds an item at the front. Which pair of calls makes both steps O(1) and prints
+      the oldest job first?
     options:
       - id: list-pop-front
         text: 'A list: `jobs.append(j)` to add, `jobs.pop(0)` to take'
@@ -297,7 +298,7 @@ questions:
         prompt: How many comparisons does phase 2 make for 4 scores?
         options:
           - id: six
-            text: 6, one for each pair of positions
+            text: 6, one for each pair of indices
           - id: four
             text: 4, one per score
           - id: eight
@@ -394,8 +395,9 @@ questions:
           return out
       ```
 
-      `nums` holds 1,000 items. Counting each slot written as one step, how many steps does the
-      call take?
+      `out.reverse()` reverses `out` in place by swapping its first and last items, then the next
+      pair inward, and so on. `nums` holds 1,000 items. Counting each slot written as one step, how
+      many steps does the call take?
     options:
       - id: two-thousand
         text: About 2,000, from 1,000 for the copy and then 1,000 for the reverse
@@ -437,8 +439,8 @@ questions:
             text: It touches only the first half of the list
         correct: memory
         explanation: >-
-          Extra memory and time are separate costs. `reverse` uses O(1) extra memory and O(n)
-          time, because every slot ends up holding a different item.
+          Extra space and time are separate costs. `reverse` uses O(1) extra space and O(n) time,
+          because it writes a value into almost every slot.
 
   - id: set-lookups-in-loop-review
     heading: How many steps?
@@ -516,6 +518,84 @@ questions:
         explanation: >-
           O(1) prices one operation. The total is that price times how often it runs, so a loop of
           `n` constant tests is O(n).
+
+  - id: count-with-dict-review
+    heading: How does it grow?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      ```python
+      def tally(words):
+          counts = {}
+          for w in words:
+              counts[w] = counts.get(w, 0) + 1
+          return counts
+      ```
+
+      `counts.get(w, 0)` reads the count stored for `w`, or 0 when `w` is not a key yet. Each
+      dictionary read or write is about one step on average. For `n` words, what is the Big-O of
+      the call, on average?
+    options:
+      - id: linear
+        text: O(n), since each of the n passes does a fixed number of one-step updates
+        explanation: >-
+          Each pass does one `get` and one write, about two steps on average, and the loop makes
+          `n` passes. A constant cost repeated `n` times is O(n).
+      - id: constant
+        text: O(1), since a dictionary update is O(1)
+        explanation: >-
+          One update is about one step on average, but the loop makes one for every word. The
+          question asks about the whole pass, not a single update.
+      - id: n-log-n
+        text: O(n log n), as for sorting the words before counting them
+        explanation: >-
+          Sorting first and counting runs of equal words would cost n log n. A dictionary finds
+          each key from its hash, so no sort is needed.
+      - id: quadratic
+        text: O(n²), since each word is compared with the words counted before it
+        explanation: >-
+          That would be the cost of scanning the earlier words, as `words.count(w)` does. A
+          dictionary finds the key from its hash without reading the other keys.
+    correct: linear
+    followUps:
+      constant:
+        prompt: A dictionary update is O(1) on average. Why is the whole call not O(1)?
+        options:
+          - id: repeated
+            text: The update runs once for each of the n words, so its cost is paid n times
+          - id: slows
+            text: The dictionary gets slower as it grows
+          - id: first-only
+            text: Only the first update is O(1), and later ones cost more
+        correct: repeated
+        explanation: >-
+          The total is the cost of one pass times the number of passes. Constant work repeated `n`
+          times is O(n).
+      n-log-n:
+        prompt: Which way of counting costs n log n?
+        options:
+          - id: sort-runs
+            text: Sort the words, then count runs of equal words
+          - id: dict-pass
+            text: Update a dictionary while reading the words once
+          - id: count-each
+            text: Call `words.count(w)` for every word
+        correct: sort-runs
+        explanation: >-
+          The sort costs n log n, and counting the runs is one more pass. The dictionary skips the
+          sort, and `count` for every word would be O(n²).
+      quadratic:
+        prompt: What would make a counting function O(n²)?
+        options:
+          - id: scan-each
+            text: Scanning the whole list again for every word, as `words.count(w)` in a loop does
+          - id: one-read
+            text: Reading each word once
+          - id: dict-key
+            text: Looking a key up in a dictionary
+        correct: scan-each
+        explanation: >-
+          An O(n) scan run `n` times is O(n²). A dictionary lookup does not scan, so one pass of
+          lookups stays O(n).
 
   - id: trace-count-in-loop-review
     format: step-trace

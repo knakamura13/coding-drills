@@ -8,7 +8,8 @@ questions:
     heading: Which change keeps the output?
     tags: [complexity, python, sorting]
     prompt: |-
-      Every query appears in `nums`, and `nums` may hold repeats.
+      Every query appears in `nums`, and `nums` may hold repeats. `nums.sort()` reorders the list
+      in place, while `sorted(nums)` returns a new list.
 
       ```python
       def positions(nums, queries):
@@ -46,9 +47,9 @@ questions:
           - id: two
             text: 2, since the second 4 overwrites the first
           - id: one
-            text: 1, the first position of 4
+            text: 1, the first index of 4
           - id: both
-            text: Both positions, 1 and 2
+            text: Both indices, 1 and 2
         correct: two
         explanation: >-
           A dict keeps one value per key, and the comprehension stores the last one it sees.
@@ -313,3 +314,297 @@ questions:
         explanation: >-
           `out` and `nums` are separate lists, and iterating does not remove items. A value whose
           inputs never change in the loop can be computed once above it.
+
+  - id: checkpoint-sort-each-pass
+    heading: What is the time cost?
+    tags: [complexity, python, sorting]
+    prompt: |-
+      `nums` holds `n` numbers in no particular order, and `sorted` makes about n log n
+      comparisons.
+
+      ```python
+      def above_median(nums):
+          out = []
+          for x in nums:
+              mid = sorted(nums)[len(nums) // 2]
+              if x > mid:
+                  out.append(x)
+          return out
+      ```
+
+      What is the Big-O of `above_median`?
+    options:
+      - id: n-squared-log-n
+        text: O(n² log n)
+        explanation: >-
+          `sorted(nums)` sits in the body, so it runs on every one of the `n` passes, and each run
+          costs about n log n. Reading the middle item and the test add a fixed amount per pass.
+          So the total is n × n log n. Sorting once above the loop would bring it to O(n log n).
+      - id: n-log-n
+        text: O(n log n)
+        explanation: How many times does `sorted(nums)` run in this loop?
+      - id: quadratic
+        text: O(n²)
+        explanation: What does one call of `sorted` cost on numbers in no particular order?
+      - id: cubic
+        text: O(n³)
+        explanation: Is a sort of `n` numbers as costly as comparing every pair?
+    correct: n-squared-log-n
+    followUps:
+      n-log-n:
+        prompt: How many times does `sorted(nums)` run in `above_median`?
+        options:
+          - id: per-pass
+            text: Once per pass, so `n` times
+          - id: once
+            text: Once, since its result is the same every time
+          - id: per-kept
+            text: Once for each number that is kept
+        correct: per-pass
+        explanation: >-
+          Python does not notice that `nums` never changes, so the call in the body runs again on
+          every pass and builds a new sorted list each time.
+      quadratic:
+        prompt: What does one call of `sorted(nums)` cost for `n` numbers in no particular order?
+        options:
+          - id: n-log-n-each
+            text: About n log n comparisons
+          - id: n-each
+            text: About `n` steps, one per number copied
+          - id: one-each
+            text: About one step, since `sorted` is built in
+        correct: n-log-n-each
+        explanation: >-
+          `sorted` copies the numbers and orders them, and ordering takes about n log n
+          comparisons. Paid on each of `n` passes, that is n × n log n.
+      cubic:
+        prompt: Which costs more for 1,000 numbers, one sort or one comparison of every pair?
+        options:
+          - id: pairs-more
+            text: Every pair, about 500,000 comparisons against about 10,000 for the sort
+          - id: sort-more
+            text: The sort, since it also copies the list
+          - id: equal
+            text: They cost the same, since a sort compares every pair
+        correct: pairs-more
+        explanation: >-
+          A sort makes about n log n comparisons, far fewer than the n² / 2 pairs. So one sort per
+          pass gives n² log n, not n³.
+
+  - id: checkpoint-shared-set
+    heading: Which change brings the cost down?
+    tags: [complexity, python, hash-map]
+    prompt: |-
+      `words` and `banned` are lists of `n` words each, and this function is too slow.
+
+      ```python
+      def flagged(words, banned):
+          return [w for w in words if w in banned]
+      ```
+
+      Which change makes the total cost O(n) on average and still returns every `w` in `words`
+      that appears in `banned`, in order and with its repeats?
+    options:
+      - id: set-once
+        text: Build `bad = set(banned)` above the line and test `w in bad`
+        explanation: >-
+          The set is built once, about `n` steps, and each `w in bad` is then about one step on
+          average, so the line costs about n + n. The price is a set of up to `n` words in memory.
+          The loop still walks `words`, so order and repeats are kept.
+      - id: sort-banned
+        text: Sort `banned` first and keep the same comprehension
+        explanation: Does `w in banned` read fewer words when `banned` is sorted?
+      - id: set-inside
+        text: Write `w in set(banned)` inside the comprehension
+        explanation: How many times does `set(banned)` run?
+      - id: set-words
+        text: Loop over `set(words)` instead and keep `w in banned`
+        explanation: Which container does each `in` test still search, and what happens to repeats?
+    correct: set-once
+    followUps:
+      sort-banned:
+        prompt: Does `w in some_list` use the fact that the list is sorted?
+        options:
+          - id: no-scan
+            text: No, it compares item by item from the front
+          - id: halves
+            text: Yes, Python notices the order and halves the list
+          - id: strings
+            text: Only for lists of strings
+        correct: no-scan
+        explanation: >-
+          A list does not record whether it is sorted, so `in` on a list is always a scan, and
+          the comprehension stays about n × n.
+      set-inside:
+        prompt: In `[w for w in words if w in set(banned)]`, how often does `set(banned)` run?
+        options:
+          - id: per-word
+            text: Once for every word in `words`, building an `n`-word set each time
+          - id: once
+            text: Once, since the expression is the same every time
+          - id: first-match
+            text: Until the first match, and then Python reuses the set
+        correct: per-word
+        explanation: >-
+          The condition of a comprehension runs again for every item, call and all. Each build
+          reads all of `banned`, so the cost is back to about n × n.
+      set-words:
+        prompt: In `[w for w in set(words) if w in banned]`, what does each `in` test search?
+        options:
+          - id: list
+            text: The list `banned`, word by word, and repeats in `words` are dropped too
+          - id: set
+            text: The set built from `words`, in about one step
+          - id: neither
+            text: Nothing, since a set is involved
+        correct: list
+        explanation: >-
+          `in` searches the object on its right. To make the tests cheap, the set has to be built
+          from `banned`, the list being searched.
+
+  - id: checkpoint-slice-sums
+    heading: What is the time cost?
+    tags: [complexity, python]
+    prompt: |-
+      `nums` holds `n` numbers.
+
+      ```python
+      best = 0
+      for i in range(len(nums)):
+          for j in range(i + 1, len(nums) + 1):
+              best = max(best, sum(nums[i:j]))
+      ```
+
+      What is the Big-O of this code?
+    options:
+      - id: cubic
+        text: O(n³)
+        explanation: >-
+          The loops visit about n² / 2 pairs `(i, j)`. For each pair, `nums[i:j]` copies `j - i`
+          numbers and `sum` reads them, up to `n` per pair. In all that is n(n + 1)(n + 2) / 6
+          cells, 171,700 at `n = 100`, which grows like n³. A running sum per `i` would bring it
+          to O(n²).
+      - id: quadratic
+        text: O(n²)
+        explanation: That counts the pairs. What does the line inside the inner loop cost for each pair?
+      - id: linear
+        text: O(n)
+        explanation: How many times does the inner loop run in all?
+      - id: exponential
+        text: O(2^n)
+        explanation: Does each pass choose some items to keep and others to drop, or a start and an end?
+    correct: cubic
+    followUps:
+      quadratic:
+        prompt: For one pair `(i, j)`, what does `sum(nums[i:j])` cost?
+        options:
+          - id: length
+            text: About `j - i` steps to copy the slice, and as many again to add it up
+          - id: one
+            text: One step, since `sum` is built in
+          - id: log
+            text: About log n steps
+        correct: length
+        explanation: >-
+          A slice copies every cell it covers and `sum` reads every one, so the cost per pair
+          grows with the slice. Up to `n` per pair, over about n² / 2 pairs, grows like n³.
+      linear:
+        prompt: How many pairs `(i, j)` do the two loops visit for `n = 100`?
+        options:
+          - id: pairs
+            text: 5,050, since for each `i` the inner loop runs from `i + 1` to `n`
+          - id: hundred
+            text: 100, one per value of `i`
+          - id: two-hundred
+            text: 200, one pass for each loop
+        correct: pairs
+        explanation: >-
+          The inner loop runs `n - i` times for each `i`, which adds up to n(n + 1) / 2 pairs. The
+          line inside then runs once per pair.
+      exponential:
+        prompt: How many different slices `nums[i:j]` with `i < j` does a list of `n` items have?
+        options:
+          - id: start-end
+            text: n(n + 1) / 2, since a slice is fixed by where it starts and stops
+          - id: two-to-n
+            text: 2^n, since each item is either in or out
+          - id: n-factorial
+            text: n!, since order matters
+        correct: start-end
+        explanation: >-
+          A slice holds items that sit next to each other, so choosing a start and a stop fixes it.
+          2^n counts the ways to keep or drop each item freely, which is a far larger number.
+
+  - id: checkpoint-debug-scale-up
+    heading: Which line is wrong?
+    tags: [complexity, python]
+    prompt: |-
+      A suggested solution should scale each number so the largest becomes 100, in O(n) steps.
+      `nums` holds positive whole numbers, and `//` divides and rounds down. Its answers are right,
+      but on long lists it takes far more steps than that. Which line is wrong?
+
+      ```python
+      def scale_up(nums):
+          top = max(nums)
+          out = []
+          for x in nums:
+              out = out + [x * 100 // top]
+          return out
+      ```
+    options:
+      - id: plus-line
+        text: 'Line 5: `out = out + [x * 100 // top]`'
+        explanation: >-
+          `out + [...]` builds a new list and copies every item already in `out`, on every pass:
+          0 + 1 + ... + (n - 1) copies, about n² / 2. `out.append(x * 100 // top)` writes one slot
+          and keeps the call O(n).
+      - id: max-line
+        text: 'Line 2: `top = max(nums)`'
+        explanation: How many times does line 2 run, and what does it read?
+      - id: loop-line
+        text: 'Line 4: `for x in nums:`'
+        explanation: Can any correct version make fewer than one pass over `nums`?
+      - id: return-line
+        text: 'Line 6: `return out`'
+        explanation: Does returning a list copy its items?
+    correct: plus-line
+    followUps:
+      max-line:
+        prompt: What does `top = max(nums)` cost in this function?
+        options:
+          - id: once
+            text: One scan of `n` numbers, once, above the loop
+          - id: per-pass
+            text: One scan of `n` numbers on every pass
+          - id: one-step
+            text: One step, since `max` is built in
+        correct: once
+        explanation: >-
+          `max` reads every number, but it sits above the loop, so it runs one time. Its `n` reads
+          add to the loop's cost instead of multiplying it.
+      loop-line:
+        prompt: The function returns one scaled number per input number. How many passes does that need?
+        options:
+          - id: n-passes
+            text: '`n`, one per number, which fits O(n) if each pass is cheap'
+          - id: one-pass
+            text: One pass in all, whatever `n` is
+          - id: n-squared
+            text: About n², one per pair of numbers
+        correct: n-passes
+        explanation: >-
+          Every number has to be scaled, so `n` passes are needed. What each pass costs decides the
+          total, and line 5 copies the whole list on each one.
+      return-line:
+        prompt: What does `return out` hand back?
+        options:
+          - id: reference
+            text: A reference to the list `out`, with nothing copied
+          - id: copy
+            text: A copy of every item in `out`
+          - id: tuple
+            text: A tuple made from `out`
+        correct: reference
+        explanation: >-
+          Returning a value passes a reference, whatever its size. The copies in this function come
+          from line 5.

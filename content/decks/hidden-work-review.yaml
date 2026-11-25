@@ -88,11 +88,11 @@ questions:
         explanation: >-
           `list(...)` builds a new list from whatever it is given, even a list. It walks all `n`
           items to fill it.
-      - id: reversed-slice
-        text: '`back = nums[::-1]`'
+      - id: tail-slice
+        text: '`rest = nums[1:]`'
         explanation: >-
-          A step of -1 still makes a slice, and every slice of a list is a new list. This one holds
-          all `n` items in reverse order.
+          Every slice of a list is a new list. This one leaves out only the first item, so it
+          copies `n - 1` items.
     correct: alias
     followUps:
       full-slice:
@@ -121,19 +121,19 @@ questions:
         explanation: >-
           `list(x)` makes a fresh list and fills it from `x`. Giving it a list does not skip the
           copy, so it costs one step per item.
-      reversed-slice:
-        prompt: After `back = nums[::-1]`, does writing `back[0] = 99` change `nums`?
+      tail-slice:
+        prompt: After `rest = nums[1:]`, does writing `rest[0] = 99` change `nums`?
         options:
           - id: not-so
-            text: No, `back` is a separate list with its own slots
+            text: No, `rest` is a separate list with its own slots
           - id: so
-            text: Yes, `back` shows `nums` in reverse order
-          - id: last
-            text: Yes, it changes the last item of `nums`
+            text: Yes, `rest` shows the same slots as `nums` from index 1 on
+          - id: first
+            text: Yes, it changes the first item of `nums`
         correct: not-so
         explanation: >-
-          A reversed slice is a copy, so it has its own slots, and building it costs one step per
-          item. `reversed(nums)` is the cheap one: it walks the list backwards without copying.
+          A slice is a copy, so it has its own slots, and building it costs one step per item it
+          covers. Only `alias = nums` gives a second name for the same list without copying.
 
   - id: prefix-copy-span-review
     format: drag-pointers
@@ -453,6 +453,86 @@ questions:
           Two lists that line up by index fall out of step when only one is sorted. Hoisting the
           max needs no reordering at all.
 
+  - id: running-min-review
+    heading: Which change keeps the output?
+    tags: [complexity, python]
+    prompt: |-
+      `prices[i]` is a price on day `i`, and `prices` is never empty. The function returns the best
+      profit from one buy and one later sell, or 0 if none is positive.
+
+      ```python
+      def best_gain(prices):
+          best = 0
+          for i in range(1, len(prices)):
+              best = max(best, prices[i] - min(prices[:i]))
+          return best
+      ```
+
+      Which rewrite stops slicing and still returns the same value for every input?
+    options:
+      - id: carry
+        text: Carry the lowest earlier price in `low`, then set `low = min(low, prices[i])`
+        explanation: >-
+          `low` holds the lowest price before day `i` when the profit is computed, and one `min` of
+          two values brings it up to date for the next day. Each pass does a fixed amount of work,
+          so the call is O(n), against about n² / 2 cells sliced by the original.
+      - id: hoist
+        text: Set `low = min(prices)` above the loop and use `prices[i] - low`
+        explanation: >-
+          `min(prices)` can pick a day after the sale. On `[4, 7, 2]` the original returns 7 - 4,
+          which is 3, but this version returns 7 - 2, which is 5.
+      - id: prev
+        text: Use `prices[i] - prices[i - 1]` in place of `prices[i] - min(prices[:i])`
+        explanation: >-
+          That buys only on the day before. On `[1, 3, 6]` the original returns 6 - 1, which is 5,
+          but this version returns 3.
+      - id: first
+        text: Use `prices[i] - prices[0]` in place of `prices[i] - min(prices[:i])`
+        explanation: >-
+          That always buys on day 0. On `[5, 1, 4]` the original returns 4 - 1, which is 3, but
+          every sale here is below 5, so this version returns 0.
+    correct: carry
+    followUps:
+      hoist:
+        prompt: On `[4, 7, 2]`, which price does `min(prices)` pick, and what does the hoisted version return?
+        options:
+          - id: late
+            text: The 2 on day 2, so it returns 5 from a buy after the sale
+          - id: early
+            text: The 4 on day 0, so it returns 3
+          - id: high
+            text: The 7 on day 1, so it returns 0
+        correct: late
+        explanation: >-
+          The buy must come before the sale. `min(prices)` sees later days too, so the lowest
+          earlier price has to be carried forward as `i` moves.
+      prev:
+        prompt: On `[1, 3, 6]`, what do the original and the `prices[i - 1]` version return?
+        options:
+          - id: differ
+            text: 5 and 3, since the best buy is day 0, two days before the sale
+          - id: same-five
+            text: 5 and 5
+          - id: same-three
+            text: 3 and 3
+        correct: differ
+        explanation: >-
+          The lowest earlier price can be on any day before `i`, not only the day before. A carried
+          `low` keeps all of those days in one number.
+      first:
+        prompt: On `[5, 1, 4]`, what do the original and the `prices[0]` version return?
+        options:
+          - id: differ
+            text: 3 and 0, since the best buy is the 1 on day 1
+          - id: same-three
+            text: 3 and 3
+          - id: same-zero
+            text: 0 and 0
+        correct: differ
+        explanation: >-
+          The lowest earlier price can drop after day 0. `low` has to take each new lower price as
+          the loop passes it.
+
   - id: dominant-insert-review
     heading: Which line dominates?
     tags: [complexity, python]
@@ -539,8 +619,8 @@ questions:
           return nums[-1] + sum_back(nums[:-1])
       ```
 
-      `sum_back` runs on a list of 6 numbers. How many cells do all the slices `nums[:-1]` copy,
-      across every call?
+      `nums[:-1]` is a new list holding every item but the last. `sum_back` runs on a list of 6
+      numbers. How many cells do all the slices `nums[:-1]` copy, across every call?
     options:
       - id: fifteen
         text: '15'

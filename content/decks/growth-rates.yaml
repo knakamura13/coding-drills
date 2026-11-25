@@ -1,6 +1,6 @@
 id: growth-rates
 title: Growth rates
-description: Count the steps a loop takes, compare how the counts grow, and account for the memory a function allocates. Each card asks for one decision, with a worked example on hand.
+description: Count a loop's steps, compare how counts grow, name the growth in Big-O, and account for memory. Each card asks for one decision, with a worked example on hand.
 heading: How many steps?
 
 questions:
@@ -8,6 +8,8 @@ questions:
     heading: What does this print?
     tags: [complexity, python]
     workedExample: |-
+      This path predicts how much work code does as its input grows, before anyone runs it on a
+      large input. The first tool is a count: run the loop on a small input and count its passes.
       Consider `for i in range(4): steps += 1`, with `steps` starting at 0. `range(4)` starts at 0,
       adds 1 each time, and stops just before its stop value, 4.
 
@@ -15,7 +17,7 @@ questions:
       2. The next value would be 4, which is not below the stop value 4, so the range ends after 3.
       3. The body runs once for each of the 4 values in step 1, so `steps` ends at 4.
     prompt: |-
-      Now:
+      A pass is one run of a loop's body.
 
       ```python
       steps = 0
@@ -100,10 +102,11 @@ questions:
       1. The pile starts at 4, which is more than 1, so it halves: `4 // 2` is 2. That is one
          halving.
       2. 2 is still more than 1, so it halves again: `2 // 2` is 1. That is the second halving.
-      3. Now the pile is 1, so halving stops. Getting from 4 chips to 1 took 2 halvings.
+      3. The pile is now 1, so halving stops. Getting from 4 chips to 1 took 2 halvings.
     prompt: >-
-      The loop below keeps half of a pile of 16 chips on each pass until one chip is left. The
-      row shows the pile sizes in order, not a Python list. Predict each step before it is shown.
+      The loop below keeps half of a pile of 16 chips on each pass until one chip is left, and
+      `n // 2` divides by 2 and rounds down. The row shows the pile sizes in order, not a Python
+      list. Predict each step before it is shown.
     code: |
       n = 16
       halvings = 0
@@ -165,8 +168,8 @@ questions:
           - id: four
             text: '4'
             explanation: >-
-              That counts only the checks that pass. A `while` loop checks its test once more after
-              the last pass, and that check fails.
+              That counts only the checks that pass. This loop ends only when its test fails, so
+              after the last pass the test runs once more and is false.
           - id: sixteen
             text: '16'
             explanation: >-
@@ -186,7 +189,7 @@ questions:
          range does not use `i`, so every pass adds the same 2 steps.
       3. So `steps` ends at 2 + 2 + 2, which is 3 × 2 = 6.
     prompt: |-
-      Now the inner loop depends on `i`:
+      Here the inner loop's range depends on `i`:
 
       ```python
       n = 5
@@ -271,9 +274,9 @@ questions:
       1. `range(n)` produces `n` values, 0 to `n - 1`, so the loop takes `n` steps.
       2. So at `n = 4` the loop takes 4 steps, and at `n = 8` it takes 8 steps.
       3. 8 is twice 4. Since the count equals `n`, doubling `n` doubles the count.
+      4. With a second loop over `range(n)` inside the first, each outer pass would itself run `n`
+         steps, so both factors grow when `n` grows.
     prompt: |-
-      Now:
-
       ```python
       def grid_steps(n):
           steps = 0
@@ -321,18 +324,20 @@ questions:
           The inner loop is `range(n)` as well, so each outer pass now runs 12 inner steps. Twice
           as many passes, each twice as long, gives four times the count.
       plus-one:
-        prompt: Which loop takes only about one more step when `n` doubles?
+        prompt: >-
+          `grid_steps` has no loop that halves or doubles a value. When `n` goes from 6 to 12, how
+          many more outer passes run?
         options:
-          - id: halving
-            text: A loop that halves what is left on each pass
-          - id: nested
-            text: A loop nested inside another loop over `n`
-          - id: every-item
-            text: A loop over every item from 0 to `n - 1`
-        correct: halving
+          - id: six-more
+            text: 6 more, one per new value of `i`
+          - id: one-more
+            text: 1 more
+          - id: none
+            text: None
+        correct: six-more
         explanation: >-
-          Halving 2n once gives n, so a halving loop needs just one extra pass after `n` doubles.
-          A loop over every value needs twice as many passes.
+          Both loops walk every value from 0 to `n - 1`, so doubling `n` doubles the passes of
+          each, and the count is multiplied by 4.
       squared:
         prompt: Doubling `n` turns the count n × n into what?
         options:
@@ -440,7 +445,7 @@ questions:
       3. `n * n` is `n` lots of `n`, and `5 * n` is 5 lots of `n`. Once `n` is more than 5, `n * n`
          has more lots, so it stays larger and the gap keeps growing.
     prompt: >-
-      Now `scan` takes `3 * n + 10` steps and `pairs` takes `n * (n - 1) // 2` steps. At `n = 4`,
+      `scan` takes `3 * n + 10` steps and `pairs` takes `n * (n - 1) // 2` steps. At `n = 4`,
       `scan` takes 22 steps and `pairs` takes 6. At `n = 100`, which takes more steps?
     options:
       - id: right
@@ -507,20 +512,280 @@ questions:
           4950 / 45 is 110. A count that grows like n² is multiplied by about 100 when `n` is
           multiplied by 10, while `scan` grows by under 8 times.
 
-  - id: auxiliary-set
-    heading: How much extra memory?
+  - id: name-the-growth
+    heading: What is its Big-O?
+    tags: [complexity]
+    workedExample: |-
+      Big-O is the standard way to name how a count grows with `n`: keep the term that grows
+      fastest, drop its constant factor, and write what is left inside O( ). The common names,
+      slowest-growing first, are O(1), O(log n), O(n), O(n log n), O(n²) and O(2^n). Consider a
+      count of `6 * n + 40` steps.
+
+      1. `40` is the same at every `n`, while `6 * n` grows. At `n = 1000`, `6 * n` is 6000
+         against 40, so `6 * n` dominates: past some `n`, it outweighs the other terms.
+      2. The factor 6 changes the count but not how it grows, since doubling `n` still doubles
+         `6 * n`. So Big-O drops it and keeps `n`.
+      3. So `6 * n + 40` steps is O(n), the same name as one loop over `n` items.
+    prompt: >-
+      Big-O names how a step count grows with `n`. Keep only the term that dominates, the one that
+      grows fastest and outweighs the rest once `n` is large, and drop its constant factor. So
+      `3 * n + 10` steps is O(n). A count that stays the same at every `n` is O(1), and `n` passes
+      that each take about log n steps are O(n log n). `pairs` takes `n * (n - 1) // 2` steps,
+      which equals `(n * n - n) / 2`. What is its Big-O?
+    options:
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          `n * n / 2` grows fastest, and `- n / 2` falls further behind as `n` grows. Dropping the
+          factor 1/2 leaves n². At `n = 100` the count is 4950, about half of 100 × 100.
+      - id: half
+        text: O(n² / 2)
+        explanation: >-
+          O(n² / 2) names the same growth as O(n²), but Big-O is written without constant factors.
+          Doubling `n` still multiplies the count by about 4, so the 1/2 says nothing about how it
+          grows.
+      - id: keeps-smaller
+        text: O(n² - n)
+        explanation: >-
+          That names the same growth but keeps the smaller term. Once `n` is large, `n * n`
+          outweighs `n` so far that Big-O leaves the smaller term out.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          At `n = 100` the count is 4950, almost 50 steps for every item, and at `n = 1000` it is
+          499,500, almost 500 for every item. A linear count stays close to a fixed number of steps
+          per item.
+    correct: quadratic
+    followUps:
+      half:
+        prompt: >-
+          `pairs` takes 4950 steps at `n = 100` and 19,900 at `n = 200`. What did doubling `n` do to
+          the count?
+        options:
+          - id: four-times
+            text: It multiplied it by about 4, as n² does
+          - id: two-times
+            text: It multiplied it by 2, since the count is halved
+          - id: added
+            text: It added 4950 steps
+        correct: four-times
+        explanation: >-
+          A constant factor such as 1/2 scales every count the same way, so it never changes how
+          the count grows. Big-O drops it and keeps n².
+      keeps-smaller:
+        prompt: At `n = 1000`, how does `n * n` compare with `n`?
+        options:
+          - id: far-larger
+            text: 1,000,000 against 1000, so `n` barely matters
+          - id: similar
+            text: They are about the same size
+          - id: n-larger
+            text: "`n` is larger, since it is subtracted"
+        correct: far-larger
+        explanation: >-
+          The term that grows fastest dominates: past some `n`, it outweighs every smaller term put
+          together. So Big-O keeps only that term.
+      linear:
+        prompt: Which part of `n * (n - 1) // 2` grows like n × n?
+        options:
+          - id: product
+            text: "`n * (n - 1)`, since `n - 1` is close to `n` when `n` is large"
+          - id: floor
+            text: "`// 2`, which halves the count"
+          - id: none
+            text: None of it, since dividing by 2 cancels one `n`
+        correct: product
+        explanation: >-
+          `n - 1` grows almost as fast as `n`, so their product grows like n × n. Dividing by 2
+          halves every count, but it does not cancel an `n`.
+
+  - id: halving-is-log-n
+    heading: What is its Big-O?
+    tags: [complexity, python]
+    workedExample: |-
+      `log2(n)` is the power of 2 that makes `n`: the number of 2s you multiply together to reach
+      it. Consider `n = 16` and `n = 32`.
+
+      1. `2 * 2 * 2 * 2` is 16, four 2s, so `log2(16)` is 4.
+      2. 32 is 16 doubled, which takes one more 2: `2 ** 5` is 32, so `log2(32)` is 5.
+      3. So doubling `n` adds 1 to `log2(n)`. That is why it grows so slowly: `log2` of a million
+         is only about 20.
+    prompt: |-
+      `log2(n)` is the power of 2 that makes `n`. `2 ** 10` is 1024, so `log2(1024)` is 10. Big-O
+      writes this growth as O(log n).
+
+      ```python
+      def halvings(n):
+          count = 0
+          while n > 1:
+              n = n // 2
+              count += 1
+          return count
+      ```
+
+      How does the number of passes grow with `n`?
+    options:
+      - id: log
+        text: O(log n)
+        explanation: >-
+          Each pass halves `n`, so 1024 takes 10 passes to reach 1, one for each 2 in `2 ** 10`.
+          That is `log2(n)` passes, and doubling `n` adds one more.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          A loop that took 1 off `n` on each pass would need about `n` passes. This one halves `n`,
+          so 1024 needs only 10.
+      - id: half
+        text: O(n / 2)
+        explanation: >-
+          The first pass removes half of `n`, but each later pass removes half of what is left,
+          which is less every time. 1024 is done after 10 passes, not 512.
+      - id: constant
+        text: O(1)
+        explanation: >-
+          10 passes is few, but the count still grows: 2048 needs 11 and a million needs 19. O(1)
+          is for a count that stays the same at every `n`.
+    correct: log
+    followUps:
+      linear:
+        prompt: What does `n = n // 2` do to `n` on each pass?
+        options:
+          - id: halves
+            text: It halves `n`, rounding down
+          - id: minus-one
+            text: It takes 1 away from `n`
+          - id: minus-two
+            text: It takes 2 away from `n`
+        correct: halves
+        explanation: >-
+          Halving shrinks `n` far faster than counting down. 1024 goes to 512, 256, 128 and so on,
+          and reaches 1 after 10 passes.
+      half:
+        prompt: How many passes does `halvings(16)` make?
+        options:
+          - id: four
+            text: 4, going 16 to 8, 4, 2 and 1
+          - id: eight
+            text: 8, half of 16
+          - id: sixteen
+            text: '16'
+        correct: four
+        explanation: >-
+          Each pass halves what is left, so the passes count halvings, and `log2(16)` is 4. Only
+          the first pass takes away half of 16. Each later pass takes away less.
+      constant:
+        prompt: '`halvings(1024)` makes 10 passes. How many does `halvings(2048)` make?'
+        options:
+          - id: eleven
+            text: 11, one more
+          - id: ten
+            text: 10, the same
+          - id: twenty
+            text: 20, twice as many
+        correct: eleven
+        explanation: >-
+          2048 halves to 1024 on its first pass, then needs the same 10 passes. A count that grows
+          by one per doubling still grows, so it is not O(1).
+
+  - id: add-one-doubles
+    heading: How fast does it grow?
+    tags: [complexity]
+    workedExample: |-
+      Consider a row of `n` lamps, each set to off, low or high. A setting of the row picks one of
+      3 states for every lamp, and choices for different lamps combine with each other.
+
+      1. One lamp has 3 settings.
+      2. A second lamp can be in each of its 3 states next to each of the first lamp's 3, so 2
+         lamps have 3 × 3 = 9 settings.
+      3. Each new lamp multiplies the count by 3 again, so `n` lamps have `3 ** n` settings: 4
+         lamps have 81. Adding one lamp triples the count.
+    prompt: >-
+      A subset of a list keeps some of its items and leaves out the rest. `[1, 2]` has 4 subsets:
+      `[]`, `[1]`, `[2]` and `[1, 2]`. A third item gives each of those 4 a copy with the 3 in it,
+      so `[1, 2, 3]` has 8. Big-O writes a count of `2 ** n` as O(2^n). A function tries every
+      subset of a list of `n` items. How many does it try at `n = 10` and at `n = 20`, and what is
+      its Big-O?
+    options:
+      - id: exponential
+        text: 1,024 and 1,048,576, so O(2^n)
+        explanation: >-
+          Each item doubles the count, so `n` items have `2 ** n` subsets: 1,024 at 10 and
+          1,048,576 at 20. Ten more items doubled it ten times, a factor of 1,024. Its Big-O is
+          O(2^n).
+      - id: doubles
+        text: 1,024 and 2,048, so O(n)
+        explanation: >-
+          Going from 10 to 20 adds ten items, and each one doubles the count. That is ten
+          doublings, not one, so the count grows 1,024 times.
+      - id: adds
+        text: 20 and 40, so O(n)
+        explanation: >-
+          Each item has two choices, in or out, but the choices for different items multiply
+          rather than add. Three items give 2 × 2 × 2 = 8 subsets, as the prompt counts, not
+          2 + 2 + 2 = 6.
+      - id: quadratic
+        text: 100 and 400, so O(n²)
+        explanation: >-
+          n × n would count pairs of items. A subset can hold any number of items, and the count
+          doubles with each new one, so at `n = 20` it is over a million against 400.
+    correct: exponential
+    followUps:
+      doubles:
+        prompt: How many times does the count double when `n` goes from 10 to 20?
+        options:
+          - id: ten
+            text: Ten times, once for each added item
+          - id: once
+            text: Once, since `n` doubled
+          - id: twice
+            text: Twice
+        correct: ten
+        explanation: >-
+          Every added item doubles the count. Ten more items is ten doublings, and `2 ** 10` is
+          1,024, so the count grows 1,024 times.
+      adds:
+        prompt: '`[1, 2, 3]` has 8 subsets. Which sum or product gives 8 for the right reason?'
+        options:
+          - id: product
+            text: 2 × 2 × 2, in or out for each item
+          - id: sum
+            text: 2 + 2 + 2 + 2, two choices per item plus two more
+          - id: mixed
+            text: 2 × 3 + 2, two choices per item plus `[]` and the whole list
+        correct: product
+        explanation: >-
+          Each item's choice combines with every choice for the other items, so the choices
+          multiply. A fourth item makes 2 × 2 × 2 × 2 = 16, and adding up choices would fall short.
+      quadratic:
+        prompt: Which is larger, `2 ** 20` or `20 * 20`?
+        options:
+          - id: power
+            text: "`2 ** 20`, over a million against 400"
+          - id: square
+            text: "`20 * 20`, since squaring grows fastest"
+          - id: equal
+            text: They are about the same
+        correct: power
+        explanation: >-
+          A count that doubles with each new item soon passes any count like n × n. That is why
+          O(2^n) sits above O(n²) among the names.
+
+  - id: extra-space-set
+    heading: How much extra space?
     tags: [complexity, hash-map, python]
     workedExample: |-
-      Consider `def squares(nums): return [x * x for x in nums]` on `n` numbers. Auxiliary space is
-      the memory a function uses besides its input and the value it returns. O(1) means a fixed
-      amount whatever `n` is, O(n) an amount in proportion to `n`, and O(n²) in proportion to n × n.
+      Extra space is the memory a function uses beyond its input, and Big-O names how it grows.
+      Some questions also leave out the value the function returns, and each one says which.
+      Consider `def squares(nums): return [x * x for x in nums]` on `n` numbers, with the returned
+      list left out.
 
-      1. The returned list holds `n` numbers, but it is the returned value, so it does not count.
+      1. The returned list holds `n` numbers, but this question leaves it out, so it does not count.
       2. Apart from that list, the function holds only the loop variable `x`, one value at a time.
          That is the same amount at any `n`.
-      3. A fixed amount at any `n` is O(1), so the auxiliary space of `squares` is O(1).
+      3. A fixed amount at any `n` is O(1), so the extra space of `squares` is O(1).
     prompt: |-
-      Now:
+      Extra space is the memory a function uses beyond its input. Here the returned value is left
+      out too.
 
       ```python
       def count_distinct(nums):
@@ -530,14 +795,13 @@ questions:
           return len(seen)
       ```
 
-      Not counting the input or the returned value, how much extra memory does it use in the
-      worst case?
+      How much extra space does it use in the worst case?
     options:
       - id: linear
         text: O(n)
         explanation: >-
-          When every value is different, `seen` ends up holding all `n` of them. That set is
-          auxiliary storage, because the function does not return it.
+          When every value is different, `seen` ends up holding all `n` of them. That set counts as
+          extra space, because the function does not return it.
       - id: constant
         text: O(1)
         explanation: >-
@@ -566,8 +830,8 @@ questions:
             text: Nowhere, because a loop reuses its variables
         correct: set
         explanation: >-
-          Auxiliary space is everything the function allocates besides its input and its result.
-          Here that is the set, which gains one entry per new value.
+          Here extra space is everything the function allocates besides its input and its result.
+          That is the set, which gains one entry per new value.
       quadratic:
         prompt: When `nums` has `n` items, how many values can `seen` hold at most?
         options:
@@ -600,18 +864,13 @@ questions:
     tags: [complexity, python]
     workedExample: |-
       Consider a function that returns `[2 * x for x in nums]`, where `nums` has `n` items, and
-      count the returned list as memory. A log n factor counts how many times `n` can be halved, so
-      it grows by one each time `n` doubles.
+      count the returned list as memory. A list takes room for each item it holds.
 
       1. The comprehension makes one number for each item of `nums`, so the returned list holds `n`
          numbers.
-      2. Each number takes the same fixed room, so the list's memory is in proportion to `n`, which
-         is O(n).
-      3. Nothing in the function halves `n` or doubles a count, so no log n factor appears. Its
-         memory is O(n), not O(n log n).
+      2. Each number takes the same fixed room, so the list's memory is in proportion to `n`.
+      3. So, counting the returned list, its memory is O(n).
     prompt: |-
-      Now:
-
       ```python
       def all_pairs(nums):
           out = []
@@ -621,8 +880,8 @@ questions:
           return out
       ```
 
-      `all_pairs` on 4 items returns 6 pairs. Counting the returned list, how does its memory
-      grow with `n`?
+      `all_pairs` on 4 items returns 6 pairs. Count the returned list as memory. How does its
+      memory grow with `n`?
     options:
       - id: quadratic
         text: O(n²)

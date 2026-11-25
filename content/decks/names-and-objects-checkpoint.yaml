@@ -101,8 +101,8 @@ questions:
       cells: ["['.', '.']", "['.', '.']", "['.', '.']", "['.', '.']"]
     correct: 2
     explanation: >-
-      `grid` holds `row` in slots 2 and 3. The call writes into the list in slot 3, which is `row`,
-      so slot 2 shows the change. `grid` becomes `[['.', '.'], ['.', '.'], ['x', '.'], ['x', '.']]`.
+      `grid` holds `row` at indices 2 and 3. The call writes into the list at index 3, which is
+      `row`, so index 2 shows the change. `grid` becomes `[['.', '.'], ['.', '.'], ['x', '.'], ['x', '.']]`.
     misses:
       - index: 0
         explanation: >-
@@ -160,7 +160,7 @@ questions:
             text: No, `snapshot` has no keys until something is added
         correct: shared
         explanation: >-
-          `dict(...)` is a shallow copy, like a list slice. The keys are copied into a new
+          `dict(...)` copies only the outer dictionary, like a list slice. The keys go into a new
           dictionary, and each value is the same object as before.
       alias:
         prompt: Is `snapshot is base` true?
@@ -232,7 +232,7 @@ questions:
           - id: extended
             text: The 9 is added to the end of it
           - id: replaced
-            text: "`grid`'s slot is replaced by the new list"
+            text: "`grid`'s cell is replaced by the new list"
         correct: untouched
         explanation: >-
           `+` builds a new list, and assigning to the loop variable moves only that name. `grid`'s
@@ -263,3 +263,83 @@ questions:
         explanation: >-
           `+` builds a new list, and the assignment rebinds the parameter. `rows += [[9]]` or
           `rows.append([9])` would have changed `grid`.
+
+  - id: checkpoint-debug-doubled
+    heading: Which line is wrong?
+    tags: [python]
+    prompt: |-
+      A suggested solution should return a new list with every value doubled, and leave the
+      caller's list as it was. After the call below, `scores` prints `[6, 8]`. Which line is wrong?
+
+      ```python
+      def doubled(nums):
+          out = nums
+          for i in range(len(out)):
+              out[i] = out[i] * 2
+          return out
+
+      scores = [3, 4]
+      twice = doubled(scores)
+      ```
+    options:
+      - id: second-name
+        text: "Line 2: `out = nums`"
+        explanation: >-
+          `out = nums` gives the caller's list a second name and builds nothing, so every write on
+          line 4 lands in `scores`. `out = nums[:]` would make the new list the task asks for.
+      - id: write-line
+        text: "Line 4: `out[i] = out[i] * 2`"
+        explanation: >-
+          Writing each doubled value by index is how the new list gets filled. The trouble is which
+          list `out` refers to when it runs.
+      - id: return-line
+        text: "Line 5: `return out`"
+        explanation: >-
+          Returning hands back a reference, never a copy, but the caller's list has already changed
+          by then. Copying here would come too late.
+      - id: call-line
+        text: "Line 8: `twice = doubled(scores)`"
+        explanation: >-
+          A call points `nums` at the caller's list without copying, and that is how Python always
+          passes arguments. The function itself must make the copy.
+    correct: second-name
+    followUps:
+      write-line:
+        prompt: When line 4 runs, which list does `out` refer to?
+        options:
+          - id: callers
+            text: The caller's list, the one `scores` names
+          - id: new
+            text: A new list made on line 2
+          - id: copy
+            text: A copy made when `add_total` was called
+        correct: callers
+        explanation: >-
+          Line 2 copied the arrow, not the list. So `out`, `nums` and `scores` all name one list,
+          and each write on line 4 changes it.
+      return-line:
+        prompt: By the time `return out` runs, what does `scores` hold?
+        options:
+          - id: changed
+            text: "`[6, 8]`, since line 4 changed the caller's list"
+          - id: unchanged
+            text: "`[3, 4]`, until the function returns"
+          - id: empty
+            text: An empty list
+        correct: changed
+        explanation: >-
+          The writes on line 4 already changed the one list `out` and `scores` share. Whatever
+          line 5 returns, `scores` holds `[6, 8]`.
+      call-line:
+        prompt: When `doubled(scores)` runs, does `nums` get a copy of `scores`?
+        options:
+          - id: no-copy
+            text: No, `nums` refers to the caller's list itself
+          - id: copy
+            text: Yes, each call gets its own copy
+          - id: numbers
+            text: Only when the list holds numbers
+        correct: no-copy
+        explanation: >-
+          A call never copies its arguments, so the call line is fine. A function that must leave
+          the caller's list alone has to make its own copy before it changes anything.

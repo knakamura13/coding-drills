@@ -1,6 +1,6 @@
 id: problem-solving-routine-checkpoint
 title: "Problem-solving routine: checkpoint"
-description: Choose a test that separates two plausible procedures, on new problems. Each item combines restating the output, picking a test, and tracing both procedures on it.
+description: Choose a test that separates two plausible procedures, or the input that breaks one, on new problems. Each item combines restating the output, picking a test, and tracing the code on it.
 heading: Which test separates them?
 
 questions:
@@ -35,13 +35,19 @@ questions:
           index, so `top_b` is the wrong one.
       - id: max-first
         text: "`[9, 4, 2]`"
-        explanation: Look at whether any later value ever ties the current best.
+        explanation: >-
+          The 9 comes first and nothing later matches it, so `>` and `>=` act the same here. A
+          separating test needs a tie that `>=` reacts to and `>` does not.
       - id: tied-below
         text: "`[4, 4, 9]`"
-        explanation: Look at which value the tie is on, and whether it is still the best at the end.
+        explanation: >-
+          The two 4s do tie, but 4 is not the largest value. Look at what the 9 at the end does to
+          each function's `best`.
       - id: single
         text: "`[8]`"
-        explanation: Look at how many times the loop body runs.
+        explanation: >-
+          With one item there is nothing to compare, so both return their starting index. A tie
+          needs at least two items.
     correct: tied-max
     followUps:
       max-first:
@@ -109,7 +115,8 @@ questions:
           return count
       ```
 
-      Which test gives different answers from the two?
+      `pairs_b` reads the list once, keeps each value it has passed in `seen`, and adds 1 when an
+      earlier value plus `x` makes `target`. Which test gives different answers from the two?
     options:
       - id: three-equal
         text: "`nums = [3, 3, 3]`, `target = 6`"
@@ -118,13 +125,19 @@ questions:
           value. The third 3 has two earlier partners but adds 1, so `pairs_b` returns 2.
       - id: distinct
         text: "`nums = [1, 5, 2, 4]`, `target = 6`"
-        explanation: Look at whether any value appears more than once.
+        explanation: >-
+          With no repeated values, each value has at most one earlier partner, so adding 1 per value
+          misses nothing. Both find the pairs 1 and 5 and 2 and 4.
       - id: two-equal
         text: "`nums = [3, 3]`, `target = 6`"
-        explanation: Count the pairs in the list, then trace `pairs_b`.
+        explanation: >-
+          Two equal values make a single pair, and `pairs_b` adds 1 for the second one. A value has
+          to have two earlier partners before adding 1 falls short.
       - id: shared-partner
         text: "`nums = [6, 0, 0]`, `target = 6`"
-        explanation: Look at which earlier value each 0 finds in the set.
+        explanation: >-
+          The pairs are the 6 with each 0, and each 0 has only one earlier partner. Adding 1 per
+          value counts both, so the two functions agree.
     correct: three-equal
     followUps:
       distinct:
@@ -190,13 +203,19 @@ questions:
           which is what the statement asks for.
       - id: reordered
         text: "`s = 'abc'`, `t = 'cab'`"
-        explanation: Look at whether any letter's count differs.
+        explanation: >-
+          The two strings hold the same letters in a different order. Sorting removes the order, so
+          both functions agree here.
       - id: extra-letter
         text: "`s = 'ab'`, `t = 'abc'`"
-        explanation: Look at whether the two sets are equal.
+        explanation: >-
+          The extra c changes the letters themselves, so `same_a` and `same_b` both see a
+          difference. A separating test has to fool only one of them.
       - id: empty
         text: "`s = ''`, `t = ''`"
-        explanation: Trace both functions on two empty strings.
+        explanation: >-
+          Two empty strings use the same letters, none, the same number of times. Both functions
+          agree on them.
     correct: counts-differ
     followUps:
       reordered:
@@ -277,13 +296,19 @@ questions:
           after the last run, so it returns 1.
       - id: run-first
         text: "`[2, 2, 1]`"
-        explanation: Look at whether the longest run ends before the loop does.
+        explanation: >-
+          The run of 2s ends before the loop does, and `run_b` records a run as soon as the next
+          one starts. Both functions see it.
       - id: empty
         text: "`[]`"
-        explanation: Look at how many times the loop runs.
+        explanation: >-
+          An empty list skips the loop, so both return their starting `best`, which is what the
+          statement asks for.
       - id: earlier-tie
         text: "`[4, 4, 1, 1]`"
-        explanation: Compare the last run with the longest run that ended earlier.
+        explanation: >-
+          `run_b` loses the last run, the two 1s, but the two 4s are just as long and were recorded
+          when the 1s began. The lost run does not change the answer.
     correct: ends-in-run
     followUps:
       run-first:
@@ -326,3 +351,88 @@ questions:
           `run_b` records the two 4s when the first 1 arrives. The lost run is no longer than that,
           so both return 2. A separating test needs the last run to be longer than every earlier
           run.
+
+  - id: checkpoint-debug-two-sum
+    heading: Which input does it fail on?
+    tags: [python, arrays-strings]
+    prompt: |-
+      A suggested solution tries every pair, as a brute force should, but one line is slightly
+      off:
+
+      ```python
+      # Return the indices i < j of the two numbers in nums
+      # that add up to target. Exactly one pair does.
+      def two_sum(nums, target):
+          for i in range(len(nums)):
+              for j in range(i, len(nums)):
+                  if nums[i] + nums[j] == target:
+                      return [i, j]
+      ```
+
+      On which input does it return a wrong answer?
+    options:
+      - id: half-target
+        text: "`nums = [3, 5, 1]`, `target = 6`"
+        explanation: >-
+          `j` starts at `i`, not `i + 1`, so the first test adds `nums[0]` to itself. 3 + 3 is 6,
+          so the call returns `[0, 0]`. The right answer is `[1, 2]`, since 5 + 1 is 6.
+      - id: last-pair
+        text: "`nums = [2, 7, 4]`, `target = 11`"
+        explanation: >-
+          The answer, 7 + 4, is the last pair, but the search still reaches it. Each value doubled
+          gives 4, 14 and 8, and none is 11, so testing a value with itself never matches. The call
+          returns `[1, 2]`, which is right.
+      - id: two-items
+        text: "`nums = [8, 1]`, `target = 9`"
+        explanation: >-
+          The extra test adds 8 to itself, which is 16, not 9. The next test finds 8 + 1, so the
+          call returns `[0, 1]`, which is right.
+      - id: has-zero
+        text: "`nums = [5, 0, 7]`, `target = 5`"
+        explanation: >-
+          5 + 5 is 10, not 5, so the extra test fails and the next one finds 5 + 0. The call
+          returns `[0, 1]`, which is right. A 0 is not what trips this code.
+    correct: half-target
+    followUps:
+      last-pair:
+        prompt: When does testing a value with itself give a wrong answer?
+        options:
+          - id: doubled
+            text: When some value doubled equals `target`
+          - id: late
+            text: When the right pair comes last
+          - id: long
+            text: When the list has more than two items
+        correct: doubled
+        explanation: >-
+          `range(i, len(nums))` adds a test of `nums[i] + nums[i]` before the real pairs. It
+          returns too early only if that sum is `target`, so the failing input needs a value equal
+          to half of `target`.
+      two-items:
+        prompt: What is the first sum the code tests on any input?
+        options:
+          - id: self
+            text: "`nums[0] + nums[0]`, the first value with itself"
+          - id: first-pair
+            text: "`nums[0] + nums[1]`, the first real pair"
+          - id: last
+            text: "`nums[0] + nums[-1]`, the two ends"
+        correct: self
+        explanation: >-
+          On the first pass `i` is 0 and `j` starts at `i`, so the first test adds `nums[0]` to
+          itself. Every pass opens with such a test, which is harmless unless the doubled value
+          equals `target`.
+      has-zero:
+        prompt: Which sum must equal `target` for this code to return a wrong pair?
+        options:
+          - id: self-sum
+            text: A value added to itself
+          - id: zero-sum
+            text: Any sum that includes a 0
+          - id: end-sum
+            text: The sum of the last two values
+        correct: self-sum
+        explanation: >-
+          The only tests this code adds to a correct brute force are `nums[i] + nums[i]`. A wrong
+          answer needs one of those to hit `target`, and with a target of 5 that would take a value
+          of 2.5.
