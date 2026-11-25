@@ -175,12 +175,12 @@ describe('fresh review variants', () => {
 	]);
 
 	it('uses the tree’s positional assignment for a legacy drill', () => {
-		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'recursive-calls')!;
+		const path = curriculum.branches.flatMap((branch) => branch.paths).find((entry) => entry.id === 'reachability')!;
 		const resolved = teachingBySkill(path, curriculum.drills);
-		const original = attempt('recursion-backtracking', 'base-case-depth', '2026-10-09');
+		const original = attempt('graph-traversal-grids', 'bfs-mark-on-enqueue', '2026-10-09');
 		const status = reviewStatus(publishedDecks, [original], '2026-10-10', undefined, undefined, resolved);
 		expect(status.entries[0]).toMatchObject({
-			deckId: 'recursive-calls-review',
+			deckId: 'reachability-review',
 			reviewOf: { deckId: original.deckId, questionId: original.questionId }
 		});
 	});

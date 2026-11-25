@@ -1,6 +1,6 @@
 id: recursive-calls-review
-title: "Recursive calls: review"
-description: Fresh inputs for the Recursive calls skills, for recall on later days. No worked examples this time.
+title: "Recursion: review"
+description: Fresh inputs for the Recursion skills, for recall on later days. No worked examples this time.
 heading: What does this give?
 
 questions:
@@ -350,7 +350,7 @@ questions:
         explanation: That is the second call, on `"rden"`. One more call comes before the third.
       - index: 3
         explanation: >-
-          Calls start only at even indexes, 0, 2, 4 and then the empty end, because each drops two
+          Calls start only at even indices, 0, 2, 4 and then the empty end, because each drops two
           letters.
       - index: 5
         explanation: >-
@@ -373,7 +373,8 @@ questions:
           return half * half * b
       ```
 
-      `power(3, 5)` runs. Which values of `e` do the calls get, in order?
+      `e % 2` is the remainder after dividing by 2, so it is 0 when `e` is even. `power(3, 5)`
+      runs. Which values of `e` do the calls get, in order?
     options:
       - id: halves
         text: 5, 2, 1, 0
@@ -458,7 +459,7 @@ questions:
       - id: gives-true
         text: "`True`"
         explanation: >-
-          True is returned one level up. Check what the waiting calls do with it.
+          True is returned one level up. Check what the calls above it do with it.
       - id: gives-false
         text: "`False`"
         explanation: >-
@@ -520,7 +521,8 @@ questions:
           return digits(n // 10) + [n % 10]
       ```
 
-      What does `digits(408)` return?
+      `n // 10` drops the last digit, and `n % 10`, the remainder after dividing by 10, is the
+      last digit. What does `digits(408)` return?
     options:
       - id: in-order
         text: "`[4, 0, 8]`"
@@ -535,7 +537,8 @@ questions:
       - id: deepest
         text: "`[4]`"
         explanation: >-
-          That is what the deepest call returns. Two calls are still waiting to add their digits.
+          That is what the deepest call returns. Two calls above it have not returned yet, and each
+          adds its digit.
       - id: no-base
         text: "`[0, 8]`"
         explanation: >-
@@ -566,7 +569,7 @@ questions:
             text: "`[40]`"
         correct: adds-zero
         explanation: >-
-          A waiting call finishes its own line once the result comes back. Here that appends
+          A call finishes its own line once the result comes back. Here that appends
           `40 % 10`, which is 0.
       no-base:
         prompt: What does `digits(4)` return?
@@ -618,5 +621,88 @@ questions:
         explanation: 4 is smaller than the 9 at index 3, which the call at `i = 3` returned.
       - index: 4
         explanation: >-
-          4 is what the deepest call returns. Each waiting call compares and may replace it, and the
+          4 is what the deepest call returns. Each call above it compares and may replace it, and the
           call at `i = 3` does.
+
+  - id: live-calls-right-end-review
+    heading: How many calls are live?
+    tags: [recursion]
+    prompt: |-
+      ```python
+      def smallest(nums, lo, hi):
+          if lo == hi:
+              return nums[lo]
+          mid = (lo + hi) // 2
+          left = smallest(nums, lo, mid)
+          right = smallest(nums, mid + 1, hi)
+          return min(left, right)
+
+      smallest([7, 3, 9, 4, 8, 1, 6, 2, 5, 0], 0, 9)
+      ```
+
+      While `smallest(nums, 9, 9)` runs, how many calls are live, the first call included?
+    options:
+      - id: four
+        text: "4"
+        explanation: >-
+          The calls on 0 to 9, 5 to 9, 8 to 9 and 9 to 9 have started and not returned. Every call
+          on the left half, and `smallest(nums, 8, 8)`, returned before the call on 9 to 9 started.
+      - id: five
+        text: "5"
+        explanation: >-
+          That counts `smallest(nums, 8, 8)` too. It returned its value before the call on 9 to 9
+          started, so it is no longer live.
+      - id: ten
+        text: "10"
+        explanation: >-
+          That counts one call per cell. The calls on cells 0 to 8 have all returned by the time
+          the call on cell 9 runs.
+      - id: nineteen
+        text: "19"
+        explanation: >-
+          That is how many calls the whole run makes. Most of them have already returned when
+          `smallest(nums, 9, 9)` runs.
+    correct: four
+    followUps:
+      five:
+        prompt: >-
+          `smallest(nums, 8, 8)` has returned its value to `smallest(nums, 8, 9)`. Is it still
+          live?
+        options:
+          - id: returned
+            text: No, a call stops being live when it returns
+          - id: caller
+            text: Yes, it stays live until the call that made it returns
+          - id: first
+            text: Yes, every call stays live until the first call ends
+        correct: returned
+        explanation: >-
+          A live call has started and not returned. Once a call hands back its value it is done,
+          even while the call that made it is still running.
+      ten:
+        prompt: While `smallest(nums, 9, 9)` runs, has `smallest(nums, 0, 0)` returned?
+        options:
+          - id: done
+            text: Yes, the whole left half returned before the right half started
+          - id: waits
+            text: No, it stays until the first call ends
+          - id: not-started
+            text: No, it has not started yet
+        correct: done
+        explanation: >-
+          `smallest(nums, 0, 4)` and every call it made returned before the line that starts
+          `smallest(nums, 5, 9)` ran. Only the calls on the way down to cell 9 are live.
+      nineteen:
+        prompt: Which calls are live while `smallest(nums, 9, 9)` runs?
+        options:
+          - id: holds-nine
+            text: Only the calls whose range holds index 9
+          - id: every
+            text: Every call the run makes
+          - id: right-half
+            text: Every call on the right half, 5 to 9
+        correct: holds-nine
+        explanation: >-
+          Every live call but the running one is waiting on the call it made, so the live calls
+          form one chain from the first call down to the running one. Here that chain is 0 to 9, 5
+          to 9, 8 to 9 and 9 to 9.
