@@ -1,6 +1,6 @@
 import { localDay } from '$lib/domain/days';
-import { compareAttempts, isFlag, readAttempt } from './guards';
-import { MAX_NOTE_LENGTH, type Attempt, type Flag, type FlagStage } from './types';
+import { cleanNote, compareAttempts, readAttempt, readFlag } from './guards';
+import type { Attempt, Flag, FlagStage } from './types';
 
 /** The slice of the Web Storage API this app uses. */
 export interface KeyValueStore {
@@ -119,7 +119,8 @@ export class Repository {
 	/** Every flag including deletions, which sync needs. */
 	allFlags(): Flag[] {
 		const parsed = this.#readJson(KEYS.flags);
-		return Array.isArray(parsed) ? parsed.filter(isFlag) : [];
+		if (!Array.isArray(parsed)) return [];
+		return parsed.map(readFlag).filter((flag) => flag !== null);
 	}
 
 	flags(): Flag[] {
@@ -132,7 +133,7 @@ export class Repository {
 			...input,
 			id: flagId(input.deckId, input.questionId, input.stage, input.optionId),
 			at: this.#now().toISOString(),
-			note: input.note.trim().slice(0, MAX_NOTE_LENGTH)
+			note: cleanNote(input.note)
 		};
 		this.#write(KEYS.flags, [...this.allFlags().filter((existing) => existing.id !== flag.id), flag]);
 		return flag;

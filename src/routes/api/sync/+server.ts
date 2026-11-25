@@ -8,7 +8,7 @@
 
 import type { RequestHandler } from './$types';
 import { jsonResponse, readJsonBody } from '$lib/server/http';
-import { isAttempt, isFlag } from '$lib/storage/guards';
+import { parseAttempt, parseFlag } from '$lib/storage/guards';
 import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, type SyncRequest } from '$lib/sync/protocol';
 
 export const prerender = false;
@@ -19,8 +19,11 @@ function parseRequest(body: unknown): SyncRequest | null {
 	if (typeof cursor !== 'number' || !Number.isInteger(cursor) || cursor < 0) return null;
 	if (!Array.isArray(attempts) || attempts.length > SYNC_BATCH * 2) return null;
 	if (!Array.isArray(flags) || flags.length > MAX_FLAGS) return null;
-	if (!attempts.every(isAttempt) || !flags.every(isFlag)) return null;
-	return { cursor, attempts, flags };
+	// Rebuilt from known fields, so unknown keys never reach storage or another device.
+	const cleanAttempts = attempts.map(parseAttempt);
+	const cleanFlags = flags.map(parseFlag);
+	if (!cleanAttempts.every((attempt) => attempt !== null) || !cleanFlags.every((flag) => flag !== null)) return null;
+	return { cursor, attempts: cleanAttempts, flags: cleanFlags };
 }
 
 export const POST: RequestHandler = async ({ locals, request }) => {

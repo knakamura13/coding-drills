@@ -183,3 +183,23 @@ describe('runSync', () => {
 		expect(b.repo.attempts().map((attempt) => attempt.questionId)).toEqual(['q1', 'q2']);
 	});
 });
+
+describe('records stored before #158', () => {
+	it('syncs to completion instead of failing on every run, cleaning a bad note and dropping an unusable attempt', async () => {
+		const { api, repo: server_, userId } = await server();
+		const good = bulk(1, 'g')[0];
+		const store = memoryStore({
+			[KEYS.attempts]: JSON.stringify([good, { ...bulk(1, 'bad')[0], questionId: 'q\u0000' }]),
+			[KEYS.flags]: JSON.stringify([
+				{ id: 'deck/q0/question', at: '2026-10-01T00:00:00.000Z', deckId: 'deck', questionId: 'q0', stage: 'question', note: 'see\u0000 this\ud83d' }
+			])
+		});
+		const repo = new Repository(store, () => new Date('2026-10-02T00:00:00.000Z'));
+
+		expect(await runSync(repo, api)).toEqual({ status: 'ok', changed: false });
+		expect(repo.pendingAttempts(10)).toEqual([]);
+		const held = await server_.sync(userId, { cursor: 0, attempts: [], flags: [] });
+		expect(held.attempts).toEqual([good]);
+		expect(held.flags.map((flag) => flag.note)).toEqual(['see this\uFFFD']);
+	});
+});

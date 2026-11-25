@@ -199,6 +199,13 @@ describe('flags', () => {
 		);
 	});
 
+	it('saves a note the server can store, whatever was typed or pasted', () => {
+		const repo = new Repository(memoryStore(), fixedNow);
+		const flag = repo.upsertFlag({ ...base, note: 'pasted\u0000 text\ud83d\nsecond line' });
+		expect(flag.note).toBe('pasted text�\nsecond line');
+		expect(repo.flags()).toEqual([flag]);
+	});
+
 	it('removes a flag by id but keeps a tombstone so the deletion can sync', () => {
 		const repo = new Repository(memoryStore(), fixedNow);
 		const flag = repo.upsertFlag(base);

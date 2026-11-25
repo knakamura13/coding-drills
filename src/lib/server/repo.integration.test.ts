@@ -6,7 +6,8 @@ import { createMemoryRepo } from '$lib/testing/memoryRepo';
 import { SYNC_PAGE } from '$lib/sync/protocol';
 import type { Attempt, Flag } from '$lib/storage/types';
 import { migrate, type Sql } from './db';
-import { createRepo, type Repo } from './repo';
+import { createRepo, type Repo, type SessionUser } from './repo';
+import { POST as syncRoute } from '../../routes/api/sync/+server';
 
 /**
  * The same contract runs against the in-memory fake and against a real
@@ -35,6 +36,24 @@ const flag = (at: string, note: string, over: Partial<Flag> = {}): Flag => ({
 	note,
 	...over
 });
+
+/** Calls `POST /api/sync` as the signed-in user; the handler only reads `locals` and `request`. */
+async function postSync(repo: Repo, user: SessionUser, body: unknown): Promise<number> {
+	const request = new Request('http://localhost/api/sync', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+	const res = await (syncRoute as unknown as (event: unknown) => Promise<Response>)({ locals: { repo, user }, request });
+	return res.status;
+}
+
+// Strings Postgres refuses inside jsonb: a null character, and half of a surrogate pair.
+const UNSTORABLE = [
+	['a null character', 'note\u0000'],
+	['a lone high surrogate', 'note\ud83d'],
+	['a lone low surrogate', '\ude00note']
+] as const;
 
 function contract(name: string, make: () => Promise<Repo>) {
 	describe(name, () => {
@@ -128,6 +147,44 @@ function contract(name: string, make: () => Promise<Repo>) {
 				flags: [flag('2026-10-10T13:00:00.000Z', 'a', { id: 'dupe' }), flag('2026-10-10T14:00:00.000Z', 'b', { id: 'dupe' })]
 			});
 			expect(result.flags.find((f) => f.id === 'dupe')?.note).toBe('b');
+		});
+
+		it.each(UNSTORABLE)('refuses %s in a stored string and keeps nothing from that request', async (_name, bad) => {
+			const user = await repo.upsertUser(`sub-${name}-unstorable-${bad.length}-${bad.charCodeAt(bad.length - 1)}`, 'u@example.com', null);
+			await expect(
+				repo.sync(user.id, { cursor: 0, attempts: [attempt('kept?')], flags: [flag('2026-10-10T12:00:00.000Z', bad)] })
+			).rejects.toThrow();
+			await expect(
+				repo.sync(user.id, { cursor: 0, attempts: [attempt('bad', { pickedId: bad })], flags: [] })
+			).rejects.toThrow();
+			const after = await repo.sync(user.id, { cursor: 0, attempts: [], flags: [] });
+			expect(after).toMatchObject({ attempts: [], flags: [] });
+		});
+
+		it.each(UNSTORABLE)('answers 400, not a server error, to a sync with %s in any string', async (_name, bad) => {
+			const user = { id: userId, email: 'me@example.com', name: 'Me' };
+			const note = flag('2026-10-10T12:00:00.000Z', bad, { id: 'deck/q9/question', questionId: 'q9' });
+			expect(await postSync(repo, user, { cursor: 0, attempts: [], flags: [note] })).toBe(400);
+			for (const field of ['id', 'deckId', 'questionId', 'pickedId'] as const) {
+				expect(await postSync(repo, user, { cursor: 0, attempts: [attempt('route-bad', { [field]: bad })], flags: [] })).toBe(400);
+			}
+			const followUp = attempt('route-bad', { correct: false, followUp: { pickedId: bad, correct: true } });
+			expect(await postSync(repo, user, { cursor: 0, attempts: [followUp], flags: [] })).toBe(400);
+		});
+
+		it('stores only the known fields of an attempt or flag sent to the route', async () => {
+			const user = await repo.upsertUser(`sub-${name}-extra`, 'x@example.com', null);
+			const clean = attempt('extra', { reviewOf: { deckId: 'deck', questionId: 'q0' } });
+			const cleanFlag = flag('2026-10-10T12:00:00.000Z', 'a note\twith a tab,\nan emoji 😀 and accents é');
+			const status = await postSync(repo, user, {
+				cursor: 0,
+				attempts: [{ ...clean, junk: 'x'.repeat(50), reviewOf: { ...clean.reviewOf, more: 1 } }],
+				flags: [{ ...cleanFlag, junk: true }]
+			});
+			expect(status).toBe(200);
+			const back = await repo.sync(user.id, { cursor: 0, attempts: [], flags: [] });
+			expect(back.attempts).toEqual([clean]);
+			expect(back.flags).toEqual([cleanFlag]);
 		});
 
 		it('pages a large history and reports when more remains', async () => {
