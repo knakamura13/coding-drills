@@ -27,10 +27,25 @@ const id = z
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 
+/**
+ * How deep an item goes, shallowest first. A learner will see every item at or
+ * below the level they choose (#155). Keep the order when adding a level.
+ */
+export const DEPTHS = ['interview', 'deep'] as const;
+export type Depth = (typeof DEPTHS)[number];
+/** The depth of a path, skill or drill that does not set one. */
+const DEFAULT_DEPTH: Depth = 'interview';
+
+const depth = z.enum(DEPTHS).optional();
+
+const shallower = (item: Depth, than: Depth): boolean => DEPTHS.indexOf(item) < DEPTHS.indexOf(than);
+
 const levelSchema = z
 	.object({
 		id,
-		title: text(90)
+		title: text(90),
+		/** Never shallower than the path. */
+		depth
 	})
 	.strict();
 
@@ -92,6 +107,8 @@ const drillSchema = z
 		checkpoint: id.optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
+		/** Never shallower than the named skill, or the path when no skill is named. */
+		depth,
 		note: text(400)
 	})
 	.strict();
@@ -123,6 +140,7 @@ export const branchSchema = z
 					after: z.array(id),
 					/** Plan text that does not name a path, so it is not an edge. */
 					afterNote: text(300).optional(),
+					depth,
 					/** Extra skill ids the entrance and the single checkpoint wait on. */
 					needs: z.array(id).optional(),
 					levels: z.array(levelSchema).min(2).max(3),
@@ -158,6 +176,7 @@ export interface CurriculumSkill {
 	line: string;
 	/** Skill ids that come immediately before this one. */
 	after: readonly string[];
+	depth: Depth;
 }
 
 export interface CurriculumCheckpoint {
@@ -188,6 +207,7 @@ export interface CurriculumPath {
 	branchId: string;
 	after: readonly string[];
 	afterNote?: string;
+	depth: Depth;
 	skills: readonly CurriculumSkill[];
 	forks: readonly CurriculumFork[];
 	checkpoints: readonly CurriculumCheckpoint[];
@@ -215,6 +235,7 @@ export interface CurriculumDrill {
 	checkpointId?: string;
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
+	depth: Depth;
 	note: string;
 }
 
@@ -384,7 +405,8 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				pathId,
 				branchId: branch.id,
 				line: 'main',
-				after: index === 0 ? [...entrance] : [path.levels[index - 1]!.id]
+				after: index === 0 ? [...entrance] : [path.levels[index - 1]!.id],
+				depth: level.depth ?? DEFAULT_DEPTH
 			};
 			skills.push(skill);
 			skillIndex.set(skill.id, skill);
@@ -398,11 +420,18 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					pathId,
 					branchId: branch.id,
 					line: fork.id,
-					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id]
+					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id],
+					depth: level.depth ?? DEFAULT_DEPTH
 				};
 				skills.push(skill);
 				skillIndex.set(skill.id, skill);
 			});
+		}
+		const pathDepth = path.depth ?? DEFAULT_DEPTH;
+		for (const skill of skills) {
+			if (shallower(skill.depth, pathDepth)) {
+				throw new ContentError(`skill "${skill.id}" is ${skill.depth}, shallower than its path "${pathId}" (${pathDepth})`);
+			}
 		}
 		skillsByPath.set(pathId, skills);
 	}
@@ -504,6 +533,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			branchId: branch.id,
 			after: path.after,
 			...(path.afterNote ? { afterNote: path.afterNote } : {}),
+			depth: path.depth ?? DEFAULT_DEPTH,
 			skills,
 			forks: (path.forks ?? []).map((fork) => ({
 				id: fork.id,
@@ -563,6 +593,16 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					throw new ContentError(`drill "${drill.questionId}" names skill "${drill.skill}", which is not on path "${drill.path}"`);
 				}
 			}
+			const drillDepth = drill.depth ?? DEFAULT_DEPTH;
+			const drillPath = compiledPaths.get(drill.path)!;
+			const parent = drill.skill
+				? { kind: 'skill', id: drill.skill, depth: drillPath.skills.find((skill) => skill.id === drill.skill)!.depth }
+				: { kind: 'path', id: drill.path, depth: drillPath.depth };
+			if (shallower(drillDepth, parent.depth)) {
+				throw new ContentError(
+					`drill "${drill.questionId}" is ${drillDepth}, shallower than its ${parent.kind} "${parent.id}" (${parent.depth})`
+				);
+			}
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,
@@ -574,6 +614,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
 				...(drill.checkpoint ? { checkpointId: drill.checkpoint } : {}),
 				covers: dedupe(drill.covers ?? []),
+				depth: drillDepth,
 				note: drill.note
 			});
 		}

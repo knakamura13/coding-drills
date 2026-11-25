@@ -360,6 +360,65 @@ describe('compileCurriculum', () => {
 		const joined = compiled.branches[0]!.paths[2]!.checkpoints[0]!;
 		expect(joined.requires).toEqual(['joined-a', 'joined-b', 'alpha-a', 'alpha-b', 'beta-a', 'beta-b']);
 	});
+
+	function deepPath(id: string): BranchFile['paths'][number] {
+		const deep = path(id);
+		deep.depth = 'deep';
+		deep.levels = deep.levels.map((item) => ({ ...item, depth: 'deep' as const }));
+		return deep;
+	}
+
+	it('resolves an unset depth to interview and keeps an explicit deep', () => {
+		const shallow = path('shallow');
+		shallow.levels = [shallow.levels[0]!, { ...shallow.levels[1]!, depth: 'deep' }];
+		shallow.forks = [{ id: 'side', title: 'Side', levels: [{ ...level('side-a'), depth: 'deep' }] }];
+		const files = [
+			branch('foundations', 1, [shallow, deepPath('deep')], [
+				{ questionId: 'plain', disposition: 'keep', path: 'shallow', note: 'Default.' },
+				{ questionId: 'deep-card', disposition: 'keep', path: 'shallow', skill: 'shallow-b', depth: 'deep', note: 'Deep skill.' },
+				{ questionId: 'deep-exam', disposition: 'exam', path: 'deep', depth: 'deep', note: 'Deep path.' }
+			])
+		];
+		const compiled = compileCurriculum(files, questions('plain', 'deep-card', 'deep-exam'));
+		const [interviewPath, deep] = compiled.branches[0]!.paths;
+		expect(interviewPath!.depth).toBe('interview');
+		expect(interviewPath!.skills.map((skill) => [skill.id, skill.depth])).toEqual([
+			['shallow-a', 'interview'],
+			['shallow-b', 'deep'],
+			['side-a', 'deep']
+		]);
+		expect(deep!.depth).toBe('deep');
+		expect(deep!.skills.map((skill) => skill.depth)).toEqual(['deep', 'deep']);
+		expect(compiled.drills.map((drill) => drill.depth)).toEqual(['interview', 'deep', 'deep']);
+	});
+
+	it('rejects a skill shallower than its path', () => {
+		const main = deepPath('alpha');
+		main.levels = [main.levels[0]!, level('alpha-b')];
+		expect(() => compileCurriculum([branch('foundations', 1, [main])], [])).toThrow(
+			'skill "alpha-b" is interview, shallower than its path "alpha" (deep)'
+		);
+		const forked = deepPath('alpha');
+		forked.forks = [{ id: 'side', title: 'Side', levels: [level('side-a')] }];
+		expect(() => compileCurriculum([branch('foundations', 1, [forked])], [])).toThrow(
+			'skill "side-a" is interview, shallower than its path "alpha" (deep)'
+		);
+	});
+
+	it('rejects a drill shallower than the skill it names, or its path when it names none', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const underSkill = [
+			branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'keep', path: 'alpha', skill: 'alpha-b', note: 'Teach it.' }])
+		];
+		expect(() => compileCurriculum(underSkill, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than its skill "alpha-b" (deep)'
+		);
+		const underPath = [branch('foundations', 1, [deepPath('beta')], [{ questionId: 'one', disposition: 'exam', path: 'beta', note: 'Exam.' }])];
+		expect(() => compileCurriculum(underPath, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than its path "beta" (deep)'
+		);
+	});
 });
 
 const scratch: string[] = [];

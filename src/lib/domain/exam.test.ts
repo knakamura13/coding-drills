@@ -7,7 +7,7 @@ import { EXAM_SIZE, drawExam, examPassed, orderForReview } from './exam';
 import { seededRng } from './shuffle';
 
 function drill(questionId: string, covers: string[] = []): CurriculumDrill {
-	return { questionId, deckId: 'deck', disposition: 'exam', pathId: 'path', covers, note: 'Exam.' };
+	return { questionId, deckId: 'deck', disposition: 'exam', pathId: 'path', covers, depth: 'interview', note: 'Exam.' };
 }
 
 function attempt(questionId: string, correct: boolean, day = '2026-02-01', id = `${questionId}@${day}`): Attempt {
