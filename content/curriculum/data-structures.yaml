@@ -1,7 +1,7 @@
 # Data structures. Part of the mastery map (issue #12).
 id: data-structures
 title: Data structures
-summary: Stacks, heaps, and linked lists, from one operation up to a combined use.
+summary: Stacks, heaps, linked lists, and structures designed to meet stated costs, from one operation up to a combined use.
 order: 3
 
 paths:
@@ -25,7 +25,7 @@ paths:
     title: Monotonic stack
     summary: Keep waiting positions, resolve smaller tops, and account for the whole run.
     after: [stack-matching, growth-rates]
-    afterNote: Index versus value is the arrays skill for reading an index. Growth rates is for the cost.
+    afterNote: Reading an index is the Arrays and strings skill for telling an index from its value. Growth rates gives the big-O for the cost of a whole run.
     needs: [read-index]
     levels:
       - id: identify-waiting-position
@@ -42,7 +42,8 @@ paths:
   - id: priority-order
     title: Priority order
     summary: Tell a FIFO queue from a priority queue, find the heap root, and predict one push or pop.
-    after: [arrays-and-strings]
+    after: [operation-costs]
+    afterNote: Operation costs brings the queue (first in, first out, `deque` and `popleft`), and through Growth rates the big-O names.
     levels:
       - id: fifo-versus-priority
         title: Distinguish FIFO from minimum priority
@@ -58,8 +59,8 @@ paths:
   - id: heap-operations
     title: Heap operations
     summary: Trace one sift and compare ways to build a heap. Ties are a separate fork.
-    after: [priority-order, growth-rates]
-    afterNote: Tuple ordering for ties is named in the plan and is not a path of its own. The tie fork covers that comparison.
+    after: [priority-order]
+    afterNote: Growth rates comes through Priority order. Tuple ordering for ties is not a path of its own. The tie fork covers that comparison.
     levels:
       - id: trace-one-sift
         title: Trace one sift
@@ -77,11 +78,13 @@ paths:
       - id: compare-construction-or-ties
         title: Compare construction or repair ties
         summary: Compare construction strategies or repair tied entries.
+        mix: [construction, ties]
 
   - id: bounded-heaps
     title: Bounded heaps
-    summary: Evict to keep a size limit. Merging sorted streams is a separate fork.
-    after: [priority-order, operation-costs]
+    summary: Evict to keep a size limit, and price it. Merging sorted runs is a separate fork.
+    after: [heap-operations]
+    afterNote: Heap operations brings `heapify`, the O(log n) cost of one push or pop, and tuple entries that settle ties. Priority order comes through it, with the negated push that pops the largest first.
     levels:
       - id: track-eviction-candidate
         title: Track the eviction candidate
@@ -92,9 +95,9 @@ paths:
         title: Merge
         levels:
           - id: expose-stream-head
-            title: Expose one head per stream
+            title: Put one front per run in the heap
           - id: replenish-popped-stream
-            title: Replenish the stream just popped
+            title: Refill the run just popped
     checkpoints:
       - id: top-k-or-merge
         title: Top K or a lazy merge
@@ -103,19 +106,20 @@ paths:
 
   - id: link-rewrites
     title: Link rewrites
-    summary: Follow a successor, save and redirect an edge, and handle the first node.
-    after: [names-and-objects]
+    summary: Follow a link, save and redirect a link, and handle the first node.
+    after: [names-and-objects, operation-costs]
+    afterNote: Names and objects brings names that share one object and what rebinding a parameter does. Operation costs brings the cost of inserting into a Python list and, through Growth rates, the big-O names, which the linked-list cost card uses.
     levels:
       - id: follow-successor
-        title: Follow a successor
+        title: Follow a link
       - id: save-and-redirect
-        title: Save and redirect an edge
+        title: Save and redirect a link
       - id: handle-first-node
         title: Handle the first node
     checkpoints:
       - id: reverse-links
-        title: Reverse links
-        summary: Reverse links without losing the remainder.
+        title: Reverse or merge links
+        summary: Reverse or merge linked lists without losing the rest.
 
   - id: pointer-walks
     title: Pointer walks
@@ -133,908 +137,1160 @@ paths:
         title: Unlink or detect a cycle
         summary: Unlink the nth-from-end node or distinguish a cycle from repeated values.
 
+  - id: design-structures
+    title: Design structures
+    summary: Carry a summary in each stack entry, build a queue from two stacks, and keep a map and a list in step.
+    after: [stack-matching, hash-lookups, link-rewrites]
+    afterNote: Stack matching brings a list used as a stack. Hash lookups brings dict lookups that cost O(1) on average, and through Operation costs amortized cost and the big-O names. Link rewrites brings the node class and unlinking a node.
+    levels:
+      - id: carry-a-summary
+        title: Carry a summary in each entry
+      - id: move-between-two-stacks
+        title: Move items between two stacks
+      - id: keep-two-in-step
+        title: Keep two structures in step
+    checkpoints:
+      - id: meet-stated-costs
+        title: Meet stated costs
+        summary: Pick the design that meets a stated set of costs, or find the run a near-miss design gets wrong.
+
 drills:
   - questionId: shortest-job-first
-    disposition: rewrite
+    disposition: retire
     path: priority-order
-    skill: fifo-versus-priority
-    note: Give three pending jobs and one arrival. Pick the next job before choosing the structure.
+    note: 'Its rewrite is done by Priority order''s `next-job-on-arrival`. The rest compares structures by heap cost and `bisect.insort`, which Priority order does not teach. The older deck stays as a fixture.'
   - questionId: heapq-min-heap
-    disposition: rewrite
+    disposition: retire
     path: priority-order
-    skill: predict-push-pop
-    note: Predict one minimum pop first. Teach reversing numeric priorities in a later variant.
+    note: 'Absorbed into Priority order as `largest-first-negate`. The older deck stays as a fixture.'
   - questionId: top-k-min-heap
-    disposition: exam
+    disposition: retire
     path: bounded-heaps
-    tests: [track-eviction-candidate, preserve-size-limit]
-    covers: [top-k]
-    note: Choose which score to evict, then justify the size bound for a stream.
+    note: 'Not copied: every top-k item in `bounded-heaps-checkpoint` shows the capped min-heap in code, which answers this approach choice, and `capped-cost` teaches its bound. The older deck stays as a fixture.'
   - questionId: heapify-vs-pushes
-    disposition: exam
+    disposition: retire
     path: heap-operations
-    tests: [trace-one-sift, compare-build-strategies]
-    note: Connect tree height, one sift and bottom-up construction on existing input.
+    note: 'Rewritten as the situation item `checkpoint-build-for-arrivals` in the Heap operations checkpoint. The older deck stays as a fixture.'
   - questionId: heap-tie-typeerror
-    disposition: rewrite
+    disposition: retire
     path: heap-operations
-    skill: choose-tie-breaker
-    note: Compare equal-priority entries once, then introduce a unique tie-breaker before opaque payloads.
+    note: 'Its first half is absorbed into Heap operations as `payload-typeerror`, and its fix half is `unique-tie-breaker`. The older deck stays as a fixture.'
   - questionId: merge-k-sorted
-    disposition: exam
+    disposition: retire
     path: bounded-heaps
-    tests: [expose-stream-head, replenish-popped-stream]
-    covers: [merge]
-    note: Track one head per stream, choose which to replenish and bound memory.
+    note: 'Not copied: its answer, a heap of one front per list refilled from the popped list, is the shape `checkpoint-refill-line` shows and asks for. The older deck stays as a fixture.'
   - questionId: reverse-in-place
-    disposition: exam
+    disposition: retire
     path: link-rewrites
-    tests: [follow-successor, save-and-redirect]
-    note: Combine saving the successor, redirecting an edge and advancing both references.
+    note: 'Not copied: its answer, the order of the four reversal lines, appears in the code of three `link-rewrites-checkpoint` items. The older deck stays as a fixture.'
   - questionId: middle-node
-    disposition: keep
+    disposition: retire
     path: pointer-walks
-    skill: handle-walk-termination
-    note: Trace one- and two-hop cursors on an even-length list after one-hop practice.
+    note: 'Absorbed into Pointer walks as `second-middle-return`, with `.next` for `.link`. The older deck stays as a fixture.'
   - questionId: dummy-head
-    disposition: rewrite
+    disposition: retire
     path: link-rewrites
-    skill: handle-first-node
-    note: Draw a sentinel before a one-node list and ask which edge changes when the head is removed.
+    note: 'Absorbed into Link rewrites as `first-node-missed`, which shows the node a loop without a dummy never tests. The older deck stays as a fixture.'
   - questionId: remove-nth-from-end
-    disposition: exam
+    disposition: retire
     path: pointer-walks
-    tests: [maintain-gap-or-speed, handle-walk-termination]
-    note: Combine a fixed gap and a sentinel including the head-removal case.
+    note: 'Not copied: its right setup is the code `stop-before-target` and `head-removal-gap` show, so it is answerable from memory. The older deck stays as a fixture.'
   - questionId: cycle-detection
-    disposition: rewrite
+    disposition: retire
     path: pointer-walks
-    skill: advance-safely
-    note: First trace safe two-hop access on odd and even lists, then distinguish node identity from equal values.
+    note: 'Its rewrite is done: `odd-length-hops`, `even-guard-crash` and `equal-values-not-same` teach it, and `checkpoint-debug-cycle-guard` tests it. The older deck stays as a fixture.'
   - questionId: cost-model
-    disposition: rewrite
+    disposition: retire
     path: link-rewrites
-    skill: save-and-redirect
-    note: Separate locating a node from splicing after a node already held; compare array insertion later.
-  - questionId: next-taller-stall
-    disposition: exam
-    path: monotonic-stack
-    tests: [identify-waiting-position, resolve-smaller-tops]
-    note: Choose and trace the waiting stack on an unfamiliar next-greater problem.
-  - questionId: stack-holds-indices
-    disposition: keep
-    path: monotonic-stack
-    skill: identify-waiting-position
-    note: Select an entry that retains both the height lookup and the distance.
-  - questionId: stack-loop-cost
-    disposition: exam
-    path: monotonic-stack
-    tests: [resolve-smaller-tops, interpret-leftovers]
-    note: Combine tracing pops with counting total pushes and pops over a whole run.
-  - questionId: strict-vs-nonstrict
-    disposition: rewrite
-    path: monotonic-stack
-    skill: resolve-smaller-tops
-    note: Start with two equal heights and ask whether either is resolved; translate to a comparison later.
-  - questionId: bracket-balance
-    disposition: exam
-    path: stack-matching
-    note: Combine LIFO order, bracket type, premature closing and leftover openers.
-  - questionId: leftover-stack
-    disposition: keep
-    path: monotonic-stack
-    skill: interpret-leftovers
-    note: Interpret pending indices after the scan finishes; place after the single-pop exercise.
+    note: 'Carried by Link rewrites'' `linked-list-cost`: a splice after a held node against reaching a node and inserting into a Python list. The older deck stays as a fixture.'
   - questionId: two-push-trace
     disposition: keep
     path: stack-matching
     skill: push-pop-recent
-    note: New teaching card for pushing and popping the most recent item. Trace two pushes and one pop.
-  - questionId: pop-empty-guard
+    note: Trace two pushes and one pop on a list used as a stack. Its worked example introduces the path.
+  - questionId: peek-or-pop
     disposition: keep
     path: stack-matching
     skill: push-pop-recent
-    note: New teaching card for the empty pop check. Predict what an unguarded pop does on a stray closer.
+    note: 'Predict what `stack[-1]` reads and that it leaves the length unchanged, against a pop.'
+  - questionId: empty-pop-raises
+    disposition: keep
+    path: stack-matching
+    skill: push-pop-recent
+    note: 'Predict that a second `pop()` on a one-item stack raises `IndexError`, not `None` or the old item.'
   - questionId: which-opener-matches
     disposition: keep
     path: stack-matching
     skill: match-closer
-    note: New teaching card (tap the cell). Tap the opener a closer pops once nearer pairs have closed.
+    note: Tap the opener a closer pops once nearer pairs have closed. The prompt defines balanced and restates the stack, and the worked example also introduces the path for a learner who skipped the primer.
   - questionId: wrong-type-closer
     disposition: keep
     path: stack-matching
     skill: match-closer
-    note: New teaching card (drag the pointers). Place the wrong-type closer and the top it pops.
+    note: Drag the pointers to the closer that pops the wrong type and the opener it pops.
   - questionId: closer-compares-top
     disposition: keep
     path: stack-matching
     skill: match-closer
-    note: New teaching card. Find the crossed string that a search-the-stack matcher accepts.
-  - questionId: leftover-opener
+    note: 'Find the crossed string that a matcher using `in` and `remove` instead of a pop accepts.'
+  - questionId: pop-empty-guard
     disposition: keep
     path: stack-matching
-    skill: inspect-final-stack
-    note: New teaching card for the leftover opener. Find the string a matcher without the final empty check accepts.
+    skill: match-closer
+    note: 'Predict that the guarded matcher returns `False` on a stray closer without popping, since `or` stops at a true `not stack`. The prompt teaches short-circuit `and` and `or`.'
   - questionId: unmatched-opener
     disposition: keep
     path: stack-matching
     skill: inspect-final-stack
-    note: New teaching card (tap the cell). Tap the opener still on the stack when the scan ends.
+    note: Tap the opener still on the stack when the scan ends.
+  - questionId: leftover-opener
+    disposition: keep
+    path: stack-matching
+    skill: inspect-final-stack
+    note: 'Find the string a matcher ending in `return True` accepts, the one that leaves an opener on the stack.'
   - questionId: pop-order-review
     disposition: keep
     path: stack-matching
     skill: push-pop-recent
     variant: true
-    note: Review variant on a fresh input. Trace pops interleaved with pushes.
+    note: Trace pops interleaved with pushes on fresh values.
   - questionId: top-after-pops-review
     disposition: keep
     path: stack-matching
     skill: push-pop-recent
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the top after one push and two pops.
-  - questionId: empty-pop-review
-    disposition: keep
-    path: stack-matching
-    skill: push-pop-recent
-    variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the closer that pops an empty stack.
+    note: Tap the top of the stack after one push and two pops.
   - questionId: peek-vs-pop-review
     disposition: keep
     path: stack-matching
     skill: push-pop-recent
     variant: true
-    note: Review variant on a fresh input. Tell reading the top apart from popping it.
+    note: 'Tell reading the top with `stack[-1]` apart from popping it, on fresh values.'
+  - questionId: empty-pop-review
+    disposition: keep
+    path: stack-matching
+    skill: match-closer
+    variant: true
+    note: Tap the closer that makes a matcher with no empty-stack test pop an empty list.
   - questionId: which-opener-review
     disposition: keep
     path: stack-matching
     skill: match-closer
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the opener a closer pops.
+    note: Tap the opener a closer pops on a fresh string.
   - questionId: wrong-type-review
     disposition: keep
     path: stack-matching
     skill: match-closer
     variant: true
-    note: Review variant on a fresh input. Say where and why a crossed string fails.
+    note: Say where and why a crossed string fails.
   - questionId: crossed-drag-review
     disposition: keep
     path: stack-matching
     skill: match-closer
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place the wrong-type closer and the top it pops.
+    note: Drag the pointers to the closer that pops the wrong type and the opener it pops, on a fresh string.
   - questionId: leftover-review
     disposition: keep
     path: stack-matching
     skill: inspect-final-stack
     variant: true
-    note: Review variant on a fresh input. Name the leftover opener and the return value.
+    note: Name the leftover opener and the value the call returns.
   - questionId: leftover-order-review
     disposition: keep
     path: stack-matching
     skill: inspect-final-stack
     variant: true
-    note: Review variant on a fresh input. Read the leftover openers from the bottom of the stack to the top.
+    note: 'Read the leftover openers from the bottom of the stack to the top, as `''''.join` prints them.'
   - questionId: final-top-review
     disposition: keep
     path: stack-matching
     skill: inspect-final-stack
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the top of the stack that is left.
+    note: Tap the top of the stack that is left when the scan ends.
   - questionId: checkpoint-pick-balanced
     disposition: exam
     path: stack-matching
-    note: New checkpoint item. Pick the balanced string from a wrong-type closer, a stray closer and a leftover opener.
+    tests: [match-closer, inspect-final-stack]
+    note: Pick the balanced string from a wrong-type closer, a stray closer and a leftover opener.
   - questionId: checkpoint-batch
     disposition: exam
     path: stack-matching
-    note: New checkpoint item. Decide balancedness for three mixed strings at once.
+    tests: [match-closer, inspect-final-stack]
+    note: Decide balancedness for three mixed strings at once.
   - questionId: checkpoint-complete
     disposition: exam
     path: stack-matching
-    note: New checkpoint item. Turn the leftover stack into the closers that complete the string, top first.
+    tests: [inspect-final-stack]
+    note: Turn the leftover stack into the closers that complete the string, top first.
   - questionId: checkpoint-skip-bug
     disposition: exam
     path: stack-matching
-    note: New checkpoint item. Find the string a matcher that skips bad closers gets wrong.
-  - questionId: fifo-or-priority-trace
-    disposition: keep
-    path: priority-order
-    skill: fifo-versus-priority
-    note: New teaching card (step-through trace) for the FIFO vs priority trace. Feed one list to a deque and a heap and predict each one's pops.
-  - questionId: next-job-on-arrival
-    disposition: keep
-    path: priority-order
-    skill: fifo-versus-priority
-    note: New teaching card that carries out the shortest-job-first rewrite. Three pending jobs and one arrival; pick the job that starts next.
-  - questionId: heap-list-unsorted
-    disposition: keep
-    path: priority-order
-    skill: identify-heap-root
-    note: New teaching card for the heap whose internal array is unsorted. Decide whether an unsorted heap list is broken.
-  - questionId: tap-the-root
-    disposition: keep
-    path: priority-order
-    skill: identify-heap-root
-    note: New teaching card (tap the cell). Tap the pushed value that ends up at the root.
-  - questionId: one-pop-prediction
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    note: New teaching card that promotes the plain-pops one-pop prediction on a fresh input. Predict one pop and the new root.
-  - questionId: push-pop-trace
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    note: New teaching card (step-through trace). Predict each pop when a push lands between pops.
-  - questionId: push-below-root
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    note: New teaching card. Predict the root and size after pushing a value smaller than the root.
-  - questionId: deque-or-heap-review
-    disposition: keep
-    path: priority-order
-    skill: fifo-versus-priority
-    variant: true
-    note: Review variant on a fresh input. Predict the first value out of a deque and a heap fed the same list.
-  - questionId: next-out-drag-review
-    disposition: keep
-    path: priority-order
-    skill: fifo-versus-priority
-    variant: true
-    note: Review variant on a fresh input (drag the pointers). Place the next value out of a deque and a heap after two pops each.
-  - questionId: which-rule-needs-priority-review
-    disposition: keep
-    path: priority-order
-    skill: fifo-versus-priority
-    variant: true
-    note: Review variant. Pick the ordering rule that a FIFO queue or a stack cannot serve.
-  - questionId: heapify-root-review
-    disposition: keep
-    path: priority-order
-    skill: identify-heap-root
-    variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the value heapify moves to the root.
-  - questionId: which-list-breaks-review
-    disposition: keep
-    path: priority-order
-    skill: identify-heap-root
-    variant: true
-    note: Review variant. Pick the list that breaks the heap rule from an unsorted, a sorted and a repeated-value heap.
-  - questionId: read-the-largest-review
-    disposition: keep
-    path: priority-order
-    skill: identify-heap-root
-    variant: true
-    note: Review variant on a fresh input. Read the largest value of a heap without assuming it sits last.
-  - questionId: two-pops-review
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    variant: true
-    note: Review variant on a fresh input. Predict two pops in a row.
-  - questionId: next-root-tap-review
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the value that becomes the root after one pop.
-  - questionId: push-pop-trace-review
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    variant: true
-    note: Review variant on a fresh input (step-through trace). Predict each pop around two late pushes.
-  - questionId: which-push-moves-root-review
-    disposition: keep
-    path: priority-order
-    skill: predict-push-pop
-    variant: true
-    note: Review variant on a fresh input. Pick the push that changes the root.
-  - questionId: checkpoint-which-structure
+    tests: [match-closer]
+    note: Trace a matcher that skips any closer it cannot match on three strings, including a stray closer, and read what it prints.
+  - questionId: checkpoint-one-kind-counter
     disposition: exam
-    path: priority-order
-    note: New checkpoint item. Infer the structure that served an arriving stream in a given order.
-  - questionId: checkpoint-timed-stream
+    path: stack-matching
+    tests: [push-pop-recent, match-closer, inspect-final-stack]
+    note: With one kind of bracket, choose the counter rule that matches the stack check, the guard before a pop and the empty stack at the end.
+  - questionId: checkpoint-debug-pop-front
     disposition: exam
-    path: priority-order
-    note: New checkpoint item. Order a timed stream of jobs by priority, counting only jobs that have arrived.
-  - questionId: checkpoint-fifo-fits
-    disposition: exam
-    path: priority-order
-    note: New checkpoint item. Choose a deque when arrival order is the rule and a heap would only add cost.
-  - questionId: checkpoint-next-served
-    disposition: exam
-    path: priority-order
-    note: New checkpoint item (tap the cell). Tap the job the last pop serves after pushes and pops interleave.
-  - questionId: three-node-hops
-    disposition: keep
-    path: link-rewrites
-    skill: follow-successor
-    note: New teaching card (tap the cell). Three nodes linked out of creation order. Tap the node two hops reach.
-  - questionId: empty-tail
-    disposition: keep
-    path: link-rewrites
-    skill: follow-successor
-    note: New teaching card for the empty tail. A walk that runs past the tail reads `.val` from `None`.
-  - questionId: insert-order
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    note: New teaching card. Insert after a held node by copying its link before redirecting it. Part of the cost-model rewrite (splicing after a held node).
-  - questionId: lost-remainder
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    note: New teaching card (tap the cell). Overwrite a link without saving it, then tap where a walk from the head stops.
-  - questionId: reverse-one-pass
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    note: New teaching card (drag the pointers). Place prev, cur and nxt after one save-turn-advance pass.
-  - questionId: push-front-return
-    disposition: keep
-    path: link-rewrites
-    skill: handle-first-node
-    note: New teaching card. A function that builds a new first node without returning it leaves the caller's list unchanged.
-  - questionId: sentinel-only-node
-    disposition: keep
-    path: link-rewrites
-    skill: handle-first-node
-    note: New teaching card (tap the cell). Delete the only node via a sentinel and tap the node whose link changes. Part of the dummy-head rewrite.
-  - questionId: kth-node-trace-review
-    disposition: keep
-    path: link-rewrites
-    skill: follow-successor
-    variant: true
-    note: Review variant on a fresh input (step-through trace). Reaching position k takes k hops, and one hop past the tail fails. Part of the cost-model rewrite (locating a node).
-  - questionId: three-node-review
-    disposition: keep
-    path: link-rewrites
-    skill: follow-successor
-    variant: true
-    note: Review variant on a fresh input. Three nodes linked out of creation order, and an unset link stays None.
-  - questionId: values-after-review
-    disposition: keep
-    path: link-rewrites
-    skill: follow-successor
-    variant: true
-    note: Review variant on a fresh input. A walk that tests the next link stops on the tail and skips the start.
-  - questionId: delete-after-review
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    variant: true
-    note: Review variant on a fresh input. Unlinking the node after p leaves the removed node's own link alone.
-  - questionId: insert-three-lines-review
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    variant: true
-    note: Review variant on a fresh input. Order three lines that save a link, redirect it and link the new node.
-  - questionId: unsaved-hop-review
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    variant: true
-    note: Review variant on a fresh input (tap the cell). Without a saved successor, cur follows the turned link back.
-  - questionId: two-passes-review
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    variant: true
-    note: Review variant on a fresh input. Read the turned part and the remainder after two reversal passes.
-  - questionId: drop-first-review
-    disposition: keep
-    path: link-rewrites
-    skill: handle-first-node
-    variant: true
-    note: Review variant on a fresh input. Moving a parameter past the first node leaves the caller's name and the node's link alone.
-  - questionId: sentinel-two-matches-review
-    disposition: keep
-    path: link-rewrites
-    skill: handle-first-node
-    variant: true
-    note: Review variant on a fresh input (tap the cell). Removing two matching first nodes leaves p on the dummy.
-  - questionId: return-head-review
-    disposition: keep
-    path: link-rewrites
-    skill: handle-first-node
-    variant: true
-    note: Review variant on a fresh input. Returning head instead of dummy.next hands back the removed first node.
-  - questionId: checkpoint-reverse-trace
-    disposition: exam
-    path: link-rewrites
-    tests: [follow-successor, save-and-redirect]
-    note: New checkpoint item (step-through trace). Trace a full reversal, including where cur stops and the list returned.
-  - questionId: checkpoint-old-head
-    disposition: exam
-    path: link-rewrites
-    tests: [save-and-redirect, handle-first-node]
-    note: New checkpoint item. After a reversal, the caller's old head is the one-node tail.
-  - questionId: checkpoint-advance-bug
-    disposition: exam
-    path: link-rewrites
-    tests: [follow-successor, save-and-redirect]
-    note: New checkpoint item. A reversal that advances with cur.next instead of the saved nxt loses the remainder after one pass.
-  - questionId: checkpoint-reverse-front
-    disposition: exam
-    path: link-rewrites
-    tests: [save-and-redirect, handle-first-node]
-    note: New checkpoint item (drag the pointers). Place prev and cur after reversing the first k nodes, before the old head is joined to the rest.
-  - questionId: waiting-indices
+    path: stack-matching
+    tests: [match-closer]
+    note: 'Debugging: pick the call a suggested balance check gets wrong because it pops index 0, the oldest opener, instead of the top.'
+
+  - questionId: next-greater-by-hand
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
-    note: New teaching card. Name the indices still waiting partway through a scan, not their values or the answered ones.
-  - questionId: beneath-new-top
+    note: Find every next greater element by hand, with an equal pair. The prompt defines the task, and the worked example introduces the path.
+  - questionId: pop-one-smaller-top
+    disposition: keep
+    path: monotonic-stack
+    skill: resolve-smaller-tops
+    note: Tap the one index an arrival pops before a larger top stops it. The prompt states the stack of waiting indices and the pop rule.
+  - questionId: trace-pops-per-arrival
+    disposition: keep
+    path: monotonic-stack
+    skill: resolve-smaller-tops
+    note: Step through arrivals and predict each pop count and the top where the popping stops.
+  - questionId: land-on-larger-top
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
-    note: New teaching card (tap the cell). Tap the waiting index a new entry lands on after its pops.
-  - questionId: distance-from-positions
+    note: Tap the waiting index a new entry lands on after its pops. The explanation names the never-increasing order as the monotonic in the title.
+  - questionId: name-waiting-indices
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
-    note: New teaching card for index distance. Compute i - j for a waiting index popped third in one arrival.
-  - questionId: one-pop-arrival
+    note: Name the indices still waiting partway through a scan, not their values or the answered ones.
+  - questionId: equal-value-waits
     disposition: keep
     path: monotonic-stack
     skill: resolve-smaller-tops
-    note: New teaching card (tap the cell) for one pop. Tap the only index an arrival pops before a larger top stops it.
-  - questionId: pops-on-one-arrival
+    note: 'Predict that two equal values both wait, since `<` does not pop on an equal value.'
+  - questionId: distance-between-indices
     disposition: keep
     path: monotonic-stack
-    skill: resolve-smaller-tops
-    note: New teaching card (step-through trace) for multiple pops on one arrival. Predict each pop count and where the popping stops.
-  - questionId: equal-values-wait
-    disposition: keep
-    path: monotonic-stack
-    skill: resolve-smaller-tops
-    note: New teaching card for equal heights. Two equal values both wait. Carries out the first half of the strict-vs-nonstrict rewrite.
-  - questionId: count-total-pops
+    skill: identify-waiting-position
+    note: 'Compute `i - j` for a waiting index popped third in one arrival.'
+  - questionId: leftover-stack
     disposition: keep
     path: monotonic-stack
     skill: interpret-leftovers
-    note: New teaching card for counting operations. Total pops equal pushes minus the indices left.
+    note: Say what the indices left on the stack mean, no larger value to their right, so they keep -1.
+  - questionId: count-pops-in-run
+    disposition: keep
+    path: monotonic-stack
+    skill: interpret-leftovers
+    note: Count the pops of one run as the pushes minus the indices left. The prompt states that each index is popped at most once.
   - questionId: waiting-indices-review
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
     variant: true
-    note: Review variant on a fresh input. Name the indices still waiting partway through a scan.
+    note: Name the indices still waiting partway through a scan, on fresh values.
   - questionId: beneath-top-review
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the index a new entry lands on after two pops.
+    note: Tap the index a new entry lands on after two pops.
   - questionId: what-waits-review
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
     variant: true
-    note: Review variant. State what a waiting index says about the values after it.
+    note: State what a waiting index says about the values after it.
+  - questionId: stack-holds-indices
+    disposition: keep
+    path: monotonic-stack
+    skill: identify-waiting-position
+    variant: true
+    note: 'Choose indices as stack entries, since a value cannot name its slot of `out` and `nums.index` collides on equal values.'
   - questionId: distance-review
     disposition: keep
     path: monotonic-stack
     skill: identify-waiting-position
     variant: true
-    note: Review variant on a fresh input. Compute i - j, not the value or the pop order.
+    note: 'Compute `i - j`, not the value or the pop order, on fresh values.'
   - questionId: arrival-pops-drag-review
     disposition: keep
     path: monotonic-stack
     skill: resolve-smaller-tops
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place the last index an arrival pops and the top that stops it.
+    note: Drag the pointers to the last index an arrival pops and the top that stops it.
   - questionId: pop-count-trace-review
     disposition: keep
     path: monotonic-stack
     skill: resolve-smaller-tops
     variant: true
-    note: Review variant on a fresh input (step-through trace). Pop counts and tops, with an equal value and a four-pop arrival.
+    note: Step through pop counts and tops, with an equal value and a four-pop arrival.
   - questionId: equal-values-review
     disposition: keep
     path: monotonic-stack
     skill: resolve-smaller-tops
     variant: true
-    note: Review variant on a fresh input. Predict next_greater when an equal value arrives before a larger one.
+    note: Predict the next greater elements when an equal value arrives before a larger one.
+  - questionId: strict-vs-nonstrict
+    disposition: keep
+    path: monotonic-stack
+    skill: resolve-smaller-tops
+    variant: true
+    note: 'Pick `<` over `<=` and `>` as the loop condition that gives strictly larger answers with an equal pair.'
   - questionId: total-operations-review
     disposition: keep
     path: monotonic-stack
     skill: interpret-leftovers
     variant: true
-    note: Review variant on a fresh input. Count pushes and pops from the final stack.
+    note: Count pushes and pops from the final stack.
+  - questionId: stack-loop-cost
+    disposition: keep
+    path: monotonic-stack
+    skill: interpret-leftovers
+    variant: true
+    note: Bound the whole run at O(n), since each index is pushed once and popped at most once.
   - questionId: leftover-bottom-review
     disposition: keep
     path: monotonic-stack
     skill: interpret-leftovers
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the bottom of the final stack when the maximum repeats.
+    note: Tap the bottom of the final stack when the largest value repeats.
   - questionId: leftover-values-review
     disposition: keep
     path: monotonic-stack
     skill: interpret-leftovers
     variant: true
-    note: Review variant on a fresh input. Name the leftover indices and the -1 they keep.
+    note: Name the leftover indices and the -1 they keep.
   - questionId: checkpoint-next-greater-output
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops, interpret-leftovers]
-    note: New checkpoint item. Solve next-greater with an equal pair and a four-pop arrival.
+    note: Solve next-greater with an equal pair and a four-pop arrival.
   - questionId: checkpoint-run-cost
     disposition: exam
     path: monotonic-stack
     tests: [resolve-smaller-tops, interpret-leftovers]
-    note: New checkpoint item. Count the pops of one run and justify the linear bound for every input.
+    note: Count the pops of one run and justify the linear bound for every input.
   - questionId: checkpoint-tap-next-greater
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops]
-    note: New checkpoint item (tap the cell). Tap the first strictly larger value past an equal one.
+    note: Tap the first strictly larger value past an equal one.
   - questionId: checkpoint-distance-output
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops, interpret-leftovers]
-    note: New checkpoint item. Solve the steps-until-higher variant with an equal pair and leftover zeros.
+    note: Solve the steps-until-higher variant with an equal pair and leftover zeros.
+  - questionId: next-taller-stall
+    disposition: exam
+    path: monotonic-stack
+    tests: [identify-waiting-position, interpret-leftovers]
+    note: On an unfamiliar stall task, pick the approach that is right on every input but O(n²), against a wrong sort, a wrong suffix maximum and the O(n) stack.
+  - questionId: checkpoint-debug-one-pop
+    disposition: exam
+    path: monotonic-stack
+    tests: [resolve-smaller-tops]
+    note: 'Debugging: pick the call a suggested `next_greater` gets wrong because an `if` pops only one smaller top per arrival.'
+  - questionId: waiting-indices
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `name-waiting-indices`. The older deck stays as a fixture.'
+  - questionId: beneath-new-top
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `land-on-larger-top`. The older deck stays as a fixture.'
+  - questionId: distance-from-positions
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `distance-between-indices`. The older deck stays as a fixture.'
+  - questionId: one-pop-arrival
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `pop-one-smaller-top`, with the stack and the pop rule in its prompt. The older deck stays as a fixture.'
+  - questionId: pops-on-one-arrival
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `trace-pops-per-arrival`. The older deck stays as a fixture.'
+  - questionId: equal-values-wait
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `equal-value-waits`. The older deck stays as a fixture.'
+  - questionId: count-total-pops
+    disposition: retire
+    path: monotonic-stack
+    note: 'Absorbed into Monotonic stack as `count-pops-in-run`. The older deck stays as a fixture.'
+  - questionId: next-job-on-arrival
+    disposition: keep
+    path: priority-order
+    skill: fifo-versus-priority
+    note: Pick the job a shortest-estimate worker starts next when a short job arrives while it is busy. The prompt defines a FIFO queue and a priority queue, and the worked example introduces the path.
+  - questionId: fifo-or-priority-trace
+    disposition: keep
+    path: priority-order
+    skill: fifo-versus-priority
+    note: 'Feed one list to a deque and a heap and predict each one''s pops, keeping the two containers apart. The prompt states what `popleft` and `heappop` return.'
+  - questionId: tap-the-root
+    disposition: keep
+    path: priority-order
+    skill: identify-heap-root
+    note: 'Tap the pushed value that ends up at the root. The prompt defines the root as `h[0]`.'
+  - questionId: heap-list-unsorted
+    disposition: keep
+    path: priority-order
+    skill: identify-heap-root
+    note: 'Decide that an unsorted heap list is still valid. The prompt states the heap rule and the children at `2*i + 1` and `2*i + 2`.'
+  - questionId: one-pop-prediction
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    note: Predict one pop and the new root.
+  - questionId: push-below-root
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    note: Predict the root and size after pushing a value smaller than the root.
+  - questionId: push-pop-trace
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    note: Predict each pop when a push lands between pops.
+  - questionId: largest-first-negate
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    note: 'Predict the first pop when every number is pushed negated and negated back, so the largest comes out first.'
+  - questionId: deque-or-heap-review
+    disposition: keep
+    path: priority-order
+    skill: fifo-versus-priority
+    variant: true
+    note: Predict the first value out of a deque and a heap fed the same list.
+  - questionId: next-out-drag-review
+    disposition: keep
+    path: priority-order
+    skill: fifo-versus-priority
+    variant: true
+    note: Drag the pointers to the next value out of a deque and a heap after two pops each.
+  - questionId: which-rule-needs-priority-review
+    disposition: keep
+    path: priority-order
+    skill: fifo-versus-priority
+    variant: true
+    note: Pick the ordering rule that serving first in, first out or newest first cannot give.
+  - questionId: pushed-root-review
+    disposition: keep
+    path: priority-order
+    skill: identify-heap-root
+    variant: true
+    note: Tap the value at the root after a list is pushed one value at a time.
+  - questionId: which-list-breaks-review
+    disposition: keep
+    path: priority-order
+    skill: identify-heap-root
+    variant: true
+    note: Pick the list that breaks the heap rule from an unsorted, a sorted and a repeated-value heap.
+  - questionId: read-the-largest-review
+    disposition: keep
+    path: priority-order
+    skill: identify-heap-root
+    variant: true
+    note: Read the largest value of a heap without assuming it sits last.
+  - questionId: two-pops-review
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    variant: true
+    note: Predict two pops in a row.
+  - questionId: next-root-tap-review
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    variant: true
+    note: Tap the value that becomes the root after one pop.
+  - questionId: push-pop-trace-review
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    variant: true
+    note: Predict each pop around two late pushes.
+  - questionId: which-push-moves-root-review
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    variant: true
+    note: Pick the push that changes the root.
+  - questionId: negated-pops-review
+    disposition: keep
+    path: priority-order
+    skill: predict-push-pop
+    variant: true
+    note: Predict two pops from a heap of negated numbers, largest first.
+  - questionId: checkpoint-which-structure
+    disposition: exam
+    path: priority-order
+    tests: [fifo-versus-priority, predict-push-pop]
+    note: Infer the structure that served an arriving stream in a given order, against a deque, a list and a negated heap.
+  - questionId: checkpoint-timed-stream
+    disposition: exam
+    path: priority-order
+    tests: [fifo-versus-priority, predict-push-pop]
+    note: Order a timed stream of jobs by priority, counting only jobs that have arrived.
+  - questionId: checkpoint-fifo-fits
+    disposition: exam
+    path: priority-order
+    tests: [fifo-versus-priority]
+    note: 'Choose a deque when arrival order is the rule, against a severity heap, `pop(0)` and `pop()`.'
+  - questionId: checkpoint-next-served
+    disposition: exam
+    path: priority-order
+    tests: [predict-push-pop]
+    note: Tap the job the last pop serves after pushes and pops interleave.
+  - questionId: checkpoint-debug-front-pop
+    disposition: exam
+    path: priority-order
+    tests: [identify-heap-root, predict-push-pop]
+    note: 'Debugging: pick the call a suggested `serve_order` gets wrong because it takes `h.pop(0)`, and only `h[0]` of a heap list is in order.'
+  - questionId: three-node-hops
+    disposition: keep
+    path: link-rewrites
+    skill: follow-successor
+    note: 'Tap the node `a.next.next` reaches when three nodes are linked out of creation order. The prompt shows the `Node` class and defines head and tail, and the worked example introduces the path.'
+  - questionId: empty-tail
+    disposition: keep
+    path: link-rewrites
+    skill: follow-successor
+    note: 'Predict that a walk which runs past the tail reads `.val` from `None` and raises `AttributeError`.'
+  - questionId: lost-remainder
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: Overwrite a link without reading it first, then tap where a walk from the head stops.
+  - questionId: insert-order
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Pick the order that inserts after a held node: copy its link into the new node, then redirect it.'
+  - questionId: unlink-next
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Predict the list after `p.next = p.next.next`, which removes the node after `p`, against removing `p`, cutting the rest and no change.'
+  - questionId: linked-list-cost
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Pick the operation whose cost does not grow with `n`: a splice after a held node, against reaching the middle, `nums.insert(1, x)` and adding after the tail from the head. The explanation names O(1), O(k) and O(n).'
+  - questionId: reverse-one-pass
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: Drag `prev`, `cur` and `nxt` to where one more save, turn and advance pass of a reversal leaves them. The prompt names the goal.
+  - questionId: push-front-return
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: A function that builds a new first node without returning it leaves the caller's list unchanged.
+  - questionId: first-node-missed
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: 'Tap the node a `remove_val` without a dummy never tests: it only tests `node.next`, so the head is never checked.'
+  - questionId: sentinel-only-node
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: 'Tap the node whose link changes when a dummy node removes the only node. The prompt states what `dummy = Node(0, head)` gives the first node.'
+  - questionId: merge-sorted-drag
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: Drag `tail`, `a` and `b` to where three passes of a merge of two sorted lists behind a dummy leave them. Only the side whose node was linked moves.
+  - questionId: kth-node-trace-review
+    disposition: keep
+    path: link-rewrites
+    skill: follow-successor
+    variant: true
+    note: Trace a walk of `k` links. Reaching index `k` takes `k` hops, and one hop past the tail fails.
+  - questionId: three-node-review
+    disposition: keep
+    path: link-rewrites
+    skill: follow-successor
+    variant: true
+    note: Three nodes linked out of creation order, and a link no line sets stays `None`.
+  - questionId: values-after-review
+    disposition: keep
+    path: link-rewrites
+    skill: follow-successor
+    variant: true
+    note: A walk that tests the next link stops on the tail and skips the start.
+  - questionId: delete-after-review
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    variant: true
+    note: Unlinking the node after `p` leaves the removed node's own link alone.
+  - questionId: insert-three-lines-review
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    variant: true
+    note: Order three lines that save a link, redirect it and link the new node.
+  - questionId: unsaved-hop-review
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    variant: true
+    note: Tap where `cur` goes when a reversal pass forgets to save `cur.next` first.
+  - questionId: two-passes-review
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    variant: true
+    note: Read the turned part and the remainder after two reversal passes.
+  - questionId: drop-first-review
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    variant: true
+    note: Moving a parameter past the first node leaves the caller's name and the node's link alone.
+  - questionId: sentinel-two-matches-review
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    variant: true
+    note: Tap where `p` stops when two matching first nodes are removed behind a dummy.
+  - questionId: return-head-review
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    variant: true
+    note: 'Returning `head` instead of `dummy.next` hands back the removed first node.'
+  - questionId: merge-runs-out-review
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    variant: true
+    note: 'Count the passes of a merge where one list runs out first, and see the leftover list joined by one `tail.next` assignment.'
+  - questionId: checkpoint-reverse-trace
+    disposition: exam
+    path: link-rewrites
+    tests: [follow-successor, save-and-redirect]
+    note: Trace a full reversal, including where `cur` stops and the list returned.
+  - questionId: checkpoint-old-head
+    disposition: exam
+    path: link-rewrites
+    tests: [save-and-redirect, handle-first-node]
+    note: After a reversal, the caller's old head is the one-node tail.
+  - questionId: checkpoint-advance-bug
+    disposition: exam
+    path: link-rewrites
+    tests: [follow-successor, save-and-redirect]
+    note: 'A reversal that advances with `cur.next` instead of the saved `nxt` loses the rest after one pass.'
+  - questionId: checkpoint-reverse-front
+    disposition: exam
+    path: link-rewrites
+    tests: [save-and-redirect, handle-first-node]
+    note: Drag `prev` and `cur` to where reversing the first `k` nodes leaves them, before the old head is joined to the rest.
+  - questionId: checkpoint-debug-merge-rest
+    disposition: exam
+    path: link-rewrites
+    tests: [save-and-redirect, handle-first-node]
+    note: 'Debugging: pick the input a suggested `merge` gets wrong because it always links `a` after the loop, so a leftover `b` is lost.'
   - questionId: odd-length-hops
     disposition: keep
     path: pointer-walks
     skill: advance-safely
-    note: New teaching card (step-through trace) for the odd trace. Two-hop fast lands on the tail of an odd-length list, and the guard stops it there.
+    note: Trace a two-hop walk on an odd-length list, where the guard stops fast on the tail. Its worked example introduces the path.
   - questionId: even-guard-crash
     disposition: keep
     path: pointer-walks
     skill: advance-safely
-    note: New teaching card that starts the cycle-detection rewrite. Pick the list length on which a loop testing only fast.next raises.
+    note: Pick the list length on which a loop testing only fast.next raises.
+  - questionId: second-middle-return
+    disposition: keep
+    path: pointer-walks
+    skill: handle-walk-termination
+    note: Pick the node the plain `fast and fast.next` loop returns on a six-node list, the second of two middles.
   - questionId: fixed-gap-drag
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
-    note: New teaching card (drag the pointers). Place slow and fast after a walk that holds a gap of 2.
+    note: Place slow and fast after a walk that holds a gap of 2.
+  - questionId: stop-before-target
+    disposition: keep
+    path: pointer-walks
+    skill: maintain-gap-or-speed
+    note: Place slow on the node before the n-th from the end, and fast on the tail, after a dummy and a gap of n.
   - questionId: cycle-gap-closes
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
-    note: New teaching card. Inside a cycle, fast gains one node a round, so a gap of 3 closes in 3 rounds without skipping.
+    note: The prompt defines a cycle. Inside one, fast gains one node a pass, so a gap of 3 closes in 3 passes without skipping.
   - questionId: head-removal-gap
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
-    note: New teaching card (tap the cell) for the head-removal gap. With n equal to the length, slow never leaves the dummy.
+    note: Tap where slow stops when n equals the length, so the target is the head and slow never leaves the dummy.
   - questionId: first-middle-stop
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
-    note: New teaching card (tap the cell). A stricter loop test stops slow on the first of two middles.
+    note: Tap where a stricter loop test, fast.next.next, stops slow, the first of two middles.
   - questionId: equal-values-not-same
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
-    note: New teaching card for equal values in distinct nodes. A cycle check that compares values reports a cycle on a list with repeats. Finishes the cycle-detection rewrite.
+    note: A cycle check that compares values reports a cycle on a list with repeats, since two different nodes hold one value.
   - questionId: even-length-hops-review
     disposition: keep
     path: pointer-walks
     skill: advance-safely
     variant: true
-    note: Review variant on a fresh input (step-through trace) for the even trace. Fast jumps past the tail to None, and the guard short-circuits.
+    note: Trace a two-hop walk on an even-length list, where fast jumps past the tail to None and the guard stops at fast.
   - questionId: odd-guard-crash-review
     disposition: keep
     path: pointer-walks
     skill: advance-safely
     variant: true
-    note: Review variant. Pick the list length on which a loop testing only fast raises.
+    note: Pick the list length on which a loop testing only fast raises.
   - questionId: two-hop-guard-review
     disposition: keep
     path: pointer-walks
     skill: advance-safely
     variant: true
-    note: Review variant. Pick the loop test that keeps a two-hop move safe, including operand order in `and`.
+    note: Pick the loop test that keeps a two-hop move safe, including operand order in `and`.
   - questionId: nth-gap-drag-review
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place slow before the node to unlink and fast on the tail.
+    note: Place slow before the node to unlink and fast on the tail, with n = 3.
   - questionId: cycle-ahead-review
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
     variant: true
-    note: Review variant on a fresh input. Fast 2 ahead in a 5-node cycle is 3 behind, so they meet in 3 rounds.
+    note: Fast 2 ahead in a 5-node cycle is 3 behind, so they meet in 3 passes.
   - questionId: kth-from-end-gap-review
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
     variant: true
-    note: Review variant. Choose the head start that leaves slow on the k-th node from the end rather than before it.
+    note: Choose the head start that leaves slow on the k-th node from the end rather than before it.
   - questionId: no-dummy-runs-off-review
     disposition: keep
     path: pointer-walks
     skill: maintain-gap-or-speed
     variant: true
-    note: Review variant on a fresh input (tap the cell) for the head-removal gap. Without a dummy, n hops run fast off the end.
+    note: Tap where fast is when the head is the target and there is no dummy, so n hops run fast off the end.
   - questionId: late-fast-middle-review
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
     variant: true
-    note: Review variant on a fresh input (tap the cell). Starting fast one node ahead stops slow on the first middle.
+    note: Tap where slow stops when fast starts one node ahead, the first middle.
   - questionId: value-check-fooled-review
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
     variant: true
-    note: Review variant on fresh inputs. Pick the list on which a value-comparing cycle check is wrong.
+    note: Pick the list on which a value-comparing cycle check is wrong.
   - questionId: check-before-move-review
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
     variant: true
-    note: Review variant on fresh inputs. Testing for a meeting before moving reports a cycle on every list that enters the loop.
+    note: Testing for a meeting before moving reports a cycle on every list that enters the loop.
   - questionId: walk-exam-remove-head
     disposition: exam
     path: pointer-walks
     tests: [maintain-gap-or-speed, handle-walk-termination]
-    note: New checkpoint item. Unlink the n-th node from the end when it is the head, through a dummy.
+    note: Predict two removals through a dummy with a gap of n + 1 and `while fast`, each removing the head.
   - questionId: walk-exam-while-fast
     disposition: exam
     path: pointer-walks
     tests: [maintain-gap-or-speed, handle-walk-termination]
-    note: New checkpoint item. A removal loop that runs while fast is a node stops one round late and unlinks the wrong node.
-  - questionId: walk-exam-cycle-check
+    note: A removal loop that runs while fast is a node stops one pass late and unlinks the wrong node.
+  - questionId: checkpoint-debug-cycle-guard
     disposition: exam
     path: pointer-walks
-    tests: [advance-safely, handle-walk-termination]
-    note: New checkpoint item. Pick the cycle check that is right for every list, against a value check, a set of values and an unsafe guard.
+    tests: [advance-safely]
+    note: 'Debugging: pick the list a suggested `has_cycle` fails on because its loop tests only `fast.next`, an even-length list with no cycle.'
   - questionId: walk-exam-cycle-trace
     disposition: exam
     path: pointer-walks
     tests: [advance-safely, maintain-gap-or-speed, handle-walk-termination]
-    note: New checkpoint item (step-through trace). Follow slow and fast round a cycle past two equal values in distinct nodes to where they meet.
+    note: Follow slow and fast around a cycle past two equal values in distinct nodes to where they meet.
   - questionId: sift-up-first-swap
     disposition: keep
     path: heap-operations
     skill: trace-one-sift
-    note: New teaching card (tap the cell). Tap the parent a pushed item swaps with first, using (i - 1) // 2.
+    note: 'Tap the parent a pushed item swaps with first. The prompt states the parent `(i - 1) // 2` and that `//` rounds down, and the worked example introduces the path.'
   - questionId: sift-down-trace
     disposition: keep
     path: heap-operations
     skill: trace-one-sift
-    note: New teaching card (step-through trace). Follow the item a pop moves to the root as it swaps with the smaller child.
+    note: 'Follow the item a pop moves to the root as it swaps with the smaller child. The prompt names the sift down and states that `and` stops early.'
+  - questionId: sift-path-levels
+    disposition: keep
+    path: heap-operations
+    skill: trace-one-sift
+    note: Count the most swaps one push can make in a 1,000-item heap of 10 levels. The prompt defines level and leaf, and the explanation names O(log n) per push or pop.
   - questionId: heapify-shallow-trace
     disposition: keep
     path: heap-operations
     skill: compare-build-strategies
-    note: New teaching card (step-through trace) for the shallow heapify trace. Sift each parent of a six-item list down from the last parent and compare with the push-built heap.
+    note: 'Sift each parent of a six-item list down from the last parent and compare with the push-built heap. The prompt states how `range` counts down.'
+  - questionId: heapify-short-sifts
+    disposition: keep
+    path: heap-operations
+    skill: compare-build-strategies
+    note: Explain why heapify on 15 falling values makes 11 swaps where 15 pushes make 34. The explanation draws O(n) for the build and O(n log n) for the pushes.
   - questionId: build-versus-extract
     disposition: keep
     path: heap-operations
     skill: compare-build-strategies
-    note: New teaching card for the build-versus-extract comparison. Decide that n pops, not the O(n) build, dominate heapify then pop-all.
-  - questionId: equal-priority-payloads
-    disposition: keep
-    path: heap-operations
-    skill: compare-priority-fields
-    note: New teaching card for equal-priority payloads. Predict the pop order when tied priorities fall through to the names.
+    note: Decide that n pops, not the O(n) build, dominate heapify then pop-all.
   - questionId: tied-tuple-pop
     disposition: keep
     path: heap-operations
     skill: compare-priority-fields
-    note: New teaching card (tap the cell). Tap the tuple heappop returns when three entries tie on priority.
+    note: Tap the tuple a pop returns when three entries tie on priority. The prompt states the tuple rule, and the card opens the ties fork.
+  - questionId: payload-typeerror
+    disposition: keep
+    path: heap-operations
+    skill: compare-priority-fields
+    note: 'Predict that a second push of a tied `(2, dict)` entry raises `TypeError`, since the tie reaches the dicts.'
   - questionId: unique-tie-breaker
     disposition: keep
     path: heap-operations
     skill: choose-tie-breaker
-    note: New teaching card. Pick the middle field that never repeats and follows add order, against size, id and clock fields.
+    note: 'Pick the middle item that never repeats and follows add order, against size, id and clock items. The prompt explains `itertools.count` and `next`.'
   - questionId: sift-up-rest-review
     disposition: keep
     path: heap-operations
     skill: trace-one-sift
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap where a pushed item stops after two swaps.
+    note: Tap where a pushed item stops after two swaps.
   - questionId: sift-up-drag-review
     disposition: keep
     path: heap-operations
     skill: trace-one-sift
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place the sifted item after one swap and the parent it meets next.
+    note: Drag the pointers to the sifted item after one swap and the parent it meets next.
   - questionId: pop-result-review
     disposition: keep
     path: heap-operations
     skill: trace-one-sift
     variant: true
-    note: Review variant on a fresh input. Predict the list after one pop, against the left-child, shifted and unsifted lists.
+    note: Predict the list after one pop, against the left-child, shifted and unsifted lists.
   - questionId: heapify-result-review
     disposition: keep
     path: heap-operations
     skill: compare-build-strategies
     variant: true
-    note: Review variant on a fresh input. Predict the heapify result and tell it apart from the push-built heap.
+    note: Predict the heapify result and tell it apart from the push-built heap.
   - questionId: last-parent-tap-review
     disposition: keep
     path: heap-operations
     skill: compare-build-strategies
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the last parent, where heapify starts.
+    note: Tap the last parent, where heapify starts.
   - questionId: heapify-per-arrival-review
     disposition: keep
     path: heap-operations
     skill: compare-build-strategies
     variant: true
-    note: Review variant. Re-running heapify per arrival costs O(n) where a push costs O(log n).
+    note: Re-running heapify per arrival costs O(n) where a push costs O(log n).
   - questionId: tie-order-review
     disposition: keep
     path: heap-operations
     skill: compare-priority-fields
     variant: true
-    note: Review variant on a fresh input. Predict the pop when entries tie on two fields.
+    note: Predict the pop when entries tie on two items.
   - questionId: payload-reached-review
     disposition: keep
     path: heap-operations
     skill: compare-priority-fields
     variant: true
-    note: Review variant. Pick the push whose comparison reaches two different dicts, against an equal pair that is skipped.
+    note: Pick the push whose comparison reaches two different dicts, against an equal pair that is skipped.
   - questionId: max-first-ties-review
     disposition: keep
     path: heap-operations
     skill: choose-tie-breaker
     variant: true
-    note: Review variant. Negate the priority but not the counter for most urgent first with ties in add order.
+    note: Negate the priority but not the counter for most urgent first with ties in add order.
   - questionId: counter-per-call-review
     disposition: keep
     path: heap-operations
     skill: choose-tie-breaker
     variant: true
-    note: Review variant. A counter made inside the add function restarts at 0, so ties reach the payload.
+    note: A counter made inside the add function restarts at 0, so ties reach the dicts.
   - questionId: checkpoint-heapify-then-pop
     disposition: exam
     path: heap-operations
     tests: [trace-one-sift, compare-build-strategies]
-    note: New checkpoint item. Heapify a fresh list, pop once and predict the list.
+    covers: [construction]
+    note: Heapify a fresh list, pop once and predict the list.
   - questionId: checkpoint-repair-ties
     disposition: exam
     path: heap-operations
     tests: [compare-priority-fields, choose-tie-breaker]
-    note: New checkpoint item. Repair an entry that crashes on repeated names and orders ties by name, where the lowest priority and the newest tie pop first.
+    covers: [ties]
+    note: Repair an entry that crashes on repeated headlines and orders ties by headline, where the lowest tier and the newest tie pop first.
   - questionId: checkpoint-heapify-index-one
     disposition: exam
     path: heap-operations
     tests: [trace-one-sift, compare-build-strategies]
-    note: New checkpoint item (tap the cell). Tap the value heapify leaves at x[1].
+    covers: [construction]
+    note: Tap the value heapify leaves at x[1].
   - questionId: checkpoint-next-tied-pop
     disposition: exam
     path: heap-operations
     tests: [compare-priority-fields, choose-tie-breaker]
-    note: New checkpoint item. Predict the first pop from negated urgencies with a counter among ties.
+    covers: [ties]
+    note: Predict the first pop from negated urgencies with a counter among ties.
+  - questionId: checkpoint-build-for-arrivals
+    disposition: exam
+    path: heap-operations
+    tests: [compare-build-strategies]
+    covers: [construction]
+    note: 'Choose `heapify` for a complete list and a push per arrival for a stream with pops in between, with the cost of each.'
+  - questionId: checkpoint-debug-sift-child
+    disposition: exam
+    path: heap-operations
+    tests: [trace-one-sift]
+    covers: [construction]
+    note: 'Debugging: pick the list a suggested `sift_down` leaves broken because it compares each child with `h[i]` instead of the smallest so far.'
   - questionId: evict-root-tap
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
-    note: New teaching card (tap the cell). Tap the root a capped min-heap evicts when a larger score arrives.
+    note: Tap the root a capped min-heap evicts when a larger score arrives. The worked example introduces the path.
   - questionId: capped-stream-trace
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
-    note: New teaching card (step-through trace). Follow each eviction over a stream with k = 3, including an arrival that is evicted at once.
+    note: 'Follow each eviction over a stream with `k = 3`, including an arrival evicted at once, then read `h[0]` as the 3rd largest score.'
   - questionId: pop-condition-off-by-one
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
-    note: New teaching card. Popping when len(h) >= k keeps k - 1 scores.
+    note: 'Popping when `len(h) >= k` keeps `k - 1` scores.'
   - questionId: replace-before-compare
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
-    note: New teaching card. heapreplace on every arrival evicts the root before comparing, so a late small score is kept.
+    note: '`heapreplace` on every arrival evicts the root before comparing, so a late small score is kept. The prompt states what `heapreplace` does.'
+  - questionId: keep-k-smallest
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    note: 'Tap the distance evicted when the 2 smallest are kept by pushing `-d`: the largest kept distance, whose negation is the root.'
+  - questionId: capped-cost
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    note: 'Pick O(n log k) time and O(k) memory for a capped heap, against O(n log n) with O(n) memory, O(n × k), and the cost of one arrival. The prompt restates O(log m) per push or pop.'
   - questionId: initial-heads
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
-    note: New teaching card. The merge heap starts with one front per run, not the k smallest values or all of them.
+    note: 'The merge heap starts with one front per sorted run, not the 3 smallest values, all of them, or one. The prompt states the goal and the lazy reads, and the worked example calls the heap merge the two-run merge with `k` runs. Opens the merge fork.'
   - questionId: head-entry-shape
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
-    note: New teaching card. Pick (value, run) over (value, iterator), (run, value) and a bare value.
-  - questionId: merge-heads-trace
-    disposition: keep
-    path: bounded-heaps
-    skill: replenish-popped-stream
-    note: New teaching card (step-through trace). Tap each value the merge prints next, then pick the entry pushed for the popped run.
+    note: 'Pick `(value, run, index)` over a run-first tuple, a dict payload that ties reach, and a bare value. The prompt states the tuple rule.'
   - questionId: replenish-which-run
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
-    note: New teaching card. Push the popped run's next value, against the smallest unread value, both, or nothing.
+    note: Push the popped run's next value, against the smallest unread value, both, or nothing.
+  - questionId: merge-heads-trace
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    note: Tap each value the merge prints next, then pick the entry pushed for the popped run.
   - questionId: arrival-evicted-tap
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant (tap the cell). An arrival smaller than every kept score sifts to the root and is the one evicted.
+    note: Tap the value evicted when an arrival smaller than every kept score sifts to the root.
   - questionId: k-smallest-orientation
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant. Negate distances to keep the k smallest with heapq, against plain pushes, h.pop() and the first k.
+    note: 'Negate distances to keep the k smallest with `heapq`, against plain pushes, `h.pop()` and the first k.'
   - questionId: replace-condition
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant. Replace only when the arrival beats h[0], against h[-1], below the root and max(h).
+    note: 'Replace only when the arrival beats `h[0]`, against `h[-1]`, below the root and `max(h)`.'
   - questionId: pop-before-push
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant on a fresh input. Popping before the push lets a late small score in.
+    note: Popping before the push lets a late small score in.
   - questionId: peak-heap-size
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant. Push then pop holds k + 1 for a moment, never n or 2k.
+    note: 'Push then pop holds `k + 1` for a moment, never `n` or `2k`.'
   - questionId: kth-largest-tap
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant (tap the cell). The root of the capped heap is the kth largest of the stream.
+    note: Tap the root of the capped heap as the kth largest of the stream.
   - questionId: empty-run-guard
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
     variant: true
-    note: Review variant. An empty run has no front, so r[0] raises IndexError unless it is filtered out.
-  - questionId: tied-iterator-heads
-    disposition: keep
-    path: bounded-heaps
-    skill: expose-stream-head
-    variant: true
-    note: Review variant. Tied fronts stored with their iterators raise TypeError after the first pop.
+    note: 'An empty run has no front, so `r[0]` raises `IndexError` unless it is filtered out.'
   - questionId: heads-after-pops-drag
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place each run's entry after three values are printed.
+    note: Drag each run's entry to where it sits after three values are printed.
   - questionId: break-on-exhausted
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
     variant: true
-    note: Review variant. Breaking when a run runs out drops the other runs' values.
+    note: Breaking when a run runs out drops the other runs' values.
   - questionId: checkpoint-pushpop-trace
     disposition: exam
     path: bounded-heaps
     tests: [track-eviction-candidate, preserve-size-limit]
     covers: [top-k]
-    note: New checkpoint item (step-through trace). Follow heappushpop evictions on a fresh stream, then read h[0].
+    note: 'Follow `heappushpop` evictions on a fresh stream, then read `h[0]`.'
   - questionId: checkpoint-closest-names
     disposition: exam
     path: bounded-heaps
     tests: [track-eviction-candidate, preserve-size-limit]
     covers: [top-k]
-    note: New checkpoint item. Predict the k nearest names kept with negated distances.
+    note: Predict the k nearest names kept with negated distances.
+  - questionId: checkpoint-debug-kth-read
+    disposition: exam
+    path: bounded-heaps
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
+    note: 'Debugging: pick the call a suggested `kth_largest` gets wrong because it returns `h[-1]`, a leaf, instead of the root.'
   - questionId: checkpoint-refill-line
     disposition: exam
     path: bounded-heaps
     tests: [expose-stream-head, replenish-popped-stream]
     covers: [merge]
-    note: New checkpoint item. Pick the refill line, against a stale position, every run, and a guard that drops the last run's tail.
+    note: Pick the refill line, against a stale index, every run, and a guard that drops the last run's tail.
   - questionId: checkpoint-next-push-tap
     disposition: exam
     path: bounded-heaps
     tests: [expose-stream-head, replenish-popped-stream]
     covers: [merge]
-    note: New checkpoint item (tap the cell). Tap the value pushed right after the third value is printed.
+    note: Tap the value pushed right after the third value is printed, with the refill rule left unstated.
+  - questionId: checkpoint-tied-fronts-tap
+    disposition: exam
+    path: bounded-heaps
+    tests: [expose-stream-head, replenish-popped-stream]
+    covers: [merge]
+    note: Tap the 4 printed last when three runs hold a 4 and the run numbers break the ties.
+  - questionId: min-pair-trace
+    disposition: keep
+    path: design-structures
+    skill: carry-a-summary
+    note: Trace pushes onto a min stack whose entries are (value, smallest so far). Its worked example introduces the path.
+  - questionId: pop-restores-min
+    disposition: keep
+    path: design-structures
+    skill: carry-a-summary
+    note: After two pops, read the smallest value, which the entry below kept from before the popped values arrived.
+  - questionId: when-transfer-runs
+    disposition: keep
+    path: design-structures
+    skill: move-between-two-stacks
+    note: In a queue built from two stacks, pick the pops that move items, only those that find the out-stack empty.
+  - questionId: amortized-moves
+    disposition: keep
+    path: design-structures
+    skill: move-between-two-stacks
+    note: Each item crosses between the stacks at most once, so n pushes and n pops make at most n moves, amortized O(1).
+  - questionId: unlink-held-drag
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    note: Place the two links a doubly linked unlink rewrites, one on each side of the held node.
+  - questionId: lru-evict-tap
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    note: Tap the key an OrderedDict LRU cache evicts after a get moves the oldest key to the end.
+  - questionId: lru-get-links
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    note: Pick the nodes whose links a get rewrites in an LRU cache built from a dict and a doubly linked list.
+  - questionId: swap-remove-index
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    note: After removing by copying the last item into the gap, pick the index the dict must update.
+  - questionId: min-after-pops-review
+    disposition: keep
+    path: design-structures
+    skill: carry-a-summary
+    variant: true
+    note: Read the smallest value after pushes and pops leave only the bottom entry.
+  - questionId: moves-in-run-review
+    disposition: keep
+    path: design-structures
+    skill: move-between-two-stacks
+    variant: true
+    note: Count the items moved between the two stacks in a whole run, one per pushed item.
+  - questionId: lru-evict-review
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    variant: true
+    note: Tap the key an LRU cache evicts after both a get and a put of an existing key refresh other keys.
+  - questionId: forward-walk-review
+    disposition: keep
+    path: design-structures
+    skill: keep-two-in-step
+    variant: true
+    note: Only the prev side of an unlink runs, so a walk forward still reads the node.
+  - questionId: checkpoint-lru-pair
+    disposition: exam
+    path: design-structures
+    tests: [keep-two-in-step]
+    note: Pick the design that gives an LRU cache O(1) lookups, stores and evictions, a dict and a doubly linked list.
+  - questionId: checkpoint-random-set
+    disposition: exam
+    path: design-structures
+    tests: [keep-two-in-step]
+    note: Pick the design that adds, removes and picks a random member in O(1) on average, a list and a dict of indices.
+  - questionId: checkpoint-min-queue-design
+    disposition: exam
+    path: design-structures
+    tests: [carry-a-summary]
+    note: Pick the queue design that pops the oldest item and reports its smallest value in amortized O(1), two stacks of (value, smallest so far) pairs.
+  - questionId: checkpoint-debug-transfer
+    disposition: exam
+    path: design-structures
+    tests: [move-between-two-stacks]
+    note: 'Debugging: pick the run a suggested two-stack queue gets wrong because it moves items on every pop, not only when the out-stack is empty.'
 
 followUps:
   - questionId: heapq-min-heap
     optionId: plain-pops
-    disposition: keep
+    disposition: retire
     path: priority-order
-    note: Promote the one-pop prediction to early Priority order practice.
+    note: 'Its parent is retired, and `one-pop-prediction` already promotes the one-pop prediction.'

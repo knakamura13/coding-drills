@@ -157,6 +157,9 @@ questions:
 
       print(complete('[(){[]'))
       ```
+
+      `reversed(stack)` reads `stack` from its last item to its first, and `''.join(...)` glues
+      the strings it is given into one.
     options:
       - id: reversed
         text: "`}]`"
@@ -215,7 +218,7 @@ questions:
           so two closers are needed.
 
   - id: checkpoint-skip-bug
-    heading: Which string does it misjudge?
+    heading: What does this print?
     tags: [stack, python]
     prompt: |-
       ```python
@@ -229,33 +232,49 @@ questions:
               elif stack and stack[-1] == PAIRS[ch]:
                   stack.pop()
           return not stack
+
+      print([lenient(s) for s in ['[{]}', '{}())', '([)]']])
       ```
 
-      `lenient` pops only when the closer matches the top, and otherwise moves on. For which
-      string does it give a different answer from a correct balance check?
+      `lenient` reads the top with `stack[-1]`, which leaves it in place, and pops only when the
+      closer matches it. Any other closer is skipped, and the loop moves on.
     options:
-      - id: stray
-        text: "`{}())`"
+      - id: skips
+        text: "`[False, True, False]`"
         explanation: >-
-          `{}` and `()` match and leave the stack empty. The last `)` finds nothing open, which
-          should end the check with `False`, but `lenient` just moves on. The stack is empty at the
-          end, so it returns `True`.
-      - id: crossed
-        text: "`[{]}`"
-        explanation: Trace `lenient` and look at what is left on its stack at the end.
-      - id: unclosed
-        text: "`[[{}]`"
-        explanation: Trace `lenient` and look at what is left on its stack at the end.
-      - id: balanced
-        text: "`({}[])`"
-        explanation: Check whether `lenient` ever skips a closer on this string.
-    correct: stray
+          In `[{]}` the `]` is skipped, the `}` pops the `{`, and the `[` is left. In `{}())` the
+          last `)` finds the stack empty and is skipped, so the stack ends empty and the call
+          returns `True`, though the string is not balanced. In `([)]` the `)` is skipped, the `]`
+          pops the `[`, and the `(` is left.
+      - id: strict
+        text: "`[False, False, False]`"
+        explanation: Trace `{}())` and look at what `lenient` does with the last `)`.
+      - id: all-true
+        text: "`[True, True, True]`"
+        explanation: Trace `[{]}` and look at what is left on the stack at the end.
+      - id: crossed-true
+        text: "`[False, True, True]`"
+        explanation: Trace `([)]` and look at what is left on the stack at the end.
+    correct: skips
     followUps:
-      crossed:
+      strict:
+        prompt: In `{}())`, the last `)` arrives with the stack empty. What does `lenient` do?
+        options:
+          - id: moves-on
+            text: It moves past the `)`, and with nothing left open the result is `True`
+          - id: returns-false
+            text: It returns `False`, since no opener is left to match
+          - id: pushes
+            text: It pushes the `)`, so the stack ends with one item
+        correct: moves-on
+        explanation: >-
+          `lenient` has no line that returns `False` inside the loop. A closer it cannot match is
+          skipped, and only the last line decides, so a stray closer goes unnoticed.
+      all-true:
         prompt: What is on `lenient`'s stack when it finishes `[{]}`?
         options:
           - id: bracket
-            text: "`['[']`, so it returns `False`, the same as a correct check"
+            text: "`['[']`, so it returns `False`"
           - id: empty
             text: Nothing, so it returns `True`
           - id: both
@@ -263,30 +282,170 @@ questions:
         correct: bracket
         explanation: >-
           The `]` does not match the `{` on top, so it is skipped. The `}` then pops the `{`, and
-          the `[` is left. The answer is `False`, right for the wrong reason.
-      unclosed:
-        prompt: What does `lenient('[[{}]')` leave on its stack?
+          the `[` is left with nothing to close it.
+      crossed-true:
+        prompt: What does `lenient('([)]')` leave on its stack?
         options:
-          - id: first
-            text: The `[` at index 0, so it returns `False`
+          - id: paren
+            text: "`['(']`, so it returns `False`"
           - id: nothing
             text: Nothing, so it returns `True`
-          - id: brace
-            text: The `{`, since it never matched
-        correct: first
+          - id: both
+            text: "`['(', '[']`, since the `)` blocks the `]`"
+        correct: paren
         explanation: >-
-          The `}` and the `]` each match the top and pop it. The outer `[` is never closed, and the
-          last line rejects the leftover, as a correct check would.
-      balanced:
-        prompt: On `({}[])`, does `lenient` ever skip a closer?
+          The `)` does not match the `[` on top, so it is skipped. The `]` then pops the `[`, and
+          the `(` is left, because the only `)` was skipped before it could close it.
+
+  - id: checkpoint-one-kind-counter
+    heading: Which counter rule works?
+    tags: [stack, python]
+    prompt: >-
+      A string holds only `(` and `)`. Instead of a stack, a check keeps one number, `depth`, that
+      goes up by 1 for each `(` and down by 1 for each `)`. Which rule makes it give the same
+      answer as the stack matcher on every such string?
+    options:
+      - id: below-and-end
+        text: Return `False` once `depth` drops below 0; at the end, return `depth == 0`
+        explanation: >-
+          Every opener here is a `(`, so the stack only ever holds copies of `(`, and its length is
+          all it records. `depth` is that length. Dropping below 0 is a `)` arriving with an empty
+          stack, and ending at 0 is an empty stack at the end.
+      - id: end-only
+        text: No check inside the loop; at the end, return `depth == 0`
+        explanation: Trace `)(` through both checks.
+      - id: below-only
+        text: Return `False` once `depth` drops below 0; at the end, return `True`
+        explanation: Trace `((` through both checks.
+      - id: no-rule
+        text: No rule works, since a number cannot say which opener is on top
+        explanation: Look at what the stack can hold when every opener is a `(`.
+    correct: below-and-end
+    followUps:
+      end-only:
+        prompt: "On `)(`, `depth` goes to -1 and then back to 0. What do the two checks return?"
         options:
-          - id: never
-            text: No, each closer matches the top when it arrives
-          - id: nested
-            text: Yes, it skips closers inside another pair
-          - id: last
-            text: Yes, it skips the final `)`
-        correct: never
+          - id: differ
+            text: The counter returns `True`, and the stack matcher `False`
+          - id: both-false
+            text: Both return `False`
+          - id: both-true
+            text: Both return `True`
+        correct: differ
         explanation: >-
-          On a balanced string every closer matches the top, so `lenient` pops exactly as a correct
-          check does and returns `True`. The two differ only when a closer is skipped.
+          The stack matcher meets the `)` with nothing on the stack and returns `False` at once.
+          The counter only looks at the end, where `depth` is back to 0, so it misses the stray
+          closer.
+      below-only:
+        prompt: "On `((`, `depth` ends at 2 without dropping below 0. What do the two checks return?"
+        options:
+          - id: differ
+            text: The counter returns `True`, and the stack matcher `False`
+          - id: both-false
+            text: Both return `False`
+          - id: both-true
+            text: Both return `True`
+        correct: differ
+        explanation: >-
+          The stack matcher ends with two openers left and returns `False`. A counter that never
+          checks the end accepts any string whose closers never outrun its openers, including one
+          that leaves openers unclosed.
+      no-rule:
+        prompt: In a string of only `(` and `)`, what can the stack hold at any moment?
+        options:
+          - id: only-open
+            text: Only copies of `(`, so how many there are is all it records
+          - id: mixed
+            text: A mix of `(` and `)`, in the order they were read
+          - id: closers
+            text: Only the closers still waiting for an opener
+        correct: only-open
+        explanation: >-
+          Only openers are pushed, and here there is one kind. A closer always matches the top when
+          the stack is not empty, so the stack's length carries everything the check needs.
+
+  - id: checkpoint-debug-pop-front
+    heading: Which call does it fail on?
+    tags: [stack, python]
+    prompt: |-
+      A suggested balance check should return `True` exactly when every closer matches the most
+      recent unclosed opener of its own type and nothing is left open. `stack.pop(0)` removes and
+      returns the item at index 0. One detail is slightly off:
+
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop(0) != PAIRS[ch]:
+                  return False
+          return not stack
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: nested
+        text: "`balanced('[()]')`"
+        explanation: >-
+          The `)` arrives with `[` and `(` on the stack. `pop(0)` takes the `[` at index 0, the
+          oldest opener, instead of the `(` on top, so the call returns `False` for a balanced
+          string. Popping the top with `stack.pop()` fixes it.
+      - id: sequential
+        text: "`balanced('{}()[]')`"
+        explanation: >-
+          Each closer arrives with one opener on the stack, so index 0 is also the top, and
+          `pop(0)` takes the right opener. The call returns `True`, which is right.
+      - id: wrong-type
+        text: "`balanced('(]')`"
+        explanation: >-
+          The `]` takes the only opener, a `(`, which is the wrong type. The call returns `False`,
+          which is right.
+      - id: leftover
+        text: "`balanced('[[]')`"
+        explanation: >-
+          The `]` takes the `[` at index 0 instead of the one on top, but both are `[`, so it
+          matches. One `[` is left, and the call returns `False`, which is right.
+    correct: nested
+    followUps:
+      sequential:
+        prompt: In `{}()[]`, how many openers are on the stack when each closer arrives?
+        options:
+          - id: one
+            text: One, so the oldest opener is also the newest
+          - id: two
+            text: Two, so `pop(0)` takes the wrong one
+          - id: none
+            text: None, so the call returns `False`
+        correct: one
+        explanation: >-
+          With one item, the first item and the last are the same, so `pop(0)` and `pop()` agree.
+          They differ only when two or more openers are open at once.
+      wrong-type:
+        prompt: In `(]`, what does `pop(0)` return when the `]` arrives?
+        options:
+          - id: paren
+            text: The `(`, which does not match, so `False` is right
+          - id: nothing
+            text: Nothing, since the stack is empty
+          - id: closer
+            text: The `]` itself, since it was just read
+        correct: paren
+        explanation: >-
+          The `(` is the only item, so it sits at index 0 and on top at once. It is the wrong type
+          for `]`, and any correct check also returns `False`.
+      leftover:
+        prompt: In `[[]`, the `]` takes the `[` at index 0 instead of the one on top. Does that change the answer?
+        options:
+          - id: same
+            text: No, both are `[`, and one is left either way
+          - id: accepts
+            text: Yes, the call returns `True`
+          - id: crashes
+            text: Yes, the call raises `IndexError`
+        correct: same
+        explanation: >-
+          Taking the wrong one of two equal openers still matches the `]`, and one `[` stays open.
+          The last line returns `False`, as a correct check does.

@@ -1,0 +1,708 @@
+id: design-structures
+title: Design structures
+description: Meet stated costs by keeping two structures in step, from a min stack and a queue built from two stacks to an LRU cache. Each card asks for one decision, with a worked example on hand.
+heading: What happens next?
+
+questions:
+  - format: step-trace
+    id: min-pair-trace
+    heading: Which pair does it push?
+    tags: [stack, python]
+    workedExample: |-
+      A design task names the operations a structure must support and what each may cost, such as
+      push, pop and reading the smallest value, each in O(1). One structure rarely meets every
+      cost alone, so a design keeps two things in step: here, each stack entry carries a summary
+      beside its value. Consider pushing 5, 8 and 3, where each entry is `(value, smallest so far)`.
+
+      1. The stack is empty, so 5 is the smallest so far, and the entry is `(5, 5)`.
+      2. 8 goes on top of `(5, 5)`. The smallest so far is the smaller of 8 and the top's 5, so the
+         entry is `(8, 5)`.
+      3. 3 goes on top of `(8, 5)`. The smaller of 3 and 5 is 3, so the entry is `(3, 3)`, and
+         `stack[-1][1]` reads 3 without a scan.
+    prompt: >-
+      A min stack must push, pop and read its smallest value, each in O(1). A Python list works as
+      a stack: `append` pushes onto the top, the end of the list, `pop()` removes the top, and
+      `stack[-1]` reads it. Here each entry is a pair `(value, smallest so far)`, whose second item
+      is the smallest value in that entry and every entry below it. Predict each step before it is
+      shown.
+    code: |
+      stack = []
+      for x in nums:
+          if stack:
+              low = min(x, stack[-1][1])
+          else:
+              low = x
+          stack.append((x, low))
+      print(stack[-1][1])
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 4, 9, 2, 7]
+    start:
+      - { name: x, at: 1 }
+    steps:
+      - line: 2
+        ask: The first pass pushed `(6, 6)`. Which pair does the pass with `x` on the 4 push?
+        options:
+          - id: new-min
+            text: '`(4, 4)`'
+            explanation: >-
+              The top is `(6, 6)`, so `low` is the smaller of 4 and 6, which is 4. The pair is
+              `(4, 4)`: 4 is now the smallest value on the stack.
+          - id: old-min
+            text: '`(4, 6)`'
+            explanation: >-
+              6 was the smallest so far before this push, but line 4 takes the smaller of `x` and
+              that 6. 4 is smaller, so it becomes the new smallest.
+          - id: swapped
+            text: '`(6, 4)`'
+            explanation: >-
+              The value comes first in each pair. Line 7 appends `(x, low)`, and `x` is 4 on this
+              pass.
+        correct: new-min
+        also:
+          - { name: x, at: 2 }
+      - line: 2
+        ask: Which pair does the pass with `x` on the 9 push?
+        options:
+          - id: keeps-low
+            text: '`(9, 4)`'
+            explanation: >-
+              The top is `(4, 4)`, so `low` is the smaller of 9 and 4. The pair carries the 4 from
+              below, so the smallest value is still one read away.
+          - id: own-value
+            text: '`(9, 9)`'
+            explanation: >-
+              9 is the smallest only when the stack is empty. Here line 4 compares 9 with the top's
+              smallest so far, 4.
+          - id: first-low
+            text: '`(9, 6)`'
+            explanation: >-
+              Line 4 reads the top entry's smallest so far, which is 4 after the second pass, not
+              the 6 the first pass stored.
+        correct: keeps-low
+        also:
+          - { name: x, at: 3 }
+      - line: 8
+        ask: The last two passes push 2 and 7. What does line 8 print?
+        options:
+          - id: two
+            text: '`2`'
+            explanation: >-
+              The push of 2 stores `(2, 2)`, and the push of 7 stores `(7, 2)`, carrying the 2
+              from below. `stack[-1][1]` reads that 2 in one step.
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              7 is the top's value, `stack[-1][0]`. Line 8 reads the second item, the smallest so
+              far, which the push of 7 copied from the `(2, 2)` below it.
+          - id: four
+            text: '`4`'
+            explanation: >-
+              4 was the smallest until 2 arrived. The push of 2 stored `(2, 2)`, and the push of 7
+              carried that 2 up.
+        correct: two
+        also:
+          - { name: x, at: 4 }
+
+  - id: pop-restores-min
+    heading: What does this print?
+    tags: [stack, python]
+    workedExample: |-
+      Consider pushing 4, 6 and 2 with entries `(value, smallest so far)`, then popping once. Each
+      entry keeps the smallest value of itself and the entries below it.
+
+      1. The pushes store `(4, 4)`, `(6, 4)` and `(2, 2)`, so `stack[-1][1]` is 2.
+      2. `pop()` removes `(2, 2)`, and `(6, 4)` is on top again.
+      3. That entry was stored before 2 arrived, so its smallest so far is 4. `stack[-1][1]` reads
+         4 without looking at any other entry.
+    prompt: |-
+      Each entry is `(value, smallest so far)`, and `pop()` removes the top entry.
+
+      ```python
+      stack = []
+
+      def push(x):
+          if stack:
+              low = min(x, stack[-1][1])
+          else:
+              low = x
+          stack.append((x, low))
+
+      for x in [5, 7, 3, 8, 1]:
+          push(x)
+      stack.pop()
+      stack.pop()
+      print(stack[-1][1])
+      ```
+
+      What does this print?
+    options:
+      - id: restored
+        text: '`3`'
+        explanation: >-
+          The pushes store `(5, 5)`, `(7, 5)`, `(3, 3)`, `(8, 3)` and `(1, 1)`. The two pops remove
+          `(1, 1)` and `(8, 3)`, so `(3, 3)` is on top and its smallest so far is 3. A pop brings
+          back the older smallest for free, because every entry kept its own.
+      - id: stale
+        text: '`1`'
+        explanation: >-
+          1 was the smallest while it was on the stack, but the first pop removed `(1, 1)`. The
+          entries left were all stored before 1 arrived, so none of them holds it.
+      - id: bottom
+        text: '`5`'
+        explanation: >-
+          5 is the bottom entry's smallest so far. The top entry, `(3, 3)`, also counts its own
+          value, and 3 is smaller than 5.
+      - id: one-pop
+        text: '`8`'
+        explanation: >-
+          8 is the value of `(8, 3)`, which the second pop removed. The last line reads the second item of
+          the top entry, which is a smallest so far, not a value.
+    correct: restored
+    followUps:
+      stale:
+        prompt: After the first pop removes `(1, 1)`, does any entry left still hold 1?
+        options:
+          - id: none-holds
+            text: No, every entry left was stored before 1 was pushed
+          - id: top-holds
+            text: Yes, the new top copied it when 1 was pushed
+          - id: all-hold
+            text: Yes, every entry updates when a smaller value arrives
+        correct: none-holds
+        explanation: >-
+          A push writes only its own entry, and an entry never changes after that. So the entries
+          below hold the smallest value as it was before each later push.
+      bottom:
+        prompt: Which values does the top entry's smallest so far cover?
+        options:
+          - id: itself-and-below
+            text: Its own value and every value below it
+          - id: below-only
+            text: Only the values below it
+          - id: whole-history
+            text: Every value ever pushed, popped ones included
+        correct: itself-and-below
+        explanation: >-
+          Line 5 takes the smaller of the new value and the smallest below it, so each entry covers
+          itself too. `(3, 3)` covers 3, 7 and 5.
+      one-pop:
+        prompt: What does `stack[-1][1]` read from the top entry `(3, 3)`?
+        options:
+          - id: second-item
+            text: The second item, the smallest so far
+          - id: first-item
+            text: The first item, the value pushed
+          - id: whole-pair
+            text: The whole pair
+        correct: second-item
+        explanation: >-
+          `stack[-1]` is the top pair, and `[1]` reads its second item. Index 0 would read the value
+          pushed.
+
+  - id: when-transfer-runs
+    heading: Which pops move items?
+    tags: [stack, queue, python]
+    workedExample: |-
+      Consider the queue below, starting empty, with the calls push 7, push 8, pop, pop. Moving
+      every item from `inbox` to `outbox` reverses their order, so the oldest lands on top of
+      `outbox`.
+
+      1. After the pushes, `inbox` is `[7, 8]`. The first pop finds `outbox` empty, so it moves 8
+         and then 7, leaving `outbox` as `[8, 7]`, and pops 7, the oldest.
+      2. The second pop finds `outbox` holding `[8]`, which is not empty, so it moves nothing.
+      3. It pops 8. The items came out 7 then 8, first in, first out, with only one pop moving
+         anything.
+    prompt: |-
+      A queue serves items first in, first out. This one is built from two stacks, `inbox` and
+      `outbox`, each a Python list used only with `append` and `pop()` at its end. `not outbox` is
+      true when `outbox` is empty. Moving every item from `inbox` to `outbox` reverses their
+      order, so the oldest item ends on top of `outbox`.
+
+      ```python
+      def push(inbox, x):
+          inbox.append(x)
+
+      def pop(inbox, outbox):
+          if not outbox:
+              while inbox:
+                  outbox.append(inbox.pop())
+          return outbox.pop()
+      ```
+
+      Starting with both lists empty, the calls are push 1, push 2, push 3, pop, push 4, pop, pop,
+      pop. Which pops move items from `inbox` to `outbox`?
+    options:
+      - id: first-and-fourth
+        text: The first and the fourth
+        explanation: >-
+          The first pop finds `outbox` empty and moves 3, 2 and 1, then pops 1. The 4 waits in
+          `inbox` while the second and third pops take 2 and 3 from `outbox`. Only the fourth pop
+          finds `outbox` empty again, so it moves the 4.
+      - id: every-pop
+        text: Every pop
+        explanation: >-
+          The move runs only when `outbox` is empty. While `outbox` holds items, they are older
+          than anything in `inbox`, so they have to leave first.
+      - id: first-only
+        text: Only the first
+        explanation: >-
+          The first pop moves 1, 2 and 3, but the 4 arrives after it, in `inbox`. Once `outbox` runs
+          out, the fourth pop has to move the 4 across.
+      - id: first-and-second
+        text: The first and the second
+        explanation: >-
+          The second pop finds 2 and 3 still in `outbox`, so it moves nothing. The 4 is newer than
+          both, so it stays in `inbox` until they are gone.
+    correct: first-and-fourth
+    followUps:
+      every-pop:
+        prompt: When `outbox` holds 2 and 3 and `inbox` holds 4, which item should the next pop return?
+        options:
+          - id: two
+            text: 2, the oldest, which is on top of `outbox`
+          - id: four
+            text: 4, the newest
+          - id: three
+            text: 3, the item at the bottom of `outbox`
+        correct: two
+        explanation: >-
+          Everything in `outbox` arrived before anything in `inbox`. Moving the 4 on top of them
+          would let it leave first, so the move waits until `outbox` is empty.
+      first-only:
+        prompt: After the third pop, `outbox` is empty and `inbox` holds 4. What does the fourth pop do?
+        options:
+          - id: moves-four
+            text: It moves the 4 to `outbox` and then pops it
+          - id: raises
+            text: It raises, since `outbox` is empty
+          - id: pops-inbox
+            text: It pops the 4 straight from `inbox`
+        correct: moves-four
+        explanation: >-
+          `not outbox` is true, so the `while` loop moves every item in `inbox` across before the
+          pop. Every pop reads from `outbox`.
+      first-and-second:
+        prompt: At the second pop, `outbox` holds 2 and 3. Is `not outbox` true?
+        options:
+          - id: not-empty
+            text: No, `outbox` is not empty, so nothing moves
+          - id: new-item
+            text: Yes, because `inbox` has a new item
+          - id: always
+            text: Yes, it is true on every pop
+        correct: not-empty
+        explanation: >-
+          The test reads only `outbox`. A new item in `inbox` waits until `outbox` has been
+          emptied.
+
+  - id: amortized-moves
+    heading: What does a run cost?
+    tags: [stack, queue, complexity]
+    workedExample: |-
+      Consider the queue from two stacks with the calls push 1, push 2, push 3, push 4, then four
+      pops. An item moves from `inbox` to `outbox` only when `outbox` is empty.
+
+      1. The first pop finds `outbox` empty and moves all 4 items. That one pop does 4 moves.
+      2. The next three pops find items in `outbox`, so they move nothing.
+      3. So 8 operations made 4 moves, one for each item pushed. The costly pop paid for the cheap
+         ones after it.
+    prompt: >-
+      The queue from two stacks moves items from `inbox` to `outbox` only when `outbox` is empty,
+      and no item ever moves back. One pop can move many items at once. An average cost per
+      operation over a whole run is called amortized. A run makes `n` pushes and `n` pops, in an
+      order where every pop finds an item. What is the largest number of moves the whole run can
+      make, and what amortized cost per operation follows?
+    options:
+      - id: n-total
+        text: At most `n` moves in all; amortized O(1)
+        explanation: >-
+          Each pushed item crosses from `inbox` to `outbox` at most once, and there are `n` pushes,
+          so the run moves at most `n` items. With the `2n` pushes and pops themselves, the run is
+          O(n) in all, which is amortized O(1) per operation, even though one pop can take O(n).
+      - id: n-per-pop
+        text: Up to `n` moves on every pop, so up to `n²` in all; amortized O(n)
+        explanation: >-
+          One pop can move up to `n` items, but those items never move again. The next pops take
+          them from `outbox` without moving anything, so big moves cannot repeat.
+      - id: log-per-pop
+        text: About `log n` moves per pop; amortized O(log n)
+        explanation: >-
+          Nothing halves here. A move takes everything in `inbox`, and each item makes that trip
+          only once.
+      - id: one-per-pop
+        text: One move per pop; O(1) for every single pop
+        explanation: >-
+          A pop that finds `outbox` empty moves every item in `inbox`, which can be many. The O(1)
+          holds for the average over the run, not for each pop.
+    correct: n-total
+    followUps:
+      n-per-pop:
+        prompt: An item has just moved from `inbox` to `outbox`. How many more times can it move between them?
+        options:
+          - id: never
+            text: None; it leaves only by a pop from `outbox`
+          - id: every-pop
+            text: Once more for every later pop
+          - id: back
+            text: It moves back to `inbox` when a new item is pushed
+        correct: never
+        explanation: >-
+          Items move one way only, and only once. So all the moves in a run add up to at most one
+          per pushed item.
+      log-per-pop:
+        prompt: When a pop finds `outbox` empty, how many items does it move?
+        options:
+          - id: all
+            text: Every item in `inbox`
+          - id: half
+            text: Half of the items in `inbox`
+          - id: one
+            text: Only the oldest item
+        correct: all
+        explanation: >-
+          The `while` loop runs until `inbox` is empty. The cost is bounded by counting each item's
+          single trip, not by halving.
+      one-per-pop:
+        prompt: What does amortized O(1) promise about a single pop?
+        options:
+          - id: average
+            text: Only that the average over the run is O(1); one pop can be O(n)
+          - id: each
+            text: That each pop is O(1)
+          - id: most
+            text: That at most one pop in the run costs more than O(1)
+        correct: average
+        explanation: >-
+          Amortized cost spreads the rare big move over the many pops that move nothing. A single
+          pop that moves every item in `inbox` is still O(n).
+
+  - format: drag-pointers
+    id: unlink-held-drag
+    heading: Where do the links lead?
+    tags: [linked-list, python]
+    workedExample: |-
+      Consider `1 <-> 6 <-> 3`, linked both ways, with `c` on the 6, and only the line
+      `c.prev.next = c.next` run. Each node has `next`, the node after it, and `prev`, the node
+      before it.
+
+      1. `c.prev` is the 1 and `c.next` is the 3, so the line sets the 1's `next` to the 3. A walk
+         forward now reads 1, 3.
+      2. The 3's `prev` was not touched, so it still leads to the 6.
+      3. So a walk backward from the 3 reads 3, 6, 1. The 6 is gone in one direction only, so
+         unlinking a node takes a write on each side of it.
+    prompt: |-
+      A doubly linked node also has `prev`, a link to the node before it:
+
+      ```python
+      class DNode:
+          def __init__(self, val):
+              self.val = val
+              self.prev = None
+              self.next = None
+      ```
+
+      In a singly linked list, unlinking a node you hold needs the node before it, and only a walk
+      from the head finds that. With `prev`, the held node reaches both neighbors in one hop. The
+      cells are `2 <-> 5 <-> 9 <-> 4`, linked both ways, and you hold `c`, the 9. Lines 1 and 2
+      unlink it. Drag `p` and `q` to the nodes they refer to when the code ends.
+    code: |
+      c.prev.next = c.next
+      c.next.prev = c.prev
+      p = b.next
+      q = d.prev
+    sequence:
+      kind: array
+      cells: [2, 5, 9, 4]
+    markers:
+      - { name: b, at: 1 }
+      - { name: c, at: 2 }
+      - { name: d, at: 3 }
+    pointers:
+      - name: p
+        start: 2
+        correct: 3
+        explanation: >-
+          Line 1 reads `c.prev`, which is `b`, and sets its `next` to `c.next`, the 4. A walk
+          forward from the 5 now skips the 9. Each line is one hop from `c`, so the unlink is O(1)
+          whatever the list's length.
+        misses:
+          - index: 2
+            explanation: >-
+              `b.next` was the 9 before line 1. That line sets `c.prev.next`, and `c.prev` is `b`,
+              so `b.next` is now the 4.
+          - index: 0
+            explanation: >-
+              `next` leads forward. From the 5 it can reach only a node after it, and line 1 points
+              it at the 4.
+        elsewhere: 'Line 1 sets `b.next` to `c.next`, which is the 4.'
+      - name: q
+        start: 2
+        correct: 1
+        explanation: >-
+          Line 2 reads `c.next`, which is `d`, and sets its `prev` to `c.prev`, the 5. A walk
+          backward from the 4 now skips the 9 too.
+        misses:
+          - index: 2
+            explanation: >-
+              `d.prev` was the 9 before line 2. That line sets `c.next.prev`, and `c.next` is `d`,
+              so `d.prev` is now the 5.
+          - index: 3
+            explanation: >-
+              `prev` leads back to the node before. Line 2 points the 4's `prev` at the 5.
+        elsewhere: 'Line 2 sets `d.prev` to `c.prev`, which is the 5.'
+
+  - format: tap-cell
+    id: lru-evict-tap
+    heading: Which key is evicted?
+    tags: [hash-map, python]
+    workedExample: |-
+      Consider an LRU cache of capacity 2 built on an `OrderedDict`, with the calls
+      `put('x', 1)`, `put('y', 2)`, `put('x', 5)` and `put('z', 3)`. The front of the order is the
+      least recently used key.
+
+      1. The first two puts add `x` and then `y` at the end, so the order is `x`, `y`.
+      2. `put('x', 5)` finds `x` already in the cache, so `move_to_end` moves it to the end. The
+         order is `y`, `x`.
+      3. `put('z', 3)` adds `z` and makes 3 keys, one too many, so `popitem(last=False)` removes
+         the front key, `y`. A key used again moves away from the front.
+    prompt: >-
+      An LRU cache holds a fixed number of keys, here 3. When a new key would make one too many,
+      it evicts the least recently used key, the one whose last `get` or `put` is oldest.
+      `OrderedDict`, from `collections`, is a dictionary that also keeps its keys in order: a new
+      key goes to the end, `move_to_end(key)` moves a key to the end, and `popitem(last=False)`
+      removes the key at the front. So the front holds the least recently used key. The cells are
+      the keys in the order they were first put. Tap the key that `put('d', 4)` evicts.
+    code: |
+      from collections import OrderedDict
+      cache = OrderedDict()
+
+      def get(key):
+          if key not in cache:
+              return -1
+          cache.move_to_end(key)
+          return cache[key]
+
+      def put(key, val):
+          if key in cache:
+              cache.move_to_end(key)
+          cache[key] = val
+          if len(cache) > 3:
+              cache.popitem(last=False)
+
+      put('a', 1)
+      put('b', 2)
+      put('c', 3)
+      get('a')
+      put('d', 4)
+    sequence:
+      kind: array
+      name: keys
+      cells: [a, b, c]
+    correct: 1
+    explanation: >-
+      The puts leave the order `a`, `b`, `c`. `get('a')` moves `a` to the end, so the order is
+      `b`, `c`, `a`. `put('d', 4)` makes 4 keys, and `popitem(last=False)` removes the front key,
+      `b`, the one unused for longest.
+    misses:
+      - index: 0
+        explanation: >-
+          `a` was put first, but `get('a')` moved it to the end. When `d` arrives, `a` is the most
+          recently used key, not the least.
+      - index: 2
+        explanation: >-
+          `c` was put after `b`, and neither was used again, so `b`'s last use is older. `b` is at
+          the front once `a` has moved to the end.
+
+  - id: lru-get-links
+    heading: Which nodes change?
+    tags: [hash-map, linked-list, python]
+    workedExample: |-
+      Consider the same cache with the list `head <-> p <-> q <-> tail` and the call `get('p')`.
+      `unlink` rewrites the links of the node's two neighbors, and `add_at_back` links the node
+      in between the old last node and `tail`.
+
+      1. `unlink` sets `head.next` to `q` and `q.prev` to `head`, so `head` and `q` change.
+      2. `add_at_back` reads `last = tail.prev`, which is `q`. It sets `q.next` and `tail.prev` to
+         the node for `p`, and that node's `prev` and `next` to `q` and `tail`.
+      3. So `head`, `q`, `p` and `tail` all have a link rewritten, and the order is now `q`, `p`,
+         with `p` the most recently used.
+    prompt: |-
+      This LRU cache keeps two structures in step: a dict `nodes` from each key to its node, and a
+      doubly linked list of those nodes in order of use, least recent first, between a dummy
+      `head` and a dummy `tail`. `get(key)` reads `node = nodes[key]`, which is O(1) on average,
+      and then runs `unlink(node)` and `add_at_back(node)`:
+
+      ```python
+      def unlink(node):
+          node.prev.next = node.next
+          node.next.prev = node.prev
+
+      def add_at_back(node):
+          last = tail.prev
+          last.next = node
+          node.prev = last
+          node.next = tail
+          tail.prev = node
+      ```
+
+      The list is `head <-> a <-> b <-> c <-> tail`. Which nodes have at least one link rewritten
+      by `get('b')`?
+    options:
+      - id: four-nodes
+        text: The nodes for `a`, `b` and `c`, and `tail`
+        explanation: >-
+          `unlink` sets `a.next` to `c` and `c.prev` to `a`. `add_at_back` then finds `c` as the
+          last node, points `c.next` and then `tail.prev` at `b`'s node, and sets that node's
+          `prev` and `next`. `head` keeps its link to `a`. The order is now `a`, `c`, `b`.
+      - id: only-b
+        text: Only the node for `b`
+        explanation: >-
+          A node leaves its place only when its neighbors stop linking to it. `unlink` rewrites
+          `a.next` and `c.prev` for that, and `add_at_back` rewrites `c.next` and `tail.prev`.
+      - id: neighbors
+        text: The nodes for `a` and `c` only
+        explanation: >-
+          Those are the two `unlink` rewrites. `add_at_back` then links `b`'s node in before
+          `tail`, which rewrites that node's own links and `tail.prev` too.
+      - id: every-node
+        text: Every node, `head` included
+        explanation: >-
+          `head` sits before `a`, which does not move, so `head.next` still leads to `a`. Only `b`'s
+          node and the nodes beside the place it leaves and the place it joins change.
+    correct: four-nodes
+    followUps:
+      only-b:
+        prompt: For a walk forward to skip `b`'s old place, which link must change?
+        options:
+          - id: a-next
+            text: "`a.next`, which has to lead to `c`"
+          - id: b-next
+            text: "`b.next`, which has to lead to `tail`"
+          - id: head-next
+            text: "`head.next`, which has to lead to `b`"
+        correct: a-next
+        explanation: >-
+          A walk forward reaches `b` through `a.next`. Until that link leads to `c`, the walk still
+          passes through `b`, so moving a node always rewrites its neighbors.
+      neighbors:
+        prompt: "`add_at_back` links `b`'s node in before `tail`. Which links does it rewrite besides that node's own?"
+        options:
+          - id: c-and-tail
+            text: "`c.next` and `tail.prev`"
+          - id: none
+            text: None, since `tail` is a dummy node
+          - id: head
+            text: "`head.next`, so the order starts again"
+        correct: c-and-tail
+        explanation: >-
+          The new last node needs links in from both sides: from the old last node, `c`, and from
+          `tail`. A dummy node is still a node whose links change.
+      every-node:
+        prompt: After `get('b')`, where does `head.next` lead?
+        options:
+          - id: to-a
+            text: To `a`, as before
+          - id: to-b
+            text: To `b`, the node just used
+          - id: to-c
+            text: To `c`
+        correct: to-a
+        explanation: >-
+          `a` is still the least recently used key, so it stays first. `get` touches only the node
+          it moves and the nodes beside the place it leaves and the place it joins.
+
+  - id: swap-remove-index
+    heading: Which index must change?
+    tags: [hash-map, python]
+    workedExample: |-
+      Consider `vals = [5, 8, 2]` and `pos = {5: 0, 8: 1, 2: 2}`, and removing 5 by copying the
+      last item into its place. Every number's entry in `pos` must name its index in `vals`.
+
+      1. `i = pos[5]` is 0, and the last item is 2. `vals[0] = 2` makes `vals` `[2, 8, 2]`.
+      2. `vals.pop()` drops the end, so `vals` is `[2, 8]`. The 2 now sits at index 0.
+      3. So `pos[2]` must become 0, and `del pos[5]` removes 5. The 8 never moved, so `pos[8]`
+         stays 1.
+    prompt: |-
+      A set of numbers must add a number, remove one and return a random member, each in O(1) on
+      average. `random.choice(vals)` picks a random item of a list in O(1), so the numbers live in
+      a list `vals`, and a dict `pos` maps each number to its index in `vals`. Removing from the
+      middle of a list moves every later item down one index, so `remove` copies the last item
+      into the gap and pops the end instead.
+
+      ```python
+      def remove(x):
+          i = pos[x]
+          last = vals[-1]
+          vals[i] = last
+          vals.pop()
+          del pos[x]
+      ```
+
+      This version is missing one line. `vals` is `[7, 3, 9, 4]` and `pos` is
+      `{7: 0, 3: 1, 9: 2, 4: 3}`. After `remove(3)`, which other entry of `pos` must change, and to
+      what?
+    options:
+      - id: last-moved
+        text: '`pos[4]` becomes 1'
+        explanation: >-
+          The copy puts the 4 at index 1, and the pop removes index 3, so `vals` is `[7, 4, 9]`.
+          `pos[4]` still says 3, so the missing line is `pos[last] = i`. It goes before
+          `del pos[x]`, so removing the last item itself still deletes its entry.
+      - id: next-shifts
+        text: '`pos[9]` becomes 1'
+        explanation: >-
+          The 9 would move down one index if 3 were removed with `vals.pop(1)`. This code copies
+          the last item into the gap instead, so the 9 stays at index 2.
+      - id: swapped-out
+        text: '`pos[3]` becomes 3'
+        explanation: >-
+          The code copies the 4 over the 3 rather than swapping the two, and `del pos[x]` removes
+          3 from `pos` entirely. The number that moved is the 4.
+      - id: no-change
+        text: No other entry changes
+        explanation: >-
+          `vals` changed: the 4 now sits at index 1, not index 3. `pos` has to say so, or a later
+          `remove(4)` would write to index 3, which no longer exists.
+    correct: last-moved
+    followUps:
+      next-shifts:
+        prompt: After `vals[1] = 4` and `vals.pop()`, where is the 9?
+        options:
+          - id: still-two
+            text: Still at index 2
+          - id: at-one
+            text: At index 1
+          - id: gone
+            text: Gone, since the end was popped
+        correct: still-two
+        explanation: >-
+          Only index 1 is written, and only the last index is dropped. Every item between them
+          stays where it was, which is why the remove is O(1).
+      swapped-out:
+        prompt: What does `del pos[x]` do to the entry for 3?
+        options:
+          - id: removes
+            text: It removes it, since 3 is no longer in the set
+          - id: moves
+            text: It moves it to index 3
+          - id: keeps
+            text: It keeps it until the next add
+        correct: removes
+        explanation: >-
+          `del` removes the key from the dict. Only numbers still in `vals` keep an entry, and the
+          one whose index changed is the 4.
+      no-change:
+        prompt: Which number's index in `vals` changed during `remove(3)`?
+        options:
+          - id: four
+            text: The 4, from index 3 to index 1
+          - id: nine
+            text: The 9, from index 2 to index 1
+          - id: none
+            text: None of them
+        correct: four
+        explanation: >-
+          Copying the last item into the gap moves exactly one number. Its entry in `pos` must
+          follow it, so the two structures stay in step.

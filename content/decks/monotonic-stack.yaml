@@ -1,525 +1,765 @@
 id: monotonic-stack
 title: Monotonic stack
-description: Keep a stack of candidates in sorted order to find the next greater or smaller element for every position in one pass.
-heading: Which technique fits?
+description: Find each position's next greater element in one pass, pop the smaller tops as each value arrives, and read what is left. Each card asks for one decision, with a worked example on hand.
+heading: What does the stack do?
 
 questions:
-  - id: next-taller-stall
-    tags: [stack, complexity]
-    prompt: >-
-      A line of `n` market stalls is described by their heights, left to right. For each stall, find
-      how many steps to the right the first strictly taller stall is, or 0 if there is none. For
-      `[14, 9, 11, 7, 7, 20, 12, 15]` the answer is `[5, 1, 3, 2, 1, 0, 1, 0]`. Which approach
-      computes it in O(n) worst-case time?
-    options:
-      - id: nested-scan
-        text: For each stall, scan to the right until a taller one appears
-        explanation: >-
-          This gives correct answers, and it needs only O(1) extra space, but it is O(n²) in the
-          worst case. A stack remembers the comparisons already made, so each stall is handled a
-          constant number of times.
-      - id: sort-neighbor
-        text: Sort the stalls by height and pair each one with the next taller stall in sorted order
-        explanation: >-
-          Sorting throws away the left-to-right positions, and the answer depends on them. In
-          `[40, 30, 50]` the stall of height 30 is followed in sorted order by the 40, which stands to
-          its left, so the distance comes out as -1. The first taller stall to its right is the 50, one
-          step away.
-      - id: suffix-max
-        text: Precompute the tallest stall to the right of each position and measure the distance to it
-        explanation: >-
-          The tallest stall to the right is not the first taller one. On `[30, 20, 25, 50]` this gives
-          `[3, 2, 1, 0]`, because the 20 is matched to the 50 two steps away. The correct answer is
-          `[3, 1, 1, 0]`, since the 25 is one step away and already taller than the 20.
-      - id: waiting-stack
-        text: One left-to-right pass with a stack of stalls that are still waiting for a taller one
-        explanation: >-
-          Each new stall answers every waiting stall it is taller than, and then waits itself. A stall
-          is pushed once and popped at most once, so the pass is O(n) in the worst case with O(n)
-          extra space for the stack. The nested loop re-examines pairs that the stack has already
-          settled.
-    correct: waiting-stack
-    followUps:
-      nested-scan:
-        prompt: Which input makes the nested scan do the most work?
-        options:
-          - id: never-increasing
-            text: Heights that never increase, such as 9, 8, 7, 6, ..., where every scan runs to the end of the line
-          - id: increasing
-            text: Heights that increase, such as 1, 2, 3, 4, ..., where every scan is long
-          - id: large-values
-            text: Lists with very large height values, because comparing big numbers takes longer
-        correct: never-increasing
-        explanation: >-
-          A scan stops at the first taller stall. When no stall to the right is taller, it runs to the
-          end, which makes the total n(n - 1) / 2. Equal heights do not stop a scan either. On
-          increasing heights each scan stops after one step, and the size of the values does not
-          change the number of comparisons.
-      sort-neighbor:
-        prompt: What does sorting by height throw away that this problem needs?
-        options:
-          - id: positions
-            text: The positions of the stalls
-          - id: heights
-            text: The heights of the stalls
-          - id: comparability
-            text: A way to compare two stalls
-        correct: positions
-        explanation: >-
-          The taller stall must stand to the right, and sorting replaces order along the line with
-          order by height, so the next taller stall in sorted order may stand to the left. Heights are
-          unchanged by sorting and still comparable. What is lost is where each stall stood.
-      suffix-max:
-        prompt: >-
-          On `[30, 20, 25, 50]` the tallest stall to the right of the 20 is the 50, two steps away.
-          Why is 2 the wrong answer?
-        options:
-          - id: nearest-taller
-            text: The 25 is nearer and already taller than 20
-          - id: ties-only
-            text: It is not wrong; only tied heights break it
-          - id: wrong-direction
-            text: The idea is right but must run right to left
-        correct: nearest-taller
-        explanation: >-
-          The task asks for the first taller stall, and the 25 beats the 20 one step away. "First
-          taller" and "tallest" agree only when the first taller stall also happens to be the
-          tallest one. Here a nearer stall already beats the 20. Ties are not the issue, and running
-          the same tallest-stall rule from the other side still finds the tallest stall, not the
-          nearest.
+  - id: next-greater-by-hand
+    heading: What is the answer?
+    tags: [stack]
+    workedExample: |-
+      For each index of a list, its next greater element is the first value to its right that is
+      strictly larger, or -1 when there is none. Scanning right from every index can take O(n²)
+      time. This path finds every answer in one left-to-right pass, using a stack of the
+      indices still waiting for their answer. Here `nums = [4, 1, 3, 6]`.
 
-  - id: stack-holds-indices
-    heading: What goes on the stack?
+      1. Index 0 holds 4. To its right, 1 and 3 are smaller and 6 is larger, so index 0's answer
+         is 6.
+      2. Index 1 holds 1, and the very next value, 3, is larger. The 6 is larger too, but 3 comes
+         first, so index 1's answer is 3.
+      3. Index 2 holds 3, answered by 6. Index 3 holds 6 with nothing to its right, so its answer
+         is -1. The answers are `[6, 3, 6, -1]`.
+    prompt: >-
+      For each index of a list, its next greater element is the first value to its right that is
+      strictly larger, or -1 when there is none. For `nums = [5, 2, 4, 4, 7, 1]`, what is the next
+      greater element at every index?
+    options:
+      - id: strict
+        text: "`[7, 4, 7, 7, -1, -1]`"
+        explanation: >-
+          The 2 meets a larger 4 right after it. The first 4 is followed by an equal 4, which is not
+          larger, so it waits for the 7, as the second 4 and the 5 do. The 7 and the 1 have nothing
+          larger to their right.
+      - id: or-equal
+        text: "`[7, 4, 4, 7, -1, -1]`"
+        explanation: >-
+          This answers the first 4 with the equal 4 after it. "Strictly larger" rules out an equal
+          value, so that 4 waits for the 7.
+      - id: largest-right
+        text: "`[7, 7, 7, 7, -1, -1]`"
+        explanation: >-
+          This takes the largest value to the right. For the 2, the first larger value is the 4
+          right after it, which comes before the 7.
+      - id: looked-left
+        text: "`[-1, 5, 5, 5, -1, 7]`"
+        explanation: >-
+          This looks left, for the nearest larger value before each position. The next greater
+          element comes from the right.
+    correct: strict
+    followUps:
+      or-equal:
+        prompt: What is the next greater element of the 4 at index 2?
+        options:
+          - id: seven
+            text: 7, since the 4 after it is equal, not larger
+          - id: four
+            text: 4, the value right after it
+          - id: none
+            text: -1, since the value 4 appears twice
+        correct: seven
+        explanation: >-
+          An equal value is not strictly larger, so the search goes on past it to the 7.
+      largest-right:
+        prompt: What is the next greater element of the 2 at index 1?
+        options:
+          - id: four
+            text: 4, the first larger value after it
+          - id: seven
+            text: 7, the largest value after it
+          - id: five
+            text: 5, the larger value before it
+        correct: four
+        explanation: >-
+          The search stops at the first larger value to the right. The 4 at index 2 is larger than 2
+          and comes first.
+      looked-left:
+        prompt: Where is the next greater element for an index found?
+        options:
+          - id: right
+            text: The right, the first larger value after it
+          - id: left
+            text: The left, the nearest larger value before it
+          - id: either
+            text: Either side, whichever larger value is nearer
+        correct: right
+        explanation: >-
+          The task reads to the right of each position. The 5 at index 0 has nothing before it,
+          but the 7 to its right answers it.
+
+  - format: tap-cell
+    id: pop-one-smaller-top
+    heading: Which index is popped?
     tags: [stack, python]
+    workedExample: |-
+      Consider `next_greater` on `nums = [4, 7, 2, 3]`. The `while` loop compares only the top of
+      `stack`, and it stops at the first top that is not smaller than the arrival.
+
+      1. The 7 at index 1 popped index 0, since `4 < 7`, and the 2 at index 2 popped nothing. So
+         `stack` is `[1, 2]` before index 3 is read.
+      2. The 3 at index 3 meets the top, index 2. `2 < 3` is true, so index 2 is popped.
+      3. The new top is index 1, holding 7, and `7 < 3` is false. So the loop stops after one pop,
+         and index 3 is pushed.
     prompt: >-
-      A stack pass for the stall task keeps the stalls that are still waiting for a taller one. When
-      the stall at position `i` is taller than a waiting stall, the waiting stall's answer is its
-      distance to `i`. Which stack entry is the best choice, giving correct answers in O(n) total
-      time?
-    options:
-      - id: height-only
-        text: The stall's height, because the pass only compares heights
-        explanation: >-
-          Comparing needs heights, but finishing an answer needs a position. Once a stall is popped at
-          position `i`, a height alone cannot say how far back that stall stood or which slot of the
-          output to fill.
-      - id: height-then-index
-        text: "The stall's height, and recover its position later with `heights.index(height)`"
-        explanation: >-
-          `index` returns the first match, so equal heights collide. On `[7, 7, 12]` both 7s map to
-          position 0, giving `[2, 0, 0]` instead of `[2, 1, 0]`. Each call also scans from the left,
-          which adds O(n) work.
-      - id: height-with-counter
-        text: The stall's height, plus a counter that grows by one at every later step
-        explanation: >-
-          This gives correct answers, but every step adds one unit of work for each waiting entry.
-          When heights never increase, the stack grows to `n` entries and the total is n(n - 1) / 2
-          increments, so the pass is O(n²). A stored position needs no update while it waits.
-      - id: index
-        text: "The stall's position `j`; its height is `heights[j]` and its distance is `i - j`"
-        explanation: >-
-          Pushing `j` keeps everything: the height is `heights[j]`, the distance is `i - j`, and `j`
-          is also the slot to write in the output. Storing `(height, index)` pairs works too, but
-          repeats data the list already holds.
-    correct: index
-    followUps:
-      height-only:
-        prompt: >-
-          A stall's height is popped when a taller stall arrives at position `i`. What does the pass
-          still need to finish that stall's answer?
-        options:
-          - id: own-position
-            text: The popped stall's position `j`
-          - id: nothing
-            text: Nothing beyond the two heights
-          - id: stack-size
-            text: The number of entries on the stack
-        correct: own-position
-        explanation: >-
-          Heights say that the pop should happen, not how far apart the stalls are. The distance is
-          `i - j`, and `j` is also the output slot to fill. The stack size is not the distance
-          either.
-      height-then-index:
-        prompt: For `heights = [7, 7, 12]`, what does `heights.index(7)` return when it is asked about the second 7?
-        options:
-          - id: first-match
-            text: 0, the first 7's position
-          - id: remembers
-            text: 1, the second 7's position
-          - id: raises
-            text: It raises a `ValueError`
-        correct: first-match
-        explanation: >-
-          `index` returns the first position holding that value and knows nothing about which stack
-          entry asked, so both stack entries point at the same output slot and the second 7 never
-          gets its own result. It raises only when the value is missing. A position identifies one
-          stall, but a height does not.
-      height-with-counter:
-        prompt: >-
-          Every entry's counter is incremented on every step. For `n` stalls whose heights never
-          increase, about how many increments happen in total?
-        options:
-          - id: quadratic
-            text: About n²/2
-          - id: linear
-            text: About n
-          - id: n-log-n
-            text: About n log n
-        correct: quadratic
-        explanation: >-
-          Nothing is ever popped, and step `k` increments the `k - 1` counters already on the stack, so the sum is 0 + 1 + ... + (n - 1). Running it with 50 strictly
-          decreasing heights gives 1225 increments, which is exactly n(n - 1) / 2. The answers stay
-          right, but the cost does not.
+      `next_greater` finds every next greater element in one left-to-right pass. `stack` holds the
+      indices still waiting for their answer, and `stack[-1]` is its top. When `x` arrives at index
+      `i`, the `while` loop pops while the top's value is smaller than `x`, writing `x` as each
+      popped index's answer, and then pushes `i`. Here `stack` is `[0, 1, 2]` just before index 3
+      is read. Which index does the 4 at index 3 pop? Tap it.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)  # one -1 per position
+          stack = []  # indices still waiting
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
 
-  - id: stack-loop-cost
-    heading: What is the complexity?
-    tags: [stack, complexity]
-    prompt: |-
-      The function below returns, for each stall, the distance to the first strictly taller stall on
-      its right, or 0 if there is none. What is the tightest worst-case bound on its time for `n` heights?
+      next_greater([9, 6, 2, 4, 7])
+    sequence:
+      kind: array
+      name: nums
+      cells: [9, 6, 2, 4, 7]
+    markers:
+      - { name: i, at: 3 }
+    correct: 2
+    explanation: >-
+      Before index 3, `stack` is `[0, 1, 2]`. The top holds 2, which is smaller than 4, so index 2
+      is popped. The new top holds 6, and `6 < 4` is false, so the loop stops.
+    misses:
+      - index: 0
+        explanation: >-
+          The 9 is at the bottom. The loop compares only the top and stops at the 6 before it
+          reaches the 9.
+      - index: 1
+        explanation: >-
+          The 6 is on top once index 2 is gone, but `6 < 4` is false, so it stays and the loop
+          ends.
+      - index: 3
+        explanation: Index 3 is the arrival. It is pushed after the pops, not popped.
+      - index: 4
+        explanation: >-
+          The 7 has not arrived yet. On its turn it pops index 3 and then index 1.
 
-      ```python
-      def next_taller(heights):
-          out = [0] * len(heights)
+  - format: step-trace
+    id: trace-pops-per-arrival
+    heading: Predict each arrival
+    tags: [stack, python]
+    workedExample: |-
+      Consider `nums = [6, 4, 1, 5]`, with `stack = [0, 1, 2]` before index 3. After every pop, the
+      `while` loop tests the new top again.
+
+      1. The 5 at index 3 meets the top, index 2, holding 1. `1 < 5` is true, so index 2 is popped.
+      2. The new top is index 1, holding 4. `4 < 5` is still true, so index 1 is popped as well.
+      3. The new top is index 0, holding 6, and `6 < 5` is false. So the loop stops after 2 pops
+         with index 0 on top, and index 3 is pushed above it.
+    prompt: >-
+      Each arrival pops while the value on top of `stack` is smaller than it, and is then pushed.
+      `top` marks the top of `stack`, which is `[0, 1, 2]` after index 2. Predict each step.
+    code: |
+      nums = [5, 3, 1, 2, 6, 4, 2, 3]
+      out = [-1] * len(nums)
+      stack = []
+      for i, x in enumerate(nums):
+          while stack and nums[stack[-1]] < x:
+              j = stack.pop()
+              out[j] = x
+          stack.append(i)
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 3, 1, 2, 6, 4, 2, 3]
+    start:
+      - { name: top, at: 2 }
+    steps:
+      - line: 5
+        ask: The 2 at index 3 arrives. How many indices does the `while` loop pop?
+        options:
+          - id: one
+            text: "1"
+            explanation: >-
+              The top, index 2, holds 1, which is smaller than 2, so it is popped. The next top
+              holds 3, and `3 < 2` is false.
+          - id: zero
+            text: "0"
+            explanation: The top holds 1, and `1 < 2` is true, so at least one pop happens.
+          - id: two
+            text: "2"
+            explanation: >-
+              After index 2 goes, the top holds 3. `3 < 2` is false, so the loop stops after one
+              pop.
+          - id: three
+            text: "3"
+            explanation: >-
+              The loop stops at the first top that is not smaller. The 3 at index 1 stops it, so
+              the 5 is never compared.
+        correct: one
+      - line: 5
+        ask: When that `while` loop stops, which index is on top? Tap it.
+        pointer: top
+        correct: 1
+        explanation: >-
+          Index 2 is gone, and the 3 at index 1 is not smaller than 2. It is on top when the loop
+          stops, and index 3 is then pushed above it.
+        misses:
+          - index: 2
+            explanation: Index 2 was just popped.
+          - index: 0
+            explanation: The 5 sits under index 1. The loop stops before it reaches the 5.
+          - index: 3
+            explanation: >-
+              Index 3 is pushed after the loop stops. The question asks for the top at the moment
+              it stops.
+        elsewhere: The loop stops with index 1 on top.
+      - line: 5
+        ask: "The 6 at index 4 arrives with `stack` at `[0, 1, 3]`. How many indices does it pop?"
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              2, 3 and 5 are all smaller than 6. Each pop exposes a new top that is still smaller,
+              so the loop empties the stack before index 4 is pushed.
+          - id: one
+            text: "1"
+            explanation: >-
+              The `while` loop tests again after every pop. Index 1 holds 3 and index 0 holds 5,
+              and both are smaller than 6.
+          - id: two
+            text: "2"
+            explanation: >-
+              Index 0 holds 5, which is also smaller than 6, so the loop pops it too and stops only
+              when the stack is empty.
+          - id: four
+            text: "4"
+            explanation: >-
+              Only three indices are on the stack. Index 2 was popped by the 2 at index 3 and
+              cannot be popped twice.
+        correct: three
+        also:
+          - { name: top, at: 4 }
+      - line: 5
+        ask: "The 3 at index 7 arrives with `stack` at `[4, 5, 6]`. When its loop stops, which index is on top? Tap it."
+        pointer: top
+        correct: 5
+        explanation: >-
+          The top, index 6, holds 2, which is smaller than 3, so it is popped. Index 5 holds 4, and
+          `4 < 3` is false, so the loop stops with index 5 on top.
+        misses:
+          - index: 6
+            explanation: The 2 at index 6 is smaller than 3, so the arrival pops it.
+          - index: 4
+            explanation: >-
+              The 6 sits under index 5. The loop stops at the 4 before it reaches the 6.
+          - index: 7
+            explanation: >-
+              Index 7 is the arrival. It goes on top only after the loop stops.
+        elsewhere: Only indices 4, 5 and 6 are on the stack, and the loop stops at index 5.
+
+  - format: tap-cell
+    id: land-on-larger-top
+    heading: What sits under the new top?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `next_greater` on `nums = [12, 10, 8, 9]`. Each arrival pops the tops that are
+      smaller than it, and is then pushed onto whatever top is left.
+
+      1. 12, 10 and 8 only go down, so neither 10 nor 8 pops anything, and `stack` is `[0, 1, 2]`
+         before index 3 is read.
+      2. The 9 at index 3 meets the top, index 2. `8 < 9` is true, so index 2 is popped.
+      3. The new top is index 1, and `10 < 9` is false, so the loop stops. Index 3 is pushed onto
+         `[0, 1]`, so index 1 sits directly beneath it: the nearest earlier value that is not
+         smaller than 9.
+    prompt: >-
+      `next_greater` runs on `nums` below. Each arrival pops the smaller tops and is then pushed
+      onto whatever top is left. Once index 6 is pushed, which index sits directly beneath it? Tap
+      it.
+    code: |
+      def next_greater(nums):
+          out = [-1] * len(nums)
           stack = []
-          for i, h in enumerate(heights):
-              while stack and heights[stack[-1]] < h:
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+
+      next_greater([7, 4, 9, 3, 6, 2, 5, 1])
+    sequence:
+      kind: array
+      name: nums
+      cells: [7, 4, 9, 3, 6, 2, 5, 1]
+    correct: 4
+    explanation: >-
+      The 5 at index 6 pops index 5, since 2 is smaller, and stops at index 4, since 6 is not. So
+      `stack` is `[2, 4, 6]`, and index 4 sits directly beneath the new top. Since every arrival
+      first pops the smaller tops, the values on the stack never increase from bottom to top (here
+      9, 6, 5). That order is the "monotonic" in the path's name.
+    misses:
+      - index: 0
+        explanation: The 9 at index 2 already popped this 7.
+      - index: 1
+        explanation: The 9 at index 2 popped this 4 as well.
+      - index: 2
+        explanation: >-
+          The 9 is waiting, but at the bottom. Index 4 sits between it and index 6.
+      - index: 3
+        explanation: The 6 at index 4 popped this 3.
+      - index: 5
+        explanation: >-
+          This is the index just before 6, but its 2 is smaller than the arriving 5, so index 6
+          pops it before it is pushed.
+      - index: 6
+        explanation: Index 6 is the new top itself. The question asks for the entry under it.
+      - index: 7
+        explanation: Index 7 has not been read when index 6 is pushed.
+
+  - id: name-waiting-indices
+    heading: Which indices are waiting?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `next_greater` on `nums = [7, 3, 5]`. `stack` holds the indices still waiting for a
+      larger value, and an index leaves it only when a larger value pops it.
+
+      1. Index 0, the 7, is pushed onto the empty stack. The 3 at index 1 does not pop it, since
+         `7 < 3` is false, so `stack` is `[0, 1]`.
+      2. The 5 at index 2 meets the top, index 1. `3 < 5` is true, so index 1 is popped and gets its
+         answer, `out[1] = 5`.
+      3. The new top is index 0, and `7 < 5` is false, so the loop stops and index 2 is pushed.
+         `stack` is `[0, 2]`: the 7 and the 5 are still waiting.
+    prompt: |-
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []  # indices still waiting
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+      ```
+
+      For `nums = [6, 2, 5, 1, 3, 8]`, what does `stack` hold just before index 5 is read?
+    options:
+      - id: waiting
+        text: "`[0, 2, 4]`"
+        explanation: >-
+          The 6, the 5 and the 3 have not met a larger value yet. The 5 popped index 1 and the 3
+          popped index 3, so those two have their answers and are gone. An index waits on the
+          stack for as long as no larger value has arrived after it.
+      - id: values
+        text: "`[6, 5, 3]`"
+        explanation: >-
+          These are the values at the waiting positions, but the loop pushes `i`, not `x`. Each
+          entry is a position, so `out[j] = x` knows which slot to fill when it is popped.
+      - id: kept-popped
+        text: "`[0, 2, 3, 4]`"
+        explanation: >-
+          Index 3 holds 1, and the 3 at index 4 is larger, so index 4 pops it before it is pushed.
+          A popped index has its answer and is no longer waiting.
+      - id: answered
+        text: "`[1, 3]`"
+        explanation: >-
+          These two have their answers already: index 1 got 5 and index 3 got 3. The stack holds
+          the other positions, the ones still without an answer.
+    correct: waiting
+    followUps:
+      values:
+        prompt: When the 8 later pops an entry `j`, what must that entry tell the loop?
+        options:
+          - id: slot
+            text: Which entry of `out` to write, so the stack entry has to be an index
+          - id: value-only
+            text: Its value, which the loop cannot look up any other way
+          - id: nothing
+            text: Nothing, because the arrival writes into its own entry of `out`
+        correct: slot
+        explanation: >-
+          `out[j] = x` writes at index `j`. The value is one lookup away as `nums[j]`, so a stored
+          index gives both, while a stored value cannot say where to write.
+      kept-popped:
+        prompt: Index 3 holds 1 and index 4 holds 3. What happens to index 3 when index 4 is read?
+        options:
+          - id: popped
+            text: "It is popped, and `out[3]` becomes 3"
+          - id: last-only
+            text: It stays, because only the last value in the list pops anything
+          - id: stays-pushed
+            text: It stays, because index 4 is pushed on top of it without a comparison
+        correct: popped
+        explanation: >-
+          Every arrival runs the `while` test before it is pushed. `1 < 3` is true, so index 3 is
+          popped and answered first.
+      answered:
+        prompt: After `j = stack.pop()` and `out[j] = x` run, is index `j` still waiting?
+        options:
+          - id: done
+            text: No, it has its answer and has left the stack
+          - id: popped-wait
+            text: Yes, popped indices are the ones that wait
+          - id: until-end
+            text: Yes, until the loop ends
+        correct: done
+        explanation: >-
+          The stack is the waiting list. An index joins it when it is read and leaves it at the
+          moment a larger value answers it.
+
+  - id: equal-value-waits
+    heading: What does this print?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `next_greater` on `nums = [9, 4, 11]`. The test `nums[stack[-1]] < x` is strict, so a
+      top is popped only when the arrival is larger than it.
+
+      1. The 4 at index 1 meets index 0. `9 < 4` is false, so index 0 stays, and index 1 is pushed:
+         `stack` is `[0, 1]`.
+      2. The 11 at index 2 meets index 1. `4 < 11` is true, so index 1 is popped and `out[1]`
+         becomes 11.
+      3. The new top is index 0, and `9 < 11` is true, so it is popped and answered with 11 too.
+         `stack` ends as `[2]`: each index left only when a strictly larger value arrived.
+    prompt: |-
+      ```python
+      nums = [6, 6, 10]
+      out = [-1] * len(nums)
+      stack = []
+      for i, x in enumerate(nums[:2]):  # only the two 6s
+          while stack and nums[stack[-1]] < x:
+              out[stack.pop()] = x
+          stack.append(i)
+      print(stack, out)
+      ```
+
+      What does this print?
+    options:
+      - id: both-wait
+        text: "`[0, 1] [-1, -1, -1]`"
+        explanation: >-
+          `6 < 6` is false, so the second 6 does not pop the first. Both wait, and the 10 would
+          answer both of them on the next pass.
+      - id: equal-pops
+        text: "`[1] [6, -1, -1]`"
+        explanation: >-
+          This pops on an equal value, which `<=` would do. With `<`, a 6 is not larger than a 6,
+          so index 0 keeps waiting.
+      - id: skip-duplicate
+        text: "`[0] [-1, -1, -1]`"
+        explanation: >-
+          `stack.append(i)` runs on every pass, whatever the value, so index 1 waits too.
+      - id: mutual
+        text: "`[] [6, 6, -1]`"
+        explanation: >-
+          An index gets an answer only when it is popped, and a pop needs a larger arrival. Neither
+          6 is larger than the other.
+    correct: both-wait
+    followUps:
+      equal-pops:
+        prompt: The second 6 arrives with index 0 on top. What does `nums[0] < 6` evaluate to?
+        options:
+          - id: not-less
+            text: False, because 6 is not less than 6
+          - id: true-match
+            text: True, because the values match
+          - id: true-older
+            text: True, because index 0 is older
+        correct: not-less
+        explanation: >-
+          Strict `<` needs a larger arrival. An equal value leaves the top waiting. `<=` would pop
+          it, which answers "next value at least as large" instead.
+      skip-duplicate:
+        prompt: Which line puts index 1 on the stack, and what does it check first?
+        options:
+          - id: no-check
+            text: "`stack.append(i)`, and it checks nothing"
+          - id: checks-dupes
+            text: "`stack.append(i)`, after checking that the value is not already waiting"
+          - id: shares
+            text: No line does, because equal values share index 0
+        correct: no-check
+        explanation: >-
+          The `while` loop may pop, but the append always runs. Every index is pushed exactly once,
+          equal values included.
+      mutual:
+        prompt: What has to happen before `out[j]` gets a value?
+        options:
+          - id: larger-arrives
+            text: A strictly larger value has to arrive while `j` is on top
+          - id: equal-arrives
+            text: A value equal to `nums[j]` has to arrive
+          - id: loop-ends
+            text: The loop has to reach the end of the list
+        correct: larger-arrives
+        explanation: >-
+          The only write into `out` sits inside the `while` loop, and the loop pops only smaller
+          tops. Equal values never write anything.
+
+  - id: distance-between-indices
+    heading: What does this write?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `steps_to_greater` on `nums = [4, 1, 5]`. When the arrival at index `i` pops a
+      waiting index `j`, it writes the distance `out[j] = i - j`.
+
+      1. The 1 at index 1 does not pop the 4, since `4 < 1` is false, so `stack` is `[0, 1]` before
+         index 2.
+      2. The 5 at index 2 pops index 1, because `1 < 5`, and writes `out[1] = 2 - 1 = 1`.
+      3. The new top is index 0, and `4 < 5` is true, so it is popped too, and `out[0] = 2 - 0 = 2`.
+         Each pop subtracts its own index from the same `i`, so `out` ends as `[2, 1, 0]`.
+    prompt: |-
+      ```python
+      def steps_to_greater(nums):
+          out = [0] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
                   j = stack.pop()
                   out[j] = i - j
               stack.append(i)
           return out
       ```
-    options:
-      - id: quadratic
-        text: O(n²), because a `while` loop sits inside a `for` loop
-        explanation: >-
-          O(n²) is a valid upper bound but not a tight one. A loop inside a loop does not always
-          multiply. The `while` loop can pop many entries in one step (on `[9, 8, 7, 6, 5, 100]` the
-          last step pops five), but popped entries are gone, so all the pops together are at most `n`.
-      - id: n-log-n
-        text: O(n log n), because the stack is kept in sorted order
-        explanation: >-
-          O(n log n) is also a valid upper bound but not a tight one, and its reason is off: nothing
-          is sorted or inserted into the middle. Order is kept by removing smaller entries from the
-          top before pushing, and every push and pop is O(1).
-      - id: avg-linear
-        text: O(n) on average, but O(n²) in the worst case on increasing heights
-        explanation: >-
-          The O(n) bound holds for every input, including strictly increasing heights. On that input
-          the stack stays tiny, and on non-increasing heights nothing is popped at all. There is no
-          input where the nested pops become quadratic.
-      - id: linear
-        text: O(n) in the worst case, because each index is pushed once and popped at most once
-        explanation: >-
-          Across the whole call there are exactly `n` pushes and at most `n` pops, so the `while`
-          body runs at most `n` times in total, not `n` times per step. That is about 2n operations
-          whatever the input. The stack also keeps its heights from bottom to top in non-increasing
-          order, because smaller tops are popped before each push.
-    correct: linear
-    followUps:
-      quadratic:
-        prompt: >-
-          One step of the `for` loop can pop many entries. Why is O(n²) still not the tightest bound
-          for the whole function?
-        options:
-          - id: popped-once
-            text: Each index is popped at most once in the whole call
-          - id: pops-bounded
-            text: One step never pops more than a few entries
-          - id: pops-free
-            text: Pops are free in big-O, so only pushes count
-        correct: popped-once
-        explanation: >-
-          A single step can pop a lot, as the last step of `[9, 8, 7, 6, 5, 100]` does, so the
-          few-pops claim is false. Pops are not free either. They are limited in total, because an
-          index leaves the stack for good after it is popped, and each of the `n` indices enters
-          once. All steps together pop at most `n` times.
-      n-log-n:
-        prompt: How does the stack stay in order without sorting or inserting into the middle?
-        options:
-          - id: pop-before-push
-            text: Each push first pops any smaller tops
-          - id: auto-sorted
-            text: A Python list sorts itself on `append`
-          - id: log-size
-            text: It never holds more than log n entries
-        correct: pop-before-push
-        explanation: >-
-          The popping step removes exactly the entries that would break the order, so the new index
-          lands on top in order and a plain `append` is safe. Lists do not sort themselves, and the stack can hold all `n` indices, for example
-          when heights never increase.
-      avg-linear:
-        prompt: What does the stack do on strictly increasing heights such as 1, 2, 3, ..., n?
-        options:
-          - id: one-pop-per-step
-            text: Each step after the first pops one entry, the previous one
-          - id: pops-everything
-            text: Each step pops every earlier entry, which costs about n² / 2
-          - id: no-pops
-            text: Nothing is popped, because every new height is larger
-        correct: one-pop-per-step
-        explanation: >-
-          On increasing heights each new stall beats only the one waiting stall, so the stack never
-          holds more than one index, and every step after the first costs one pop and one push. There is no input that pushes more than `n` times or pops
-          more than `n` times, so there is no quadratic worst case to find.
 
-  - id: strict-vs-nonstrict
-    heading: Which loop condition is correct?
-    tags: [stack, python]
-    prompt: |-
-      Same task: the distance to the first strictly taller stall to the right, or 0 if none. The
-      pass below is missing the `while` condition. On `[30, 20, 20, 40]` the expected output is
-      `[3, 2, 1, 0]`. Which condition produces it?
-
-      ```python
-      for i, h in enumerate(heights):
-          while stack and ???:
-              j = stack.pop()
-              out[j] = i - j
-          stack.append(i)
-      ```
+      For `nums = [8, 3, 2, 6, 1, 9]`, the 9 at index 5 pops three indices. What does it write
+      into `out[0]`?
     options:
-      - id: pop-equal
-        text: "`heights[stack[-1]] <= h`, which also pops stalls of equal height"
+      - id: five
+        text: "5"
         explanation: >-
-          This answers "first stall at least as tall", not "strictly taller". The second 20 pops the
-          first 20, which gets 1 instead of 2, and the output is `[3, 1, 1, 0]`. It would be the
-          right condition if the task asked for the next stall that is taller or equal.
-      - id: pop-smaller
-        text: "`heights[stack[-1]] < h`, which pops only strictly shorter stalls"
+          Index 0 has waited since the start, and the 9 arrives at index 5. The distance is
+          `5 - 0`, whatever sits in between.
+      - id: nine
+        text: "9"
         explanation: >-
-          An equal stall does not pop the one on the stack, so both 20s keep waiting. The 40 then pops
-          the second 20 (distance 1), the first 20 (distance 2), and the 30 (distance 3), giving
-          `[3, 2, 1, 0]`. The stack stays non-increasing from bottom to top.
-      - id: pop-taller
-        text: "`heights[stack[-1]] > h`, which pops stalls taller than the new one"
+          9 is the value that answers index 0, which `next_greater` would store. This function
+          writes `i - j`, a gap between positions.
+      - id: pop-order
+        text: "3"
         explanation: >-
-          This pops when a shorter stall arrives, so it finds the next strictly shorter stall, not the
-          next taller one. On this input it returns `[1, 0, 0, 0]`.
-      - id: either
-        text: Either `<` or `<=`, because equal heights never change the result
+          Index 0 is the third index this arrival pops, after 4 and 3. The order of the pops does
+          not enter the subtraction.
+      - id: reversed
+        text: "-5"
         explanation: >-
-          They differ whenever a new stall equals the stall on top of the stack at that moment, as the
-          second 20 does here: `<` gives `[3, 2, 1, 0]` and `<=` gives `[3, 1, 1, 0]`. Equal heights
-          that never meet on the stack, as in `[1, 2, 1]`, give the same output either way.
-    correct: pop-smaller
+          This is `j - i`. The waiting index is the earlier one, so the arrival's index comes first
+          and every stored distance is positive.
+    correct: five
     followUps:
-      pop-equal:
-        prompt: >-
-          With `<=`, what answer does the first 20 in `[30, 20, 20, 40]` receive, and from which stall?
+      nine:
+        prompt: Which two numbers does `out[j] = i - j` combine?
         options:
-          - id: one-from-equal
-            text: 1, popped by the second 20
-          - id: two-from-forty
-            text: 2, popped later by the 40
-          - id: zero
-            text: 0, as it is never popped
-        correct: one-from-equal
+          - id: positions
+            text: The arrival's index and the waiting index
+          - id: values
+            text: The arriving value and the waiting value
+          - id: mixed
+            text: The arriving value and the waiting index
+        correct: positions
         explanation: >-
-          The `<=` test pops on equal heights, so the second 20 resolves the first one at distance 1.
-          That is the answer for "next stall at least as tall". "Strictly taller" needs the first
-          stall to wait until the 40.
-      pop-taller:
-        prompt: With `>` the stack pops entries that are taller than the new stall. Which question does that answer?
+          `i` and `j` are both indices, so their difference counts steps along the list. The values
+          decide whether a pop happens, not how far apart the two positions are.
+      pop-order:
+        prompt: The 9 pops indices 4, 3 and 0, in that order. Does the order change `out[0]`?
         options:
-          - id: next-shorter
-            text: The distance to the next strictly shorter stall on the right
-          - id: next-taller
-            text: The distance to the next strictly taller stall on the right
-          - id: next-taller-or-equal
-            text: The distance to the next stall on the right that is at least as tall
-        correct: next-shorter
+          - id: own-index
+            text: No, each pop subtracts its own popped index from 5
+          - id: third
+            text: Yes, the third pop writes 3
+          - id: cumulative
+            text: Yes, each pop subtracts the distances written before it
+        correct: own-index
         explanation: >-
-          Which entries a new stall pops defines what the pass computes. Popping the taller entries
-          resolves them with the first shorter stall, which on `[30, 20, 20, 40]` leaves only the 30
-          answered (distance 1). The comparison must match the direction of the question.
-      either:
-        prompt: Which condition on the list is enough to guarantee that `<` and `<=` produce identical output?
+          Each pop computes `i - j` with the same `i` and its own `j`, so the pops write 1, 2 and 5
+          into `out[4]`, `out[3]` and `out[0]`.
+      reversed:
+        prompt: On `[4, 1, 5]`, the 5 at index 2 answers index 0. Which subtraction gives the distance 2?
         options:
-          - id: all-distinct
-            text: No two heights in the list are equal
-          - id: sorted
-            text: The list is already sorted
-          - id: one-pair
-            text: The list contains at most one pair of equal heights
-        correct: all-distinct
+          - id: arrival-first
+            text: "`2 - 0`, the arrival's index minus the waiting index"
+          - id: waiting-first
+            text: "`0 - 2`, the waiting index minus the arrival's index"
+          - id: by-value
+            text: "`5 - 4`, the arriving value minus the waiting value"
+        correct: arrival-first
         explanation: >-
-          The two conditions differ only when a new height equals the height on top of the stack, so
-          distinct heights can never tell them apart. That is sufficient but not necessary:
-          `[1, 2, 1]` has equal heights and still gives the same output. A sorted list can hold ties
-          (`[2, 2, 3]` gives `[2, 1, 0]` and `[1, 1, 0]`), and so can a list with a single equal pair,
-          like `[30, 20, 20, 40]`.
-
-  - id: bracket-balance
-    heading: Which structure is needed?
-    tags: [stack, python]
-    prompt: >-
-      This is the plain stack case that the monotonic version builds on. A string contains only the
-      characters `(`, `)`, `[`, `]`, `{`, and `}`. It is balanced when every closing bracket matches
-      the most recent unmatched opener, that opener is of the same kind, and nothing is left open.
-      For example, `({}[()])` is balanced, while `{[}]`, `[}`, `}`, and `[[` are not. In Python,
-      which approach decides this correctly for every string?
-    options:
-      - id: one-counter
-        text: "One counter: +1 per opener, -1 per closer, never below 0 and ending at 0"
-        explanation: >-
-          A counter sees only how many brackets are open, not which kind. It accepts `[}`, whose
-          counter goes 1 then 0. With a single kind of bracket a counter is enough, but with three
-          the kinds must match.
-      - id: three-counters
-        text: Three counters, one per bracket kind, each never below 0 and each ending at 0
-        explanation: >-
-          This catches `[}`, but it accepts `{[}]`: every counter rises and falls without going
-          negative and ends at 0. Counts track how many of each kind are open, and that is not enough
-          to reject a crossed pair.
-      - id: stack-unguarded
-        text: A stack of openers; pop on each closer with no empty check, and end with an empty stack
-        explanation: >-
-          This works until a closer arrives with nothing on the stack. For `}` there is no opener to
-          match, and in Python a pop on an empty list raises `IndexError` rather than giving False.
-          The stack must be checked for emptiness before every pop.
-      - id: stack-guarded
-        text: A stack of openers; a closer needs a non-empty stack and a matching top; end empty
-        explanation: >-
-          Push each opener. On a closer, answer False if the stack is empty (as for `}`), then pop and
-          compare with the matching opener. After the loop, answer True only if the stack is empty,
-          since `[[` leaves two openers. That is O(n) time and O(n) space in the worst case.
-    correct: stack-guarded
-    followUps:
-      one-counter:
-        prompt: For `[}` the counter goes 1, then 0, and the string is accepted. What does the counter not know?
-        options:
-          - id: which-kind
-            text: Which kind of opener is still open, so it cannot check that the closer matches it
-          - id: opener-vs-closer
-            text: Whether a bracket is an opener or a closer, so it treats `}` like an opener
-          - id: went-negative
-            text: Whether the count ever dropped below 0, which is what would reject this string
-        correct: which-kind
-        explanation: >-
-          The counter does add for openers and subtract for closers, and here it never goes below 0.
-          What it cannot say is that the open one is a `[` and the closer is a `}`. A stack stores
-          the kinds, so the top is the opener that the next closer must match.
-      three-counters:
-        prompt: >-
-          In `{[}]` every counter rises and falls without going negative and ends at 0, yet the string
-          is not balanced. What do the counters ignore?
-        options:
-          - id: nesting-order
-            text: Which opener is the most recent one, so `}` is accepted while `[` is still open and unmatched
-          - id: per-kind
-            text: Whether each kind is balanced on its own, since they only compare the grand totals
-          - id: went-negative
-            text: Whether a counter ever went negative, which is how this string should be rejected
-        correct: nesting-order
-        explanation: >-
-          Counters track how many of each kind are open, but a closer must match the latest unmatched
-          opener, not just any opener of its kind. That last-in, first-out rule is what a stack holds
-          in its top entry.
-      stack-unguarded:
-        prompt: In Python, what does `stack.pop()` do on the string `}`, where no opener has been pushed?
-        options:
-          - id: raises
-            text: "It raises `IndexError: pop from empty list`, so the function crashes instead of returning False"
-          - id: returns-none
-            text: It returns `None`, so the comparison fails and the function returns False
-          - id: skips
-            text: It does nothing, so the closer is skipped and the string can still be accepted
-        correct: raises
-        explanation: >-
-          Popping an empty Python list raises `IndexError`, so a closer with an empty stack has to be
-          handled before the pop and treated as unbalanced. The end-of-loop check for an empty stack
-          is a separate rule: it rejects strings such as `((`.
+          The arrival is always later than the index it pops, so `i - j` is positive. `j - i` gives
+          the same size with the wrong sign.
 
   - id: leftover-stack
     heading: What is left on the stack?
-    tags: [stack, complexity]
-    prompt: |-
-      This function returns, for each stall, the distance to the first strictly taller stall on its
-      right, with 0 where there is none.
+    tags: [stack, python]
+    workedExample: |-
+      Consider `next_greater` on `nums = [3, 5, 2]`. `out` starts as all -1, and the only line
+      that writes into it, `out[j] = x`, runs right after index `j` is popped.
 
+      1. The 5 at index 1 pops index 0, since `3 < 5`, so `out[0]` becomes 5.
+      2. The 2 at index 2 pops nothing, since `5 < 2` is false. The loop ends with `stack` holding
+         `[1, 2]`.
+      3. Indices 1 and 2 were never popped, so nothing wrote into their slots, and `out` ends as
+         `[5, -1, -1]`. Neither the 5 nor the 2 has a larger value to its right.
+    prompt: |-
       ```python
-      def next_taller(heights):
-          out = [0] * len(heights)
+      def next_greater(nums):
+          out = [-1] * len(nums)
           stack = []
-          for i, h in enumerate(heights):
-              while stack and heights[stack[-1]] < h:
+          for i, x in enumerate(nums):
+              while stack and nums[stack[-1]] < x:
                   j = stack.pop()
-                  out[j] = i - j
+                  out[j] = x
               stack.append(i)
-          # what is left in `stack` here?
           return out
       ```
 
-      For `[8, 3, 6, 6, 2, 9, 4, 1]` it returns `[5, 1, 3, 2, 1, 0, 0, 0]` and `stack` ends as
-      `[5, 6, 7]`. In general, what do the leftover indices mean, and how large can the stack get?
+      For `nums = [8, 3, 6, 6, 2, 9, 4, 1]` the loop ends with `stack` holding `[5, 6, 7]`. What
+      do these leftover indices mean for their answers?
     options:
-      - id: always-empty
-        text: The stack is empty, because every stall is eventually popped by a taller one
+      - id: none-larger
+        text: No larger value comes after them, so their answers stay -1
         explanation: >-
-          A stall is popped only by a later, taller stall. The final stall has nothing after it, so
-          it always stays, and so does every stall that nothing taller follows. For any non-empty list
-          the stack ends non-empty.
-      - id: distance-to-end
-        text: Each leftover stall `i` gets the distance to the end of the line, `n - i`
+          An index is popped the moment a larger value arrives, so one still on the stack never saw
+          one. Nothing wrote into its slot, and the starting -1 is already the right answer for
+          the 9, the 4 and the 1. No second pass is needed.
+      - id: second-pass
+        text: Their answers are still missing, so a second pass must find them
         explanation: >-
-          The task says 0 when no taller stall exists, and a positive distance claims that a taller
-          stall stands that many steps away. For a leftover there is none, so writing `n - i` would
-          report a stall that does not exist.
-      - id: constant-space
-        text: They keep the default 0, and the stack needs only a constant number of slots, as it pops
+          Every value after a leftover index has already arrived and failed to pop it, so no larger
+          value exists to find. The -1 already in its slot is the answer.
+      - id: last-value
+        text: They are answered with the last value, 1
         explanation: >-
-          The leftover handling is right, but the space claim is not. When heights never increase,
-          nothing is ever popped, and the stack holds all `n` indices at the end. Popping keeps the
-          stack small only on some inputs, such as increasing heights.
-      - id: leftover-default
-        text: No taller stall to their right, so they keep the default 0; worst-case stack size is n
+          `out` changes only when an index is popped. The 1 at the end pops nothing, and no line
+          after the loop fills in the leftovers.
+      - id: own-value
+        text: Each one is answered with its own value
         explanation: >-
-          An index is popped the moment a taller stall arrives, so one still on the stack never saw
-          one, and `out[j]` correctly keeps its starting 0. No second pass is needed. If the function
-          returned positions, the default would be -1 instead. Time is O(n) in the worst case, and the
-          stack holds up to `n` indices (extra space O(n)) when heights never increase.
-    correct: leftover-default
+          A slot of `out` holds the next greater element, never the position's own value. The
+          leftovers keep the starting -1.
+    correct: none-larger
     followUps:
-      always-empty:
-        prompt: Which stall is on the stack at the end for every non-empty list?
+      second-pass:
+        prompt: Index 5 holds 9 and is still on the stack at the end. Which values arrived after it?
         options:
-          - id: last-stall
-            text: The last stall
-          - id: first-stall
-            text: The first stall
-          - id: shortest-stall
-            text: The shortest stall
-        correct: last-stall
+          - id: all
+            text: The 4 and the 1, and neither was larger, so neither popped it
+          - id: none
+            text: None yet, since the loop stopped early
+          - id: some
+            text: Only the 4, since the 1 was never read
+        correct: all
         explanation: >-
-          Only a later stall can pop an index, and none comes after the final one, so it is never
-          popped. The first stall is
-          popped as soon as any later stall is taller, as in `[1, 2]`. The shortest stall stays only
-          if no taller stall follows it: `[9, 1]` leaves it, but `[5, 1, 9]` pops it.
-      distance-to-end:
-        prompt: What does a positive value in `out[j]` promise?
+          The loop reads every index. A value still waiting at the end has met every later value,
+          so a -1 there means none of them was larger.
+      last-value:
+        prompt: Which line writes into `out`, and when does it run?
         options:
-          - id: taller-exists
-            text: A strictly taller stall exists exactly that many steps to the right
-          - id: popped-at
-            text: That the stall was popped at that step of the loop
-          - id: steps-to-end
-            text: How many stalls lie between it and the end of the line
-        correct: taller-exists
+          - id: on-pop
+            text: "`out[j] = x`, only right after index `j` is popped"
+          - id: after-loop
+            text: "`out[j] = x`, once more for each leftover after the loop"
+          - id: on-push
+            text: "`stack.append(i)`, which copies `x` into `out`"
+        correct: on-pop
         explanation: >-
-          A positive entry names a taller stall that really exists. Leftover stalls have none, so they
-          keep 0. A distance to the end would be a different question, and the task did not ask for it.
-      constant-space:
-        prompt: For `[9, 8, 7, 6, 5]`, how many entries does the stack hold when the loop ends?
+          The only write is inside the `while` loop. An index that is never popped is never written,
+          so it keeps its -1.
+      own-value:
+        prompt: What does a -1 that survives the loop say about its index?
         options:
-          - id: five
-            text: 5, because no stall is taller than the one before it, so nothing is popped
-          - id: one
-            text: 1, because each new stall pops the previous one
-          - id: zero
-            text: 0, because the loop empties the stack
-        correct: five
+          - id: no-larger
+            text: No larger value appears to its right
+          - id: holds
+            text: The value at that index is -1
+          - id: last
+            text: That index was the last one read
+        correct: no-larger
         explanation: >-
-          A pop needs a taller newcomer, and these heights only fall, so every index stays. The stack
-          reaches size `n` in the worst case, which makes its space O(n). Popping shrinks it only when
-          taller stalls actually arrive.
+          -1 is the "none" answer. It survives exactly at the indices still on the stack, because
+          nothing after them is larger.
+
+  - id: count-pops-in-run
+    heading: What does this print?
+    tags: [stack, complexity, python]
+    workedExample: |-
+      Consider the loop on `nums = [3, 1, 2]`. Each index is pushed exactly once, and an index can
+      leave the stack only through one pop.
+
+      1. The 1 at index 1 pops nothing, since `3 < 1` is false. The 2 at index 2 pops index 1, since
+         `1 < 2`, but not index 0, since `3 < 2` is false.
+      2. So the run makes 3 pushes and ends with `stack = [0, 2]`, which is 2 indices left.
+      3. Every index that is gone left through exactly one pop, so the pops equal the pushes minus
+         the indices left: `3 - 2 = 1`.
+    prompt: |-
+      ```python
+      nums = [2, 9, 4, 3, 7, 1, 8]
+      pops = 0
+      stack = []
+      for i, x in enumerate(nums):
+          while stack and nums[stack[-1]] < x:
+              stack.pop()
+              pops += 1
+          stack.append(i)
+      print(pops, stack)
+      ```
+
+      Each index is pushed once and popped at most once, so a run over `n` values makes at most
+      `n` pops. What does this print?
+    options:
+      - id: five
+        text: "`5 [1, 6]`"
+        explanation: >-
+          Seven indices are pushed and two are left, so five were popped: index 0 by the 9, 3 and 2
+          by the 7, and 5 and 4 by the 8. The 9 and the final 8 never meet a larger value.
+      - id: all-popped
+        text: "`7 []`"
+        explanation: >-
+          An index is popped only by a larger value after it. The 9 is the largest, and the 8 is
+          last, so neither is ever popped.
+      - id: per-arrival
+        text: "`3 [1, 6]`"
+        explanation: >-
+          Three arrivals pop something, the 9, the 7 and the 8, but the 7 and the 8 pop two indices
+          each. `pops` counts every pop.
+      - id: leftovers
+        text: "`2 [1, 6]`"
+        explanation: >-
+          2 is the size of the stack at the end. The pops are the indices that are no longer there.
+    correct: five
+    followUps:
+      all-popped:
+        prompt: The 9 at index 1 is the largest value. What could pop it?
+        options:
+          - id: nothing
+            text: Nothing, since a pop needs a larger value after it and none exists
+          - id: last-value
+            text: The 8, when the loop reaches the end
+          - id: any-later
+            text: Any later value, once the stack grows long enough
+        correct: nothing
+        explanation: >-
+          The only pops happen inside the `while` loop, and they need a larger arrival. The loop
+          does not empty the stack when the list ends.
+      per-arrival:
+        prompt: The 7 at index 4 arrives with `[1, 2, 3]` on the stack. How many times does `pops += 1` run for it?
+        options:
+          - id: two
+            text: Twice, once for index 3 and once for index 2
+          - id: once
+            text: Once, since it counts arrivals that pop
+          - id: three
+            text: Three times, once per entry on the stack
+        correct: two
+        explanation: >-
+          `pops += 1` sits inside the `while` loop, so it runs once per pop. The 3 and the 4 are
+          smaller than 7, and the 9 is not.
+      leftovers:
+        prompt: This run pushes 7 indices and leaves 2 on the stack. How many pops were there?
+        options:
+          - id: difference
+            text: 5, the pushes minus the indices left
+          - id: size
+            text: 2, the size of the final stack
+          - id: per-push
+            text: 7, one per push
+        correct: difference
+        explanation: >-
+          Every index enters once. The ones that are gone at the end each left by exactly one pop,
+          so pops equal pushes minus leftovers.

@@ -1,6 +1,6 @@
 id: link-rewrites-checkpoint
 title: "Link rewrites: checkpoint"
-description: Reverse the links of a list without losing the rest, on new inputs. Each item combines following a link, saving one before redirecting it, and the first node.
+description: Reverse or merge linked lists without losing the rest, on new inputs. Each item combines following a link, saving one before redirecting it, and the first node.
 heading: What does this give?
 
 questions:
@@ -61,8 +61,7 @@ questions:
           - id: to-none
             text: To `None`
             explanation: >-
-              Only the first node's link becomes `None`, because `prev` starts as `None`. By this
-              pass `prev` is on 5.
+              Line 5 sets 1's link to `prev`, and by this pass `prev` is on 5, not `None`.
         correct: to-five
         also:
           - { name: prev, at: 2 }
@@ -95,8 +94,8 @@ questions:
           - id: reversed
             text: 3, 8, 1, 5
             explanation: >-
-              `prev` is on 3, and every link now points to the node that came before it, ending
-              with 5's link to `None`.
+              `prev` is on 3, and every link now points to the node that came before it in the
+              original order.
           - id: only-tail
             text: '3'
             explanation: >-
@@ -321,8 +320,8 @@ questions:
         misses:
           - index: 2
             explanation: >-
-              9 is the last node turned. The third pass still moves `cur` on to its saved successor,
-              2.
+              9 is the last node turned. The third pass still moves `cur` on to the node saved in
+              `nxt`, 2.
           - index: 4
             explanation: >-
               Three passes move `cur` three nodes from 7, which is 2.
@@ -331,3 +330,92 @@ questions:
               `cur` moves on every pass. Following 7's link would lead to `None` after the first
               pass, but `cur` follows the saved `nxt`.
         elsewhere: 'Three passes move `cur` three nodes along, onto 2.'
+
+  - id: checkpoint-debug-merge-rest
+    heading: Which input does it fail on?
+    tags: [linked-list, python]
+    prompt: |-
+      A suggested `merge` should join two sorted linked lists into one sorted list by relinking
+      their nodes. One detail is slightly off:
+
+      ```python
+      def merge(a, b):
+          dummy = Node(0)
+          tail = dummy
+          while a is not None and b is not None:
+              if a.val <= b.val:
+                  tail.next = a
+                  a = a.next
+              else:
+                  tail.next = b
+                  b = b.next
+              tail = tail.next
+          tail.next = a
+          return dummy.next
+      ```
+
+      For which input does it return a wrong list?
+    options:
+      - id: b-left-over
+        text: '`a` is `1 -> 4` and `b` is `2 -> 3 -> 9`'
+        explanation: >-
+          The loop links 1, 2, 3 and 4 and stops when `a` runs out, with `b` still on the 9.
+          `tail.next = a` then links `None`, so the 9 is lost and the call returns
+          `1 -> 2 -> 3 -> 4`. The line after the loop has to link whichever list still has nodes.
+      - id: a-left-over
+        text: '`a` is `2 -> 5 -> 8` and `b` is `3`'
+        explanation: >-
+          The loop links 2 and 3 and stops when `b` runs out, with `a` on the 5. `tail.next = a`
+          links the 5 and the 8 behind it, so the call returns `2 -> 3 -> 5 -> 8`, which is right.
+      - id: b-empty
+        text: '`a` is `4 -> 6` and `b` is `None`'
+        explanation: >-
+          `b` is `None`, so the loop never runs. `tail.next = a` links the whole of `a` after the
+          dummy, and the call returns `4 -> 6`, which is right.
+      - id: tied-fronts
+        text: '`a` is `5 -> 7` and `b` is `5`'
+        explanation: >-
+          5 is at most 5, so the first pass takes `a`'s 5. The 7 is more than `b`'s 5, so the
+          second pass takes that one and `b` runs out. `tail.next = a` links the 7, and the call
+          returns `5 -> 5 -> 7`, which is right.
+    correct: b-left-over
+    followUps:
+      a-left-over:
+        prompt: The loop ends with `b` as `None` and `a` on the 5. What does `tail.next = a` link?
+        options:
+          - id: rest-of-a
+            text: Both remaining nodes of `a`, which is what the result needs
+          - id: only-five
+            text: Only the 5, so the 8 is lost
+          - id: nothing
+            text: Nothing, since the loop already finished
+        correct: rest-of-a
+        explanation: >-
+          When `a` is the list left over, linking `a` is the right move. The bug shows only when
+          the loop stops because `a` ran out while `b` still has nodes.
+      b-empty:
+        prompt: '`b` is `None` from the start. How many times does the loop body run?'
+        options:
+          - id: zero
+            text: None, so `tail.next = a` links all of `a` after the dummy
+          - id: two
+            text: Twice, once for each node of `a`
+          - id: error
+            text: It raises, since `b.val` cannot be read
+        correct: zero
+        explanation: >-
+          The loop needs both lists to have a node, so it never starts. The leftover list is `a`,
+          and linking `a` is right here.
+      tied-fronts:
+        prompt: Both fronts are 5. Which list runs out first?
+        options:
+          - id: b-first
+            text: '`b`, so `a` is the list left over and linking it is right'
+          - id: a-first
+            text: '`a`, so `b`''s 5 is lost'
+          - id: both
+            text: Both at once, so nothing is left over
+        correct: b-first
+        explanation: >-
+          `<=` takes `a`'s 5 first, but the 7 then loses to `b`'s 5, which empties `b`. With `a`
+          left over, `tail.next = a` is the right line.

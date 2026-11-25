@@ -8,14 +8,20 @@ questions:
     heading: What does this print?
     tags: [stack, python]
     workedExample: |-
-      Consider `stack = []`, then `stack.append(4)` and `stack.append(9)`. `append` adds at the end
-      of the list, and `pop()` with no argument removes and returns the item at that same end.
+      A stack is a pile you add to and take from at the same end, the top, so the last item in is
+      the first one out. This path uses a stack to check that brackets such as `(` and `]` pair up.
+      A Python list works as a stack: `append` pushes an item onto the top, the end of the list, and
+      `pop()` removes and returns the top item. Here `stack = []`, then `stack.append(4)`,
+      `stack.append(9)` and `stack.pop()` run.
 
-      1. After the two appends, `stack` is `[4, 9]`, with the 9 at the end because it went in last.
-      2. `stack.pop()` takes from the end, so it returns 9.
-      3. The pop also takes the 9 out, so `stack` is left as `[4]`. The last item in is the first
-         one out.
+      1. `stack.append(4)` puts 4 on the empty stack, so `stack` is `[4]` and 4 is the top.
+      2. `stack.append(9)` puts 9 at the end, on top of the 4, so `stack` is `[4, 9]`.
+      3. `pop()` takes from the end, so it returns 9, the item pushed last, and leaves `stack` as
+         `[4]`.
     prompt: |-
+      A Python list works as a stack: `append` pushes an item onto the top, the end of the list,
+      and `pop()` removes and returns the top item.
+
       ```python
       stack = []
       stack.append('(')
@@ -29,14 +35,14 @@ questions:
       - id: last-in
         text: "`[ ['(']`"
         explanation: >-
-          `append` adds at the end of the list and `pop()` with no argument takes from that same
-          end. The `[` went in second, so it comes out first, and the `(` stays behind as the only
+          `append` adds at the end of the list and `pop()` takes from that same end. The `[` went
+          in second, so it is on top and comes out first, and the `(` stays behind as the only
           item.
       - id: first-in
         text: "`( ['[']`"
         explanation: >-
-          This takes the item that went in first. That is how a queue behaves. A list used as a
-          stack adds and removes at one end, so the newest item leaves first.
+          This takes the item that went in first. A list used as a stack adds and removes at one
+          end, the end of the list, so the newest item leaves first.
       - id: peek
         text: "`[ ['(', '[']`"
         explanation: >-
@@ -68,92 +74,189 @@ questions:
             text: Yes, until `stack` is printed
         correct: removed
         explanation: >-
-          `pop()` returns the top and shrinks the list by one. To read the top and leave it in
-          place, index it with `stack[-1]`.
+          `pop()` returns the top and shrinks the list by one. Reading the top without taking it
+          off is a different operation from popping it.
 
-  - id: pop-empty-guard
+  - id: peek-or-pop
+    heading: What does this print?
     tags: [stack, python]
     workedExample: |-
-      Consider the full matcher on the string `)(`. Its closer branch is
-      `elif not stack or stack.pop() != PAIRS[ch]:`, and `or` does not run its right side when its
-      left side is true.
+      Consider `stack = [7, 2, 5]`, a list used as a stack, so its top is the end of the list. A
+      negative index counts back from the end, and `-1` names the last item.
 
-      1. The first character, `)`, is a closer, and nothing has been pushed yet, so `stack` is
-         empty.
-      2. Since `stack` is empty, `not stack` is `True`. So `or` stops there, and `stack.pop()` never
-         runs.
-      3. The branch returns `False` at once. The `not stack` test is what keeps the matcher from
-         ever popping an empty list.
+      1. The end of `[7, 2, 5]` holds 5, so 5 is the top, and `stack[-1]` names it.
+      2. `x = stack[-1]` reads that value into `x`, so `x` is 5. An index only reads a cell; it
+         takes nothing out of the list.
+      3. So `stack` is still `[7, 2, 5]`, with 5 still on top. `stack.pop()` would return the same
+         5, but it would also take it off.
     prompt: |-
-      This version has no `not stack` test before it pops:
+      The top of a stack is the end of its list, and index `-1` names the last item of a list, so
+      `stack[-1]` names the top.
 
       ```python
-      PAIRS = {')': '(', ']': '[', '}': '{'}
-
-      def balanced(s):
-          stack = []
-          for ch in s:
-              if ch in '([{':
-                  stack.append(ch)
-              elif stack.pop() != PAIRS[ch]:
-                  return False
-          return not stack
+      stack = ['[', '(', '{']
+      top = stack[-1]
+      print(top, len(stack))
       ```
 
-      What happens on `balanced('())')`?
+      What does this print?
     options:
-      - id: crashes
-        text: It fails with `IndexError` on the second `)`
+      - id: read-only
+        text: "`{ 3`"
         explanation: >-
-          The `(` is pushed and the first `)` pops it, so `stack` is empty when the second `)`
-          arrives. Calling `pop()` on an empty list is an error in Python, so the call stops with
-          `IndexError: pop from empty list` instead of returning an answer.
-      - id: returns-none
-        text: It returns `False`, since popping an empty list gives `None`
+          `stack[-1]` reads the last item, the `{`, and leaves the list as it was, so `len(stack)`
+          is still 3. This is how code looks at the top without popping it.
+      - id: removes
+        text: "`{ 2`"
         explanation: >-
-          `False` is the answer the string deserves, but this code never gets there. An empty
-          `pop()` does not hand back a placeholder value.
-      - id: skips
-        text: It returns `True`, since the extra `)` has nothing to pop
+          The `{` is the right item, but indexing only reads. Only `pop()` takes an item off, so
+          the list keeps all three items.
+      - id: first
+        text: "`[ 3`"
         explanation: >-
-          A closer with nothing open is the clearest sign of an unbalanced string, so `True` would
-          be wrong even if the code could carry on. Here it cannot: the `pop()` itself fails.
-    correct: crashes
+          The `[` went in first, so it sits at the bottom, index 0. Index -1 counts from the end,
+          where the newest item is.
+      - id: first-removed
+        text: "`[ 2`"
+        explanation: >-
+          Two things are off. Index -1 names the end of the list, the `{`, and reading it takes
+          nothing out, so the length stays 3.
+    correct: read-only
     followUps:
-      returns-none:
-        prompt: In Python, what does `[].pop()` do?
+      removes:
+        prompt: Which of these takes the top item off `stack`?
         options:
-          - id: raises
+          - id: pop
+            text: "`stack.pop()`"
+          - id: index
+            text: "`stack[-1]`"
+          - id: both
+            text: Both of them
+        correct: pop
+        explanation: >-
+          `stack.pop()` returns the top and removes it. `stack[-1]` only reads it, so the list
+          keeps its length.
+      first:
+        prompt: In a list used as a stack, where is the top?
+        options:
+          - id: end
+            text: At the end, where `append` puts each new item
+          - id: start
+            text: At the start, index 0, where the first item went
+          - id: largest
+            text: Wherever the largest item is
+        correct: end
+        explanation: >-
+          Pushes append at the end, so the end holds the newest item, and that is the top. Index
+          -1 reads it.
+      first-removed:
+        prompt: "`stack` is `['[', '(', '{']`. Which item does `stack[-1]` name, and is it removed?"
+        options:
+          - id: brace-stays
+            text: The `{`, and it stays in the list
+          - id: bracket-removed
+            text: The `[`, and it is removed
+          - id: brace-removed
+            text: The `{`, and it is removed
+        correct: brace-stays
+        explanation: >-
+          Index -1 counts back from the end, so it names the `{`, the newest item. An index reads a
+          cell and changes nothing.
+
+  - id: empty-pop-raises
+    heading: What happens?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `stack = [6, 1]`, with `pop()` called twice. Each `pop()` removes and returns the
+      top item, the end of the list, so every pop leaves one fewer item behind.
+
+      1. The first `pop()` returns 1, the top, and leaves `stack` as `[6]`.
+      2. The second `pop()` returns 6, the only item left, and leaves `stack` as `[]`.
+      3. `stack` is now empty, so it has no top: a third `pop()` would have no item to remove or
+         return.
+    prompt: |-
+      `pop()` removes and returns the top item of a list used as a stack.
+
+      ```python
+      stack = ['(']
+      first = stack.pop()
+      second = stack.pop()
+      ```
+
+      What happens on the line `second = stack.pop()`?
+    options:
+      - id: raises
+        text: It raises `IndexError`
+        explanation: >-
+          The first pop takes the only item, so `stack` is empty. An empty list has no item to
+          give back, so Python stops with `IndexError: pop from empty list`, the same error as
+          reading an index that has no cell.
+      - id: none
+        text: It sets `second` to `None`
+        explanation: >-
+          Python does not hand back a placeholder here. Popping an empty list is an error, and the
+          line stops with `IndexError`.
+      - id: again
+        text: It sets `second` to `'('` again
+        explanation: >-
+          The first `pop()` took the `(` out of the list, so it is not there to return a second
+          time. The list is empty, and popping it raises `IndexError`.
+      - id: empty-list
+        text: It sets `second` to `[]`
+        explanation: >-
+          `pop()` returns the item it removes, never the list. Here there is no item left to
+          remove, so it raises `IndexError`.
+    correct: raises
+    followUps:
+      none:
+        prompt: What does `pop()` do on an empty list?
+        options:
+          - id: error
             text: Raises `IndexError`
-          - id: none
+          - id: returns-none
             text: Returns `None`
-          - id: empty
-            text: Returns an empty list
-        correct: raises
+          - id: returns-false
+            text: Returns `False`
+        correct: error
         explanation: >-
-          Popping an empty list is an error, not a quiet `None`. That is why the matcher tests
-          `not stack` first and returns `False` itself.
-      skips:
-        prompt: A `)` arrives and the stack is empty. What does that say about the string?
+          An empty pop is an error, not a quiet value. Code that might pop an empty stack has to
+          test for an empty stack first.
+      again:
+        prompt: After `first = stack.pop()`, what is `stack`?
         options:
-          - id: unbalanced
-            text: It is unbalanced, because this closer has no opener to match
-          - id: undecided
-            text: Nothing yet, so the matcher should skip it and read on
-          - id: fine
-            text: It is balanced so far, because nothing is left open
-        correct: unbalanced
+          - id: empty
+            text: "`[]`, since the pop removed the `(`"
+          - id: unchanged
+            text: "`['(']`, since `pop` only reads"
+          - id: doubled
+            text: "`['(', '(']`, since the item is copied out"
+        correct: empty
         explanation: >-
-          Every closer needs an earlier opener that is still unmatched. An empty stack means there
-          is none, so the answer is already `False`.
+          `pop()` takes the item out as it returns it. With the only item gone, the next pop finds
+          nothing.
+      empty-list:
+        prompt: What does `pop()` give back when it works?
+        options:
+          - id: item
+            text: One item, the top
+          - id: rest
+            text: The list that is left
+          - id: copy
+            text: A copy of the whole list
+        correct: item
+        explanation: >-
+          `pop()` returns the one item it removed. With nothing to remove, it has nothing to return
+          and raises `IndexError`.
 
   - format: tap-cell
     id: which-opener-matches
     heading: Which opener does it pop?
     tags: [stack, python]
     workedExample: |-
-      Consider `balanced('(())')`. Each opener is pushed, and each closer pops the top of the stack,
-      which is the most recent opener still unmatched.
+      A string of brackets is balanced when each closer, such as `)` or `]`, matches the most
+      recent opener that is still open, of its own type, and nothing is left open. A stack checks
+      this: push each opener, and let each closer pop the top, the most recent opener still
+      unmatched. Consider `balanced('(())')`.
 
       1. Index 0 and index 1 are both `(`, so both are pushed, and the one from index 1 is on top.
       2. The `)` at index 2 pops the top, which is the `(` from index 1, so the one from index 0
@@ -161,7 +264,11 @@ questions:
       3. That leaves only the `(` from index 0, so the `)` at index 3 pops it, and the call returns
          `True`.
     prompt: >-
-      Now `balanced` runs on `[(){}]`. Which opener does the `]` at
+      A string of brackets is balanced when each closer matches the most recent unclosed opener of
+      its own type and nothing is left open. `balanced` checks this with a list used as a stack:
+      `append` pushes onto the top, the end of the list, and `pop()` removes and returns the top.
+      It pushes each opener. For a closer, it returns `False` if the stack is empty or if the
+      popped top is not `PAIRS[ch]`, the opener of the closer's type. Which opener does the `]` at
       index 5 pop? Tap it.
     code: |
       PAIRS = {')': '(', ']': '[', '}': '{'}
@@ -213,8 +320,8 @@ questions:
       2. The `]` at index 2 pops the top, the `(`. `PAIRS[']']` is `[`, and `(` is not `[`.
       3. So the call returns `False` at index 2, and the `}` at index 3 is never read.
     prompt: >-
-      Now run `balanced('[{()}(])')`. Drag `i` to the character where it returns
-      `False`, and drag `top` to the opener that character popped.
+      `balanced` runs on `'[{()}(])'`. Drag `i` to the character where it returns `False`, and
+      drag `top` to the opener that character popped.
     code: |
       PAIRS = {')': '(', ']': '[', '}': '{'}
 
@@ -280,7 +387,9 @@ questions:
       3. The `{` further down is never looked at. An opener of the right type that is not on top
          cannot match.
     prompt: |-
-      This version looks for the opener anywhere in the stack instead of popping the top:
+      This version looks for the opener anywhere in the stack instead of popping the top.
+      `PAIRS[ch] in stack` tests whether that opener is anywhere in the list, and
+      `stack.remove(v)` deletes the first item equal to `v`:
 
       ```python
       PAIRS = {')': '(', ']': '[', '}': '{'}
@@ -361,6 +470,153 @@ questions:
         explanation: >-
           The stack is empty, so `'(' in stack` is `False` and the `else` branch returns `False`.
           `loose` never calls `pop()`, so it cannot hit an empty pop.
+
+  - id: pop-empty-guard
+    heading: What happens?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `nums = []` and the test `not nums or nums[0] > 5`. `or` checks its left side first,
+      and when that side is true the whole test is already true, so the right side never runs.
+
+      1. `nums` is empty, and an empty list counts as false, so `not nums` is `True`.
+      2. A true left side settles the `or`, so Python stops there and never reads `nums[0]`.
+      3. So the test is `True`, with no `IndexError`, although `nums[0]` has no cell to read. With
+         `nums = [8]`, `not nums` is `False`, so the right side runs, and `nums[0] > 5` is `True`.
+    prompt: |-
+      Popping an empty list raises `IndexError`. `and` and `or` check their left side first and
+      stop as soon as it settles the result: `or` stops at a true left side, and `and` stops at a
+      false one. The right side then never runs.
+
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop() != PAIRS[ch]:
+                  return False
+          return not stack
+      ```
+
+      What happens on `balanced('())')`?
+    options:
+      - id: guarded
+        text: It returns `False` at the second `)`, with no pop on the empty stack
+        explanation: >-
+          The `(` is pushed and the first `)` pops it, so the stack is empty when the second `)`
+          arrives. `not stack` is `True`, so `or` stops there: `stack.pop()` never runs, and the
+          line returns `False`.
+      - id: crashes
+        text: It fails with `IndexError` at the second `)`
+        explanation: >-
+          An empty pop would fail, but this pop never runs. The stack is empty, so `not stack` is
+          `True`, and `or` stops before it reaches `stack.pop()`.
+      - id: skips
+        text: It returns `True`, since the extra `)` has nothing to pop
+        explanation: >-
+          A closer with nothing open is the clearest sign of an unbalanced string. The `not stack`
+          test catches it and returns `False` inside the loop.
+      - id: last-line
+        text: It reads every character and returns `False` at the last line
+        explanation: >-
+          The loop returns at the second `)`, so the last line never runs. If it did, the stack
+          would be empty there, and `not stack` would give `True`.
+    correct: guarded
+    followUps:
+      crashes:
+        prompt: When the second `)` arrives, `not stack` is `True`. Does `stack.pop()` run?
+        options:
+          - id: stops
+            text: No, a true left side settles the `or`
+          - id: both
+            text: Yes, `or` always runs both sides
+          - id: pop-first
+            text: Yes, the pop runs before the test
+        correct: stops
+        explanation: >-
+          `or` reads left to right and stops at the first true side. Putting `not stack` first is
+          what keeps the matcher from ever popping an empty list.
+      skips:
+        prompt: A `)` arrives and the stack is empty. What does that say about the string?
+        options:
+          - id: unbalanced
+            text: It is unbalanced, because this closer has no opener to match
+          - id: undecided
+            text: Nothing yet, so the matcher should skip it and read on
+          - id: fine
+            text: It is balanced so far, because nothing is left open
+        correct: unbalanced
+        explanation: >-
+          Every closer needs an earlier opener that is still unmatched. An empty stack means there
+          is none, so the answer is already `False`.
+      last-line:
+        prompt: Where does `balanced('())')` return?
+        options:
+          - id: in-loop
+            text: Inside the loop, at the second `)`
+          - id: at-end
+            text: At the last line, after the third character
+          - id: first
+            text: Inside the loop, at the first `)`
+        correct: in-loop
+        explanation: >-
+          The first `)` matches the `(`, so the loop goes on. The second `)` finds the stack empty,
+          and the closer line returns `False` before the loop ends.
+
+  - format: tap-cell
+    id: unmatched-opener
+    heading: Which opener is left?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `balanced('{{}')`. A closer pops the top of the stack, which is the newest opener
+      still unmatched.
+
+      1. The `{` at index 0 is pushed, and then the `{` at index 1 is pushed on top of it.
+      2. The `}` at index 2 pops the top, which is the newer `{`, the one from index 1.
+      3. Nothing pops the `{` from index 0, so the loop ends with `stack = ['{']`, holding the
+         opener from index 0, and the call returns `False`.
+    prompt: >-
+      `balanced('(()[]{}')` reads every character and returns `False` only at its last line,
+      `return not stack`. Tap the opener that is still on the stack.
+    code: |
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop() != PAIRS[ch]:
+                  return False
+          return not stack
+
+      balanced('(()[]{}')
+    sequence:
+      kind: string
+      name: s
+      cells: ['(', '(', ')', '[', ']', '{', '}']
+    correct: 0
+    explanation: >-
+      The `)` at index 2 pops the newest `(`, the one at index 1. The `[` and `{` are each popped by
+      the closer right after them. The first `(` is never popped, so the stack ends as `['(']` and
+      the call returns `False`.
+    misses:
+      - index: 1
+        explanation: >-
+          This is the newer `(`, so it is the one the `)` at index 2 pops. The `(` pushed first
+          stays underneath it.
+      - index: 2
+        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
+      - index: 3
+        explanation: The `]` at index 4 pops this `[`.
+      - index: 4
+        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
+      - index: 5
+        explanation: The `}` at index 6 pops this `{`.
+      - index: 6
+        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
 
   - id: leftover-opener
     heading: Which string slips through?
@@ -453,57 +709,3 @@ questions:
         explanation: >-
           Both versions return `True` here, and both are right. Leaving out the empty-stack test at
           the end only matters when an opener is never closed.
-
-  - format: tap-cell
-    id: unmatched-opener
-    heading: Which opener is left?
-    tags: [stack, python]
-    workedExample: |-
-      Consider `balanced('{{}')`. A closer pops the top of the stack, which is the newest opener
-      still unmatched.
-
-      1. The `{` at index 0 is pushed, and then the `{` at index 1 is pushed on top of it.
-      2. The `}` at index 2 pops the top, which is the newer `{`, the one from index 1.
-      3. Nothing pops the `{` from index 0, so the loop ends with `stack = ['{']`, holding the
-         opener from index 0, and the call returns `False`.
-    prompt: >-
-      Now `balanced('(()[]{}')` reads every
-      character and returns `False` only at its last line. Tap the opener that is still on the
-      stack.
-    code: |
-      PAIRS = {')': '(', ']': '[', '}': '{'}
-
-      def balanced(s):
-          stack = []
-          for ch in s:
-              if ch in '([{':
-                  stack.append(ch)
-              elif not stack or stack.pop() != PAIRS[ch]:
-                  return False
-          return not stack
-
-      balanced('(()[]{}')
-    sequence:
-      kind: string
-      name: s
-      cells: ['(', '(', ')', '[', ']', '{', '}']
-    correct: 0
-    explanation: >-
-      The `)` at index 2 pops the newest `(`, the one at index 1. The `[` and `{` are each popped by
-      the closer right after them. The first `(` is never popped, so the stack ends as `['(']` and
-      the call returns `False`.
-    misses:
-      - index: 1
-        explanation: >-
-          This is the newer `(`, so it is the one the `)` at index 2 pops. The `(` pushed first
-          stays underneath it.
-      - index: 2
-        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
-      - index: 3
-        explanation: The `]` at index 4 pops this `[`.
-      - index: 4
-        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
-      - index: 5
-        explanation: The `}` at index 6 pops this `{`.
-      - index: 6
-        explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.

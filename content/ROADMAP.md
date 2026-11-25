@@ -210,12 +210,16 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Data structures #12 | Priority order: teaching levels | `priority-order` | done |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | done |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | done |
-| Data structures #12 | Monotonic stack: teaching levels | `monotonic-stack-drills` | in review |
+| Data structures #12 | Monotonic stack: teaching levels | `monotonic-stack` | done |
+| Data structures #12 | Monotonic stack: older teaching cards, absorbed into `monotonic-stack` and kept as a fixture | `monotonic-stack-drills` | done |
 | Data structures #12 | Monotonic stack: review variants | `monotonic-stack-review` | done |
 | Data structures #12 | Monotonic stack: checkpoint | `monotonic-stack-checkpoint` | done |
 | Data structures #12 | Pointer walks: teaching levels | `pointer-walks` | done |
 | Data structures #12 | Pointer walks: review variants | `pointer-walks-review` | done |
 | Data structures #12 | Pointer walks: checkpoint | `pointer-walks-checkpoint` | done |
+| Data structures #12 | Design structures: teaching levels | `design-structures` | done |
+| Data structures #12 | Design structures: review variants | `design-structures-review` | done |
+| Data structures #12 | Design structures: checkpoint | `design-structures-checkpoint` | done |
 | Data structures #12 | Heap operations: teaching levels | `heap-operations` | done |
 | Data structures #12 | Heap operations: review variants | `heap-operations-review` | done |
 | Data structures #12 | Heap operations: checkpoint | `heap-operations-checkpoint` | done |

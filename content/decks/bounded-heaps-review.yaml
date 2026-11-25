@@ -40,13 +40,14 @@ questions:
       - index: 2
         explanation: '9 is not the smallest of the five. The 4 is.'
 
+
   - id: k-smallest-orientation
     heading: Which loop body keeps them?
     tags: [heap, python]
     prompt: >-
       Distances arrive one at a time, for example `9, 4, 12, 2, 7, 5, 11`. You must keep the 3
-      smallest seen so far in `O(log k)` time per arrival, with `k = 3`, using `heapq` in Python
-      3.12, which only has a min-heap. Which loop body does it?
+      smallest seen so far in `O(log k)` time per arrival, with `k = 3`, using `heapq`, which only
+      has a min-heap. Which loop body does it?
     options:
       - id: negate
         text: Push `-d`, and pop when the heap holds 4
@@ -105,6 +106,7 @@ questions:
         explanation: >-
           A full heap must still compare each arrival with its worst kept value. Stopping at 3
           keeps the first three distances, 4, 9 and 12, and misses the 2 and the 5.
+
 
   - id: replace-condition
     heading: Which condition keeps them?
@@ -181,6 +183,7 @@ questions:
           `11 > 13` is false, so 11 is dropped, though it should replace the 6. An arrival only has
           to beat the weakest kept value. Requiring it to beat the best drops values in between,
           and `max(h)` also scans all `k` values. The sample ends with 9, 13 and 15.
+
 
   - id: pop-before-push
     heading: What does this print?
@@ -259,6 +262,7 @@ questions:
           `heapq` is a min-heap, so the pops remove 9, 11 and 14 in turn. The large values stay,
           and only the late 3 slips in.
 
+
   - id: peak-heap-size
     heading: How large does it get?
     tags: [heap, complexity]
@@ -277,8 +281,7 @@ questions:
         text: '`k + 1`'
         explanation: >-
           After a push on a full heap there are `k + 1` values for a moment, and the pop brings it
-          back to `k`. Memory is still `O(k)`. `heappushpop` does the push and the pop in one call
-          and never grows the list past `k`.
+          back to `k`. Memory is still `O(k)`.
       - id: k
         text: '`k`'
         explanation: Check the moment between the push and the pop.
@@ -330,6 +333,7 @@ questions:
           Each pass handles a single arrival. One push followed by at most one pop keeps the size
           within one of `k`.
 
+
   - format: tap-cell
     id: kth-largest-tap
     heading: Where is the answer?
@@ -363,6 +367,7 @@ questions:
         explanation: '9 is the 2nd largest. The 4th largest is the smallest kept score, at the root.'
       - index: 2
         explanation: '8 is the 3rd largest. The 4th largest is the smallest kept score, at the root.'
+
 
   - id: empty-run-guard
     heading: What happens?
@@ -419,8 +424,8 @@ questions:
             text: It returns an empty list
         correct: raises
         explanation: >-
-          Python lists raise on a missing index. `next(it, None)` is the call that returns a
-          default, which is why an iterator-based merge checks for `None` instead.
+          Python lists raise on a missing index rather than return a placeholder, so a run with no
+          values needs a check such as `if r` before its front is read.
       type-error:
         prompt: When does the error happen?
         options:
@@ -435,82 +440,6 @@ questions:
           The comprehension evaluates `r[0]` for each run in turn and fails on the second. The
           entries that would exist have unique run numbers, so `heapify` itself would be fine.
 
-  - id: tied-iterator-heads
-    heading: What does this print?
-    tags: [heap, python]
-    prompt: |-
-      ```python
-      from heapq import heapify, heappop, heappush
-
-      its = [iter([3, 8]), iter([1, 3])]
-      h = [(next(it), it) for it in its]
-      heapify(h)
-      while h:
-          x, it = heappop(h)
-          print(x)
-          nxt = next(it, None)
-          if nxt is not None:
-              heappush(h, (nxt, it))
-      ```
-
-      What happens?
-    options:
-      - id: one-then-error
-        text: It prints 1, then raises `TypeError`
-        explanation: >-
-          `heapify` compares 3 with 1 and stops there. After the 1 pops, the second run pushes
-          `(3, it)`, which ties with `(3, it)` from the first run, so Python compares two
-          `list_iterator` objects and raises. A unique run number as the second field fixes it.
-      - id: full-merge
-        text: It prints 1, 3, 3, 8
-        explanation: Check the push after the 1 is printed.
-      - id: error-at-start
-        text: It raises `TypeError` before printing anything
-        explanation: Check which values `heapify` compares.
-      - id: dedup
-        text: It prints 1, 3, 8
-        explanation: Check whether a heap drops equal values.
-    correct: one-then-error
-    followUps:
-      full-merge:
-        prompt: After the 1 pops, the heap holds `(3, it0)` and receives `(3, it1)`. What does the push compare?
-        options:
-          - id: iterators
-            text: The values tie, so it compares `it1` with `it0`, which raises
-          - id: values-only
-            text: Only the values, and equal values are fine
-          - id: push-order
-            text: Which entry was pushed first
-        correct: iterators
-        explanation: >-
-          Tuples compare field by field until one differs. Equal values pass the comparison on to
-          the iterators, which do not support `<`.
-      error-at-start:
-        prompt: Which entries does `heapify` compare, and why is that safe?
-        options:
-          - id: different-values
-            text: '`(3, it0)` and `(1, it1)`, whose first fields differ'
-          - id: everything
-            text: Every field of both entries
-          - id: nothing
-            text: Nothing, since two entries are already a heap
-        correct: different-values
-        explanation: >-
-          The fronts 3 and 1 differ, so the comparison stops at the first field. The tie only
-          appears later, when the second run's 3 arrives.
-      dedup:
-        prompt: Does a `heapq` heap ever drop a value because an equal one is already there?
-        options:
-          - id: keeps-all
-            text: No, it keeps every pushed entry, equal or not
-          - id: drops
-            text: Yes, equal values are merged into one entry
-          - id: sometimes
-            text: Only when the equal values come from the same run
-        correct: keeps-all
-        explanation: >-
-          A heap is a list with an ordering rule, not a set. Equal values sit side by side, which
-          is exactly when the next field gets compared.
 
   - format: drag-pointers
     id: heads-after-pops-drag
@@ -568,6 +497,7 @@ questions:
           - index: 5
             explanation: The 1 was the first value printed, and its pop pushed run 2's next value, 4.
         elsewhere: Run 2 gave only the 1, so its entry moved one place, to the 4.
+
 
   - id: break-on-exhausted
     heading: What does this print?

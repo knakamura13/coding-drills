@@ -59,7 +59,7 @@ questions:
             text: 3, the smallest
         correct: last-appended
         explanation: >-
-          `pop()` takes from the end of the list, so its log would read 8, 1, 3, 6. A stack never
+          `pop()` takes from the end of the list, so its log would read 8, 1, 3, 6. It never
           compares priorities.
       negated:
         prompt: The heap stores -6, -3 and -8. Which job does `heappop` serve first?
@@ -165,9 +165,9 @@ questions:
       - id: heap-severity
         text: A `heapq` heap keyed on severity
         explanation: Check which ticket it hands out first.
-      - id: heap-arrival
-        text: A `heapq` heap keyed on arrival time
-        explanation: Check the cost of each pop.
+      - id: pop-front
+        text: "A list: `append` each ticket, `pop(0)` the next"
+        explanation: Check what each take costs.
       - id: stack
         text: "A list: `append` each ticket, `pop()` the next"
         explanation: Check which end `pop()` takes from.
@@ -188,21 +188,22 @@ questions:
         explanation: >-
           A heap orders by its key, here severity, so B jumps ahead of A. The rule asks for arrival
           order, and severity is only for display.
-      heap-arrival:
-        prompt: A heap keyed on arrival time does return tickets in arrival order. What does each `heappop` cost?
+      pop-front:
+        prompt: >-
+          A list of `n` waiting tickets serves the oldest with `pop(0)`. What happens to the
+          tickets that are still waiting?
         options:
-          - id: log-n
-            text: O(log n)
-          - id: constant
-            text: O(1)
-          - id: linear
-            text: O(n)
-        correct: log-n
+          - id: all-shift
+            text: Each one slides one index to the left, so the take is O(n)
+          - id: none-move
+            text: Nothing moves, so the take is O(1), like `popleft`
+          - id: re-sorted
+            text: The list is sorted again, so the take is O(n log n)
+        correct: all-shift
         explanation: >-
-          Each pop moves the last item to the root and sifts it down one path, which is O(log n). It
-          is not O(1) like `popleft`, and it never re-sorts or visits every item.
-          The order is right, but the requirement asks for O(1). Tickets already come in arrival
-          order, so a deque gets the same order without comparing anything.
+          A list keeps its items in one block from index 0. Removing index 0 leaves a gap that every
+          later item fills by sliding left. The order is right, but each take is O(n), and a
+          `deque` takes from the front in O(1).
       stack:
         prompt: Tickets are appended as they arrive. Which ticket does `pop()` take?
         options:
@@ -257,4 +258,91 @@ questions:
       - index: 3
         explanation: The second `heappop` already served 1.
       - index: 5
-        explanation: '6 was pushed last, which is what a stack would serve. 3 is smaller and still waiting.'
+        explanation: '6 was pushed last, which is what `pop()` on a plain list would serve. 3 is smaller and still waiting.'
+
+  - id: checkpoint-debug-front-pop
+    heading: Which call does it fail on?
+    tags: [heap, python]
+    prompt: |-
+      A suggested `serve_order` should return the priorities in the order a worker serves them,
+      smallest first. `h.pop(0)` removes and returns `h[0]`, the item at the front of the list.
+      One detail is slightly off:
+
+      ```python
+      from heapq import heappush
+
+      def serve_order(priorities):
+          h = []
+          for p in priorities:
+              heappush(h, p)
+          out = []
+          while h:
+              out.append(h.pop(0))
+          return out
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: unsorted-rest
+        text: "`serve_order([2, 5, 3])`"
+        explanation: >-
+          The pushes leave `h = [2, 5, 3]`, a valid heap that is not sorted. The first take is
+          right, 2, but after it the list is just `[5, 3]`, and taking the front again returns 5
+          before 3. The call returns `[2, 5, 3]` instead of `[2, 3, 5]`. `heappop(h)` would find
+          the smallest of what is left each time.
+      - id: sorted-heap
+        text: "`serve_order([4, 1, 3, 2])`"
+        explanation: >-
+          The pushes leave `h = [1, 2, 3, 4]`, which happens to be sorted, so taking from the front
+          gives the right order. The call returns `[1, 2, 3, 4]`.
+      - id: repeats
+        text: "`serve_order([3, 3, 1])`"
+        explanation: >-
+          The pushes leave `h = [1, 3, 3]`. Once the 1 is taken, both items left are 3, so their
+          order cannot be wrong. The call returns `[1, 3, 3]`.
+      - id: two-items
+        text: "`serve_order([6, 2])`"
+        explanation: >-
+          The pushes leave `h = [2, 6]`. With two items, the root is the smaller and the other is
+          the larger, so the front-first order is right. The call returns `[2, 6]`.
+    correct: unsorted-rest
+    followUps:
+      sorted-heap:
+        prompt: "Pushing 4, 1, 3, 2 leaves `h = [1, 2, 3, 4]`. What does taking from the front return?"
+        options:
+          - id: right
+            text: "`[1, 2, 3, 4]`, since this heap list happens to be sorted"
+          - id: wrong
+            text: "`[1, 3, 2, 4]`, since only `h[0]` is in place"
+          - id: pushed
+            text: "`[4, 1, 3, 2]`, the order of the pushes"
+        correct: right
+        explanation: >-
+          A heap list is sometimes sorted, and then the front-first order is right. The bug shows
+          only when the items after the root are out of order, as in `[2, 5, 3]`.
+      repeats:
+        prompt: "After the 1 is taken, `h` is `[3, 3]`. Can the order of the last two be wrong?"
+        options:
+          - id: equal
+            text: No, both are 3, so either order gives `[1, 3, 3]`
+          - id: wrong
+            text: Yes, the repeated value is served twice by mistake
+          - id: skipped
+            text: Yes, one of the 3s is skipped
+        correct: equal
+        explanation: >-
+          The bug can only misorder items that differ. With two equal items left, every order is
+          the right one.
+      two-items:
+        prompt: "`h` is `[2, 6]`. Which item does the heap rule put at `h[0]`?"
+        options:
+          - id: smaller
+            text: The smaller, 2, so the larger is all that is left after it
+          - id: older
+            text: The first one pushed, 6
+          - id: either
+            text: Either one, since two items need no order
+        correct: smaller
+        explanation: >-
+          The root holds the smallest item, and a heap of two has only one other item. Taking the
+          front twice is right whenever the rest has nothing to misorder.
