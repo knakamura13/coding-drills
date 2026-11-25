@@ -1,6 +1,6 @@
 id: growth-rates-checkpoint
 title: "Growth rates: checkpoint"
-description: Trace a small input, then predict how the steps or the memory grow when the input doubles. Each item combines the Growth rates skills on code used nowhere else.
+description: Trace a small input, predict the steps or memory when the input doubles, and name the growth. Each item combines the Growth rates skills on code used nowhere else.
 heading: Predict each step
 
 questions:
@@ -32,10 +32,13 @@ questions:
             explanation: '`j` goes 1, 2, 4. At 4 the test `j < n` fails, so the body runs twice.'
           - id: four
             text: '4'
-            explanation: '`j` doubles on each pass. Does it need `n` passes to reach `n`?'
+            explanation: >-
+              That is one pass per value up to `n`. `j` doubles, 1 to 2 to 4, so it reaches 4 in
+              fewer passes.
           - id: three
             text: '3'
-            explanation: Check the test when `j` is 4.
+            explanation: >-
+              That counts a pass with `j` at 4. The test `4 < 4` is false, so the loop ends there.
         correct: two
       - line: 3
         ask: What is `steps` when the outer loop ends?
@@ -46,14 +49,18 @@ questions:
               Line 4 resets `j` to 1 on every outer pass, so each of the 4 passes adds 2 steps.
           - id: sixteen
             text: '16'
-            explanation: Is the inner loop `range(n)`, or does it double `j`?
+            explanation: >-
+              That gives each outer pass 4 inner passes, as `range(n)` would. The inner loop doubles
+              `j` instead, so each outer pass adds only 2.
           - id: two
             text: '2'
-            explanation: Look at line 4. What is `j` when each outer pass starts?
+            explanation: >-
+              That counts only the first outer pass. Line 4 sets `j` back to 1 on every outer pass,
+              so all 4 passes add 2 steps.
         correct: eight
         also:
           - { name: i, at: 3 }
-      - ask: Now set `n = 8`. What is `steps`?
+      - ask: Run it again with `n = 8`. What is `steps` then?
         options:
           - id: twenty-four
             text: '24'
@@ -63,11 +70,37 @@ questions:
               count tripled.
           - id: sixteen
             text: '16'
-            explanation: That doubles the outer passes. Does each inner loop stay at 2 steps when `n` is 8?
+            explanation: >-
+              That doubles the outer passes but keeps each inner loop at 2. Reaching 8 by doubling
+              takes 3 passes, 1 to 2 to 4 to 8.
           - id: thirty-two
             text: '32'
-            explanation: That is four times the count. Does the inner loop double in length too?
+            explanation: >-
+              Four times the count would need each inner loop to double in length too. Doubling `n`
+              adds only one pass to a doubling loop.
         correct: twenty-four
+      - ask: What is the Big-O of `steps`?
+        options:
+          - id: n-log-n
+            text: O(n log n)
+            explanation: >-
+              Each of the `n` outer passes runs the doubling loop about `log2(n)` times, so `steps`
+              is about n × log n: 8 is 4 × 2, and 24 is 8 × 3.
+          - id: quadratic
+            text: O(n²)
+            explanation: >-
+              That needs an inner loop that walks up to `n` one step at a time. This one doubles
+              `j`, so it runs only `log2(n)` times.
+          - id: log
+            text: O(log n)
+            explanation: >-
+              That is the cost of one doubling loop. The outer loop runs it `n` times over.
+          - id: linear
+            text: O(n)
+            explanation: >-
+              The inner count grows with `n` too, 2 at `n = 4` and 3 at `n = 8`, so `steps` grows
+              faster than `n`.
+        correct: n-log-n
 
   - id: checkpoint-row-table
     format: step-trace
@@ -97,10 +130,12 @@ questions:
             explanation: '`[2] * 3` is `[2, 2, 2]`, three numbers.'
           - id: two
             text: '2'
-            explanation: The repeat count is `i + 1`, not `i`.
+            explanation: >-
+              That uses `i` as the length. The row is `[i] * (i + 1)`, so it holds one more number.
           - id: four
             text: '4'
-            explanation: The row's length depends on `i`, not on `n`.
+            explanation: >-
+              That is `n`, but the row's length is `i + 1`, which does not use `n`.
         correct: three
         also:
           - { name: i, at: 2 }
@@ -112,10 +147,13 @@ questions:
             explanation: 'The rows hold 1, 2, 3 and 4 numbers: 10 in all.'
           - id: four
             text: '4'
-            explanation: That counts the rows. How many numbers is each row?
+            explanation: >-
+              That counts the rows. Each row holds `i + 1` numbers, so the rows hold different
+              amounts.
           - id: sixteen
             text: '16'
-            explanation: Is every row `n` long?
+            explanation: >-
+              That makes every row 4 long. Row `i` holds `i + 1` numbers, so only the last one is.
         correct: ten
         also:
           - { name: i, at: 3 }
@@ -128,18 +166,25 @@ questions:
               returned value grows like n², about four times per doubling for large `n`.
           - id: twenty
             text: '20'
-            explanation: That doubles 10. Do the rows stay the same length when `n` doubles?
+            explanation: >-
+              That doubles 10, as if the rows kept their lengths. The 4 new rows are longer than any
+              old one, 5 to 8 numbers each.
           - id: sixty-four
             text: '64'
-            explanation: That makes every row 8 long. How long is the first row?
+            explanation: >-
+              That makes every row 8 long. The first row is `[0]`, one number, and the rows grow by
+              one each.
         correct: thirty-six
 
   - id: checkpoint-binary-digits
     heading: How does the output grow?
     tags: [complexity, python]
     prompt: |-
+      `n % 2` is the remainder after dividing by 2, so it is 0 when `n` is even, and `n //= 2`
+      means `n = n // 2`. This function halves `n` until it reaches 0 and keeps each remainder.
+
       ```python
-      def bits(n):
+      def remainders(n):
           out = []
           while n > 0:
               out.append(n % 2)
@@ -147,23 +192,29 @@ questions:
           return out
       ```
 
-      `bits(13)` returns `[1, 0, 1, 1]`. How long is `bits(26)`, and how does the returned list
-      grow with `n`?
+      `remainders(13)` returns `[1, 0, 1, 1]`. How long is `remainders(26)`, and how does the
+      returned list grow with `n`?
     options:
       - id: right
         text: '5 items: one more per doubling of `n`, so O(log n)'
         explanation: >-
           Each pass appends one item and halves `n`. 26 halves to 13 on its first pass, and 13
-          needs the same 4 passes as before, so `bits(26)` is `[0, 1, 0, 1, 1]`.
+          needs the same 4 passes as before, so `remainders(26)` is `[0, 1, 0, 1, 1]`.
       - id: doubles
         text: '8 items: twice as many, so O(n)'
-        explanation: How many passes does halving 26 take compared with 13?
+        explanation: >-
+          Twice as many items would mean twice as many passes. Halving 26 gives 13 on the first
+          pass, so it needs only one pass more than 13 does.
       - id: per-unit
         text: '26 items: one per unit of `n`, so O(n)'
-        explanation: How much does `n //= 2` take off on each pass?
+        explanation: >-
+          One item per unit would need a loop that takes 1 off `n` on each pass. `n //= 2` halves
+          `n`, so 26 runs out in a handful of passes.
       - id: constant
         text: '4 items again: a returned list is one object, so O(1)'
-        explanation: Does the number of passes depend on `n`?
+        explanation: >-
+          The list gets one item per pass, and 26 needs one more pass than 13. A list's size is
+          the number of items it holds.
     correct: right
     followUps:
       doubles:
@@ -181,7 +232,7 @@ questions:
           A halving loop pays one pass per doubling of its input. The list gains one item per
           pass, so it grows by one too.
       per-unit:
-        prompt: How many passes does `bits(13)` make?
+        prompt: How many passes does `remainders(13)` make?
         options:
           - id: four
             text: Four, one per halving from 13 down to 0
@@ -232,13 +283,17 @@ questions:
           count is 4n, so doubling `n` doubles it.
       - id: quadratic
         text: 20, then 80
-        explanation: What is the length of the inner loop when `n` is 10?
+        explanation: >-
+          80 is four times 20, which needs the inner loop to grow with `n`. It is `range(3)`, so it
+          stays at 3.
       - id: one-loop
         text: 15, then 30
-        explanation: Which lines add to `steps`?
+        explanation: >-
+          15 and 30 count only the nested loop. The plain loop before it adds `n` more steps.
       - id: inner-once
         text: 10, then 20
-        explanation: How many times does the inner loop's body run on each outer pass?
+        explanation: >-
+          That counts the nested loop's body once per outer pass. It runs 3 times on each one.
     correct: right
     followUps:
       quadratic:
@@ -279,3 +334,85 @@ questions:
         correct: fifteen
         explanation: >-
           The inner loop starts over on every outer pass. Its 3 steps repeat 5 times.
+
+  - id: checkpoint-debug-next-three
+    heading: Which line is wrong?
+    tags: [complexity, python]
+    prompt: |-
+      A suggested solution should return, for each index `i`, the sum of `nums[i]` and the two
+      values after it (fewer near the end), in O(n) steps. Its answers are right, but on long
+      lists it takes far more steps than that. Which line is wrong?
+
+      ```python
+      def sum_next_three(nums):
+          n = len(nums)
+          out = []
+          for i in range(n):
+              total = 0
+              for j in range(i, n):
+                  if j < i + 3:
+                      total += nums[j]
+              out.append(total)
+          return out
+      ```
+    options:
+      - id: inner-range
+        text: "Line 6: `for j in range(i, n):`"
+        explanation: >-
+          The inner loop runs from `i` to the end, `n - i` passes, and the `if` throws most of them
+          away. In all that is `n + (n - 1) + ... + 1` passes, which is O(n²).
+          `range(i, min(i + 3, n))` keeps each inner loop to at most 3 passes, so the total is O(n).
+      - id: outer-range
+        text: "Line 4: `for i in range(n):`"
+        explanation: >-
+          The function returns one total per index, so any correct version makes `n` outer passes.
+          What each outer pass costs is the problem.
+      - id: if-line
+        text: "Line 7: `if j < i + 3:`"
+        explanation: >-
+          The test is what keeps each total right. It runs for every `j`, but how many values `j`
+          takes is set by the line above it.
+      - id: append-line
+        text: "Line 9: `out.append(total)`"
+        explanation: >-
+          It runs once per outer pass, `n` times in all, which fits O(n).
+    correct: inner-range
+    followUps:
+      outer-range:
+        prompt: With `n = 1000`, how many passes does the inner loop make when `i` is 0?
+        options:
+          - id: thousand
+            text: 1000, though only 3 of them add anything
+          - id: three
+            text: 3, one per value summed
+          - id: one
+            text: 1, since the `if` stops it
+        correct: thousand
+        explanation: >-
+          `range(i, n)` runs to the end whatever the `if` decides. A loop's passes are set by its
+          range, not by how many of them do useful work.
+      if-line:
+        prompt: Which line decides how many values `j` takes?
+        options:
+          - id: range-line
+            text: Line 6, the range of the inner loop
+          - id: test-line
+            text: Line 7, the `if` test
+          - id: add-line
+            text: Line 8, which adds to `total`
+        correct: range-line
+        explanation: >-
+          The `if` decides only what a pass does. Cutting the passes means bounding the range
+          itself.
+      append-line:
+        prompt: On a list of `n` items, how many times does `out.append(total)` run?
+        options:
+          - id: n-times
+            text: "`n` times, once per outer pass"
+          - id: n-squared
+            text: About n² times, once per pair
+          - id: three-n
+            text: 3 × `n` times, once per value summed
+        correct: n-times
+        explanation: >-
+          It sits in the outer loop, after the inner one finishes, so it runs once per index.

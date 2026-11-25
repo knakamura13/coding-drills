@@ -477,8 +477,7 @@ questions:
     tags: [complexity]
     prompt: >-
       Four functions take `50 * n`, `n * n`, `n * log2(n)` and `1000` steps on an input of size
-      `n`. log2(n) counts how many times `n` halves to reach 1, so it grows by one each time `n`
-      doubles. At `n = 8` those counts are 400, 64, 24 and 1000. Which takes the most steps at
+      `n`. At `n = 8` those counts are 400, 64, 24 and 1000. Which takes the most steps at
       `n = 10000`?
     options:
       - id: square
@@ -614,7 +613,7 @@ questions:
           parentheses, produces items one at a time.
 
   - id: running-totals-space-review
-    heading: How much extra memory?
+    heading: How much extra space?
     tags: [complexity, python]
     prompt: |-
       ```python
@@ -627,7 +626,7 @@ questions:
           return out
       ```
 
-      Not counting the input or the returned list, how much extra memory does it use?
+      Not counting the input or the returned list, how much extra space does it use?
     options:
       - id: constant
         text: O(1)
@@ -657,8 +656,8 @@ questions:
             text: Only the input
         correct: besides
         explanation: >-
-          Auxiliary space leaves out the result because any function returning `n` items needs
-          room for them. A question has to say which convention it uses.
+          Extra space is often counted without the result, because any function returning `n` items
+          needs room for them. A question has to say which way it counts.
       quadratic:
         prompt: How many items does `out` hold when the function returns?
         options:
@@ -728,3 +727,278 @@ questions:
         explanation: >-
           A slice of a list copies the chosen items into a new list. The comprehension keeps each
           of those lists in its result.
+
+  - id: triangle-loops-review
+    heading: What is its Big-O?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      total = 0
+      for i in range(n):
+          for j in range(i, n):
+              total += nums[j]
+      ```
+
+      How does the number of times `total += nums[j]` runs grow with `n`?
+    options:
+      - id: linear
+        text: O(n)
+        explanation: >-
+          The inner loop does not run once per outer pass. It runs `n - i` times, so the total is
+          `n + (n - 1) + ... + 1`, far more than `n`.
+      - id: n-log-n
+        text: O(n log n)
+        explanation: >-
+          A log n factor comes from halving or doubling, as in a loop with `j = j * 2`. This inner
+          loop only starts one index later on each pass.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          The inner loop runs `n`, `n - 1`, and so on down to 1 times, which adds up to
+          `n * (n + 1) // 2`. Big-O drops the factor 1/2 and the smaller term, leaving O(n²).
+      - id: exponential
+        text: O(2^n)
+        explanation: >-
+          A count of `2 ** n` doubles with each extra item, as when trying every subset. Two nested
+          loops of at most `n` passes each cap the count at n × n.
+    correct: quadratic
+    followUps:
+      linear:
+        prompt: How many times does the inner body run in all when `n = 4`?
+        options:
+          - id: ten
+            text: 10 times
+          - id: four
+            text: 4 times
+          - id: sixteen
+            text: 16 times
+        correct: ten
+        explanation: >-
+          The inner loop runs 4, 3, 2 and 1 times, 10 in all. That is `n * (n + 1) // 2`, which
+          grows like n × n, not like `n`.
+      n-log-n:
+        prompt: What kind of loop gives a log n count?
+        options:
+          - id: halving
+            text: One that halves or doubles a value on each pass
+          - id: start-later
+            text: An inner loop that starts one index later each time
+          - id: fixed-count
+            text: A loop that runs a fixed number of times
+        correct: halving
+        explanation: >-
+          A log n count comes from halving or doubling. Starting one index later takes only one
+          pass off each inner loop, so the passes still add up to about n² / 2.
+      exponential:
+        prompt: What kind of work grows like `2 ** n`?
+        options:
+          - id: every-subset
+            text: Trying every subset of the `n` items
+          - id: every-pair
+            text: Trying every pair of items
+          - id: two-loops
+            text: Running two loops over `n`, one after the other
+        correct: every-subset
+        explanation: >-
+          Each extra item doubles the number of subsets, so trying them all grows like `2 ** n`.
+          Every pair is only about n × n work.
+
+  - id: doubling-size-review
+    heading: What is its Big-O?
+    tags: [complexity, python]
+    prompt: |-
+      ```python
+      def rounds(n):
+          size = 1
+          count = 0
+          while size < n:
+              size = size * 2
+              count += 1
+          return count
+      ```
+
+      `rounds(1000)` returns 10. How does its number of passes grow with `n`?
+    options:
+      - id: log
+        text: O(log n)
+        explanation: >-
+          `size` doubles on each pass, so it reaches `n` after about `log2(n)` passes. `2 ** 10` is
+          1024, the first power of 2 that reaches 1000, which is why the call returns 10.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          A loop that added 1 to `size` would need about `n` passes. Doubling reaches 1000 in 10.
+      - id: constant
+        text: O(1)
+        explanation: >-
+          10 passes is few, but `rounds(2000)` needs 11. A count that rises with `n`, however
+          slowly, is not O(1).
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          There is one loop and no loop inside it, and that one loop runs far fewer than `n`
+          passes.
+    correct: log
+    followUps:
+      linear:
+        prompt: What does `size` hold after 3 passes?
+        options:
+          - id: eight
+            text: 8, since it went 1, 2, 4, 8
+          - id: four
+            text: 4, since it went 1, 2, 3, 4
+          - id: three
+            text: 3, one per pass
+        correct: eight
+        explanation: >-
+          Each pass doubles `size`, so after `k` passes it is `2 ** k`. It reaches `n` after about
+          `log2(n)` passes, not `n`.
+      constant:
+        prompt: When `n` doubles, what happens to the number of passes?
+        options:
+          - id: one-more
+            text: It goes up by one
+          - id: same
+            text: It stays the same
+          - id: doubles
+            text: It doubles
+        correct: one-more
+        explanation: >-
+          One more doubling covers twice the distance, so each doubling of `n` costs one pass. That
+          is O(log n): slow growth, but growth.
+      quadratic:
+        prompt: How many loops does `rounds` run, one inside another?
+        options:
+          - id: one
+            text: One loop, with nothing nested in it
+          - id: two
+            text: Two, one inside the other
+          - id: n-loops
+            text: One loop per item
+        correct: one
+        explanation: >-
+          n × n needs a loop of about `n` passes inside another. Here a single loop doubles
+          `size`, which takes only about `log2(n)` passes.
+
+  - id: ab-strings-review
+    heading: How fast does it grow?
+    tags: [complexity]
+    prompt: >-
+      A function builds every string of length `n` made from the letters `a` and `b`. For `n = 2`
+      they are `aa`, `ab`, `ba` and `bb`. What happens to the number of strings when `n` grows by
+      1, and what is its Big-O?
+    options:
+      - id: doubles
+        text: It doubles, so O(2^n)
+        explanation: >-
+          Each string of length `n` gets an `a` version and a `b` version one letter longer, so
+          every extra letter doubles the count. That makes `2 ** n` strings, 8 at `n = 3`.
+      - id: plus-two
+        text: It grows by 2, so O(n)
+        explanation: >-
+          Two letters per position multiply across positions rather than add. Length 3 gives
+          2 × 2 × 2 = 8 strings, not 4 + 2 = 6.
+      - id: times-four
+        text: It is multiplied by 4, so O(n²)
+        explanation: >-
+          Multiplying by about 4 is what a count like n × n does when `n` doubles. Here `n` grows
+          by only one, and one more letter doubles the count.
+    correct: doubles
+    followUps:
+      plus-two:
+        prompt: How many strings of length 3 use only `a` and `b`?
+        options:
+          - id: eight
+            text: 8, two choices for each of the 3 letters
+          - id: six
+            text: 6, two more than for length 2
+          - id: nine
+            text: 9, three for each letter
+        correct: eight
+        explanation: >-
+          The choices multiply: 2 × 2 × 2 is 8. Each new letter doubles the count, which is
+          O(2^n).
+      times-four:
+        prompt: Going from `n = 2` to `n = 3`, the count goes from 4 to what?
+        options:
+          - id: eight
+            text: 8, twice as many
+          - id: sixteen
+            text: 16, four times as many
+          - id: nine
+            text: 9, three squared
+        correct: eight
+        explanation: >-
+          One more letter gives each old string two versions, so the count doubles. Doubling for
+          every added letter is the `2 ** n` growth.
+
+  - id: reverse-extra-space-review
+    heading: How much extra space?
+    tags: [complexity]
+    prompt: >-
+      A function takes a list of `n` numbers and returns a new list holding the same numbers in
+      reverse order. It builds the result by appending each number to an empty list, starting
+      from the last. Counting the returned list but not the input, how much extra space does it
+      use?
+    options:
+      - id: constant
+        text: O(1)
+        explanation: >-
+          A fixed number of names would be O(1), as when the list is reversed in place by swapping
+          from both ends. Here the returned list counts, and it holds `n` numbers.
+      - id: logarithmic
+        text: O(log n)
+        explanation: >-
+          A log n amount comes from something that halves, and nothing here halves. The new list
+          holds all `n` numbers.
+      - id: linear
+        text: O(n)
+        explanation: >-
+          The new list has `n` items, so its size grows in step with the input. The loop variables
+          add only a fixed amount, which Big-O drops.
+      - id: quadratic
+        text: O(n²)
+        explanation: >-
+          Quadratic space needs about n × n stored values, such as a table with an entry for every
+          pair of items. One list of `n` items is only O(n).
+    correct: linear
+    followUps:
+      constant:
+        prompt: Which way of reversing uses O(1) extra space?
+        options:
+          - id: swap-in-place
+            text: Swap the first and last items, then move inward, changing the list in place
+          - id: slice-copy
+            text: Return the slice `nums[::-1]`
+          - id: append-new
+            text: Append each item to a new list, starting from the end
+        correct: swap-in-place
+        explanation: >-
+          Swapping in place needs only two index names, so its extra space is fixed. A slice and an
+          appended list each build a new list of `n` items.
+      logarithmic:
+        prompt: What does log n count?
+        options:
+          - id: halvings
+            text: How many times `n` can be halved before it reaches 1
+          - id: appends
+            text: How many items a loop appends
+          - id: copies
+            text: How many lists a function builds
+        correct: halvings
+        explanation: >-
+          log n counts halvings. A loop that appends one item per pass for `n` passes stores `n`
+          items, which is O(n).
+      quadratic:
+        prompt: The loop appends one item per pass, `n` times. How many items does the result hold at the end?
+        options:
+          - id: n-items
+            text: "`n` items, one per pass"
+          - id: n-squared-items
+            text: About n², because each append copies the items already there
+          - id: one-item
+            text: One item, since the list is rebuilt on every pass
+        correct: n-items
+        explanation: >-
+          Each pass adds one item and keeps the earlier ones, so the list ends with `n` items and
+          takes O(n) memory.

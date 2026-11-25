@@ -4,7 +4,7 @@ import { ContentError } from './contentError.ts';
 /**
  * The mastery curriculum compiled from `content/curriculum/*.yaml`.
  *
- * A path is a short sequence of skills (two or three levels) plus any fork,
+ * A path is a short sequence of skills (two to four levels) plus any fork,
  * ending in one or two checkpoints. `after` names the paths that must come
  * first. A checkpoint's `requires` list is every skill that gates that exam:
  * the skills on the path that it synthesizes, every skill of each path in
@@ -148,7 +148,7 @@ export const branchSchema = z
 					depth,
 					/** Extra skill ids the entrance and the single checkpoint wait on. */
 					needs: z.array(id).optional(),
-					levels: z.array(levelSchema).min(2).max(3),
+					levels: z.array(levelSchema).min(2).max(4),
 					forks: z.array(forkSchema).max(2).optional(),
 					checkpoints: z.array(checkpointSchema).min(1).max(2)
 				})
