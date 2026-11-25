@@ -253,7 +253,9 @@ describe('shipped curriculum', () => {
 			'priority-order',
 			'heap-operations',
 			'bounded-heaps',
-			'link-rewrites'
+			'link-rewrites',
+			'pointer-walks',
+			'design-structures'
 		]) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));

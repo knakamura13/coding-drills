@@ -148,76 +148,79 @@ questions:
           Sorted order fixes where the number belongs, usually in the middle. Making room there
           moves every item after it.
 
-  - id: checkpoint-min-stack-design
+  - id: checkpoint-min-queue-design
     heading: Which design meets every cost?
-    tags: [stack, complexity, python]
+    tags: [stack, queue, complexity]
     prompt: >-
-      A stack must push, pop the newest item, and report its smallest value, each in O(1), even
-      right after the smallest value has been popped. Which design meets every cost?
+      A queue must push, pop the oldest item, and report its smallest value, each in amortized
+      O(1). Which design meets every cost?
     options:
-      - id: pairs
-        text: One list of `(value, smallest so far)` pairs
+      - id: two-stacks-pairs
+        text: Two stacks, `inbox` and `outbox`, each holding `(value, smallest so far)` pairs
         explanation: >-
-          A push stores the smaller of the new value and the top's smallest so far beside it, in
-          O(1). A pop removes the top pair, and the pair below already holds the smallest of what
-          is left, so every operation is O(1).
-      - id: one-variable
-        text: One list of values, and one variable holding the smallest value
+          A push stores the new value with the smaller of it and `inbox`'s top summary. A pop that
+          finds `outbox` empty moves every item across, rebuilding each summary against `outbox`'s
+          top as the item lands, so each item moves once and the cost is amortized O(1). The
+          smallest value is the smaller of the two tops' summaries, two reads.
+      - id: two-stacks-variable
+        text: Two stacks, `inbox` and `outbox`, of values, and one variable holding the smallest
         explanation: >-
           A push can update the variable in O(1). But when the smallest value is popped, the
           variable has nothing to fall back to, and finding the next smallest is a scan, O(n).
-      - id: min-on-demand
-        text: One list of values, and `min(stack)` when asked
+      - id: deque-min
+        text: One `deque` of values, and `min(queue)` when asked
         explanation: >-
           Push and pop are O(1), but `min` reads every item, so reporting the smallest value is
           O(n).
-      - id: sorted
-        text: One list of values, kept sorted
+      - id: pairs-pop-front
+        text: One list of `(value, smallest so far)` pairs, popping from the front
         explanation: >-
-          The smallest value is at the front, but a push has to go to its place in order, moving
-          every later item, which is O(n). The end no longer holds the newest item, so a pop can
-          take the wrong one.
-    correct: pairs
+          `pop(0)` moves every later pair, which is O(n). Each summary also counts the older items
+          below it, so once the oldest is popped, the summaries above it can name a value that is
+          gone.
+    correct: two-stacks-pairs
     followUps:
-      one-variable:
-        prompt: The variable holds the smallest value, and that value is popped. What does the variable need next?
+      two-stacks-variable:
+        prompt: The variable holds the smallest value, and a pop removes that value. What does the variable need next?
         options:
           - id: next-smallest
-            text: The next smallest value, which only a scan of the list finds
+            text: The next smallest value, which only a scan of both stacks finds
           - id: nothing
             text: Nothing, it can keep the old value
-          - id: top
-            text: The new top's value
+          - id: newest
+            text: The value of the newest item
         correct: next-smallest
         explanation: >-
           One variable remembers one value. Keeping a smallest so far in every entry is what keeps
           the answer one read away after any pop.
-      min-on-demand:
-        prompt: How many items does `min(stack)` read on a stack of `n` items?
+      deque-min:
+        prompt: How many items does `min(queue)` read on a queue of `n` items?
         options:
           - id: all
             text: All `n`
           - id: one
-            text: One, the top
+            text: One, the oldest
           - id: half
             text: About half of them
         correct: all
         explanation: >-
           `min` has to compare every item, since any of them could be the smallest. That makes the
           report O(n).
-      sorted:
-        prompt: In a list kept sorted, which item does `pop()` remove?
+      pairs-pop-front:
+        prompt: >-
+          A list of `(value, smallest so far)` pairs is `[(2, 2), (5, 2), (7, 2)]`, oldest first.
+          After `pop(0)` removes `(2, 2)`, what does the newest pair report as the smallest?
         options:
-          - id: largest
-            text: The largest, which may not be the newest
+          - id: stale
+            text: 2, though the smallest value left is 5
+          - id: right
+            text: 5, the smallest value left
           - id: newest
-            text: The newest, as in any stack
-          - id: smallest
-            text: The smallest
-        correct: largest
+            text: 7, the newest value
+        correct: stale
         explanation: >-
-          Sorting reorders the items, so the end holds the largest, not the most recent push. A
-          stack needs the newest item on top.
+          `(7, 2)` was built while the 2 was still below it, and popping the front does not rebuild
+          it. Summaries carried in a stack only stay right when items leave from the top.
 
   - id: checkpoint-debug-transfer
     heading: Which run does it fail on?
