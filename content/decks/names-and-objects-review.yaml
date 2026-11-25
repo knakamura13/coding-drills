@@ -124,6 +124,112 @@ questions:
           Separate objects with equal items compare equal. `y` and `z` are separate lists that
           both hold `[3, 3]`.
 
+  - id: alias-or-copy-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      row = [4, 4, 4]
+      saved = row[:]
+      row[2] = 1
+      print(row, saved)
+      ```
+    options:
+      - id: copy
+        text: "`[4, 4, 1] [4, 4, 4]`"
+        explanation: >-
+          `row[:]` copied the three values into a new list before the write, so the write changes
+          only `row`'s list and `saved` is untouched.
+      - id: slice-shared
+        text: "`[4, 4, 1] [4, 4, 1]`"
+        explanation: >-
+          That treats `saved` as a second name for `row`. Check what a slice builds.
+      - id: one-based
+        text: "`[4, 1, 4] [4, 4, 4]`"
+        explanation: >-
+          Count indices from 0 to find which cell `row[2]` names.
+    correct: copy
+    followUps:
+      slice-shared:
+        prompt: What is `row[:]`?
+        options:
+          - id: new-list
+            text: A new list with the same items
+          - id: name
+            text: Another name for `row`
+          - id: view
+            text: A read-only view of `row`
+        correct: new-list
+        explanation: >-
+          A full slice copies every item into a new list. Later writes to `row` do not reach it.
+      one-based:
+        prompt: Which cell of `[4, 4, 4]` does `row[2] = 1` replace?
+        options:
+          - id: third
+            text: The third, which is the last one
+          - id: second
+            text: The second
+          - id: every
+            text: Every cell holding a 4
+        correct: third
+        explanation: >-
+          Index 2 is the third cell when counting from 0. Assigning to an index replaces exactly
+          one cell, and equal values elsewhere do not change which cell an index names.
+
+  - id: negative-write-review
+    heading: What does this print?
+    tags: [python]
+    prompt: |-
+      ```python
+      xs = [2, 4, 6]
+      ys = xs[:]
+      ys[-1] = 0
+      print(xs)
+      ```
+    options:
+      - id: copy
+        text: "`[2, 4, 6]`"
+        explanation: >-
+          `xs[:]` builds a new list, and `ys` names it. `ys[-1]` is the last cell of that copy, so
+          the write never reaches `xs`.
+      - id: shared
+        text: "`[2, 4, 0]`"
+        explanation: >-
+          That treats the slice as a second name for `xs`'s list. A slice builds a separate list,
+          so a write into it stays there.
+      - id: append
+        text: "`[2, 4, 6, 0]`"
+        explanation: >-
+          Writing to index `-1` does not add a cell, and it writes into `ys`'s list, not `xs`'s.
+    correct: copy
+    followUps:
+      shared:
+        prompt: Which line makes `ys` a second name for `xs`'s list?
+        options:
+          - id: assign
+            text: "`ys = xs`"
+          - id: slice
+            text: "`ys = xs[:]`"
+          - id: both
+            text: Both of them
+        correct: assign
+        explanation: >-
+          Plain assignment adds a name for the existing list. A slice, `list(xs)` or `xs.copy()`
+          builds a new one.
+      append:
+        prompt: "`ys = [2, 4, 6]`. Which cell does `ys[-1]` name?"
+        options:
+          - id: last
+            text: The last one, which holds `6`
+          - id: after
+            text: A new cell after the end
+          - id: before
+            text: The cell before the first
+        correct: last
+        explanation: >-
+          A negative index counts back from the end, and `-1` is the last item. Writing there
+          replaces it. Adding to the end takes `append`.
+
   - id: swap-params-review
     heading: What does this print?
     tags: [python]
@@ -292,8 +398,8 @@ questions:
     tags: [python]
     prompt: >-
       The cells are list objects. `list A` is the list `data` names, and `list B` is built on
-      line 3. The trace starts inside the call `tidy(data)`, with `xs` on list A. Predict each step
-      before it is shown.
+      line 3. `xs.sort()` reorders the list in place. The trace starts inside the call
+      `tidy(data)`, with `xs` on list A. Predict each step before it is shown.
     code: |
       def tidy(xs):
           xs.sort()
@@ -371,7 +477,7 @@ questions:
               so `out` names list B, not `data`'s list.
         correct: different
 
-  - id: list-or-tuple-plus-equals-review
+  - id: list-or-string-plus-equals-review
     heading: What does this print?
     tags: [python]
     prompt: |-
@@ -379,33 +485,33 @@ questions:
       a = [1]
       b = a
       b += [2]
-      c = (1,)
-      d = c
-      d += (2,)
-      print(a, c)
+      s = "a"
+      t = s
+      t += "b"
+      print(a, s)
       ```
 
       What does this print?
     options:
       - id: list-only
-        text: "`[1, 2] (1,)`"
+        text: "`[1, 2] a`"
         explanation: >-
-          A list can change, so `b += [2]` extends the list `a` also names. A tuple cannot change,
-          so `d += (2,)` builds a new tuple and moves only `d`. `c` keeps `(1,)`.
+          A list can change, so `b += [2]` extends the list `a` also names. A string can't change,
+          so `t += "b"` points `t` at a fresh string, `"ab"`, and `s` keeps `"a"`.
       - id: always-rebinds
-        text: "`[1] (1,)`"
+        text: "`[1] a`"
         explanation: >-
           For a list, `+=` changes the object in place, so the 2 shows through `a` as well.
-      - id: tuple-in-place
-        text: "`[1, 2] (1, 2)`"
+      - id: string-in-place
+        text: "`[1, 2] ab`"
         explanation: >-
-          A tuple has no in-place extend. `d += (2,)` builds a new tuple and points `d` at it,
-          so `c` still refers to `(1,)`.
+          A string has no way to change in place. `t += "b"` builds a new string and points `t`
+          at it, so `s` still refers to `"a"`.
       - id: swapped
-        text: "`[1] (1, 2)`"
+        text: "`[1] ab`"
         explanation: >-
           This has the two types backwards. The list is the one that can change in place, and the
-          tuple is the one that cannot.
+          string is the one that cannot.
     correct: list-only
     followUps:
       always-rebinds:
@@ -421,34 +527,34 @@ questions:
         explanation: >-
           Lists implement `+=` as an in-place extend, so every name on that list sees the change.
           `b = b + [2]` builds a new list and moves only `b`.
-      tuple-in-place:
-        prompt: Can a tuple be changed after it is built?
+      string-in-place:
+        prompt: Can a string be changed after it is built?
         options:
-          - id: immutable
-            text: No, so `+=` builds a new tuple and rebinds the name
-          - id: mutable
+          - id: unchangeable
+            text: No, so `+=` builds a new string and moves the name
+          - id: changeable
             text: Yes, `+=` extends it like a list
           - id: error
-            text: No, so `d += (2,)` raises an error
-        correct: immutable
+            text: No, so `t += "b"` raises an error
+        correct: unchangeable
         explanation: >-
-          Tuples are immutable. `+=` on a tuple falls back to building `d + (2,)` and assigning it
-          to `d`, which leaves `c`'s tuple alone.
+          A string never changes once it is made. `+=` on a string builds `t + "b"` and assigns it
+          to `t`, which leaves the string `s` names alone.
       swapped:
         prompt: Which of the two types can be changed in place?
         options:
           - id: list
             text: The list `[1]`
-          - id: tuple
-            text: The tuple `(1,)`
+          - id: string
+            text: The string `"a"`
           - id: both
             text: Both of them
         correct: list
         explanation: >-
-          Lists are mutable and tuples are not. That is why `+=` changes a shared list but only
-          rebinds a name for a tuple.
+          Lists can change and strings cannot. That is why `+=` changes a shared list but only
+          moves a name for a string.
 
-  - id: slice-assign-review
+  - id: append-or-rebind-review
     heading: Which one changes the caller's list?
     tags: [python]
     prompt: |-
@@ -457,11 +563,11 @@ questions:
 
       After which body does `nums` no longer print `[4, 2]`?
     options:
-      - id: slice-assign
-        text: "`xs[:] = [1]`"
+      - id: append
+        text: "`xs.append(1)`"
         explanation: >-
-          Assigning to the slice `xs[:]` replaces every item of the list `xs` refers to, in place.
-          That is the caller's list, so `nums` prints `[1]`.
+          `append` changes the list `xs` refers to, in place. That is the caller's list, so `nums`
+          prints `[4, 2, 1]`.
       - id: plus
         text: "`xs = xs + [1]`"
         explanation: >-
@@ -476,7 +582,7 @@ questions:
         explanation: >-
           `list(...)` builds a new list from the reversed items. Only the local name moves, so
           `nums` keeps `[4, 2]`.
-    correct: slice-assign
+    correct: append
     followUps:
       plus:
         prompt: Does `xs + [1]` change the list `xs` refers to?
@@ -489,8 +595,8 @@ questions:
             text: It raises an error, since `xs` is a parameter
         correct: new
         explanation: >-
-          `+` on lists builds a fresh list. Only `+=`, `append` and other in-place operations
-          change the original.
+          `+` on lists builds a fresh list. Only an in-place change, such as `+=` or a method that
+          edits the list, reaches the original.
       sorted:
         prompt: What is the difference between `sorted(xs)` and `xs.sort()`?
         options:
@@ -534,13 +640,13 @@ questions:
       cells: ['[0, 0]', '[0, 0]', '[0, 0]']
     correct: 1
     explanation: >-
-      `row[:]` built a separate copy for slot 1. Slots 0 and 2 both hold `row` itself, so the write
-      through slot 2 shows in slot 0 too. `board` prints `[[0, 5], [0, 0], [0, 5]]`.
+      `row[:]` built a separate copy for index 1. Indices 0 and 2 both hold `row` itself, so the
+      write through index 2 shows at index 0 too. `board` prints `[[0, 5], [0, 0], [0, 5]]`.
     misses:
       - index: 0
         explanation: >-
-          Slot 0 holds the same list as slot 2, `row`. The write through `board[2]` changes that
-          one list, so slot 0 shows the 5 too.
+          Index 0 holds the same list as index 2, `row`. The write through `board[2]` changes that
+          one list, so index 0 shows the 5 too.
       - index: 2
         explanation: '`board[2][1] = 5` writes into this row directly, so it now prints `[0, 5]`.'
 
@@ -558,11 +664,11 @@ questions:
 
       What does this print?
     options:
-      - id: shallow
+      - id: shares-rows
         text: "`[[1, 0], [0, 0], [0, 0]]`"
         explanation: >-
           `table[:]` is a new outer list holding the same three rows. Writing inside `copy[0]`
-          changes a shared row. `copy[1] = [9, 9]` replaces a slot of the copy only.
+          changes a shared row. `copy[1] = [9, 9]` replaces a cell of the copy only.
       - id: deep
         text: "`[[0, 0], [0, 0], [0, 0]]`"
         explanation: >-
@@ -571,12 +677,12 @@ questions:
       - id: alias
         text: "`[[1, 0], [9, 9], [0, 0]]`"
         explanation: >-
-          `copy` is a separate outer list. Replacing its slot 1 does not touch `table`'s slot 1.
+          `copy` is a separate outer list. Replacing what its index 1 holds does not touch `table`.
       - id: shared-rows
         text: "`[[1, 0], [1, 0], [1, 0]]`"
         explanation: >-
           The comprehension runs `[0] * 2` on every pass, so the three rows are separate lists.
-    correct: shallow
+    correct: shares-rows
     followUps:
       deep:
         prompt: Does `table[:]` copy the rows inside `table`?
@@ -589,21 +695,21 @@ questions:
             text: No, it returns `table` itself
         correct: outer-only
         explanation: >-
-          A slice is a shallow copy. It builds a new outer list, and its slots refer to the same
-          rows, so a write inside a row shows through both.
+          A slice copies only the outer list. The new outer list refers to the same rows, so a
+          write inside a row shows through both.
       alias:
         prompt: What does `copy[1] = [9, 9]` change?
         options:
-          - id: copy-slot
-            text: Slot 1 of the outer list `copy` names
+          - id: copy-cell
+            text: The cell at index 1 of the outer list `copy` names
           - id: shared-row
-            text: The row object both lists hold at slot 1
-          - id: table-slot
-            text: Slot 1 of `table` as well, since they share
-        correct: copy-slot
+            text: The row object both lists hold at index 1
+          - id: table-cell
+            text: The cell at index 1 of `table` as well, since they share
+        correct: copy-cell
         explanation: >-
-          Assigning to a slot changes which object that slot of that one list refers to. The old
-          row is untouched, and `table`'s slot 1 still holds it.
+          Assigning to a cell changes which object that cell of that one list refers to. The old
+          row is untouched, and `table`'s index 1 still holds it.
       shared-rows:
         prompt: How many row lists does `[[0] * 2 for _ in range(3)]` build?
         options:
@@ -638,8 +744,8 @@ questions:
       - id: all-shared
         text: "`[[1, 2, 5], [1, 2, 5]]`"
         explanation: >-
-          `first_row` returns the row object itself, and `g[1] = r` stores that same object in
-          slot 1. Both slots and `r` name one list, so the 5 shows twice.
+          `first_row` returns the row object itself, and `g[1] = r` stores that same object at
+          index 1. Both cells and `r` name one list, so the 5 shows twice.
       - id: return-copies
         text: "`[[1, 2], [1, 2, 5]]`"
         explanation: >-
@@ -648,7 +754,7 @@ questions:
       - id: store-copies
         text: "`[[1, 2, 5], [1, 2]]`"
         explanation: >-
-          This treats `g[1] = r` as storing a copy. Assigning to a slot stores a reference to the
+          This treats `g[1] = r` as storing a copy. Assigning to a cell stores a reference to the
           object `r` names.
       - id: no-sharing
         text: "`[[1, 2], [1, 2]]`"
@@ -671,7 +777,7 @@ questions:
           Indexing and returning both pass references along without copying. `r` and `g[0]` are
           one list.
       store-copies:
-        prompt: What does `g[1] = r` put into slot 1?
+        prompt: What does `g[1] = r` store at index 1?
         options:
           - id: reference
             text: A reference to the list `r` names
@@ -681,7 +787,7 @@ questions:
             text: The items of `r`, added to the old row
         correct: reference
         explanation: >-
-          Assigning into a list slot stores a reference, the same as assigning to a name. Slot 1
+          Assigning into a list cell stores a reference, the same as assigning to a name. `g[1]`
           and `r` now refer to one list.
       no-sharing:
         prompt: Which list does `r.append(5)` change?

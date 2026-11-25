@@ -8,8 +8,8 @@ import { compileCurriculum, type BranchFile, type SourceQuestion } from './curri
 
 const PATH_TITLES = [
 	'Arrays and strings',
-	'Problem-solving routine',
 	'Names and objects',
+	'Problem-solving routine',
 	'Growth rates',
 	'Operation costs',
 	'Hidden work',
@@ -54,7 +54,7 @@ const PATH_TITLES = [
 ];
 
 const COUNTS: Record<string, Record<string, number>> = {
-	foundations: { keep: 6, rewrite: 2, exam: 4, retire: 0 },
+	foundations: { keep: 5, rewrite: 1, exam: 4, retire: 2 },
 	'sequences-and-search': { keep: 3, rewrite: 7, exam: 11, retire: 3 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
@@ -130,10 +130,10 @@ describe('shipped curriculum', () => {
 		}
 	});
 
-	it('maps the 22 new Arrays and strings drills onto that path', () => {
+	it('maps the 27 Arrays and strings drills onto that path', () => {
 		const added = curriculum.drills.filter((drill) => ARRAYS_AND_STRINGS_DECKS.has(drill.deckId));
 		const questions = decks.filter((deck) => ARRAYS_AND_STRINGS_DECKS.has(deck.id)).flatMap((deck) => deck.questions);
-		expect(added).toHaveLength(22);
+		expect(added).toHaveLength(27);
 		expect(added.map((drill) => drill.questionId).sort()).toEqual(questions.map((question) => question.id).sort());
 		for (const drill of added) {
 			expect(drill.pathId, drill.questionId).toBe('arrays-and-strings');

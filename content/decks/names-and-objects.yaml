@@ -9,8 +9,9 @@ questions:
     heading: Which list does each name refer to?
     tags: [python]
     workedExample: |-
-      Consider `x = [1]` followed by `y = x`. A name is an arrow to an object, and assigning to a
-      name with `=` points that name at the object the right side gives.
+      In Python a name does not hold a list: it refers to one, like an arrow pointing at an
+      object. Consider `x = [1]` followed by `y = x`. Assigning with `=` points the name on the
+      left at the object the right side gives.
 
       1. `x = [1]` builds one list and points `x` at it.
       2. The right side of `y = x` is `x`, which gives the list `x` points to. So `y` is pointed at
@@ -18,9 +19,9 @@ questions:
       3. So there is one list with two names on it: `y = x` copied the arrow, not the list, and
          `y is x` is `True`.
     prompt: >-
-      Now run the code below. Cell 0 is the list that line
-      1 builds and cell 1 is the list that line 3 builds. They hold equal values but are separate
-      objects. Drag `q`, `r` and `s` to the list each one refers to.
+      Cell 0 is the list that line 1 builds and cell 1 is the list that line 3 builds. They hold
+      equal values but are separate objects. Drag `q`, `r` and `s` to the list each one refers to
+      after the code runs.
     code: |
       p = [2, 9]
       q = p
@@ -69,6 +70,92 @@ questions:
               object `r` refers to now, the copy in cell 1.
         elsewhere: '`s = r` points `s` at the list `r` names, cell 1.'
 
+  - id: one-in-place-write
+    heading: What does this print?
+    tags: [python]
+    workedExample: |-
+      Consider `x = [4, 5, 6]` followed by `y = x[0:2]`. A slice builds a new list, and the new
+      list holds copies of the items, not a link back to `x`.
+
+      1. `x[0:2]` builds a new list, `[4, 5]`, and `y` names it. `x` keeps its own list.
+      2. `y[0] = 8` writes into index 0 of the list `y` names, which by step 1 is the new list.
+      3. So `y` is `[8, 5]` and `x` is still `[4, 5, 6]`: a write into a slice never reaches the
+         list it came from.
+    prompt: |-
+      Line 2 gives `a`'s list a second name, and line 3 builds a slice. Then one write goes
+      through each name. What does this print?
+
+      ```python
+      a = [1, 2, 3, 4]
+      b = a
+      c = a[1:3]
+      b[0] = 0
+      c[0] = 9
+      print(a)
+      ```
+    options:
+      - id: alias-only
+        text: "`[0, 2, 3, 4]`"
+        explanation: >-
+          `b` names the same list as `a`, so `b[0] = 0` changes `a`. `c` names the new list that
+          `a[1:3]` built, so `c[0] = 9` changes only that list, which holds `[9, 3]`.
+      - id: both-reach
+        text: "`[0, 9, 3, 4]`"
+        explanation: >-
+          That treats `c` as a window onto indices 1 and 2 of `a`. A slice is a new list, so a
+          write into it stays there.
+      - id: neither-reach
+        text: "`[1, 2, 3, 4]`"
+        explanation: >-
+          That treats `b = a` as a copy. Assignment makes no list, so `b` and `a` name one list
+          and the write through `b` shows in `a`.
+      - id: swapped
+        text: "`[1, 9, 3, 4]`"
+        explanation: >-
+          That has the two names the other way round. `b` shares `a`'s list, and `c` is the
+          separate one.
+    correct: alias-only
+    followUps:
+      both-reach:
+        prompt: After `c = a[1:3]`, is `c is a` true?
+        options:
+          - id: separate
+            text: No, the slice built a separate new list
+          - id: window
+            text: Yes, a slice is a window onto `a`
+          - id: until-write
+            text: Yes, until something is written into `c`
+        correct: separate
+        explanation: >-
+          Slicing a list copies the chosen items into a new list, so a write to one never reaches
+          the other.
+      neither-reach:
+        prompt: After `b = a`, how many lists do `a` and `b` name?
+        options:
+          - id: one
+            text: One, with two names on it
+          - id: two
+            text: Two, each with its own items
+          - id: until-change
+            text: Two, once one of them changes
+        correct: one
+        explanation: >-
+          Assigning one name to another copies the arrow, not the list. A write through either
+          name changes the one list both see.
+      swapped:
+        prompt: Which line made a separate list?
+        options:
+          - id: slice
+            text: "`c = a[1:3]`"
+          - id: assign
+            text: "`b = a`"
+          - id: both
+            text: Both lines
+        correct: slice
+        explanation: >-
+          The slice builds a new list, and plain assignment only adds a name. So the write through
+          `b` reaches `a`, and the write through `c` does not.
+
   - id: equal-or-same
     heading: What does this print?
     tags: [python]
@@ -81,14 +168,15 @@ questions:
       2. Both lists hold one item, `5`, so their values are equal and `[5] == [5]` is `True`.
       3. By step 1 they are two separate objects, so `[5] is [5]` is `False`.
     prompt: |-
+      `==` asks whether two values are equal, and `is` asks whether both sides are one object.
+      What does this print?
+
       ```python
       a = [1, 2]
       b = a
       c = [1, 2]
       print(a == c, a is c, b is a)
       ```
-
-      What does this print?
     options:
       - id: equal-not-same
         text: "`True False True`"
@@ -153,94 +241,13 @@ questions:
           Assignment binds a name to an object and never copies it. `a` keeps its list, and `b`
           now refers to it as well. To copy, call `list(a)`, `a[:]` or `a.copy()`.
 
-  - id: rebind-or-mutate
-    heading: Which leaves the caller's list alone?
-    tags: [python]
-    workedExample: |-
-      Consider `a = [7]` followed by `b = a`, so both names refer to one list. `append` changes the
-      list it is called on, in place. A plain assignment such as `b = [1]` only moves the name on
-      its left.
-
-      1. `b.append(1)` changes the list `b` refers to. That is `a`'s list too, so `a` now prints
-         `[7, 1]`.
-      2. Starting again from `b = a`, the line `b = [1]` builds a new list and points `b` at it. It
-         is a plain assignment, so it moves only the name `b`.
-      3. `a` still refers to its own list, which nothing changed, so `a` still prints `[7]`.
-    prompt: |-
-      Each option is the whole body of `def f(xs):`. Each version is called as `f(nums)` on a
-      fresh `nums = [5, 6]`.
-
-      After which body does `nums` still print `[5, 6]`?
-    options:
-      - id: rebind
-        text: "`xs = []`"
-        explanation: >-
-          `xs = []` builds an empty list and points the local name `xs` at it. The caller's list is
-          not touched, and `nums` still names it, so it prints `[5, 6]`.
-      - id: item-write
-        text: "`xs[0] = 0`"
-        explanation: >-
-          This writes into slot 0 of the list `xs` refers to, which is the caller's list. `nums`
-          prints `[0, 6]`.
-      - id: clear
-        text: "`xs.clear()`"
-        explanation: >-
-          `clear()` empties the list `xs` refers to, the same object `nums` names, so `nums` prints
-          `[]`.
-      - id: plus-equals
-        text: "`xs += [0]`"
-        explanation: >-
-          On a list, `+=` extends the object in place. The caller's list grows and `nums` prints
-          `[5, 6, 0]`.
-    correct: rebind
-    followUps:
-      item-write:
-        prompt: Inside `f`, which list does `xs[0] = 0` write into?
-        options:
-          - id: callers
-            text: The caller's list, which the parameter refers to
-          - id: local-copy
-            text: A copy made when `f` was called
-          - id: new-list
-            text: A new list that `xs[0] = 0` creates
-        correct: callers
-        explanation: >-
-          A call binds the parameter to the argument object without copying it. A write by index
-          changes that object, so every name on it sees the new value.
-      clear:
-        prompt: How does `xs.clear()` differ from `xs = []`?
-        options:
-          - id: object-vs-name
-            text: "`clear()` empties the object; `xs = []` only moves the name"
-          - id: same
-            text: They do the same thing
-          - id: clear-copies
-            text: "`clear()` empties a copy, and `xs = []` empties the original"
-        correct: object-vs-name
-        explanation: >-
-          A method call on `xs` acts on the object `xs` refers to. Assigning to `xs` only changes
-          which object the local name refers to.
-      plus-equals:
-        prompt: For a list, what does `xs += [0]` do?
-        options:
-          - id: extends
-            text: Extends the existing list in place
-          - id: rebinds
-            text: Builds a new list and points `xs` at it, like `xs = xs + [0]`
-          - id: error
-            text: Raises an error, because `+=` is only for numbers
-        correct: extends
-        explanation: >-
-          Lists implement `+=` as an in-place extend, so the caller sees it. `xs = xs + [0]` is
-          different: `+` builds a new list and only the local name moves.
-
   - format: step-trace
     id: trace-rebind-and-append
     heading: Follow the names
     tags: [python]
     workedExample: |-
       Consider `a = [3]`, then `b = a`, then `b.append(1)`. A plain assignment such as `b = a` moves
-      the name on its left onto an object, and `append` changes the list it is called on, in place.
+      the name on its left onto an object, and `append` changes the list it is called on.
 
       1. `b = a` moves `b` onto the list `a` refers to. Now both names refer to one list, `[3]`, and
          nothing was copied.
@@ -258,7 +265,6 @@ questions:
       b = a
       b.append(5)
       b = b + [8]
-      a += [0]
       print(a, b)
     sequence:
       kind: array
@@ -316,25 +322,111 @@ questions:
               A name never goes back to an object it used to refer to. `b` moves onto the new list
               that `b + [8]` builds.
         elsewhere: '`b + [8]` builds list C, and `b` moves onto it.'
-      - line: 7
-        ask: Line 6 runs, then line 7. What prints?
+      - line: 6
+        ask: Line 6 runs. What prints?
         options:
           - id: split
-            text: '`[6, 2, 5, 0] [6, 2, 5, 8]`'
+            text: '`[6, 2, 5] [6, 2, 5, 8]`'
             explanation: >-
-              `a += [0]` extends list A in place. `b` refers to list C, which line 5 built, so
-              the 0 does not reach it.
-          - id: still-linked
-            text: '`[6, 2, 5, 0] [6, 2, 5, 8, 0]`'
-            explanation: >-
-              Names are not linked to each other, only to objects. After line 5, `a` and `b` refer
-              to different lists, so a change to list A cannot show up through `b`.
+              `a` still refers to list A, which holds the 5 from line 4. `b` refers to list C,
+              which line 5 built, so only `b` shows the 8.
           - id: plus-in-place
-            text: '`[6, 2, 5, 8, 0] [6, 2, 5, 8, 0]`'
+            text: '`[6, 2, 5, 8] [6, 2, 5, 8]`'
             explanation: >-
               This treats line 5 as changing list A. `b + [8]` built list C instead, so list A
               never got the 8.
+          - id: append-private
+            text: '`[6, 2] [6, 2, 5, 8]`'
+            explanation: >-
+              This loses the 5. Line 4 appended it to list A, the list `a` still refers to.
         correct: split
+
+  - id: plus-equals-in-place
+    heading: What does this print?
+    tags: [python]
+    workedExample: |-
+      Consider `p = [5]` followed by `q = p`, so both names refer to one list. A change made in
+      place alters that list object itself, so every name on it sees the change.
+
+      1. `q.append(6)` changes the list in place, so `p` and `q` both show `[5, 6]`.
+      2. Starting again from `q = p`, the line `q = q + [6]` builds a new list, `[5, 6]`, and
+         moves `q` onto it.
+      3. Nothing changed the old list, so `p` still shows `[5]`, and only `q` shows `[5, 6]`.
+    prompt: |-
+      A change made in place alters the object itself, so every name on it sees it. On a list,
+      `b += [2]` adds the items in place, the same way `append` does. What does this print?
+
+      ```python
+      a = [1]
+      b = a
+      b += [2]
+      c = [1]
+      d = c
+      d = d + [2]
+      print(a, c)
+      ```
+    options:
+      - id: only-a
+        text: "`[1, 2] [1]`"
+        explanation: >-
+          Line 3 extends the list `a` and `b` share, in place, so `a` shows the 2. `d + [2]` builds
+          a new list and only `d` moves onto it, so `c` keeps `[1]`.
+      - id: neither
+        text: "`[1] [1]`"
+        explanation: >-
+          That treats `b += [2]` like `b = b + [2]`. On a list, `+=` changes the shared list in
+          place, so `a` sees it.
+      - id: both
+        text: "`[1, 2] [1, 2]`"
+        explanation: >-
+          That treats `d + [2]` as changing `d`'s list. `+` builds a new list, and the assignment
+          moves only `d`.
+      - id: only-c
+        text: "`[1] [1, 2]`"
+        explanation: >-
+          That has the two lines the other way round. `+=` works in place, and `+` builds a new
+          list.
+    correct: only-a
+    followUps:
+      neither:
+        prompt: For a list `b`, how does `b += [2]` differ from `b = b + [2]`?
+        options:
+          - id: in-place
+            text: "`+=` changes the same list; `b + [2]` builds a new one"
+          - id: same
+            text: They are identical
+          - id: reversed
+            text: "`b + [2]` changes the same list; `+=` builds a new one"
+        correct: in-place
+        explanation: >-
+          On a list, `+=` extends the object in place, so every name on that list sees the change.
+          `b = b + [2]` builds a new list and moves only `b`.
+      both:
+        prompt: What happens to `c`'s list when `d = d + [2]` runs?
+        options:
+          - id: untouched
+            text: Nothing; a new list is built and `d` moves onto it
+          - id: extended
+            text: The 2 is added to the end of it
+          - id: emptied
+            text: It loses its items to the new list
+        correct: untouched
+        explanation: >-
+          `+` reads both lists and builds a third one. The assignment then moves `d`, and `c`
+          still names its unchanged list.
+      only-c:
+        prompt: Which of the two lines changes a list that another name also sees?
+        options:
+          - id: plus-equals
+            text: "`b += [2]`"
+          - id: plus
+            text: "`d = d + [2]`"
+          - id: both
+            text: Both lines
+        correct: plus-equals
+        explanation: >-
+          `+=` on a list works in place, so the change shows through `a`. `d + [2]` builds a new
+          list, which only `d` names.
 
   - format: tap-cell
     id: caller-sees-change
@@ -345,12 +437,12 @@ questions:
       argument object itself, without copying it.
 
       1. `zero(vals)` points `row` at the list `vals` names, so the two names share one list.
-      2. `row[0] = 0` writes into slot 0 of the list `row` refers to, which by step 1 is the
+      2. `row[0] = 0` writes into index 0 of the list `row` refers to, which by step 1 is the
          caller's list.
       3. So after the call `vals` is `[0, 5]`: the write made inside `zero` shows through the
          caller's name.
     prompt: >-
-      Now
+      A call points the parameter at the argument object itself, without copying it.
       `bump_last(scores)` runs. Which cell of `scores` holds a different value after the call? Tap
       it.
     code: |
@@ -367,7 +459,7 @@ questions:
       cells: [4, 7, 1, 3]
     correct: 3
     explanation: >-
-      `row[-1] += 10` writes into the last slot of the caller's list, so `scores` becomes
+      `row[-1] += 10` writes into the last cell of the caller's list, so `scores` becomes
       `[4, 7, 1, 13]`. Line 3 then moves `row` onto a new list, and the 99 lands in that new list,
       which the caller never sees.
     misses:
@@ -377,76 +469,92 @@ questions:
           list. `scores[0]` stays 4.
       - index: 1
         explanation: >-
-          Nothing in `bump_last` writes slot 1. The one write that reaches `scores` is
-          `row[-1] += 10`, and `-1` names the last slot.
+          Nothing in `bump_last` writes index 1. The one write that reaches `scores` is
+          `row[-1] += 10`, and `-1` names the last cell.
       - index: 2
         explanation: >-
-          `-1` counts from the end, so `row[-1]` is the last slot, index 3, not index 2.
+          `-1` counts from the end, so `row[-1]` is the last cell, index 3, not index 2.
 
-  - id: independent-rows
-    heading: Which builds separate rows?
+  - id: rebind-or-mutate
+    heading: Which leaves the caller's list alone?
     tags: [python]
     workedExample: |-
-      Consider `grid = [['-'] * 2] * 3`. Python works out the inner part first, and `* 3` on a list
-      repeats the references it holds without copying the objects.
+      Consider `a = [7]` followed by `b = a`, so both names refer to one list. `append` changes the
+      list it is called on, in place. A plain assignment such as `b = [1]` only moves the name on
+      its left.
 
-      1. `['-'] * 2` runs once and builds one row, `['-', '-']`.
-      2. `* 3` then stores a reference to that one row three times, so `grid[0]`, `grid[1]` and
-         `grid[2]` are all the same object.
-      3. So `grid[0][0] = 'x'` writes into that one row, and all three rows show it: `grid` prints
-         `[['x', '-'], ['x', '-'], ['x', '-']]`.
+      1. `b.append(1)` changes the list `b` refers to. That is `a`'s list too, so `a` now prints
+         `[7, 1]`.
+      2. Starting again from `b = a`, the line `b = [1]` builds a new list and points `b` at it. It
+         is a plain assignment, so it moves only the name `b`.
+      3. `a` still refers to its own list, which nothing changed, so `a` still prints `[7]`.
     prompt: |-
-      ```python
-      grid = ...
-      grid[0].append(1)
-      print(grid)
-      ```
+      Each option is the whole body of `def f(xs):`. Each version is called as `f(nums)` on a
+      fresh `nums = [5, 6]`.
 
-      Which right-hand side makes this print `[[1], []]`?
+      After which body does `nums` still print `[5, 6]`?
     options:
-      - id: comprehension
-        text: "`[[] for _ in range(2)]`"
+      - id: rebind
+        text: "`xs = []`"
         explanation: >-
-          The comprehension evaluates `[]` once per pass, so it builds two separate lists.
-          Appending to `grid[0]` leaves `grid[1]` empty.
-      - id: repeat
-        text: "`[[]] * 2`"
+          `xs = []` builds an empty list and points the local name `xs` at it. The caller's list is
+          not touched, and `nums` still names it, so it prints `[5, 6]`.
+      - id: item-write
+        text: "`xs[0] = 0`"
         explanation: >-
-          `* 2` repeats the reference to the one inner list, so both slots hold the same row and the
-          code prints `[[1], [1]]`.
-      - id: outer-copy
-        text: "`list([[]] * 2)`"
+          This writes into index 0 of the list `xs` refers to, which is the caller's list. `nums`
+          prints `[0, 6]`.
+      - id: clear
+        text: "`xs.clear()`"
         explanation: >-
-          `list(...)` copies the outer list, but the copy holds the same references. Both slots
-          still name one inner list, so this prints `[[1], [1]]`.
-    correct: comprehension
+          `clear()` empties the list `xs` refers to, the same object `nums` names, so `nums` prints
+          `[]`.
+      - id: plus-equals
+        text: "`xs += [0]`"
+        explanation: >-
+          On a list, `+=` extends the object in place. The caller's list grows and `nums` prints
+          `[5, 6, 0]`.
+    correct: rebind
     followUps:
-      repeat:
-        prompt: How many inner lists does `[[]] * 2` contain?
+      item-write:
+        prompt: Inside `f`, which list does `xs[0] = 0` write into?
         options:
-          - id: one
-            text: One, stored in both slots
-          - id: two
-            text: Two, one per slot
-          - id: zero
-            text: None until something is appended
-        correct: one
+          - id: callers
+            text: The caller's list, which the parameter refers to
+          - id: local-copy
+            text: A copy made when `f` was called
+          - id: new-list
+            text: A new list that `xs[0] = 0` creates
+        correct: callers
         explanation: >-
-          The `[]` inside runs once, and `* 2` repeats the reference to it. `grid[0] is grid[1]` is
-          `True`, so a change through either slot shows in both.
-      outer-copy:
-        prompt: What does `list(outer)` copy when `outer` holds lists?
+          A call binds the parameter to the argument object without copying it. A write by index
+          changes that object, so every name on it sees the new value.
+      clear:
+        prompt: How does `xs.clear()` differ from `xs = []`?
         options:
-          - id: shallow
-            text: The outer list, but no inner list
-          - id: deep
-            text: The outer list and every inner list
-          - id: nothing
-            text: Nothing, it returns `outer` itself
-        correct: shallow
+          - id: object-vs-name
+            text: "`clear()` empties the object; `xs = []` only moves the name"
+          - id: same
+            text: They do the same thing
+          - id: clear-copies
+            text: "`clear()` empties a copy, and `xs = []` empties the original"
+        correct: object-vs-name
         explanation: >-
-          `list(...)`, slicing and `.copy()` make a shallow copy: a new outer list that refers to
-          the same inner lists. A shared row stays shared.
+          A method call on `xs` acts on the object `xs` refers to. Assigning to `xs` only changes
+          which object the local name refers to.
+      plus-equals:
+        prompt: For a list, what does `xs += [0]` do?
+        options:
+          - id: extends
+            text: Extends the existing list in place
+          - id: rebinds
+            text: Builds a new list and points `xs` at it, like `xs = xs + [0]`
+          - id: error
+            text: Raises an error, because `+=` is only for numbers
+        correct: extends
+        explanation: >-
+          Lists implement `+=` as an in-place extend, so the caller sees it. `xs = xs + [0]` is
+          different: `+` builds a new list and only the local name moves.
 
   - id: shared-through-call
     heading: What does this print?
@@ -517,3 +625,193 @@ questions:
         explanation: >-
           Passing an argument binds the parameter to the same object. `tags.append` therefore
           changes the caller's list.
+
+  - id: repeated-row-grid
+    heading: What does this print?
+    tags: [python]
+    workedExample: |-
+      Consider `grid = [['-'] * 2] * 3`. Python works out the inner part first, and `* 3` on a list
+      repeats the references it holds without copying the objects.
+
+      1. `['-'] * 2` runs once and builds one row, `['-', '-']`.
+      2. `* 3` then stores a reference to that one row three times, so `grid[0]`, `grid[1]` and
+         `grid[2]` are all the same object.
+      3. So `grid[0][0] = 'x'` writes into that one row, and all three rows show it: `grid` prints
+         `[['x', '-'], ['x', '-'], ['x', '-']]`.
+    prompt: |-
+      A cell of a list refers to an object the same way a name does. `*` on a list repeats what
+      its cells refer to, without copying the objects, so `[0] * 3` is `[0, 0, 0]`. What does this
+      print?
+
+      ```python
+      grid = [[0] * 3] * 2
+      grid[0][1] = 5
+      print(grid)
+      ```
+    options:
+      - id: both-rows
+        text: "`[[0, 5, 0], [0, 5, 0]]`"
+        explanation: >-
+          The outer `* 2` repeats the reference to one inner list, so `grid[0]` and `grid[1]` are
+          the same object. Setting one cell through either row shows up in both.
+      - id: one-row
+        text: "`[[0, 5, 0], [0, 0, 0]]`"
+        explanation: >-
+          That would need two separate rows. `[0] * 3` runs once and builds one row, and `* 2`
+          puts that same row into both cells of `grid`.
+      - id: all-fives
+        text: "`[[5, 5, 5], [5, 5, 5]]`"
+        explanation: >-
+          The assignment replaces a single cell, index 1 of the one row list. The other cells keep
+          their `0`, and the output shows that row twice because both outer cells refer to it.
+      - id: type-error
+        text: Raises `TypeError`
+        explanation: >-
+          Multiplying a list by an integer works for any items, including lists. It repeats the
+          references and never checks what they refer to, so the code runs and prints.
+    correct: both-rows
+    followUps:
+      one-row:
+        prompt: How many row lists does `[[0] * 3] * 2` create?
+        options:
+          - id: two
+            text: Two, because it is repeated twice
+          - id: one
+            text: One, referred to from both outer cells
+          - id: three
+            text: Three, one for each item of `[0] * 3`
+        correct: one
+        explanation: >-
+          `[0] * 3` runs once and makes one row, and the outer `* 2` copies the reference to it,
+          not the row. Here `grid[0] is grid[1]` is `True`.
+      all-fives:
+        prompt: What does `grid[0][1] = 5` change?
+        options:
+          - id: one-cell
+            text: Index 1 of the single row that `grid[0]` refers to
+          - id: whole-row
+            text: Every cell of that row
+          - id: whole-grid
+            text: Every cell of every row
+        correct: one-cell
+        explanation: >-
+          Assigning to an index replaces exactly one cell of one list. Both outer cells refer to
+          that row, so the change appears in both printed rows.
+      type-error:
+        prompt: "`[0] * 3` and `[row] * 2` both repeat references. Why is sharing harmless in the first case and a trap in the second?"
+        options:
+          - id: changeable
+            text: A number can't be changed in place, but a row can, and every reference sees it
+          - id: copies
+            text: Python copies lists when multiplying, so both are safe
+          - id: only-numbers
+            text: Multiplying is only allowed for lists of numbers
+        correct: changeable
+        explanation: >-
+          The multiplication repeats references. Sharing a number is invisible, because a write
+          replaces the cell and never changes the number. Sharing a list shows as soon as one cell
+          changes through any reference to it.
+
+  - id: independent-rows
+    heading: Which builds separate rows?
+    tags: [python]
+    workedExample: |-
+      Consider `board = [['-', '-'] for _ in range(3)]`. A comprehension works out its expression
+      again on every pass of its loop.
+
+      1. `range(3)` gives three passes. On each one, the display `['-', '-']` runs and builds a
+         new row.
+      2. So `board` holds three separate row lists, and `board[0] is board[1]` is `False`.
+      3. So `board[0][0] = 'x'` changes only the first row: `board` prints
+         `[['x', '-'], ['-', '-'], ['-', '-']]`.
+    prompt: |-
+      ```python
+      grid = ...
+      grid[0].append(1)
+      print(grid)
+      ```
+
+      Which right-hand side makes this print `[[1], []]`?
+    options:
+      - id: comprehension
+        text: "`[[] for _ in range(2)]`"
+        explanation: >-
+          The comprehension works out `[]` once per pass, so it builds two separate lists.
+          Appending to `grid[0]` leaves `grid[1]` empty.
+      - id: repeat
+        text: "`[[]] * 2`"
+        explanation: >-
+          `* 2` repeats the reference to the one inner list, so both cells hold the same row and the
+          code prints `[[1], [1]]`.
+      - id: call-once
+        text: "`[list()] * 2`"
+        explanation: >-
+          `list()` builds a new empty list, but it runs only once, before `* 2` repeats the
+          reference. Both cells hold that one list, so this prints `[[1], [1]]`.
+    correct: comprehension
+    followUps:
+      repeat:
+        prompt: How many inner lists does `[[]] * 2` contain?
+        options:
+          - id: one
+            text: One, stored in both cells
+          - id: two
+            text: Two, one per cell
+          - id: zero
+            text: None until something is appended
+        correct: one
+        explanation: >-
+          The `[]` inside runs once, and `* 2` repeats the reference to it. `grid[0] is grid[1]` is
+          `True`, so a change through either cell shows in both.
+      call-once:
+        prompt: How many times does `list()` run in `[list()] * 2`?
+        options:
+          - id: once
+            text: Once, before the list is repeated
+          - id: twice
+            text: Twice, once for each cell
+          - id: never
+            text: Never, since `* 2` copies the cells instead
+        correct: once
+        explanation: >-
+          Python builds `[list()]` first, which calls `list()` one time. `* 2` then repeats the
+          reference to that one list. A comprehension, unlike `* 2`, runs its expression again on
+          each pass.
+
+  - format: tap-cell
+    id: copy-shares-rows
+    heading: Which row changed?
+    tags: [python]
+    workedExample: |-
+      Consider `pair = [[1], [2]]` and `dup = pair[:]`. A slice builds a new list, and each cell of
+      the new list refers to the same object as the cell it was copied from.
+
+      1. `pair[:]` builds a new outer list, so `dup is pair` is `False`.
+      2. The slice copies the references, not the rows, so `dup[0] is pair[0]` is `True`. Both
+         outer lists hold the same two rows.
+      3. So `dup` is a copy that shares its rows: a write inside a row shows through both lists,
+         and replacing a cell of one outer list does not touch the other.
+    prompt: >-
+      `saved = grid[:]` builds a new outer list. The cells show the rows of `saved` right after
+      line 2. Which row of `saved` prints differently once lines 3 and 4 have run? Tap it.
+    code: |
+      grid = [[1, 2], [3, 4], [5, 6]]
+      saved = grid[:]
+      grid[0][0] = 7
+      grid[2] = [0, 0]
+    sequence:
+      kind: array
+      name: saved
+      cells: ['[1, 2]', '[3, 4]', '[5, 6]']
+    correct: 0
+    explanation: >-
+      The slice copied the references, so `saved[0]` and `grid[0]` are one row. Writing into it
+      shows through both, and `saved` prints `[[7, 2], [3, 4], [5, 6]]`. A copy like this shares
+      its rows.
+    misses:
+      - index: 1
+        explanation: Nothing writes into the row at index 1, so it still prints `[3, 4]`.
+      - index: 2
+        explanation: >-
+          `grid[2] = [0, 0]` puts a new list into index 2 of `grid` only. `saved` is a separate
+          outer list, and its index 2 still refers to the old row, `[5, 6]`.
