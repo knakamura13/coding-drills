@@ -14,8 +14,20 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  * - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: the Google OAuth client.
  * - ALLOWED_EMAILS: comma-separated Google accounts that may sign in. Empty
  *   means nobody can, so a missing value fails closed.
- * - ORIGIN: the public origin, for example https://coding-drills.up.railway.app.
- *   Needed because the Google redirect URI and the API's origin check use it.
+ * - ORIGIN: the public origin, https://facetlearning.app. Needed because the
+ *   Google redirect URI and the API's origin check use it, so sign-in and sync
+ *   work only on this host.
+ *
+ * The other hosts (www.facetlearning.app and coding-drills.up.railway.app)
+ * redirect to the apex with 308 edge rules set in the dashboard (service →
+ * Networking → Edge rules). Neither this file nor the CLI manages edge rules.
+ * They run before the app, so they also cover prerendered pages, which
+ * adapter-node serves before `hooks.server.ts` runs.
+ *
+ * Custom domains are listed on the app service so an apply keeps them, but this
+ * file cannot create one. Add a new domain with `railway domain <name> --port
+ * 8080` (the port the Dockerfile pins), which prints the DNS records
+ * to set at the registrar (Namecheap), then list it here.
  *
  * Railway never reads this file during a deploy. Editing or merging it changes
  * nothing live until `railway config apply` runs, so run the read-only
@@ -60,6 +72,7 @@ export default defineRailway(() => {
 				'/.dockerignore'
 			]
 		},
+		domains: ['facetlearning.app', 'www.facetlearning.app'],
 		deploy: {
 			healthcheckPath: '/healthz',
 			healthcheckTimeout: 30,

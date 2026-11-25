@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRailwayContext, project, type ServiceNode } from 'railway/iac';
 import { describe, expect, it } from 'vitest';
@@ -52,6 +52,20 @@ describe('.railway/railway.ts', () => {
 		const web = appOf((await evaluate()).resources);
 		expect(web.build?.builder).toBe('DOCKERFILE');
 		expect(existsSync(join(root, web.build?.dockerfilePath ?? 'missing'))).toBe(true);
+	});
+
+	it('serves the custom domain and its www name', async () => {
+		const web = appOf((await evaluate()).resources);
+		// Each domain routes to the port the Dockerfile pins, or it answers 502.
+		const port = Number(readFileSync(join(root, 'Dockerfile'), 'utf8').match(/^ENV PORT=(\d+)$/m)?.[1]);
+		expect(port).toBe(8080);
+		expect(web.networking?.customDomains).toEqual({
+			'facetlearning.app': { port },
+			'www.facetlearning.app': { port }
+		});
+		// The generated *.up.railway.app domain lives outside this file; listing
+		// service domains here would hand it to the apply.
+		expect(web.networking?.serviceDomains).toBeUndefined();
 	});
 
 	it('health-checks a route that exists', async () => {

@@ -1,5 +1,7 @@
 # Built by Railway (see .railway/railway.ts). SvelteKit with adapter-node:
 # `pnpm build` writes ./build and `node build/index.js` serves it on $PORT.
+# PORT is pinned to 8080, Railway's default, because the custom domains in
+# .railway/railway.ts route to that port.
 
 FROM node:22-alpine AS build
 
@@ -20,6 +22,7 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=8080
 # Behind Railway's proxy, derive the request origin from the forwarded headers.
 ENV PROTOCOL_HEADER=x-forwarded-proto
 ENV HOST_HEADER=x-forwarded-host
@@ -30,5 +33,5 @@ COPY --from=build /app/build ./build
 COPY --from=build /app/package.json ./
 
 USER node
-EXPOSE 3000
+EXPOSE 8080
 CMD ["node", "build/index.js"]
