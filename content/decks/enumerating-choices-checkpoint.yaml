@@ -1,5 +1,5 @@
 id: enumerating-choices-checkpoint
-title: "Enumerating choices: checkpoint"
+title: "Backtracking: subsets and orderings: checkpoint"
 description: Keep every valid output of a search you have not seen, and count what the output costs. Each item combines listing leaves, telling repeated siblings apart, and justifying a prune.
 heading: What does the search return?
 
@@ -97,7 +97,8 @@ questions:
     tags: [backtracking, complexity]
     prompt: |-
       This search records every ordering of `n` distinct items. Each call loops over all `n`
-      indexes and skips the used ones, and each leaf records a copy of `path`.
+      indices and skips the used ones, and each leaf records a copy of `path`. A copy writes each
+      item of the list it copies, so it costs one step per item.
 
       ```python
       def explore():
@@ -117,23 +118,25 @@ questions:
       Counting the loops and the copies, what is the tightest bound on the total running time?
     options:
       - id: n-n-factorial
-        text: O(n × n!), since n! leaves each copy n items
+        text: O(n × n!)
         explanation: >-
           There are n! leaves and each copy writes n items, so the output alone is n × n! items
           (96 for n = 4). The tree has about e × n! calls (65 for n = 4), and each call above the
           leaves loops n times (164 passes in all), which is the same order.
       - id: n-factorial
-        text: O(n!), since n! leaves are each recorded once
+        text: O(n!)
         explanation: >-
-          A copy is not constant time. Each one writes n items.
+          n! counts the leaves, but a copy is not one step. Each one writes n items.
       - id: n-to-n
-        text: O(n^n), since each of n levels tries n items
+        text: O(n^n)
         explanation: >-
-          O(n^n) is a valid but loose upper bound. `used` leaves fewer choices at each level.
-      - id: n-two-to-n
-        text: O(n × 2^n), since each item is placed or not
+          O(n^n) is a valid but loose upper bound, as if each of n levels could try every item.
+          `used` leaves fewer choices at each level.
+      - id: n-squared
+        text: O(n²)
         explanation: >-
-          Placing each item or not is the subset tree. An ordering places every item.
+          n² would be n levels of n passes each, one call per level. Each level holds many calls:
+          the second level alone has n of them, and the leaves number n!.
     correct: n-n-factorial
     followUps:
       n-factorial:
@@ -149,7 +152,7 @@ questions:
         explanation: >-
           Each leaf holds all n items, so recording n! leaves costs n × n! by itself.
       n-to-n:
-        prompt: With `path` holding `d` items, how many indexes can the next level take?
+        prompt: With `path` holding `d` items, how many indices can the next level take?
         options:
           - id: n-minus-d
             text: n − d, the unused ones
@@ -161,19 +164,19 @@ questions:
         explanation: >-
           The levels offer n, n − 1, ..., 1 choices, so there are n! leaves, not n^n. For n = 8
           that is 40,320 leaves against 16,777,216.
-      n-two-to-n:
-        prompt: For n = 3, how many leaves does the ordering search have?
+      n-squared:
+        prompt: For n = 4, how many calls does the level below the top call hold?
         options:
-          - id: six
-            text: 6, one per order of the three items
-          - id: eight
-            text: 8, one per subset
+          - id: four
+            text: 4, one for each item the top call can place first
+          - id: one
+            text: 1, since each level is one call
           - id: three
-            text: 3, one per item
-        correct: six
+            text: 3, since one item is already used
+        correct: four
         explanation: >-
-          Each leaf is a full ordering, and three items have 3! = 6 of them. n! grows much faster
-          than 2^n.
+          The top call's loop places each of the 4 items first, and each choice makes its own call.
+          The levels below hold 12, 24 and 24 calls, so the work grows with n!, not n².
 
   - id: checkpoint-unsorted-lost-set
     format: tap-cell
@@ -238,7 +241,7 @@ questions:
               path.pop()
       ```
 
-      **B** runs the plain take-or-skip search over all 20 indexes and adds `tuple(path)` to a set
+      **B** runs the plain take-or-skip search over all 20 indices and adds `tuple(path)` to a set
       at each leaf. Which statement is right?
     options:
       - id: b-leaves
@@ -272,7 +275,7 @@ questions:
             text: 20, one per item
         correct: two-to-twenty
         explanation: >-
-          Each of the 20 indexes is taken or skipped, so there are 2^20 = 1,048,576 leaves. Equal
+          Each of the 20 indices is taken or skipped, so there are 2^20 = 1,048,576 leaves. Equal
           values make many of them hold the same list, but the search still visits each one.
       a-loses:
         prompt: In the call holding `[7]`, is the first item its loop tries skipped?
@@ -300,3 +303,271 @@ questions:
         explanation: >-
           Each insert is cheap, but B makes one per leaf, each after building a tuple of up to 20
           items. A records 21 lists in total.
+
+  - id: checkpoint-subset-copies
+    heading: What is the complexity?
+    tags: [backtracking, complexity]
+    prompt: >-
+      A routine takes `n` distinct items and decides for each one, in turn, whether to include it or
+      leave it out. After all `n` decisions it records a copy of the current subset with `path[:]`.
+      A copy writes each item of the list it copies, so it costs one step per item. Each include
+      and each undo is O(1), and the results are not sorted. Counting the cost of those copies,
+      what is the tightest bound on the total running time?
+    options:
+      - id: two-to-n
+        text: O(2^n), because there are 2^n subsets and each one is recorded in constant time
+        explanation: >-
+          There are 2^n subsets, but recording one is not constant. Copying a subset costs time in
+          proportion to its length, and the lengths add up to n × 2^(n − 1) items. For n = 4 that is 32
+          items across 16 subsets, so the total is more than O(2^n).
+      - id: n-two-to-n
+        text: O(n × 2^n), because the 2^n finished subsets are copied at up to n items each
+        explanation: >-
+          The tree has 2^(n+1) - 1 calls (31 for n = 4), and those cost O(2^n) in total. The copies
+          cost more: each item is in exactly half the subsets, so about n × 2^(n − 1) items are copied
+          (32 for n = 4). The output alone already holds that many items, so the bound is tight.
+      - id: n-squared
+        text: O(n²), because the recursion is n levels deep and each level does O(n) work
+        explanation: >-
+          There are n levels below the top call, but each level holds twice as many calls as the
+          one above, so the bottom level alone has 2^n of them. The output has 2^n lists, which no O(n²) routine
+          could write once n passes 4.
+      - id: n-factorial
+        text: O(n!), because each branch chooses among the items that remain, as in orderings
+        explanation: >-
+          Each item has two options, include or leave out, which gives 2^n leaves. The n! count comes
+          from ordering items, a different search. n! is a valid but loose upper bound here: at n = 10
+          it is 3,628,800 against 10,240 for n × 2^n.
+    correct: n-two-to-n
+    followUps:
+      two-to-n:
+        prompt: >-
+          For n = 4, 16 subsets are recorded. How many items are copied in total across all of them?
+        options:
+          - id: sixteen
+            text: 16, one per subset, so copying adds only a constant amount
+          - id: thirty-two
+            text: 32, since subsets average two items each (n × 2^(n − 1))
+          - id: sixty-four
+            text: 64, because each of the 16 subsets has all four items
+        correct: thirty-two
+        explanation: >-
+          Each of the 4 items appears in exactly 8 of the 16 subsets, which is 4 × 8 = 32 copied items.
+          A copy takes time in proportion to its length, so the copies cost O(n × 2^n) in total.
+      n-squared:
+        prompt: >-
+          Count the top call as level 0. How many calls does level `d` of the include/exclude tree hold?
+        options:
+          - id: doubles
+            text: 2^d, because each call makes two calls
+          - id: d-calls
+            text: d, one call for each level above it
+          - id: n-calls
+            text: n, because every level looks at all n items
+        correct: doubles
+        explanation: >-
+          Each call makes two, so level `d` holds 2^d calls and the last level holds 2^n. Having n
+          levels does not mean n calls per level.
+      n-factorial:
+        prompt: >-
+          For n = 4, how many finished subsets does the include/exclude tree produce?
+        options:
+          - id: sixteen
+            text: 16, since each of the four items has two options
+          - id: twenty-four
+            text: 24, since the items can be ordered in 4! ways
+          - id: eight
+            text: 8, since each item adds two more subsets
+        correct: sixteen
+        explanation: >-
+          Two options for each of four items gives 2 × 2 × 2 × 2 = 16 leaves. The 4! = 24 count applies
+          when the order of the chosen items matters, as in orderings, which is a different search.
+
+  - id: checkpoint-debug-skip-break
+    heading: Which call does it fail on?
+    tags: [backtracking, sorting]
+    prompt: |-
+      A suggested `subsets_once(nums)` should return each distinct subset of `nums` once. One
+      detail is slightly off:
+
+      ```python
+      def subsets_once(nums):
+          nums = sorted(nums)
+          out, path = [], []
+          def explore(start):
+              out.append(path[:])
+              for i in range(start, len(nums)):
+                  if i > start and nums[i] == nums[i - 1]:
+                      break
+                  path.append(nums[i])
+                  explore(i + 1)
+                  path.pop()
+          explore(0)
+          return out
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: pair-first
+        text: "`subsets_once([4, 4, 6])`"
+        explanation: >-
+          The top loop meets the second 4 at `i = 1`, and `break` ends the loop, so the 6 never
+          opens a branch. The call returns `[[], [4], [4, 4], [4, 4, 6], [4, 6]]` and loses `[6]`.
+          The skip should be `continue`, which passes over the one repeat and goes on to the
+          values after it.
+      - id: pair-last
+        text: "`subsets_once([5, 7, 7])`"
+        explanation: >-
+          Each loop that breaks does so on the last 7, and nothing after it is lost. The call
+          returns all 6 distinct subsets: `[]`, `[5]`, `[5, 7]`, `[5, 7, 7]`, `[7]` and `[7, 7]`.
+      - id: all-equal
+        text: "`subsets_once([3, 3, 3])`"
+        explanation: >-
+          Every value after a break is another 3, and the branch of the first 3 in that loop
+          already records every subset they would start. The call returns `[]`, `[3]`, `[3, 3]`
+          and `[3, 3, 3]`, which is right.
+      - id: distinct
+        text: "`subsets_once([6, 9])`"
+        explanation: >-
+          No value equals its left neighbour, so the `break` never runs. The call returns `[]`,
+          `[6]`, `[6, 9]` and `[9]`, which is right.
+    correct: pair-first
+    followUps:
+      pair-last:
+        prompt: In `subsets_once([5, 7, 7])`, the top loop breaks at index 2. Which values come after it?
+        options:
+          - id: none
+            text: None, since the second 7 is the last value
+          - id: five
+            text: The 5, which the break skips
+          - id: sevens
+            text: Both 7s
+        correct: none
+        explanation: >-
+          `break` loses only the values after the repeat. When the repeat is last, it does what
+          `continue` would.
+      all-equal:
+        prompt: >-
+          In `subsets_once([3, 3, 3])`, the top loop breaks at index 1. What would a branch opened
+          by that 3 have recorded?
+        options:
+          - id: repeats
+            text: "`[3]` and `[3, 3]`, which the first 3's branch already recorded"
+          - id: lost
+            text: "`[3, 3, 3]`, which is now lost"
+          - id: nothing
+            text: Nothing, since a branch never takes a 3 twice
+        correct: repeats
+        explanation: >-
+          With equal values only, every branch after the first would repeat it. Cutting all of
+          them loses nothing, so the slip shows only when a different value follows a repeat.
+      distinct:
+        prompt: When does the `break` line run?
+        options:
+          - id: equal-neighbour
+            text: Only on a pass after the first whose value equals its left neighbour
+          - id: every-later
+            text: On every pass after the loop's first
+          - id: larger
+            text: Whenever a value is larger than the one before it
+        correct: equal-neighbour
+        explanation: >-
+          Both parts of the `if` must hold. With no equal values side by side, the slipped line
+          never runs, and the search records every subset once.
+
+  - id: checkpoint-ordering-repeats
+    heading: Which skip test dedupes?
+    tags: [backtracking, recursion, sorting]
+    prompt: |-
+      The search below builds every ordering of `nums`, using the array `used` so that no index is
+      taken twice. `nums` may contain duplicates, for example `[5, 8, 5]`, and order matters, so
+      `[5, 8, 5]` and `[8, 5, 5]` are different results. Each distinct ordering must be recorded once.
+
+      ```python
+      # step A runs here, before the search
+      def explore():
+          if len(path) == len(nums):
+              out.append(path[:])
+              return
+          for i in range(len(nums)):
+              if used[i]:
+                  continue
+              # step B runs here
+              used[i] = True
+              path.append(nums[i])
+              explore()
+              path.pop()
+              used[i] = False
+      ```
+
+      Which choice of steps A and B gives each distinct ordering exactly once for every input?
+    options:
+      - id: skip-any-equal
+        text: "Sort `nums`; B skips `i` when `i > 0 and nums[i] == nums[i - 1]`, used or not"
+        explanation: >-
+          This skips the second 5 every time, even when the first 5 is already in the path and the
+          second one is needed for a later position. No path can hold both 5s, so `[5, 8, 5]` returns
+          `[]`. The test also has to check whether the left neighbour is currently in the path.
+      - id: unsorted
+        text: "Do not sort; B skips `i` when `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+        explanation: >-
+          The test compares an item only with the one just before it. In the unsorted `[5, 8, 5]` the
+          two 5s are not neighbours, so nothing is skipped and 6 paths are recorded, three of them
+          repeats. Sorting first puts equal values side by side.
+      - id: by-value
+        text: "Do not sort; B skips `i` when the value `nums[i]` is already in `path`"
+        explanation: >-
+          Testing by value refuses the second 5 whenever one 5 is in the path, so no path reaches
+          length 3 and `[5, 8, 5]` returns `[]`. It would work only on distinct values, where `used`
+          already does the job.
+      - id: sorted-used-check
+        text: "Sort `nums`; B skips `i` if `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+        explanation: >-
+          Sorted, `[5, 8, 5]` becomes `[5, 5, 8]`. The test `not used[i - 1]` means the equal item to the
+          left is not in the path, so it was already tried at this position and its copy would repeat
+          the same values. The result is `[[5, 5, 8], [5, 8, 5], [8, 5, 5]]`.
+    correct: sorted-used-check
+    followUps:
+      skip-any-equal:
+        prompt: >-
+          In sorted `[5, 5, 8]` the path already holds the first 5. What does a test that ignores
+          `used[i - 1]` do to the second 5?
+        options:
+          - id: always-skipped
+            text: It skips the second 5 here too, so no path can ever hold both 5s
+          - id: allowed-here
+            text: It allows the second 5 here, because the first 5 is already placed
+          - id: after-eight
+            text: It allows the second 5 only after the 8 has been placed
+        correct: always-skipped
+        explanation: >-
+          Without the `used` check the rule fires for the second 5 wherever it appears, including when
+          the first 5 sits earlier in the path. Every full-length path needs both 5s, so none survive.
+      unsorted:
+        prompt: >-
+          In unsorted `[5, 8, 5]`, what does the test at index 2 compare `nums[2]` with?
+        options:
+          - id: eight
+            text: "`nums[1]`, which is 8, so the two 5s are never compared"
+          - id: first-five
+            text: "`nums[0]`, which is 5, so the duplicate is detected"
+          - id: whole-path
+            text: Every value in the path, so it finds the earlier 5
+        correct: eight
+        explanation: >-
+          The test looks only at index `i - 1`. When equal values are not adjacent it never sees that a
+          value repeats, and sorting is what makes duplicates neighbours.
+      by-value:
+        prompt: >-
+          The path is `[5]` and the search is at the other 5. What does `nums[i] in path` say?
+        options:
+          - id: is-present
+            text: True, so the second 5 is skipped and no full path holds both 5s
+          - id: not-present
+            text: False, because the second 5 is at a different index than the first
+          - id: depends
+            text: It depends on whether the input was sorted first
+        correct: is-present
+        explanation: >-
+          The test compares values, and the value 5 is already present. The array `used` compares
+          indices instead, which is why it keeps duplicate values usable as separate items.

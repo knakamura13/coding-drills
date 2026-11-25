@@ -1,6 +1,6 @@
 id: enumerating-choices
-title: Enumerating choices
-description: List what a search records, tell a repeated value from a repeated sibling, and say which assumption makes a prune safe. Each card asks for one decision, with a worked example on hand.
+title: "Backtracking: subsets and orderings"
+description: List what a search records, count its lists, tell a repeated value from a repeated sibling, and say which assumption makes a prune safe. Each card asks for one decision, with a worked example on hand.
 heading: What does the search record?
 
 questions:
@@ -9,22 +9,23 @@ questions:
     heading: Trace the leaves
     tags: [backtracking, recursion]
     workedExample: |-
-      Consider `items = [6, 2, 9]` and the `pick` search, which records `path` once it holds 2
-      items. After taking index `j`, a call runs `pick(j + 1)`, so the call below loops only over
-      later indexes.
+      A search's output is the leaves that record, so this path asks which leaves a search
+      reaches, which repeat, and which branches it can cut. `pick(start)` chooses 2 of
+      `items = [6, 2, 9]`: its loop runs `j` from `start`, takes `items[j]` and calls
+      `pick(j + 1)`, and a call holding 2 items records them.
 
-      1. `pick(0)` takes the 6 at index 0 and calls `pick(1)`. That loop covers indexes 1 and 2, so
-         it records `[6, 2]` and then `[6, 9]`.
-      2. `pick(0)` pops the 6, moves `j` to index 1 and takes the 2. It calls `pick(2)`, whose loop
-         covers only index 2, so it records `[2, 9]`.
-      3. Since every call looks only past the index just taken, each pair of indexes comes out once,
-         in index order. The search records 3 leaves, `[6, 2]`, `[6, 9]` and `[2, 9]`, and never
-         `[9, 6]`.
+      1. `pick(0)` takes the 6 and calls `pick(1)`, whose loop covers indices 1 and 2. Its two
+         calls are leaves that record `[6, 2]` and then `[6, 9]`.
+      2. `pick(0)` pops the 6 and takes the 2. `pick(2)` loops only over index 2, so its one call
+         records `[2, 9]`.
+      3. Each call looks only past the index just taken, so each pair of indices comes out once,
+         in index order: 3 leaves, and never `[9, 6]`.
     prompt: >-
-      Now `items`
-      is `[4, 1, 7, 3]`. `first` is `j` in `pick(0)`, and `second` is `j` in the call one level
-      down. That call has recorded `[4, 1]`, `[4, 7]` and `[4, 3]`, and its loop has run out.
-      The arrows move when a step is revealed. Predict each step before it is shown.
+      `pick(start)` records every pair from `items = [4, 1, 7, 3]`: its loop takes `items[j]` and
+      calls `pick(j + 1)`, and a call holding 2 items records a copy of `path`. `first` is `j` in
+      `pick(0)`, and `second` is `j` in the call one level down. That call has recorded `[4, 1]`,
+      `[4, 7]` and `[4, 3]`, and its loop has run out. The arrows move when a step is revealed.
+      Predict each step before it is shown.
     code: |
       def pick(start):
           if len(path) == 2:
@@ -104,7 +105,7 @@ questions:
             text: Nothing
             explanation: >-
               `range(4, 4)` is empty, and `path` holds one item, not two. So the 3 starts no pair,
-              and the search ends with 6 leaves, one per pair of indexes: 4 × 3 / 2 = 6.
+              and the search ends with 6 leaves, one per pair of indices: 4 × 3 / 2 = 6.
           - id: single
             text: "`[3]`"
             explanation: >-
@@ -119,18 +120,20 @@ questions:
         also:
           - { name: first, at: 3 }
 
-  - id: choose-three-copies
-    heading: How many items are copied?
-    tags: [backtracking, complexity]
+  - id: count-three-of-five
+    heading: How many lists?
+    tags: [backtracking, recursion]
     workedExample: |-
-      Consider choosing 2 of `items = [x, y, z]` with the `pick` loop, which records `path[:]` when
-      `path` holds 2 items. A slice copies every item in the list.
+      Consider choosing 3 of `items = [2, 4, 6, 8]` with the `pick` loop, which records `path` once
+      it holds 3 items. Each call loops only past the index just taken, so the items in a list are
+      in index order, and its first item decides which items can follow.
 
-      1. Each call looks only past the index it just took, so each pair is recorded once: `[x, y]`,
-         `[x, z]` and `[y, z]`. That is 3 lists, the number of ways to choose 2 of 3,
-         `3 × 2 / 2 = 3`.
-      2. Each of those lists holds 2 items, so each `path[:]` writes 2 items.
-      3. So the copies write `3 × 2 = 6` items in all.
+      1. A list that starts at index 0 picks its other 2 items from indices 1 to 3. That gives
+         `[2, 4, 6]`, `[2, 4, 8]` and `[2, 6, 8]`, 3 lists.
+      2. A list that starts at index 1 picks 2 items from indices 2 and 3, so it can only be
+         `[4, 6, 8]`, 1 list. Index 2 has 1 item after it and index 3 has none, too few to finish a
+         list of 3, so they start no list.
+      3. So the search records `3 + 1 = 4` lists.
     prompt: |-
       ```python
       def pick(start):
@@ -143,71 +146,171 @@ questions:
               path.pop()
       ```
 
-      Now the search records lists of 3, and `items` holds 5 distinct values. How many items do
-      the copies write in total?
+      This search records lists of 3 from `items = [5, 1, 8, 3, 6]`, starting from `pick(0)`. How
+      many lists does it record?
     options:
-      - id: thirty
-        text: "30"
-        explanation: >-
-          There are 10 ways to choose 3 of 5 (5 × 4 × 3 / 3! = 10), and each copy writes 3 items,
-          so 30. The output itself holds those 30 items, so no search that returns it can copy
-          fewer.
       - id: ten
         text: "10"
         explanation: >-
-          10 is the number of lists recorded. A copy costs one step per item it copies, and each
-          list holds 3, so the copies write 30 items.
-      - id: one-eighty
-        text: "180"
+          Count by the first item. Index 0 leads 6 lists, one for each pair from the 4 items after
+          it (3 + 2 + 1). Index 1 leads 3, and index 2 leads only `[8, 3, 6]`. Indices 3 and 4 have
+          too few items after them. That makes 6 + 3 + 1 = 10.
+      - id: sixty
+        text: "60"
         explanation: >-
-          180 counts every ordering of each triple, 60 lists of 3. Each call looks only past the
-          item it just took, so a set of three is recorded in one order only.
-      - id: eighty
-        text: "80"
+          5 × 4 × 3 = 60 counts a first, second and third pick in every order, so each set of three
+          is counted 6 times, once per order. This search takes items in index order only, so it
+          records each set of three a single time.
+      - id: nine
+        text: "9"
         explanation: >-
-          80 is what copying every subset of 5 items would write. This search records only when
-          `path` holds exactly 3 items.
-    correct: thirty
+          9 leaves out the list that starts at index 2. The 8 still has two items after it, so
+          `[8, 3, 6]` is recorded. Only indices 3 and 4 start no list.
+      - id: six
+        text: "6"
+        explanation: >-
+          6 counts only the lists that start with the 5. Once they are recorded, the top loop moves
+          on: the 1 leads 3 more lists and the 8 leads 1.
+    correct: ten
     followUps:
-      ten:
-        prompt: The search records 10 lists. What does one `path[:]` cost here?
-        options:
-          - id: three
-            text: 3 item copies, one per item in the list
-          - id: one
-            text: 1 step, since a slice is a single operation
-          - id: five
-            text: 5 steps, one per input item
-        correct: three
-        explanation: >-
-          A slice builds a new list and copies each item into it, so its cost grows with the
-          list's length. Ten copies of 3 items write 30 items.
-      one-eighty:
-        prompt: Does this search record both `[x, y, z]` and `[y, x, z]`?
+      sixty:
+        prompt: Does this search record both `[5, 1, 8]` and `[1, 5, 8]`?
         options:
           - id: once
             text: No, the call below starts after `j`, so each set comes out once
           - id: both
-            text: Yes, every ordering of the three items is a separate leaf
+            text: Yes, every order of the three items is a separate leaf
           - id: equal-only
             text: Only when two of the items are equal
         correct: once
         explanation: >-
-          After taking index `j`, the next call only looks at later indexes. So the items in each
-          list are in index order, and no set is recorded twice.
-      eighty:
-        prompt: Which lists does this search record?
+          After taking index `j`, the next call looks only at later indices. So the items in each
+          list are in index order, and the 5 can never follow the 1.
+      nine:
+        prompt: With `path == [8]`, which items can the call below take?
         options:
-          - id: exactly-three
-            text: Only lists of exactly 3 items
-          - id: every-subset
-            text: Every subset, from `[]` up to all 5 items
-          - id: up-to-three
-            text: Every list of 3 items or fewer
-        correct: exactly-three
+          - id: three-six
+            text: The 3 and the 6, enough to finish `[8, 3, 6]`
+          - id: none
+            text: None, since the 8 is too close to the end
+          - id: six-only
+            text: Only the 6, the last item
+        correct: three-six
         explanation: >-
-          The record line runs only when `len(path) == 3`. A call holding fewer items keeps
-          choosing, and a call that runs out of items records nothing.
+          The call below is `pick(3)`, which loops over indices 3 and 4. A list of 3 needs two more
+          items after its first, and the 8 has exactly two.
+      six:
+        prompt: "`pick(0)` has recorded every list that starts with the 5. What does its loop do next?"
+        options:
+          - id: next-index
+            text: It moves `j` to index 1 and takes the 1
+          - id: ends
+            text: It ends, since a list of 3 is already recorded
+          - id: restarts
+            text: It starts over at index 0
+        correct: next-index
+        explanation: >-
+          The top loop runs over every index. Each later first item leads its own lists, as long as
+          at least two items come after it.
+
+  - id: orderings-count
+    heading: How many orderings?
+    tags: [backtracking, recursion]
+    workedExample: |-
+      Consider the ordering search over `items = "pq"`. `used[i]` is `True` while `items[i]` is in
+      `path`, and a call records once `path` holds every item.
+
+      1. The top call has 2 unused items. It takes the p first, and the call below skips the p,
+         since `used[0]` is `True`, so it can only place the q. That records `pq`.
+      2. The top call then pops the p, sets `used[0]` back to `False` and takes the q. The call
+         below can only place the p, which records `qp`.
+      3. The levels offered 2 choices and then 1, so the search records `2 × 1 = 2` strings.
+    prompt: |-
+      An ordering of a list uses every item once, in some order. This search records every ordering
+      of `items = "xyz"`, starting with `used = [False, False, False]`. `used[i]` is `True` while
+      `items[i]` is in `path`, so each call skips the items already placed. The product
+      `n × (n − 1) × ... × 2 × 1` is written `n!`, said "n factorial": `4!` is
+      `4 × 3 × 2 × 1 = 24`.
+
+      ```python
+      def explore():
+          if len(path) == len(items):
+              out.append("".join(path))
+              return
+          for i in range(len(items)):
+              if used[i]:
+                  continue
+              used[i] = True
+              path.append(items[i])
+              explore()
+              path.pop()
+              used[i] = False
+      ```
+
+      How many strings does the search record?
+    options:
+      - id: six
+        text: "6"
+        explanation: >-
+          The top loop has 3 items to start with. The call one level down skips the item in
+          `path`, so it has 2, and the last level has 1: 3 × 2 × 1 = 6, which is `3!`. The strings
+          are `xyz`, `xzy`, `yxz`, `yzx`, `zxy` and `zyx`. In general, `n` distinct items have `n!`
+          orderings.
+      - id: twenty-seven
+        text: "27"
+        explanation: >-
+          27 is 3 × 3 × 3, as if every level could take any item. `used` skips the items already
+          in `path`, so a string such as `xxy` is never built.
+      - id: eight
+        text: "8"
+        explanation: >-
+          8 is 2 × 2 × 2, the count of ways to take or skip each item. Every recorded string uses
+          all 3 items, and only their order changes.
+      - id: three
+        text: "3"
+        explanation: >-
+          Each first letter leads more than one string. After the x, the call below can place the
+          y or the z next, so the x leads `xyz` and `xzy`.
+    correct: six
+    followUps:
+      twenty-seven:
+        prompt: With `path == ['x']`, which items can the next call place?
+        options:
+          - id: y-and-z
+            text: The y and the z, since `used[0]` skips the x
+          - id: all-three
+            text: The x, the y and the z
+          - id: y-only
+            text: Only the y, the next item in order
+        correct: y-and-z
+        explanation: >-
+          Each level skips the items already in `path`, so the levels offer 3, 2 and 1 choices.
+      eight:
+        prompt: How many items does every recorded string hold?
+        options:
+          - id: all-three
+            text: All 3, since a call records only once `path` holds every item
+          - id: any
+            text: Anywhere from 0 to 3
+          - id: two
+            text: 2, on average
+        correct: all-three
+        explanation: >-
+          The record line runs only when `len(path) == len(items)`. The strings differ in order,
+          not in which items they hold.
+      three:
+        prompt: With `path == ['x']`, how many strings does that branch record?
+        options:
+          - id: two
+            text: 2, `xyz` and `xzy`
+          - id: one
+            text: 1, `xyz`
+          - id: three
+            text: 3, one per item
+        correct: two
+        explanation: >-
+          The call below has 2 unused items to place next, and each choice leaves 1 for the last
+          level. So each first letter leads 2 × 1 = 2 strings.
 
   - id: equal-values-distinct-subsets
     heading: How many different lists?
@@ -216,13 +319,17 @@ questions:
       Consider the take-or-skip search over `items = [3, 3]`. At each index it first takes the item
       and then skips it, and it records `path` after the last index.
 
-      1. Two indexes with two choices each give `2 × 2 = 4` leaves: take both, take index 0 only,
+      1. Two indices with two choices each give `2 × 2 = 4` leaves: take both, take index 0 only,
          take index 1 only, take neither.
       2. Those leaves record `[3, 3]`, `[3]`, `[3]` and `[]`. Taking index 0 only and taking index 1
          only both hold one 3, so both record the list `[3]`.
       3. So the 4 leaves hold 3 different lists: `[3, 3]`, `[3]` and `[]`. A list here is set by how
-         many 3s it holds, not by which indexes it took.
+         many 3s it holds, not by which indices it took.
     prompt: |-
+      A subset of a list is any choice of its items, from none to all of them. This take-or-skip
+      search records one list for each choice of indices, so `n` items give `2 ** n` lists, a count
+      that grows as O(2^n).
+
       ```python
       def explore(i):
           if i == len(items):
@@ -234,8 +341,8 @@ questions:
           explore(i + 1)
       ```
 
-      Now `items` is `[1, 2, 2]`, and the search records 8 lists. How many different lists are
-      among them?
+      `items` is `[1, 2, 2]`, so the search records `2 ** 3 = 8` lists. How many different lists
+      are among them?
     options:
       - id: six
         text: "6"
@@ -245,7 +352,7 @@ questions:
       - id: eight
         text: "8"
         explanation: >-
-          8 counts choices of indexes. Taking index 1 or index 2 gives the same value, so `[2]`
+          8 counts choices of indices. Taking index 1 or index 2 gives the same value, so `[2]`
           and `[1, 2]` each appear twice.
       - id: four
         text: "4"
@@ -301,6 +408,51 @@ questions:
           Each list that holds exactly one 2 can take it from index 1 or index 2. With or without
           the 1, that gives two repeats.
 
+  - id: skip-repeat-sibling
+    format: tap-cell
+    heading: Which index is skipped?
+    tags: [backtracking, sorting]
+    workedExample: |-
+      Consider sorted `nums = [1, 3, 3]` and `explore(0)`, the top call of a search that records
+      `path` at every call and skips index `i` when `i > start` and `nums[i] == nums[i - 1]`.
+
+      1. At `i = 0` the 1 has no left neighbour, so the loop takes it. At `i = 1` the 3 differs from
+         the 1 before it, so the loop takes it too, and that branch records `[3]` and `[3, 3]`.
+      2. At `i = 2`, `2 > 0` holds and `nums[2] == nums[1]`, so the loop skips the second 3.
+      3. A branch opened by the second 3 would record `[3]` again. Since the list is sorted, equal
+         values sit side by side, so comparing each value with its left neighbour finds the repeat.
+    prompt: >-
+      This search records `path` at every call, so each call records one subset. `nums` is sorted,
+      so equal values sit side by side. Tap the index that the loop of the top call, `explore(0)`,
+      skips.
+    code: |
+      def explore(start):
+          out.append(path[:])
+          for i in range(start, len(nums)):
+              if i > start and nums[i] == nums[i - 1]:
+                  continue
+              path.append(nums[i])
+              explore(i + 1)
+              path.pop()
+    sequence:
+      kind: array
+      name: nums
+      cells: [2, 2, 5]
+    correct: 1
+    explanation: >-
+      At `i = 1`, `1 > 0` holds and `nums[1] == nums[0]`, so `continue` skips it. The first 2's
+      branch already recorded `[2]`, `[2, 2]`, `[2, 2, 5]` and `[2, 5]`. A branch opened by the
+      second 2 would record `[2]` and `[2, 5]` again.
+    misses:
+      - index: 0
+        explanation: >-
+          `i = 0` is the loop's first pass, so `i > start` is false. The first 2 opens the branch
+          that records every subset starting with a 2.
+      - index: 2
+        explanation: >-
+          The 5's left neighbour is a 2, so `nums[2] == nums[1]` is false and the loop takes it.
+          Its branch records `[5]`, which no earlier branch did.
+
   - id: repeat-down-the-path
     format: tap-cell
     heading: Which item comes next?
@@ -317,8 +469,8 @@ questions:
       3. So that call takes the second 3, and `[3, 3]` is recorded. The skip blocks a repeat beside
          it in one loop, never a repeat further down one path.
     prompt: >-
-      Now `nums` is `[1, 2, 2, 2, 5]`, and `explore(2)` runs with `path == [1, 2]`.
-      Tap the item its loop takes first.
+      This search records each distinct subset of a sorted list once. `nums` is `[1, 2, 2, 2, 5]`,
+      and `explore(2)` runs with `path == [1, 2]`. Tap the item its loop takes first.
     code: |
       def explore(start):
           out.append(path[:])
@@ -336,7 +488,7 @@ questions:
     explanation: >-
       `i == start` on the first pass, so `i > start` is false and the 2 at index 2 is taken.
       `path` becomes `[1, 2, 2]`. The rule only stops a value from opening a second sibling branch
-      at the same depth. A repeat further down one path is a different subset.
+      in the same loop. A repeat further down one path is a different subset.
     misses:
       - index: 0
         explanation: >-
@@ -348,7 +500,7 @@ questions:
       - index: 3
         explanation: >-
           Index 3 is skipped in this loop, but only after index 2 has had its turn. It is a second
-          2 at the same depth, so it would start the same lists again.
+          2 in the same loop, so it would start the same lists again.
       - index: 4
         explanation: >-
           Jumping to the 5 means skipping every 2, as a test of `i > 0` would. That loses
@@ -460,7 +612,9 @@ questions:
          deeper in that branch could bring it back up to 0.
       3. So stopping at -2 loses no set. The search still records `[4, 3]`, since `7 - 4 - 3 = 0`.
     prompt: |-
-      Now the values can be any integers:
+      `left` starts at the target, and taking a value `x` changes it to `left - x`. Stopping a
+      branch early, because nothing below it can be recorded, is called pruning. This search prunes
+      as soon as `left < 0`, and the values in `nums` can be any integers:
 
       ```python
       def explore(start, left):
@@ -555,9 +709,8 @@ questions:
       3. `weights[3] = 8` is above 6, so `break` runs at `i = 3`. The list is sorted, so any weight
          after it would be at least 8 and too heavy as well. Stopping there loses nothing.
     prompt: >-
-      Now `weights` is sorted, the target is 6, and
-      `explore(1, 5)` runs with `path == [1]`. Drag `i` to where this call's loop is when `break`
-      runs.
+      `weights` is sorted, the target is 6, and `explore(1, 5)` runs with `path == [1]`. Drag `i`
+      to where this call's loop is when `break` runs.
     code: |
       def explore(start, left):
           if left == 0:

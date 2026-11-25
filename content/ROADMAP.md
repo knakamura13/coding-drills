@@ -183,9 +183,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | done |
 | Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | done |
 | Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | done |
-| Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | done |
-| Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | done |
-| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | done |
+| Problem-solving patterns #14 | Memoization: teaching levels | `repeated-states` | done |
+| Problem-solving patterns #14 | Memoization: review variants | `repeated-states-review` | done |
+| Problem-solving patterns #14 | Memoization: checkpoint | `repeated-states-checkpoint` | done |
 | Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | done |
 | Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | done |
 | Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | done |
@@ -204,9 +204,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | done |
 | Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | done |
 | Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | done |
-| Problem-solving patterns #14 | Enumerating choices: teaching levels | `enumerating-choices` | done |
-| Problem-solving patterns #14 | Enumerating choices: review variants | `enumerating-choices-review` | done |
-| Problem-solving patterns #14 | Enumerating choices: checkpoint | `enumerating-choices-checkpoint` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings: teaching levels | `enumerating-choices` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings: review variants | `enumerating-choices-review` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings: checkpoint | `enumerating-choices-checkpoint` | done |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | done |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | done |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | done |

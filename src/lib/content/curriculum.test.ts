@@ -47,8 +47,8 @@ const PATH_TITLES = [
 	'Greedy scheduling',
 	'Recursion',
 	'Backtracking',
-	'Enumerating choices',
-	'Repeated states',
+	'Backtracking: subsets and orderings',
+	'Memoization',
 	'One-dimensional tables',
 	'Grid tables',
 	'Subsequence tables',
@@ -61,7 +61,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
-	'problem-solving-patterns': { keep: 1, rewrite: 6, exam: 10, retire: 5 }
+	'problem-solving-patterns': { keep: 1, rewrite: 5, exam: 7, retire: 9 }
 };
 
 /** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */
