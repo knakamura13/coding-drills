@@ -1,6 +1,6 @@
 id: recursive-calls
-title: Recursive calls
-description: Name the call that stops, trace the smaller call each one makes, and follow each value back up. Each card asks for one decision, with a worked example on hand.
+title: Recursion
+description: Name the call that stops, trace the smaller call each one makes, follow each value back up, and count the calls that are live at once. Each card asks for one decision, with a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -8,25 +8,20 @@ questions:
     heading: Which stopping case works?
     tags: [recursion]
     workedExample: |-
-      Consider `countdown(2)`, where a call prints `go` and returns when `n == 0`. Otherwise it
-      prints `n` and calls `countdown(n - 1)`.
+      A recursive function calls itself on a smaller input, and every chain of calls has to end at
+      a stopping case: a call that returns without calling again. Consider `countdown(2)`, which
+      prints `go` and returns when `n == 0`, and otherwise prints `n` and calls `countdown(n - 1)`.
 
       1. `countdown(2)` prints 2 and calls `countdown(1)`, which prints 1 and calls `countdown(0)`.
-         Each call passes `n - 1`, so `n` falls by 1 every time.
+         Each call passes `n - 1`, so the input shrinks by 1 every time.
       2. `countdown(0)` meets `n == 0`, so it prints `go` and returns before it reaches the line
-         that calls again.
-      3. So `countdown(0)` is the call that stops, and the output is 2, then 1, then `go`.
+         that calls again. That call is the stopping case.
+      3. So the output is 2, then 1, then `go`. The calls stop because every chain shrinks `n`
+         until it lands exactly on 0.
     prompt: |-
-      ```python
-      def countdown(n):
-          if n == 0:
-              print("go")
-              return
-          print(n)
-          countdown(n - 1)
-      ```
-
-      Now `total` adds up a list, and each call passes a slice one item shorter:
+      A recursive function calls itself on a smaller input. A stopping case is a call that returns
+      without calling again, and every chain of calls has to reach one. `total` adds up a list, and
+      each call passes `nums[1:]`, a slice one item shorter:
 
       ```python
       def total(nums):
@@ -275,8 +270,9 @@ questions:
       3. The third call meets `s == ""` and returns 0. So there are three calls, one per letter plus
          one for the empty string.
     prompt: >-
-      Every call's `s` is a suffix of `"banana"`. The slot after the last letter stands for the empty
-      suffix. Tap where the `s` of the call that meets `s == ""` starts.
+      A suffix is the part of a string from some index to the end. Every call's `s` is a suffix of
+      `"banana"`, and the slot after the last letter stands for the empty suffix, `""`. Tap where
+      the `s` of the call that meets `s == ""` starts.
     code: |
       def count_a(s):
           if s == "":
@@ -309,6 +305,163 @@ questions:
       - index: 5
         explanation: >-
           That is the sixth call, on `"a"`. It is not empty, so it calls once more with `"a"[1:]`.
+
+  - id: halving-call
+    heading: Which calls run?
+    tags: [recursion]
+    workedExample: |-
+      Consider `digit_count(345)`, where a call returns 0 when `n == 0` and otherwise returns
+      `1 + digit_count(n // 10)`. `//` divides and rounds down to a whole number.
+
+      1. The first call has `n = 345`. It is not 0, so it calls with `345 // 10`, which is 34,
+         since 34.5 rounds down.
+      2. The call with 34 is not 0 either, so it passes `34 // 10`, which is 3. The call with 3
+         passes `3 // 10`, which is 0, since 0.3 rounds down.
+      3. The call with 0 meets `n == 0` and returns. So the calls get 345, 34, 3 and 0: one call
+         per digit, plus the call that stops.
+    prompt: |-
+      `//` divides and rounds down to a whole number.
+
+      ```python
+      def halve_count(n):
+          if n == 0:
+              return 0
+          return 1 + halve_count(n // 2)
+      ```
+
+      `halve_count(13)` runs. Which values of `n` do the calls get, in order, the first call
+      included?
+    options:
+      - id: halves
+        text: 13, 6, 3, 1, 0
+        explanation: >-
+          `13 // 2` is 6, since 6.5 rounds down. Then 6 gives 3, 3 gives 1, and `1 // 2` is 0.
+          The call with 0 meets the stopping case, so five calls run.
+      - id: stops-at-one
+        text: 13, 6, 3, 1
+        explanation: >-
+          That stops one call early. The only test is `n == 0`, and 1 is not 0, so the call with
+          1 calls once more, with `1 // 2`.
+      - id: rounds-up
+        text: 13, 7, 4, 2, 1, then 1 again without end
+        explanation: >-
+          That rounds 6.5 up to 7. Rounded up, half of 1 would be 1 again, so the calls would never
+          reach 0. `//` rounds down, so `13 // 2` is 6 and `1 // 2` is 0.
+      - id: minus-one
+        text: 13, 12, 11 and so on down to 0
+        explanation: >-
+          That steps down by one, as a call on `n - 1` would. This call passes `n // 2`, so `n`
+          halves each time.
+    correct: halves
+    followUps:
+      stops-at-one:
+        prompt: "`halve_count(1)` runs. Does it call again?"
+        options:
+          - id: calls
+            text: Yes, with `1 // 2`, which is 0
+          - id: last
+            text: No, 1 is the last value before 0, so it stops
+          - id: cannot
+            text: No, `1 // 2` has no whole-number answer
+        correct: calls
+        explanation: >-
+          The only stopping test is `n == 0`. A call with 1 fails it, so it calls once more, and
+          that call with 0 is the one that returns 0.
+      rounds-up:
+        prompt: What is `13 // 2`?
+        options:
+          - id: six
+            text: 6, since `//` rounds 6.5 down
+          - id: seven
+            text: 7, since 6.5 rounds up
+          - id: half
+            text: 6.5, since 13 is odd
+        correct: six
+        explanation: >-
+          `//` always rounds down to a whole number, so an odd `n` loses its half: 13 gives 6, and
+          3 gives 1.
+      minus-one:
+        prompt: Which argument does `halve_count(n)` pass to its smaller call?
+        options:
+          - id: half
+            text: "`n // 2`, about half of `n`"
+          - id: one-less
+            text: "`n - 1`, one less than `n`"
+          - id: two-less
+            text: "`n - 2`, two less than `n`"
+        correct: half
+        explanation: >-
+          A smaller call can shrink its input by any rule that still lands on the stopping case.
+          Here each call halves `n`, so 13 reaches 0 in four steps.
+
+  - id: split-second-call
+    format: drag-pointers
+    heading: Which call starts next?
+    tags: [recursion]
+    workedExample: |-
+      Consider `total(nums, 0, 3)` on four cells. A call on one cell returns that cell. Any other
+      call splits at `mid = (lo + hi) // 2`, calls on `lo` to `mid`, and only once that call has
+      returned, calls on `mid + 1` to `hi`.
+
+      1. `total(nums, 0, 3)` splits at `(0 + 3) // 2`, which is 1, and starts `total(nums, 0, 1)`.
+      2. `total(nums, 0, 1)` is a call like any other, so it splits at 0 and starts
+         `total(nums, 0, 0)` before anything else happens. That call returns at once, and
+         `total(nums, 1, 1)` starts next.
+      3. Only after `total(nums, 0, 1)` returns does `total(nums, 0, 3)` reach its next line and
+         start `total(nums, 2, 3)`. So the calls start in the order 0 to 3, 0 to 1, 0 to 0, 1 to
+         1, 2 to 3, 2 to 2 and 3 to 3.
+    prompt: >-
+      `total(nums, lo, hi)` adds up the cells from index `lo` to index `hi`. It splits its range at
+      `mid` and makes two calls, and each line runs only after the call on the line before it has
+      returned. `total(nums, 0, 5)` has just started `total(nums, 0, 2)`, which the pointers show.
+      Drag `lo` and `hi` to the range of the next call that starts.
+    code: |
+      def total(nums, lo, hi):
+          if lo == hi:
+              return nums[lo]
+          mid = (lo + hi) // 2
+          left = total(nums, lo, mid)
+          right = total(nums, mid + 1, hi)
+          return left + right
+
+      total([4, 1, 7, 3, 8, 2], 0, 5)
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 1, 7, 3, 8, 2]
+    pointers:
+      - name: lo
+        start: 0
+        correct: 0
+        explanation: >-
+          `total(nums, 0, 2)` makes its own first call before anything else, and that call keeps
+          `lo` at 0.
+        misses:
+          - index: 3
+            explanation: >-
+              Index 3 starts `total(nums, 3, 5)`, the second call of `total(nums, 0, 5)`. That
+              line runs only after `total(nums, 0, 2)` and every call it makes have returned.
+        elsewhere: '`total(nums, 0, 2)` calls on `lo` to `mid`, so the next call keeps `lo` at 0.'
+      - name: hi
+        start: 2
+        correct: 1
+        explanation: >-
+          `total(nums, 0, 2)` splits at `(0 + 2) // 2`, which is 1, and its first call covers 0 to
+          1.
+        misses:
+          - index: 5
+            explanation: >-
+              5 is the end of `total(nums, 3, 5)`, the second call of `total(nums, 0, 5)`. That
+              call waits until `total(nums, 0, 2)` has returned, and it has only just started.
+          - index: 2
+            explanation: >-
+              That is `total(nums, 0, 2)` itself, which is already running. It splits at `mid`,
+              which is 1, and calls on 0 to 1.
+          - index: 0
+            explanation: >-
+              `total(nums, 0, 0)` starts later, as the first call of `total(nums, 0, 1)`. The call
+              on 0 to 1 has to start before it.
+        elsewhere: '`mid` is `(0 + 2) // 2`, which is 1, so the next call ends at index 1.'
 
   - id: reverse-return
     heading: What does it return?
@@ -346,13 +499,13 @@ questions:
       - id: empty
         text: '`""`'
         explanation: >-
-          `""` is what the deepest call returns, but the waiting calls are not done. Each one
+          `""` is what the deepest call returns, but the calls above it are not done. Each one
           still adds a letter once the result comes back.
       - id: last-letter
         text: '`"t"`'
         explanation: >-
-          `"t"` is what `rev("t")` returns. More calls are waiting above it, and each one adds a
-          letter.
+          `"t"` is what `rev("t")` returns. Two calls above it have not returned yet, and each
+          one adds a letter.
     correct: tac
     followUps:
       cat:
@@ -382,7 +535,7 @@ questions:
           A call that waits on a smaller call still finishes its own line once the result comes
           back. Here that line adds one letter.
       last-letter:
-        prompt: When `rev("t")` returns, how many calls are still waiting for a result?
+        prompt: When `rev("t")` returns, how many calls have started and not yet returned?
         options:
           - id: two
             text: Two, `rev("at")` and `rev("cat")`
@@ -393,7 +546,7 @@ questions:
         correct: two
         explanation: >-
           Each call waits until the call it made returns. The final result appears only after
-          every waiting call has finished its line.
+          every call above has finished its line.
 
   - id: missing-return
     heading: What does it return?
@@ -513,7 +666,7 @@ questions:
     correct: 2
     explanation: >-
       The calls at `i = 0` and `i = 1` see 4 and 7 and pass the question on. The call at `i = 2`
-      sees -2 and returns 2 without calling again. Each waiting call returns that same 2.
+      sees -2 and returns 2 without calling again. Each call above it returns that same 2.
     misses:
       - index: 0
         explanation: >-
@@ -528,3 +681,100 @@ questions:
       - index: 4
         explanation: >-
           -1 is negative too, but the call at `i = 2` returned before any call reached index 4.
+
+  - id: count-live-calls
+    heading: How many calls are live?
+    tags: [recursion]
+    workedExample: |-
+      Consider the same `total` on four cells, `total(nums, 0, 3)`, at the moment
+      `total(nums, 1, 1)` runs. A call is live from when it starts until it returns.
+
+      1. `total(nums, 0, 3)` started `total(nums, 0, 1)`, which started `total(nums, 0, 0)`. That
+         call returned at once, so it is no longer live.
+      2. `total(nums, 0, 1)` then started `total(nums, 1, 1)`, its second call. So
+         `total(nums, 0, 3)`, `total(nums, 0, 1)` and `total(nums, 1, 1)` have started and not
+         returned.
+      3. So 3 calls are live at that moment, although the whole run makes 7. The calls on 2 to 3
+         have not started yet.
+    prompt: |-
+      A live call is one that has started and not returned, and Python keeps a record of each live
+      call, called a frame. When about 1,000 calls are live at once, Python stops the run with
+      RecursionError. This `total` adds up the cells from index `lo` to index `hi` by making
+      a call on each half:
+
+      ```python
+      def total(nums, lo, hi):
+          if lo == hi:
+              return nums[lo]
+          mid = (lo + hi) // 2
+          left = total(nums, lo, mid)
+          right = total(nums, mid + 1, hi)
+          return left + right
+      ```
+
+      `nums` has 12 cells, and `total(nums, 0, 11)` runs. While `total(nums, 0, 0)` runs, how many
+      calls are live, the first call included?
+    options:
+      - id: five
+        text: "5"
+        explanation: >-
+          The live calls are on 0 to 11, 0 to 5, 0 to 2, 0 to 1 and 0 to 0, each one started and
+          not returned. No call on the right half has started yet.
+      - id: four
+        text: "4"
+        explanation: >-
+          That leaves one call out. The four calls that split on the way down to index 0 are live,
+          and so is `total(nums, 0, 0)` itself, which has started and not returned.
+      - id: twelve
+        text: "12"
+        explanation: >-
+          That counts one call per cell. While `total(nums, 0, 0)` runs, the calls on the other
+          cells have not started yet.
+      - id: twenty-three
+        text: "23"
+        explanation: >-
+          That is how many calls the whole run makes. A call is live only between its start and
+          its return, and most of these calls have not started yet.
+    correct: five
+    followUps:
+      four:
+        prompt: >-
+          `total(nums, 0, 0)` returns without calling again. Is it live while it runs?
+        options:
+          - id: live
+            text: Yes, it has started and not returned
+          - id: no-calls
+            text: No, a call that makes no calls is never live
+          - id: splitters
+            text: No, only the calls that split count
+        correct: live
+        explanation: >-
+          Live means started and not yet returned, whatever the call does. The stopping call counts
+          too, on top of the four calls that split on the way to it.
+      twelve:
+        prompt: Which calls are live while `total(nums, 0, 0)` runs?
+        options:
+          - id: holds-zero
+            text: The calls whose range holds index 0, from the widest down
+          - id: per-cell
+            text: One call for each cell of `nums`
+          - id: running
+            text: Only `total(nums, 0, 0)`, the call that is running
+        correct: holds-zero
+        explanation: >-
+          Every live call but the running one is waiting on the call it made. Only the ranges that
+          hold index 0 lead down to `total(nums, 0, 0)`, and the calls on the other cells have not
+          started yet.
+      twenty-three:
+        prompt: When `total(nums, 0, 0)` starts, has `total(nums, 6, 11)` started?
+        options:
+          - id: not-yet
+            text: No, it starts only after `total(nums, 0, 5)` returns
+          - id: all-start
+            text: Yes, every call starts when the first call does
+          - id: parallel
+            text: Yes, the two halves run at the same time
+        correct: not-yet
+        explanation: >-
+          The second call's line runs only once the first call has returned. So the calls on the
+          right half start after the whole left half is done, and none of them is live yet.

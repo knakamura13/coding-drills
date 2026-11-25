@@ -42,7 +42,7 @@ const PATH_TITLES = [
 	'Tree walks',
 	'BST order',
 	'Tree summaries',
-	'Recursive calls',
+	'Recursion',
 	'Search state',
 	'Enumerating choices',
 	'Repeated states',
@@ -60,7 +60,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
-	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
+	'problem-solving-patterns': { keep: 1, rewrite: 8, exam: 12, retire: 1 }
 };
 
 /** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */

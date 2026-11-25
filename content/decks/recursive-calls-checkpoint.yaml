@@ -1,6 +1,6 @@
 id: recursive-calls-checkpoint
-title: "Recursive calls: checkpoint"
-description: Predict whether the calls stop and how many are live at once, on new inputs. Each item combines the stopping case, the smaller call, and the return.
+title: "Recursion: checkpoint"
+description: Predict whether the calls stop, what they return and how many are live at once, and find the input a suggested solution gets wrong, all on new inputs.
 heading: What does this do?
 
 questions:
@@ -37,8 +37,8 @@ questions:
       - id: fifteen-eight
         text: 15 calls, at most 8 live at once
         explanation: >-
-          That counts one live call per item. Check how many calls are waiting while the call on
-          a single item runs.
+          That counts one live call per item. Check how many calls are live while the call on a
+          single item runs.
       - id: fifteen-three
         text: 15 calls, at most 3 live at once
         explanation: >-
@@ -59,8 +59,8 @@ questions:
             text: Yes, the two halves run at the same time
         correct: returned
         explanation: >-
-          A call's frame is removed when it returns. Only the chain of calls still waiting on each
-          other is live, here at most one call per range size.
+          A call's frame is removed when it returns. Only the chain of calls that have started and
+          not returned is live, here at most one call per range size.
       fifteen-eight:
         prompt: How many calls are live while `biggest(nums, 0, 0)` runs?
         options:
@@ -88,54 +88,54 @@ questions:
           Each split makes one more call below the one that split. Three splits below the first
           call make a chain of four.
 
-  - id: checkpoint-odd-even-stop
+  - id: checkpoint-step-three-stop
     tags: [recursion]
     prompt: |-
       ```python
       def drop(n):
           if n == 1:
               return 0
-          return 1 + drop(n - 2)
+          return 1 + drop(n - 3)
       ```
 
-      What happens for `drop(7)` and for `drop(8)`?
+      What happens for `drop(10)` and for `drop(9)`?
     options:
       - id: three-error
-        text: "`drop(7)` returns 3, and `drop(8)` raises RecursionError"
+        text: "`drop(10)` returns 3, and `drop(9)` raises RecursionError"
         explanation: >-
-          `drop(7)` calls with 5, 3 and 1. The call on 1 returns 0, and the three calls above it
-          each add 1. `drop(8)` goes through 6, 4, 2, 0 and -2. It never meets 1, so the calls
-          pile up until Python raises RecursionError.
-      - id: three-four
-        text: "`drop(7)` returns 3, and `drop(8)` returns 4"
+          `drop(10)` calls with 7, 4 and 1. The call on 1 returns 0, and the three calls above it
+          each add 1. `drop(9)` goes through 6, 3, 0 and -3. It never meets 1, so the calls pile up
+          until Python raises RecursionError.
+      - id: swapped
+        text: "`drop(9)` returns 3, and `drop(10)` raises RecursionError"
         explanation: >-
-          That stops the even chain somewhere near 1. Check which value the stopping case tests
-          for.
+          That treats the odd start as the one that lands on 1. Taking 3 at a time does not keep a
+          number odd or even, so trace each start instead.
       - id: four-error
-        text: "`drop(7)` returns 4, and `drop(8)` raises RecursionError"
+        text: "`drop(10)` returns 4, and `drop(9)` raises RecursionError"
         explanation: >-
           That counts the calls, not what they return. Check what the call on 1 adds.
-      - id: both-error
-        text: Both raise RecursionError
+      - id: both-three
+        text: "`drop(10)` returns 3, and `drop(9)` returns 3"
         explanation: >-
-          Trace the arguments of `drop(7)` and check whether one of them is exactly 1.
+          That stops `drop(9)` when it reaches 0. Check which value the stopping case tests for.
     correct: three-error
     followUps:
-      three-four:
-        prompt: "`drop(8)` reaches a call with 0. Does that call stop?"
+      swapped:
+        prompt: Which arguments does `drop(9)` pass along?
         options:
-          - id: goes-on
-            text: No, only `n == 1` stops, so it calls with -2 next
-          - id: below
-            text: Yes, 0 is below 1, so the calls end
-          - id: python
-            text: Yes, Python stops a count at 0
-        correct: goes-on
+          - id: skips
+            text: 6, 3, 0 and then -3, never 1
+          - id: lands
+            text: 7, 5, 3 and then 1, which stops
+          - id: by-three-lands
+            text: 6, 3 and then 1, which stops
+        correct: skips
         explanation: >-
-          A stopping case catches only what it tests for. An even start stays even, so it steps
-          over 1 and keeps going down.
+          Each call takes 3 away, so 9 goes to 6, 3, 0 and on below zero. Only a start that is 1
+          more than a multiple of 3, such as 10, lands on 1.
       four-error:
-        prompt: "`drop(7)` makes 4 calls, and the deepest returns 0. What does `drop(7)` return?"
+        prompt: "`drop(10)` makes 4 calls, and the deepest returns 0. What does `drop(10)` return?"
         options:
           - id: three
             text: 3, one for each call that adds `1 +`
@@ -145,21 +145,21 @@ questions:
             text: 0, the deepest call's value
         correct: three
         explanation: >-
-          The call on 1 returns 0 and adds nothing. Each of the three calls above it adds 1 as
-          the value passes back up.
-      both-error:
-        prompt: Which arguments does `drop(7)` pass along?
+          The call on 1 returns 0 and adds nothing. Each of the three calls above it adds 1 as the
+          value passes back up.
+      both-three:
+        prompt: "`drop(9)` reaches a call with 0. Does that call stop?"
         options:
-          - id: lands
-            text: 5, 3 and then 1, which stops
-          - id: past
-            text: 5, 3, 1 and then -1
-          - id: by-one
-            text: 6, 5, 4 and so on, never 1
-        correct: lands
+          - id: goes-on
+            text: No, only `n == 1` stops, so it calls with -3 next
+          - id: below
+            text: Yes, 0 is below 1, so the calls end
+          - id: python
+            text: Yes, Python stops a count at 0
+        correct: goes-on
         explanation: >-
-          Taking 2 at a time from an odd number lands on every odd number below it, so 1 is
-          reached.
+          A stopping case catches only what it tests for. A call on 0 fails `n == 1`, so it calls
+          again, and every later argument is lower still.
 
   - id: checkpoint-steps-frames
     tags: [recursion]
@@ -175,7 +175,8 @@ questions:
       steps(10)
       ```
 
-      What does `steps(10)` return, and how many calls are live at most at one moment? Count the
+      `n % 2` is the remainder after dividing by 2, so it is 0 when `n` is even. What does
+      `steps(10)` return, and how many calls are live at most at one moment? Count the
       first call too.
     options:
       - id: five-six
@@ -195,7 +196,8 @@ questions:
       - id: five-ten
         text: Returns 5, with at most 10 calls live
         explanation: >-
-          That assumes one call per unit of `n`. Check what the even calls pass along.
+          That takes the live count from `n` itself, which is 10. The return of 5 is right, but
+          the even calls halve `n`, so the chain is shorter. Check what each call passes along.
     correct: five-six
     followUps:
       five-five:
@@ -210,7 +212,7 @@ questions:
         correct: counts
         explanation: >-
           Every call gets a frame, even one that returns straight away. So the deepest moment is
-          the five waiting calls plus `steps(0)`.
+          the five live calls above it plus `steps(0)`.
       six-six:
         prompt: "`steps(0)` returns 0. How many calls add 1 on the way back?"
         options:
@@ -308,3 +310,85 @@ questions:
         explanation: >-
           Half of nothing is nothing. A call that gets 0 makes a call that gets 0, and none of
           them is the call on 1.
+
+  - id: checkpoint-debug-last-negative
+    heading: Which call does it fail on?
+    tags: [recursion]
+    prompt: |-
+      A suggested `first_neg` should return the index of the first negative value in `nums`, or
+      -1 when `nums` holds none. One detail is slightly off:
+
+      ```python
+      def first_neg(nums, i):
+          if i == len(nums) - 1:
+              return -1
+          if nums[i] < 0:
+              return i
+          return first_neg(nums, i + 1)
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: last-negative
+        text: "`first_neg([4, 9, -3], 0)`"
+        explanation: >-
+          The calls at `i = 0` and `i = 1` see 4 and 9 and pass the question on. The call at
+          `i = 2` meets `i == len(nums) - 1` and returns -1 before it reads the -3, so the answer
+          is -1 instead of 2. The stopping test should be `i == len(nums)`, one past the last
+          index.
+      - id: first-negative
+        text: "`first_neg([-5, 2, 8], 0)`"
+        explanation: >-
+          The call at `i = 0` is not at the last index, so it reads -5 and returns 0, which is
+          right. The early stop matters only when a call reaches the last index.
+      - id: middle-negative
+        text: "`first_neg([6, -1, -7], 0)`"
+        explanation: >-
+          The call at `i = 1` reads -1 and returns 1 before any call reaches the last index, so
+          the answer is right.
+      - id: no-negative
+        text: "`first_neg([3, 7], 0)`"
+        explanation: >-
+          The call at `i = 1` stops early and returns -1 without reading the 7. The 7 is not
+          negative, so -1 is the right answer anyway.
+    correct: last-negative
+    followUps:
+      first-negative:
+        prompt: In `first_neg([-5, 2, 8], 0)`, which call returns, and what does it return?
+        options:
+          - id: first
+            text: The call at `i = 0`, which returns 0
+          - id: last
+            text: The call at `i = 2`, which returns -1
+          - id: none
+            text: No call returns, since the stopping test never holds
+        correct: first
+        explanation: >-
+          The first call is not at the last index, so it goes on to test `nums[0]`, which is
+          negative. It returns 0 at once, and no later call is made.
+      middle-negative:
+        prompt: Does any call in `first_neg([6, -1, -7], 0)` reach the last index?
+        options:
+          - id: no
+            text: No, the call at `i = 1` returns first
+          - id: yes
+            text: Yes, every chain of calls reaches the last index
+          - id: second
+            text: Yes, the call at `i = 1` skips to it
+        correct: no
+        explanation: >-
+          A call that finds a negative value returns at once. The -1 at index 1 ends the calls
+          before the wrong stopping test can matter.
+      no-negative:
+        prompt: What should `first_neg([3, 7], 0)` return?
+        options:
+          - id: minus-one
+            text: -1, since neither value is negative
+          - id: one
+            text: 1, the last index it checks
+          - id: seven
+            text: 7, the last value
+        correct: minus-one
+        explanation: >-
+          With no negative values the answer is -1. The early stop skips reading the 7, but the 7
+          would not have changed the answer.
