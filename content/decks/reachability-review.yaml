@@ -3,279 +3,513 @@ title: 'Reachability: review'
 description: Practice the same three reachability skills on fresh grids and frontiers.
 questions:
   - id: reachability-right-edge-review
-    tags:
-      - bfs
-      - dfs
-    prompt: A grid has five columns. You are at column 4. What happens to the proposed step right?
+    tags: [grid]
+    prompt: >-
+      A grid has five columns, so `len(grid[0])` is 5. At `(1, 4)`, a step right gives `(1, 5)`.
+      What should the search do with it?
     options:
-      - id: valid
-        text: Reject column 5 before reading it
-        explanation: The last legal column is 4. An index equal to the length is already outside the row.
-      - id: mistake
-        text: Read column 5 before testing for land
-        explanation: A five-column row has no column 5, so reading it raises `IndexError`. The bounds check has
-          to run before the read.
-    correct: valid
+      - id: reject
+        text: Reject `(1, 5)` before reading it
+        explanation: >-
+          Columns run from 0 to 4, so column 5 is past the end. The bounds test has to reject it
+          before any read.
+      - id: read-then-test
+        text: Read `grid[1][5]`, then skip it if it is water
+        explanation: >-
+          A five-column row has no index 5, so reading `grid[1][5]` raises `IndexError` before
+          the land test can run.
+      - id: wraps
+        text: Read `grid[1][5]`, which wraps to `grid[1][0]`
+        explanation: >-
+          Only a negative index counts back from the end. An index past the end raises
+          `IndexError`.
+    correct: reject
     followUps:
-      mistake:
-        prompt: With five columns and zero-based indexing, what is the last legal column?
+      read-then-test:
+        prompt: With five columns, what does reading column 5 do?
         options:
-          - id: right
-            text: Column 4
-          - id: wrong
-            text: Column 5
-        correct: right
-        explanation: The last legal column is 4. An index equal to the length is already outside the row.
+          - id: error
+            text: It raises `IndexError`, since the last column is 4
+          - id: water
+            text: It returns water, since the cell is off the grid
+          - id: none
+            text: It returns `None`
+        correct: error
+        explanation: Indices run from 0 to 4. An index equal to the length is past the end, so the test must come before the read.
+      wraps:
+        prompt: Which indices count back from the end of a list?
+        options:
+          - id: negative
+            text: Negative indices, such as `-1`
+          - id: past-end
+            text: Indices at or past the length, such as 5
+          - id: both
+            text: Both negative indices and indices past the end
+        correct: negative
+        explanation: '`-1` names the last item. An index past the end names nothing, so Python raises `IndexError`.'
+
   - id: reachability-left-edge-review
-    tags:
-      - bfs
-      - dfs
-    prompt: At (2, 0), a candidate moves left. The row has four columns. Which candidate must the bounds check
-      reject?
-    options:
-      - id: valid
-        text: (2, −1)
-        explanation: A left step subtracts one from the column. The negative column would wrap to the last
-          column in Python.
-      - id: mistake
-        text: (1, 0)
-        explanation: This changes the row, so it is the upward step, and row 1 is inside the grid. The left step
-          is (2, −1).
-    correct: valid
-    followUps:
-      mistake:
-        prompt: Which coordinate changes when you move left?
-        options:
-          - id: right
-            text: Only the second coordinate
-          - id: wrong
-            text: Only the first coordinate
-        correct: right
-        explanation: A left step subtracts one from the column. The negative column would wrap to the last
-          column in Python.
+    format: tap-cell
+    tags: [grid, python]
+    prompt: >-
+      At `(2, 0)`, a step left gives `c = -1`. This search's bounds test is missing `0 <= c`, so
+      it lets the step through. Tap the cell `row[c]` reads.
+    code: |
+      grid = [[0, 1, 1, 0],
+              [1, 1, 0, 0],
+              [1, 0, 0, 1]]
+      row = grid[2]
+      c = 0 - 1   # a step left from column 0
+      print(row[c])
+    sequence:
+      kind: array
+      name: row
+      cells: ['1', '0', '0', '1']
+    markers:
+      - name: start
+        at: 0
+    correct: 3
+    explanation: >-
+      `-1` counts back from the end, so `row[-1]` is the last column, index 3. It holds land, so
+      the search steps from the left edge onto land on the far right.
+    misses:
+      - index: 0
+        explanation: Column 0 is where the step started. `-1` counts back from the end of the row.
+      - index: 1
+        explanation: Column 1 is a step right, not left. `row[-1]` reads the last column.
+      - index: 2
+        explanation: Column 2 is `row[-2]`. `-1` names the last column, index 3.
+
   - id: reachability-water-neighbor-review
-    tags:
-      - bfs
-      - dfs
+    tags: [grid]
     prompt: |-
-      From the top-left land in this grid, which neighbor may be added? Moves change one coordinate by one.
+      From `(0, 0)` in this grid, which neighbors may the search add? `1` is land and `0` is water.
 
       ```text
       10
       11
       ```
     options:
-      - id: valid
-        text: (1, 0) only
-        explanation: The cell to the right is water and (1, 1) is diagonal. Only the cell below is both adjacent
-          and land.
-      - id: mistake
-        text: (1, 0) and (1, 1)
-        explanation: (1, 1) changes both the row and the column, so it is a diagonal, not a neighbor. It is land,
-          but no single move reaches it.
-    correct: valid
+      - id: below
+        text: '`(1, 0)` only'
+        explanation: >-
+          The cell to the right, `(0, 1)`, is water, and `(1, 1)` is diagonal. Only the cell below
+          is one legal move away and land.
+      - id: diagonal
+        text: '`(1, 0)` and `(1, 1)`'
+        explanation: >-
+          `(1, 1)` changes both the row and the column, so it is diagonal. It is land, but no single
+          move reaches it.
+      - id: water
+        text: '`(0, 1)` and `(1, 0)`'
+        explanation: >-
+          Both are one legal move away, but `(0, 1)` is water. The search adds only land.
+    correct: below
     followUps:
-      mistake:
-        prompt: What makes (1, 1) ineligible from (0, 0)?
+      diagonal:
+        prompt: What keeps `(1, 1)` from being a neighbor of `(0, 0)`?
         options:
-          - id: right
+          - id: both
             text: It changes both coordinates
-          - id: wrong
+          - id: outside
             text: It is outside the grid
-        correct: right
-        explanation: The cell to the right is water and (1, 1) is diagonal. Only the cell below is both adjacent
-          and land.
+          - id: water
+            text: It is water
+        correct: both
+        explanation: A legal move changes one coordinate by one. A diagonal takes two moves.
+      water:
+        prompt: Which test does `(0, 1)` fail?
+        options:
+          - id: land
+            text: The land test, since it holds 0
+          - id: bounds
+            text: The bounds test, since column 1 is past the end
+          - id: none
+            text: None, so it is added
+        correct: land
+        explanation: '`(0, 1)` is inside the grid and one move away, but it holds water, and the search steps only onto land.'
+
   - id: reachability-down-edge-review
-    tags:
-      - bfs
-      - dfs
-    prompt: A grid has three rows of four cells each. Start at (2, 1). Which step is out of bounds?
+    tags: [grid]
+    prompt: A grid has 3 rows of 4 cells each. From `(2, 2)`, which step leaves the grid?
     options:
-      - id: valid
-        text: Down to (3, 1)
-        explanation: Rows run from 0 to 2. The proposed row 3 is outside the grid.
-      - id: mistake
-        text: Right to (2, 2)
-        explanation: Column 2 is inside a four-column row, so this step stays in bounds. The step down to row 3
-          is past the last row, 2.
-    correct: valid
+      - id: down
+        text: Down to `(3, 2)`
+        explanation: Rows run from 0 to 2, so row 3 is past the end. Columns run from 0 to 3, so the other steps stay inside.
+      - id: right
+        text: Right to `(2, 3)`
+        explanation: >-
+          Column 3 is the last of four columns. Comparing columns with the number of rows, 3,
+          would wrongly reject it.
+      - id: none
+        text: None, every step stays inside
+        explanation: >-
+          With 3 rows, the last row index is 2. A step down to row 3 is past the end.
+    correct: down
     followUps:
-      mistake:
-        prompt: Which length limits the row index?
+      right:
+        prompt: Which length limits the column index?
         options:
-          - id: right
-            text: The number of rows
-          - id: wrong
-            text: The number of columns
-        correct: right
-        explanation: Rows run from 0 to 2. The proposed row 3 is outside the grid.
+          - id: columns
+            text: The number of columns, 4
+          - id: rows
+            text: The number of rows, 3
+          - id: smaller
+            text: The smaller of the two
+        correct: columns
+        explanation: Columns are counted along a row, so they run up to one less than the row length, 4. Column 3 is inside.
+      none:
+        prompt: With 3 rows, what is the last row index?
+        options:
+          - id: two
+            text: Row 2
+          - id: three
+            text: Row 3
+          - id: four
+            text: Row 4
+        correct: two
+        explanation: Indices start at 0, so 3 rows are rows 0, 1 and 2. Row 3 is one past the end.
+
   - id: reachability-diamond-review
-    tags:
-      - bfs
-      - dfs
-    prompt: This search marks a node seen when it queues it. B and C are queued. Neither has been processed.
-      Both have an edge to D. B is popped first and queues D. What should C do when it checks D?
+    tags: [graph]
+    prompt: >-
+      This search adds a node to `seen` when it adds it to the frontier. B and C are both in the
+      frontier, and neither has been processed. Both have an edge to D. Over the whole search,
+      how many times does D join the frontier?
     options:
-      - id: valid
-        text: Do not queue D
-        explanation: B marked D when it queued it. Marking on discovery lets the second parent tell that D already
-          has a place in the queue.
-      - id: mistake
-        text: Queue D again
-        explanation: C did find D by a different edge, but D is already marked and waiting. A second entry gives D
-          two turns, and its edges are scanned twice.
-    correct: valid
+      - id: once
+        text: Once
+        explanation: >-
+          Whichever of B and C is processed first adds D and marks it. The other finds D in `seen`
+          and skips it.
+      - id: twice
+        text: Twice, once from B and once from C
+        explanation: >-
+          The second of the two finds D already in `seen`, because D was marked when it was added.
+          So it does not add D again.
+      - id: depends
+        text: It depends on whether B or C is processed first
+        explanation: >-
+          The order decides which node adds D, but not how many times. Either way the first adds
+          it and the second skips it.
+    correct: once
     followUps:
-      mistake:
-        prompt: Does the queue represent visits to cells or visits along each incoming edge?
+      twice:
+        prompt: When the second of B and C checks D, is D in `seen`?
         options:
-          - id: right
-            text: One queued visit per discovered cell
-          - id: wrong
-            text: One queued visit per incoming edge
-        correct: right
-        explanation: Marking on discovery lets the second parent tell that D already has a place in the queue.
+          - id: 'yes'
+            text: Yes, it was marked when the first added it
+          - id: 'no'
+            text: No, D has not been processed yet
+          - id: only-popped
+            text: Only if D has already been popped
+        correct: 'yes'
+        explanation: A node joins `seen` when it is added to the frontier, so a waiting node already counts as found.
+      depends:
+        prompt: What does the processing order of B and C decide?
+        options:
+          - id: who
+            text: Which of them adds D
+          - id: count
+            text: How many times D is added
+          - id: whether
+            text: Whether D is found at all
+        correct: who
+        explanation: The first one to check D adds it. The mark then stops the other, so D is added once either way.
+
   - id: reachability-stack-mark-review
-    tags:
-      - bfs
-      - dfs
-    prompt: A stack-based flood fill marks a cell seen when it pushes it. T is already on the stack but has not
-      been popped. A second neighbor offers T. What should it do?
+    tags: [grid, graph]
+    prompt: >-
+      A flood fill adds a cell to `seen` when it adds it to the frontier, and `frontier.pop()`
+      takes the item added last. Cell T is in the frontier but has not been processed. A second
+      neighbor finds T. What should it do?
     options:
-      - id: valid
-        text: Do not push T
-        explanation: T was marked when it was pushed. Discovery happens when the cell joins the frontier. Stack
-          order only changes which pending cell comes off next.
-      - id: mistake
-        text: Push T again
-        explanation: T is still waiting, but it is already marked and has a turn coming. A second push makes the
-          fill process T twice.
-    correct: valid
+      - id: skip
+        text: Skip T, because T is already in `seen`
+        explanation: >-
+          T was marked when it was added, so it already has a turn coming. Adding it again would
+          give it a second turn.
+      - id: sooner
+        text: Add T again, so `pop()` takes it sooner
+        explanation: >-
+          The new entry would be popped first, but the old entry stays and is popped later too. T
+          would be processed twice and its neighbors checked twice.
+      - id: unmark
+        text: Take T out of `seen`, since it has not been processed
+        explanation: >-
+          `seen` holds every cell found, not only processed ones. Without the mark, more neighbors
+          could add T again.
+    correct: skip
     followUps:
-      mistake:
-        prompt: Does switching from a queue to a stack make a discovered cell undiscovered?
+      sooner:
+        prompt: If T is added a second time, what happens to its first entry?
         options:
-          - id: right
-            text: No, it is still discovered
-          - id: wrong
-            text: Yes, until it is popped
-        correct: right
-        explanation: Discovery happens when the cell joins the frontier. Stack order only changes which pending
-          cell comes off next.
+          - id: stays
+            text: It stays in the frontier and is popped later
+          - id: replaced
+            text: The new entry replaces it
+          - id: dropped
+            text: It is dropped when the new one is added
+        correct: stays
+        explanation: '`append` adds an entry and removes nothing, so both entries are eventually popped.'
+      unmark:
+        prompt: What does it mean for a cell to be in `seen`?
+        options:
+          - id: found
+            text: It has been found, whether or not it has been processed
+          - id: processed
+            text: It has been popped and processed
+          - id: neighbors
+            text: All its neighbors have been added
+        correct: found
+        explanation: A cell joins `seen` the moment it is added to the frontier. That mark is what stops a second neighbor from adding it.
+
   - id: reachability-return-to-start-review
-    tags:
-      - bfs
-      - dfs
-    prompt: Two land cells touch. The traversal starts at A and queues B from A. When B checks A, what prevents
-      another visit to A?
+    tags: [grid, graph]
+    prompt: >-
+      Two land cells, A and B, touch. The search sets `frontier = [A]` and `seen = {A}`, then
+      processes A and adds B. When B is processed, it checks A. What keeps A from joining the
+      frontier again?
     options:
-      - id: valid
-        text: A was marked when it first entered the queue
-        explanation: Seeding the queue and marking the start go together. B can then ignore the edge back to
-          A.
-      - id: mistake
-        text: A was removed from the queue earlier
-        explanation: Leaving the queue records nothing. Only the seen mark stops B, so an unmarked start would be
-          queued again.
-    correct: valid
+      - id: marked
+        text: A joined `seen` when the frontier was set up
+        explanation: >-
+          The start is marked like every other cell found. B finds A in `seen` and skips it.
+      - id: popped
+        text: A has already been popped from the frontier
+        explanation: >-
+          Leaving the frontier records nothing. Only the mark in `seen` stops B, so an unmarked
+          start would be added again.
+      - id: start-rule
+        text: A is the start, and the start is never added twice
+        explanation: >-
+          The code has no rule about the start. It skips A only because A is in `seen`.
+      - id: parent
+        text: B skips the cell it was found from
+        explanation: >-
+          The search does not remember which cell found B. It checks every neighbor against
+          `seen`, and A is there.
+    correct: marked
     followUps:
-      mistake:
-        prompt: If seen is empty and A is no longer queued, can B rediscover A?
+      popped:
+        prompt: If `seen` started empty, could B add A again?
         options:
-          - id: right
-            text: Yes, A appears unvisited
-          - id: wrong
-            text: No, popped cells cannot be queued again
-        correct: right
-        explanation: Seeding the queue and marking the start go together. B can then ignore the edge back to
-          A.
+          - id: 'yes'
+            text: Yes, since A would look new
+          - id: 'no'
+            text: No, a popped cell cannot be added again
+          - id: maybe
+            text: Only if A has land on two sides
+        correct: 'yes'
+        explanation: The test checks bounds, land and `seen`. A cell that left the frontier unmarked passes it.
+      start-rule:
+        prompt: Which test stops B from adding A?
+        options:
+          - id: seen
+            text: '`A not in seen`, which is false'
+          - id: start
+            text: A test that the cell is not the start
+          - id: land
+            text: The land test, since A was processed
+        correct: seen
+        explanation: The same `seen` test covers every cell, the start included. That is why the start is added to `seen` at the beginning.
+      parent:
+        prompt: Does this search record which cell found each cell?
+        options:
+          - id: no-record
+            text: No, it checks each neighbor against `seen`
+          - id: record
+            text: Yes, and it skips that cell
+          - id: frontier
+            text: Yes, in the frontier
+        correct: no-record
+        explanation: The frontier holds cells and `seen` holds marks. Nothing records a parent, so the mark on A does the work.
+
   - id: reachability-round-the-wall-review
-    tags:
-      - bfs
-      - dfs
+    tags: [grid]
     prompt: |-
-      From (0, 0), can a four-direction flood fill reach the top-right land in this grid?
+      Can a flood fill from `(0, 0)` reach `(0, 2)` in this grid? `1` is land and `0` is water.
 
       ```text
       101
       111
       ```
     options:
-      - id: valid
+      - id: around
         text: Yes, by going through the bottom row
-        explanation: Water blocks the direct route. The bottom row connects the two top cells by a valid path.
-      - id: mistake
-        text: No, because the top row contains water
-        explanation: The water blocks only the straight route along row 0. The fill can step down, cross row 1
-          and step up to (0, 2).
-    correct: valid
+        explanation: >-
+          The fill steps down to `(1, 0)`, right along row 1 to `(1, 2)`, and up to `(0, 2)`. Every
+          step lands on land.
+      - id: blocked
+        text: No, the water at `(0, 1)` blocks it
+        explanation: >-
+          The water blocks only the straight route along row 0. A route of land goes around it
+          through row 1.
+      - id: over
+        text: Yes, by stepping over the water at `(0, 1)`
+        explanation: >-
+          Each step moves to a neighboring land cell, so the fill cannot pass over water. It gets
+          there by the bottom row instead.
+    correct: around
     followUps:
-      mistake:
-        prompt: Which row gives an unbroken route from column 0 to column 2?
+      blocked:
+        prompt: Which row gives an unbroken route of land from column 0 to column 2?
         options:
-          - id: right
-            text: Row 1 connects the two ends
-          - id: wrong
-            text: Row 0 connects the two ends
-        correct: right
-        explanation: Water blocks the direct route. The bottom row connects the two top cells by a valid path.
+          - id: row-one
+            text: The bottom row, which is all land
+          - id: row-zero
+            text: The top row
+          - id: neither
+            text: Neither row
+        correct: row-one
+        explanation: Row 1 is all land, so the fill can go down, across and back up.
+      over:
+        prompt: How far does one step of a flood fill move?
+        options:
+          - id: one
+            text: One cell, onto land
+          - id: two
+            text: Up to two cells, if the first is water
+          - id: any
+            text: Any distance along a row
+        correct: one
+        explanation: Each step moves to an adjacent land cell. To reach land beyond water, the fill needs a route of land around it.
+
   - id: reachability-diagonal-region-review
-    tags:
-      - bfs
-      - dfs
+    tags: [grid]
     prompt: |-
-      A flood fill can move up, down, left or right. How many cells does it mark from (0, 0)?
+      How many cells does a flood fill from `(0, 0)` mark, counting the start? `1` is land and `0` is water.
 
       ```text
       10
       01
       ```
     options:
-      - id: valid
+      - id: one
         text: One cell
-        explanation: The only other land is on the diagonal. There is no land step connecting it to the start.
-      - id: mistake
+        explanation: >-
+          `(1, 1)` touches `(0, 0)` only at a corner, and the cells that share an edge with the
+          start are water. So the fill marks the start alone.
+      - id: two
         text: Two cells
-        explanation: (1, 1) touches (0, 0) only at a corner. Its edge neighbors, (0, 1) and (1, 0), are water, so
-          the fill never reaches it.
-    correct: valid
+        explanation: >-
+          `(1, 1)` is diagonal from the start. Its edge neighbors, `(0, 1)` and `(1, 0)`, are
+          water, so the fill never reaches it.
+      - id: zero
+        text: None, since every neighbor is water
+        explanation: >-
+          The start is marked when the fill begins, so it counts even when no neighbor is land.
+    correct: one
     followUps:
-      mistake:
-        prompt: Can two cells that only touch at a corner be joined by a single legal step?
+      two:
+        prompt: Can two cells that touch only at a corner be joined by one legal move?
         options:
-          - id: right
-            text: No, one coordinate must stay fixed
-          - id: wrong
+          - id: 'no'
+            text: No, one coordinate must stay the same
+          - id: 'yes'
             text: Yes, a corner counts as a shared edge
-        correct: right
-        explanation: The only other land is on the diagonal. There is no land step connecting it to the start.
+          - id: land
+            text: Yes, if both cells are land
+        correct: 'no'
+        explanation: A legal move changes one coordinate by one. Corner neighbors differ in both, so they are two moves apart.
+      zero:
+        prompt: When is the start marked?
+        options:
+          - id: setup
+            text: When the frontier is set up, before any pop
+          - id: neighbor
+            text: Only when a neighbor finds it
+          - id: never
+            text: Never, since it is the start
+        correct: setup
+        explanation: The search begins with `seen = {start}`, so the start is always one of the marked cells.
+
   - id: reachability-drain-stack-review
-    tags: [dfs, stack]
+    tags: [grid]
     prompt: |-
-      In this grid, the letters are land and a dot is water.
+      In this grid, letters are land and a dot is water.
 
       ```text
       A B C
       D . .
       ```
 
-      Start with `[A]` on the stack and A marked seen. Pop the rightmost entry. Check neighbors in order: right,
-      down, left, up. Push any unseen land and mark it as seen. After two pops, what is the stack?
+      The frontier starts as `[A]`, with A in `seen`. Each pop takes the item added last, then checks neighbors in the order right, down, left, up, adding any land not in `seen`. After two pops, what is the frontier?
     options:
       - id: waiting
-        text: "`[B]`, with B ready to pop"
-        explanation: A pushes B and then D. D pops next. D has no unseen land neighbor, so B stays.
-      - id: followed-right
-        text: "`[D, C]`, with C ready to pop"
-        explanation: Compare the two entries right after A adds them and find the top.
+        text: '`[B]`, with B next to pop'
+        explanation: >-
+          Popping A adds B and then D. D was added last, so it pops next. D's only land neighbor is
+          A, which is in `seen`, so B is left.
+      - id: first-in
+        text: '`[D, C]`, with C next to pop'
+        explanation: >-
+          That is what happens if the second pop takes B. But `pop()` takes the item added last,
+          and D was added after B.
+      - id: empty
+        text: '`[]`, with every cell processed'
+        explanation: >-
+          Two pops take A and D. B was added by A and is still waiting, and C has not been found
+          yet.
     correct: waiting
     followUps:
-      followed-right:
-        prompt: Right after A pushes B and then D, which cell is taken next?
+      first-in:
+        prompt: Right after A adds B and then D, which cell does the next pop take?
         options:
           - id: d
-            text: D, the most recently pushed cell
+            text: D, the cell added last
           - id: b
-            text: B, the cell that entered first
+            text: B, the cell added first
+          - id: c
+            text: C, the cell furthest right
         correct: d
-        explanation: A stack pops the last entry first. D joined after B and has its turn before B.
+        explanation: '`pop()` takes the last item in the list, and D was added after B.'
+      empty:
+        prompt: Which cells do the two pops take?
+        options:
+          - id: a-d
+            text: A, then D
+          - id: a-b
+            text: A, then B
+          - id: b-d
+            text: B, then D
+        correct: a-d
+        explanation: The first pop takes A, which adds B and D. The second takes D, the last added, which leaves B waiting.
+
+  - id: reachability-next-region-review
+    format: tap-cell
+    tags: [grid]
+    prompt: >-
+      A scan walks `row` from left to right and starts a flood fill from land, and each fill marks
+      its whole island and adds one to the count. The first fill marked index 1, and the second
+      marked indices 3 and 4. Tap where the third fill starts.
+    code: |
+      row = [0, 1, 0, 1, 1, 0, 1, 1]
+      seen = {1, 3, 4}   # marked by the first two fills
+    sequence:
+      kind: array
+      name: row
+      cells: ['0', '1', '0', '1', '1', '0', '1', '1']
+    correct: 6
+    explanation: >-
+      Indices 1, 3 and 4 are marked, and index 5 is water. Index 6 is the first land no fill has
+      reached, so the third fill starts there and marks 6 and 7.
+    misses:
+      - index: 0
+        explanation: Index 0 is water, and the scan passed it before the first fill.
+      - index: 1
+        explanation: Index 1 started the first fill and is marked.
+      - index: 2
+        explanation: Index 2 is water. A fill starts only from land.
+      - index: 3
+        explanation: Index 3 started the second fill and is marked.
+      - index: 4
+        explanation: >-
+          Index 4 is land, but the second fill marked it. A fill there would count that island
+          again.
+      - index: 5
+        explanation: Index 5 is water. A fill starts only from land.
+      - index: 7
+        explanation: >-
+          Index 7 is part of the third island, but the scan meets unmarked land at index 6 first.
+          The fill from 6 then marks 7.

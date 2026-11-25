@@ -1,42 +1,60 @@
 id: traversal-layers-checkpoint
 title: 'Traversal layers: checkpoint'
-description: Time simultaneous spread and explain how the frontier finishes.
+description: Time a spread from several sources, tell where it stops, and find the input that breaks a suggested solution.
 questions:
   - id: traversal-exam-meeting-fronts
-    tags:
-      - bfs
+    tags: [bfs]
     prompt: |-
-      Two sensors activate at minute 0. Each minute activation spreads one position along an open row. How long until every position here is active?
+      Two sensors, S, activate at minute 0. Each minute, activation spreads one index along the open row. How many minutes until every index is active?
 
       ```text
       S . . . . S
       ```
     options:
-      - id: correct
-        text: 2 minutes
-        explanation: The two positions next to the sensors activate in minute 1, and the two center positions
-          in minute 2, completing the row.
-      - id: other
-        text: 4 minutes
-        explanation: Trace a round with both sensors active.
-    correct: correct
+      - id: two
+        text: '2'
+        explanation: >-
+          The indices next to the sensors activate at minute 1, and the two in the middle at
+          minute 2. Both sensors spread at once, so the row is done at minute 2.
+      - id: four
+        text: '4'
+        explanation: >-
+          That activates one dot per minute. Each minute both sensors spread, so two dots activate
+          together.
+      - id: five
+        text: '5'
+        explanation: >-
+          Five is how long one sensor alone needs to cross the row. The other sensor starts at the
+          same time and covers half of it.
+    correct: two
     followUps:
-      other:
-        prompt: Which positions are activated during minute 1?
+      four:
+        prompt: Which indices activate at minute 1?
         options:
-          - id: 'yes'
-            text: The neighbors of both sensors
-          - id: 'no'
+          - id: both-neighbors
+            text: The neighbor of each sensor
+          - id: left-only
             text: Only the neighbor of the left sensor
-        correct: 'yes'
-        explanation: The two positions next to the sensors activate in minute 1, and the two center positions
-          in minute 2, completing the row.
+          - id: none
+            text: None, the sensors take a minute to start
+        correct: both-neighbors
+        explanation: Both sensors are in the first layer, so the first round reaches a neighbor of each. Two dots activate per minute.
+      five:
+        prompt: When does the right sensor start spreading?
+        options:
+          - id: zero
+            text: At minute 0, with the left one
+          - id: after
+            text: When the left sensor's spread reaches it
+          - id: one
+            text: At minute 1
+        correct: zero
+        explanation: Both are sources at minute 0, so they spread toward each other and meet in the middle.
+
   - id: traversal-exam-detour-spread
-    tags:
-      - bfs
+    tags: [bfs, grid]
     prompt: |-
-      Both S cells are active at minute 0. Activation spreads to adjacent dots up, down, left, or right
-      at one step per minute. It cannot cross #. When is the last dot activated?
+      Both cells marked S are active at minute 0. Activation spreads to an adjacent dot up, down, left or right, one move per minute, and cannot cross `#`. When does the last dot activate?
 
       ```text
       S#..
@@ -44,30 +62,51 @@ questions:
       ...S
       ```
     options:
-      - id: correct
+      - id: three
         text: Minute 3
-        explanation: 'The dot immediately right of the wall is reached from the lower source in three moves. All other open
-          cells are reached by then: the two waves cover opposite sides of the wall.'
-      - id: other
+        explanation: >-
+          Each dot takes its earlier arrival. The dot right of the wall, `(0, 2)`, is the last: the
+          lower source reaches it in 3 moves and the upper source in 4. Every other dot is active
+          by minute 2.
+      - id: four
+        text: Minute 4
+        explanation: >-
+          4 is when the lower source alone would reach `(1, 0)`. The upper source is one move above
+          it, so that dot activates at minute 1.
+      - id: five
         text: Minute 5
-        explanation: For each cell, take the earlier arrival before finding the last arrival.
-    correct: correct
+        explanation: >-
+          5 is how long the upper source alone needs to reach the far corner. The lower source
+          starts there at minute 0, so each dot takes the earlier arrival.
+    correct: three
     followUps:
-      other:
-        prompt: If a cell is two moves from one source and four from the other, when does it activate?
+      four:
+        prompt: When does `(1, 0)`, the dot below the upper source, activate?
         options:
-          - id: 'yes'
+          - id: one
+            text: Minute 1, from the upper source
+          - id: four
+            text: Minute 4, from the lower source
+          - id: five
+            text: Minute 5, after both arrive
+        correct: one
+        explanation: A dot activates at its earliest arrival from any source. `(1, 0)` is one move from the upper source.
+      five:
+        prompt: A dot is two moves from one source and four from the other. When does it activate?
+        options:
+          - id: two
             text: After two minutes
-          - id: 'no'
+          - id: four
             text: After four minutes
-        correct: 'yes'
-        explanation: 'The dot immediately right of the wall is reached from the lower source in three moves. All other open
-          cells are reached by then: the two waves cover opposite sides of the wall.'
+          - id: six
+            text: After six minutes
+        correct: two
+        explanation: Both sources spread at the same time, so the nearer one decides. The answer is the latest of those earliest arrivals.
+
   - id: traversal-exam-blocked-completion
-    tags:
-      - bfs
+    tags: [bfs, grid]
     prompt: |-
-      Both S cells start active at minute 0. Activation spreads one step per minute up, down, left, or right through dots. Return the time when all dots are active, or −1 if that never happens. What should the algorithm return for this grid?
+      Both cells marked S are active at minute 0. Activation spreads one move per minute up, down, left or right through dots, and cannot cross `#`. The answer is the minute when every dot is active, or −1 if that never happens. What is the answer for this grid?
 
       ```text
       S..S
@@ -75,48 +114,258 @@ questions:
       ..#.
       ```
     options:
-      - id: correct
-        text: −1, with one dot still inactive
-        explanation: Every reachable dot is active by minute 3. The bottom-right dot has a wall above it and a
-          wall to its left, so the frontier empties without it and the completion condition fails.
-      - id: other
-        text: 3, when the reachable dots finish
-        explanation: The queue empties after minute 3, but the bottom-right dot never activated. After the
-          frontier empties, check the entire board.
-    correct: correct
+      - id: never
+        text: −1, with one dot never active
+        explanation: >-
+          Every reachable dot is active by minute 3. The bottom-right dot has a wall above it and a
+          wall to its left, so the queue empties without it.
+      - id: three
+        text: '3'
+        explanation: >-
+          3 is when the last reachable dot activates. The bottom-right dot is walled off, so not
+          every dot becomes active, and the answer is −1.
+      - id: four
+        text: '4'
+        explanation: >-
+          The bottom-right dot is walled off above and to its left, and the grid ends on its other
+          sides. No route reaches it, at any minute.
+    correct: never
     followUps:
-      other:
-        prompt: How many dots remain inactive once the queue empties?
+      three:
+        prompt: How many dots are still inactive when the queue empties?
         options:
-          - id: 'yes'
+          - id: one
             text: One, the bottom-right dot
-          - id: 'no'
-            text: Zero dots remain inactive
-        correct: 'yes'
-        explanation: The bottom-right dot is walled off above and to its left, so no wave reaches it. One inactive
-          dot is enough to make the answer −1.
-  - id: traversal-exam-layer-counter
-    tags:
-      - bfs
-    prompt: The graph has edges A–X, B–Y and Y–Z. A and B are sources at minute 0. A buggy loop increments minute
-      after each pop. To count the time when Z activates, what should the loop count instead?
-    options:
-      - id: correct
-        text: One tick per full distance layer
-        explanation: After the complete source layer, X and Y are active at minute 1. Processing the distance-1
-          layer discovers Z at minute 2. Counting nodes confuses breadth with elapsed time.
-      - id: other
-        text: One tick per newly discovered node
-        explanation: Check whether discoveries from the two sources occur at the same time.
-    correct: correct
-    followUps:
-      other:
-        prompt: When do X and Y become active?
+          - id: zero
+            text: None
+          - id: two
+            text: Two
+        correct: one
+        explanation: After the queue empties, the board must be checked. One inactive dot is enough to make the answer −1.
+      four:
+        prompt: Which cells are next to the bottom-right dot?
         options:
-          - id: 'yes'
-            text: Both at minute 1
+          - id: walls
+            text: Walls on both of its sides inside the grid
+          - id: open
+            text: Open dots above it and to its left
+          - id: mixed
+            text: A wall above it, with an open dot to its left
+        correct: walls
+        explanation: Both neighbors inside the grid are walls, so the spread can never step onto it.
+
+  - id: traversal-exam-layer-counter
+    tags: [bfs, queue]
+    prompt: |-
+      S is the start, and each edge takes one minute. This loop should record the minute each node is first reached, but it adds 1 to `minute` after every pop. What does it record for C?
+
+      ```python
+      links = {"S": ["A", "B"], "A": ["S"], "B": ["S", "C"], "C": ["B"]}
+      queue = deque(["S"])
+      seen = {"S"}
+      when = {"S": 0}
+      minute = 0
+      while queue:
+          node = queue.popleft()
+          minute += 1
+          for nb in links[node]:
+              if nb not in seen:
+                  seen.add(nb)
+                  when[nb] = minute
+                  queue.append(nb)
+      ```
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          The pops go S, A, B, so `minute` is 3 when B is popped and finds C. C is two edges from
+          S, so the right answer is 2.
+      - id: two
+        text: '2'
+        explanation: >-
+          2 is the minute C is really reached. This loop counts pops, not layers, and A's pop adds 1
+          even though it finds nothing new.
+      - id: four
+        text: '4'
+        explanation: '`minute` reaches 4 when C itself is popped, but `when["C"]` was set earlier, when B found C.'
+    correct: three
+    followUps:
+      two:
+        prompt: What does `minute` count in this loop?
+        options:
+          - id: pops
+            text: Pops, one per node processed
+          - id: layers
+            text: Layers, one per round
+          - id: edges
+            text: Edges from the start
+        correct: pops
+        explanation: '`minute += 1` runs once per pop. Counting time needs one tick per layer, so this loop overcounts.'
+      four:
+        prompt: When is `when["C"]` set?
+        options:
+          - id: found
+            text: When B finds C
+          - id: popped
+            text: When C is popped
+          - id: end
+            text: When the loop ends
+        correct: found
+        explanation: The label is written inside the `if`, as C is found from B. At that moment `minute` is 3.
+
+  - id: traversal-exam-rotting-oranges
+    tags: [bfs, grid]
+    prompt: >-
+      In a grid, `2` is a rotten orange, `1` is a fresh orange, and `0` is empty. Each minute, every
+      fresh orange next to a rotten one (up, down, left, right) turns rotten. Several oranges can start
+      rotten. How many minutes pass until no fresh orange is left (or -1 if some never rot)? Which
+      approach is the best fit?
+    options:
+      - id: one-queue
+        text: Queue every rotten orange at minute 0 and run one BFS, one layer per minute
+        explanation: >-
+          With all sources in the queue at distance 0, the search spreads from all of them at once.
+          Layer k holds the cells that rot at minute k, which matches how the rot spreads. Each cell
+          enters the queue once, however many sources there are.
+      - id: sum-times
+        text: Run a separate BFS from each rotten orange and add up their times
+        explanation: >-
+          Rotting happens everywhere at once, so the spreads overlap instead of taking turns. For the
+          row `[2, 1, 1, 1, 2]`, each separate BFS needs 3 minutes, so the sum is 6. The real answer
+          is 2, since the middle orange rots at minute 2.
+      - id: per-source-min
+        text: Run a BFS from each rotten orange, keep each cell's smallest time, take the largest
+        explanation: >-
+          This gives the right answer, because a cell rots at its smallest distance to any source.
+          But it runs one search per source, and each can sweep the whole grid again, so it repeats
+          work that one shared queue does once.
+      - id: dfs-each
+        text: Run a depth-first search from each rotten orange and use its labels as the times
+        explanation: >-
+          A depth-first label is the length of the route the search happened to follow, not the
+          shortest one, so it can overstate when a cell rots. Handling each source on its own also
+          ignores that another source may reach the cell sooner.
+    correct: one-queue
+    followUps:
+      sum-times:
+        prompt: >-
+          Two rotten oranges both start spreading at minute 0. What does the total time depend on?
+        options:
+          - id: latest-rot
+            text: The latest minute at which any fresh orange rots, since the spreads run in parallel
+          - id: sum-alone
+            text: The sum of the times each orange would need on its own
+          - id: source-count
+            text: The number of rotten oranges at the start
+        correct: latest-rot
+        explanation: >-
+          Everything spreads in the same minutes, so the answer is the maximum over cells of the
+          earliest time each is reached. Adding single-source times double counts the minutes that the
+          spreads share.
+      per-source-min:
+        prompt: >-
+          With several rotten oranges, how does the work of separate BFS runs compare with one BFS
+          that starts from all of them?
+        options:
+          - id: repeats
+            text: It repeats the search once per source, so a cell can be visited once per source
+          - id: same-total
+            text: It is the same, because every cell is still visited once in total
+          - id: lower
+            text: It is lower, since each BFS covers only the cells near its source
+        correct: repeats
+        explanation: >-
+          Each separate BFS can sweep the whole connected region, and nothing is shared between them.
+          One queue holding every source lets each cell be claimed once by whichever source reaches it
+          first.
+      dfs-each:
+        prompt: Why is the minute a cell rots its BFS distance from the nearest source, not a depth-first label?
+        options:
+          - id: shortest-route
+            text: Rot spreads one step per minute along shortest routes, while a depth-first label can reflect a longer route
+          - id: no-marks
+            text: A depth-first search cannot mark cells seen
+          - id: single-source
+            text: A depth-first search only works from a single source
+        correct: shortest-route
+        explanation: >-
+          A cell rots as soon as any neighbor is rotten, so its time is the length of the shortest
+          route from the nearest source. A depth-first search can mark cells and start from many
+          sources, but it does not find cells in order of distance.
+
+  - id: traversal-exam-debug-stack
+    heading: Which input does it fail on?
+    tags: [bfs, graph]
+    prompt: |-
+      A suggested solution should return each node's fewest moves from `start`. `links` lists each node's neighbors in alphabetical order, and every edge works both ways. `deque.pop()` removes the item at the back, the one added last.
+
+      ```python
+      def distances(links, start):
+          dist = {start: 0}
+          queue = deque([start])
+          while queue:
+              node = queue.pop()
+              for nb in links[node]:
+                  if nb not in dist:
+                      dist[nb] = dist[node] + 1
+                      queue.append(nb)
+          return dist
+      ```
+
+      Run from A, which graph gets a wrong distance?
+    options:
+      - id: five-loop
+        text: Edges A–B, B–C, C–D, D–E, E–A
+        explanation: >-
+          A adds B and E, and `pop()` takes E, which labels D 2. Popping D labels C 3, though A, B,
+          C is a route of 2 moves. Taking the last node added follows one route too far.
+      - id: four-loop
+        text: Edges A–B, B–C, C–D, D–A
+        explanation: >-
+          A adds B and D, both 1. `pop()` takes D, which labels C 2. C is two moves from A by
+          either route, so every label is right.
+      - id: triangle
+        text: Edges A–B, B–C, C–A
+        explanation: >-
+          A is next to both B and C, so popping A labels both 1 before anything else runs. Every
+          label is right.
+      - id: line
+        text: Edges A–B, B–C, C–D
+        explanation: >-
+          Each node has only one route from A, so the order nodes are popped in cannot change a
+          label. The labels 1, 2 and 3 are right.
+    correct: five-loop
+    followUps:
+      four-loop:
+        prompt: In the four-node loop, how many moves is C from A?
+        options:
+          - id: two
+            text: 2, by either way around
+          - id: three
+            text: 3, the long way around
+          - id: one
+            text: 1, since the graph is a loop
+        correct: two
+        explanation: C is opposite A, so both routes take 2 moves. The stack finds it with 2 either way, so the bug stays hidden.
+      triangle:
+        prompt: In the triangle, when do B and C get their labels?
+        options:
+          - id: first-pop
+            text: Both when A is popped, as A's neighbors
+          - id: later
+            text: B first, then C when B is popped
+          - id: never
+            text: Only C is labeled
+        correct: first-pop
+        explanation: A node next to the start is labeled 1 on the first pop, before the pop order can matter.
+      line:
+        prompt: On a graph with only one route to each node, can the pop order change a label?
+        options:
           - id: 'no'
-            text: X at minute 1 and Y at minute 2
-        correct: 'yes'
-        explanation: After the complete source layer, X and Y are active at minute 1. Processing the distance-1
-          layer discovers Z at minute 2. Counting nodes confuses breadth with elapsed time.
+            text: No, each node is found along its only route
+          - id: 'yes'
+            text: Yes, a stack always gives labels too high
+          - id: ends
+            text: Only for the last node
+        correct: 'no'
+        explanation: A wrong label needs two routes of different lengths, so that a stack can find the longer one first.

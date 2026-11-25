@@ -1,27 +1,32 @@
 id: traversal-layers
 title: Traversal layers
-description: Trace the queue, label distances, and start a wave from several sources.
+description: Trace the queue one layer at a time, label each node with its fewest moves, and start from several sources at once.
 questions:
   - id: traversal-layer-pop-trace
     format: step-trace
-    tags:
-      - bfs
-      - queue
+    heading: Follow the queue
+    tags: [bfs, queue]
     workedExample: |-
-      Consider `queue = deque(["P", "Q", "R"])`, in the order they joined. `popleft()` removes the
-      front node, and `append` adds a node at the back, behind every node already waiting.
+      Breadth-first search, or BFS, finds how many moves each node is from a start node. It keeps
+      its frontier, the nodes found but not yet processed, in a queue: a `deque` from
+      `collections`, where `popleft()` removes the node at the front and `append` adds a node at the
+      back. Here `queue = deque(["K"])` holds the start, K, and K's neighbors are L and M.
 
-      1. `queue.popleft()` removes P, the front node, which leaves `[Q, R]`.
-      2. Appending P's new neighbor S puts it behind R: `[Q, R, S]`. So `queue[0]` is Q.
-      3. The next `popleft()` removes Q. R joined before S, so `queue[0]` is now R, and S waits
-         behind it.
-    prompt: |-
-      The queue contains B and C, both at distance 1. D is the only new neighbor of B.
-      The row shows every node in arrival order, including D, which has not been appended yet.
-      Predict the next node at the front of the queue after each step.
+      1. `queue.popleft()` removes K, the only node, which leaves the queue empty.
+      2. K's neighbors are found in the order L, then M, and each `append` adds at the back, so the
+         queue is `["L", "M"]` and `queue[0]` is L.
+      3. The next `popleft()` takes L, which joined first. Any neighbor L adds goes behind M, so M,
+         one move from K, still leaves before any node two moves away.
+    prompt: >-
+      Breadth-first search, or BFS, finds how many moves each node is from a start node. Its
+      frontier is a queue, a `deque` from `collections`: `popleft()` removes the item at the front,
+      and `append` adds at the back, so the queue is first in, first out. Here B and C are one move
+      from the start, A. D, found from B, is two moves from A. The row shows the nodes in the order
+      they join the queue. Predict the node at the front after each step.
     code: |-
+      queue = deque(["B", "C"])   # one move from A
       node = queue.popleft()
-      queue.append(next_neighbor[node])
+      queue.append("D")           # two moves from A
       front = queue[0]
       node = queue.popleft()
       front = queue[0]
@@ -33,233 +38,512 @@ questions:
       - name: front
         at: 0
     steps:
-      - line: 1
-        ask: After removing B and appending D, which node is at the front?
+      - line: 2
+        ask: After `popleft()` removes B and D is appended, which node is at the front?
         pointer: front
         correct: 1
-        explanation: C was already waiting when D joined. Removing B leaves C at the front.
+        explanation: C was already waiting when D joined, and `append` adds at the back. So C is at the front, ahead of D.
         misses:
           - index: 0
-            explanation: B was removed by `popleft`, so it is no longer at the front.
+            explanation: '`popleft()` removed B, so it has left the queue.'
           - index: 2
-            explanation: Appending D puts it behind C, which was already waiting.
-        elsewhere: Appending D puts it behind C, which was already waiting.
-      - line: 4
-        ask: After the next pop, which node is at the front?
+            explanation: '`append` adds D at the back, behind C, which was already waiting.'
+        elsewhere: '`append` adds D at the back, behind C, which was already waiting.'
+      - line: 5
+        ask: After the next `popleft()`, which node is at the front?
         pointer: front
         correct: 2
-        explanation: The second pop removes C, the last node at distance 1. D now starts the next layer.
+        explanation: >-
+          The second pop removes C. Both nodes one move from A have now left, and D, the first node
+          two moves away, is at the front.
         elsewhere: The two pops removed B and C. D is the only node still waiting.
+
   - id: traversal-layer-freeze-length
-    tags:
-      - bfs
+    heading: How many pops finish the round?
+    tags: [bfs, queue]
     workedExample: |-
-      A round starts with the queue `[U, V]`. The round's length is `n = len(queue)`, read once
+      A round starts with the queue `["U", "V"]`. The round's length is `n = len(queue)`, read once
       before its first pop.
 
       1. The queue holds U and V when the round starts, so `n` is 2.
-      2. Popping U adds its new neighbor W at the back, so the queue is `[V, W]`. `n` stays 2,
+      2. Popping U adds its new neighbor W at the back, so the queue is `["V", "W"]`. `n` stays 2,
          because it was read before W arrived.
       3. The round's second pop takes V, and after 2 pops the round ends. W waits for the next
-         round, since it is one layer further out.
-    prompt: A new round starts with P, Q, R. P adds two nodes. How many pops finish this round?
-    options:
-      - id: correct
-        text: Three pops, for P, Q and R
-        explanation: The initial queue length defines this round. Discoveries from the round belong to the next
-          layer.
-      - id: other
-        text: Five pops, for P, Q, R and the new nodes
-        explanation: Separate the starting frontier from what it discovers.
-    correct: correct
-    followUps:
-      other:
-        prompt: At the start of the round, are the nodes found by P already in the queue?
-        options:
-          - id: 'yes'
-            text: They will arrive later
-          - id: 'no'
-            text: They are part of the initial queue
-        correct: 'yes'
-        explanation: The initial queue length defines this round. Discoveries from the round belong to the next
-          layer.
-  - id: traversal-layer-cross-edge
-    tags:
-      - bfs
-    workedExample: |-
-      BFS runs from `S` on `graph = {"S": ["A", "B"], "A": ["B", "C"], "B": [], "C": []}`. A node is
-      labeled and appended at the back when it is first found, and a node already found is skipped.
-
-      1. Popping S finds A, then B, so both get label 1 and the queue is `[A, B]`.
-      2. Popping A finds B along the edge `A→B`, which joins two nodes of the same layer. B was
-         already found, so it keeps label 1 and its place in the queue.
-      3. A's other neighbor, C, is new, so it gets label `1 + 1`, which is 2, and joins at the back
-         behind B. The labels end as A 1, B 1 and C 2.
+         round, since it is one move further from the start.
     prompt: |-
-      The queue starts with M followed by N, both one move from the start. BFS removes M
-      and appends its new neighbor X. Which node is first now?
+      A layer is every node the same number of moves from the start. To process one layer at a time, BFS reads the queue's length once, at the start of each round:
+
+      ```python
+      while queue:
+          n = len(queue)
+          for _ in range(n):
+              node = queue.popleft()
+              for nb in links[node]:
+                  if nb not in seen:
+                      seen.add(nb)
+                      queue.append(nb)
+      ```
+
+      A round starts with P, Q and R in the queue. Processing P appends two new nodes. How many pops does this round make?
     options:
-      - id: correct
-        text: N, the other one-move node
-        explanation: The queue holds N followed by X. Adding a node at the back preserves the turn of each earlier
-          discovery.
-      - id: other
-        text: X, the newly discovered node
-        explanation: Write the remaining queue before appending X.
-    correct: correct
+      - id: three
+        text: 3, one each for P, Q and R
+        explanation: >-
+          `n` is read as 3 before the first pop, and `range(3)` runs three times. The two new
+          nodes are one move further out, so they wait for the next round.
+      - id: five
+        text: 5, including the two nodes P appended
+        explanation: >-
+          `n` was read before P appended anything, so the round still makes 3 pops. The new nodes
+          belong to the next layer.
+      - id: two
+        text: 2, since `range(3)` stops before 3
+        explanation: >-
+          `range(3)` stops before 3, but it starts at 0, so it runs three times, one pop each.
+      - id: until-empty
+        text: As many as it takes to empty the queue
+        explanation: >-
+          That describes the whole `while` loop. One round is one run of the `for` loop, which
+          pops exactly `n` nodes.
+    correct: three
     followUps:
-      other:
-        prompt: Where does X join the queue?
+      five:
+        prompt: When `n = len(queue)` runs, are P's new nodes in the queue?
         options:
-          - id: 'yes'
-            text: After the nodes already waiting
-          - id: 'no'
-            text: At the front of the queue
-        correct: 'yes'
-        explanation: The queue holds N followed by X. Adding a node at the back preserves the turn of each earlier
-          discovery.
+          - id: later
+            text: No, they arrive after `n` is read
+          - id: already
+            text: Yes, they are part of the starting queue
+          - id: counted
+            text: Yes, `n` updates as nodes arrive
+        correct: later
+        explanation: '`n` is a number read once. Nodes appended during the round do not change it, so they wait for the next round.'
+      two:
+        prompt: Which values does `range(3)` give?
+        options:
+          - id: zero-one-two
+            text: 0, 1 and 2
+          - id: one-two
+            text: 1 and 2
+          - id: one-two-three
+            text: 1, 2 and 3
+        correct: zero-one-two
+        explanation: '`range(n)` counts from 0 up to, not including, `n`, so it runs exactly `n` times.'
+      until-empty:
+        prompt: What does one run of the `for` loop process?
+        options:
+          - id: one-layer
+            text: The `n` nodes that were waiting when it began
+          - id: everything
+            text: Every node left in the queue
+          - id: one-node
+            text: One node and its neighbors
+        correct: one-layer
+        explanation: Each round pops the nodes of one layer. The `while` loop runs one round after another until the queue empties.
+
   - id: traversal-distance-one-step
-    tags:
-      - bfs
+    heading: What label does the neighbor get?
+    tags: [bfs]
     workedExample: |-
-      BFS starts at `S`, and `S -> P -> R` is a path of unseen nodes. Each edge costs one move, and
-      a node's label is the number of moves needed to reach it.
+      BFS starts at `S`, and `S`, `P`, `R` is a route of new nodes, each one edge from the next. A
+      node's label is the fewest moves needed to reach it, and each edge is one move.
 
       1. `S` is the start, so reaching it takes 0 moves, and its label is 0.
       2. `P` is one edge from `S`. Reaching it takes the 0 moves to `S` plus 1 for the edge, so `P`
          gets the label `0 + 1`, which is 1.
       3. `R` is one edge from `P`. It takes the 1 move to reach `P` plus 1 more, so `R` gets the
          label `1 + 1`, which is 2.
-    prompt: A node with label 4 discovers an unseen neighbor across one unit-cost edge. What label does the
+    prompt: >-
+      BFS labels each node with its distance, the fewest moves from the start. A node gets its label
+      when it is found: `dist[nb] = dist[node] + 1`, where `node` is the node being processed. The
+      node being processed has label 4 and finds a neighbor with no label yet. What label does the
       neighbor get?
     options:
-      - id: correct
-        text: 5 moves
-        explanation: Following one edge adds one move to the distance already traveled to reach its parent.
-      - id: other
-        text: 4 moves
-        explanation: Count the move from the parent to the neighbor.
-    correct: correct
+      - id: five
+        text: '5'
+        explanation: >-
+          The route to the neighbor is the 4 moves to its finder plus the one edge between them, so
+          `dist[nb]` is `4 + 1`.
+      - id: four
+        text: 4, the same as the node that found it
+        explanation: >-
+          The neighbor is one edge past the node that found it, and that edge is one more move.
+          `dist[node] + 1` is 5.
+      - id: order
+        text: The number of nodes found so far
+        explanation: >-
+          A label counts moves along the route, not the order nodes were found in. Several nodes
+          found one after another can share a label.
+    correct: five
     followUps:
-      other:
-        prompt: Does taking the next edge use any of the moves in the path to the parent?
+      four:
+        prompt: Does following the edge to the neighbor add a move?
+        options:
+          - id: adds
+            text: Yes, one more move than its finder
+          - id: same
+            text: No, it shares its finder's last move
+          - id: depends
+            text: Only if the neighbor is in a new row
+        correct: adds
+        explanation: Each edge is one move, so a node found from a node at distance 4 is at distance 5.
+      order:
+        prompt: Can two nodes found one after another have the same label?
         options:
           - id: 'yes'
-            text: It adds an extra move
+            text: Yes, if both are the same number of moves from the start
           - id: 'no'
-            text: It reuses the parent’s final move
+            text: No, each node found gets the next number
+          - id: only-start
+            text: Only the start can share a label
         correct: 'yes'
-        explanation: Following one edge adds one move to the distance already traveled to reach its parent.
+        explanation: Neighbors of one node are found one after another, and all of them get that node's label plus 1.
+
   - id: traversal-distance-detour
-    tags:
-      - bfs
+    heading: What label does T get?
+    tags: [bfs, grid]
     workedExample: |-
-      In the grid below, S starts at minute 0 and `#` is a wall. Each minute moves one cell up,
-      down, left or right onto an open cell.
+      In the grid below, BFS starts at S and `#` is a wall. Each move goes one cell up, down, left
+      or right onto an open cell.
 
       ```text
       S#.T
       ....
       ```
 
-      1. The cell right of S, (0, 1), is a wall, and the grid has nothing above or left of S. So the
-         first move must be down, to (1, 0), at minute 1.
-      2. T is 3 columns right of S, so the walk needs at least 3 right moves. It also left row 0, so
+      1. The cell right of S, `(0, 1)`, is a wall, and the grid has nothing above or left of S. So
+         the first move must be down, to `(1, 0)`.
+      2. T is 3 columns right of S, so a route needs at least 3 right moves. It also left row 0, so
          it needs 1 up move to return to T's row.
       3. That is at least `1 + 3 + 1`, which is 5 moves, and going down, right 3 times, then up
-         takes exactly 5. So BFS first reaches T at minute 5.
+         takes exactly 5. So T's label is 5.
     prompt: |-
-      In this grid, S starts at minute 0. Move one cell per minute in four directions. When can BFS first reach T?
+      BFS from S labels each open cell with its fewest moves. `#` is a wall, and each move goes one cell up, down, left or right onto an open cell. What label does T get?
 
       ```text
       S#T
       ...
       ```
     options:
-      - id: correct
-        text: Minute 4, by going around the wall
-        explanation: The shortest legal walk goes down, right twice, then up. Each edge contributes one minute.
-      - id: other
-        text: Minute 2, by moving straight across
-        explanation: Trace a walk that only enters open cells.
-    correct: correct
+      - id: four
+        text: '4'
+        explanation: >-
+          The wall blocks the first step right, so the shortest route goes down, right twice, then
+          up. That is 4 moves.
+      - id: two
+        text: '2'
+        explanation: >-
+          Two moves would go straight along row 0, through the wall. A route uses only open cells,
+          so it has to go around.
+      - id: three
+        text: '3'
+        explanation: >-
+          Three moves would need a diagonal step from `(1, 1)` to T. Each move changes one
+          coordinate, so the route needs 4.
+      - id: never
+        text: T never gets a label
+        explanation: >-
+          The wall blocks only row 0. Row 1 is open, so a route goes around the wall and T gets a
+          label.
+    correct: four
     followUps:
-      other:
-        prompt: Can the first step from S move right?
+      two:
+        prompt: Can the first move from S go right?
         options:
-          - id: 'yes'
-            text: The wall blocks that step
-          - id: 'no'
-            text: The wall costs one extra step
-        correct: 'yes'
-        explanation: The shortest legal walk goes down, right twice, then up. Each edge contributes one minute.
-  - id: traversal-seed-zero
-    tags:
-      - bfs
-    workedExample: |-
-      One machine, M, starts sending at time 0, and each link takes 1 minute. A node's BFS distance
-      is the minute it first has the message.
-
-      1. M has the message at time 0, before any link is crossed, so its distance is 0.
-      2. BFS grows outward from nodes whose distance is already known. So M goes into the queue with
-         distance 0 before any edge is processed.
-      3. When M is popped, each neighbor one link away gets distance `0 + 1`, which is 1.
-    prompt: Two machines both start sending at time 0. Both are seed nodes. How should BFS prepare its queue
-      before processing any edges?
-    options:
-      - id: correct
-        text: Queue both with distance 0
-        explanation: Both sources are already active at the start. Queue order breaks ties within minute zero
-          without changing their labels.
-      - id: other
-        text: Queue one with distance 0 and the other with distance 1
-        explanation: Think about when the second source starts sending.
-    correct: correct
-    followUps:
-      other:
-        prompt: Must a message travel to the second source before that source is active?
+          - id: blocked
+            text: No, the wall blocks that move
+          - id: extra
+            text: Yes, but the wall costs one extra move
+          - id: allowed
+            text: Yes, walls only slow the search
+        correct: blocked
+        explanation: A move goes only onto an open cell, so the route must leave row 0 to pass the wall.
+      three:
+        prompt: From `(1, 1)`, how many moves does it take to reach T at `(0, 2)`?
         options:
-          - id: 'yes'
-            text: It is already active
-          - id: 'no'
-            text: It must get the first message
-        correct: 'yes'
-        explanation: Both sources are already active at the start. Queue order breaks ties within minute zero
-          without changing their labels.
-  - id: traversal-nearer-seed
-    tags:
-      - bfs
-    workedExample: |-
-      Consider the row `S . X . . S`, with positions 0 to 5. Both sources start at move 0, and each
-      move goes one position left or right.
+          - id: two-moves
+            text: Two, since both coordinates change
+          - id: one-move
+            text: One diagonal move
+          - id: zero
+            text: None, they are neighbors
+        correct: two-moves
+        explanation: A move changes one coordinate by one. Going right and then up takes two moves, for 4 in all.
+      never:
+        prompt: Is there a route of open cells from S to T?
+        options:
+          - id: around
+            text: Yes, through row 1
+          - id: no-route
+            text: No, the wall cuts them apart
+          - id: only-wall
+            text: Only through the wall
+        correct: around
+        explanation: Row 1 is open from column 0 to column 2, so BFS reaches T by going around the wall.
 
-      1. The left S is at position 0 and X is at position 2, so it needs `2 - 0`, which is 2 moves.
-      2. The right S is at position 5, so it needs `5 - 2`, which is 3 moves.
-      3. Both sources start together, so X is first reached after the smaller count, 2 moves, by the
-         left source.
+  - id: traversal-first-label-stays
+    heading: What happens to B?
+    tags: [bfs, graph]
+    workedExample: |-
+      BFS runs from `S` on `links = {"S": ["A"], "A": ["S", "C"], "C": ["A"]}`. A node is labeled
+      and appended when it is first found, and a node that already has a label is skipped.
+
+      1. Popping S finds A, which is new, so A gets label `0 + 1`, which is 1, and joins the queue.
+      2. Popping A finds S along the edge back. S already has label 0, so it is skipped and keeps
+         0.
+      3. A's other neighbor, C, is new, so it gets label `1 + 1`, which is 2, and joins the queue.
     prompt: |-
-      In the row below, which source reaches X first? Each step is one position left or right.
+      In this BFS, `dist` also does the work of `seen`: a node is in `dist` once it is found.
+
+      ```python
+      links = {"S": ["A", "B"], "A": ["S", "B", "C"], "B": ["S", "A"], "C": ["A"]}
+      dist = {"S": 0}
+      queue = deque(["S"])
+      while queue:
+          node = queue.popleft()
+          for nb in links[node]:
+              if nb not in dist:
+                  dist[nb] = dist[node] + 1
+                  queue.append(nb)
+      ```
+
+      Popping S labels A and B with 1, so the queue is `["A", "B"]`. Popping A then finds B along the edge between them. What happens to B?
+    options:
+      - id: keeps
+        text: B keeps label 1 and does not join the queue again
+        explanation: >-
+          B is already in `dist`, so the test fails and nothing changes. Its label 1 is already
+          the fewest moves, and it still has its place in the queue.
+      - id: relabel-append
+        text: B gets label 2 and joins the queue again
+        explanation: >-
+          `nb not in dist` is false for B, so the body does not run. Its first label, 1, was
+          already the fewest moves.
+      - id: relabel
+        text: B gets label 2 and keeps its place in the queue
+        explanation: >-
+          The label changes only inside the `if`, which B fails. A route through A takes 2 moves,
+          more than the 1 move B already has.
+      - id: append
+        text: B keeps label 1 and joins the queue a second time
+        explanation: >-
+          Appending happens inside the same `if`, which B fails. B is still waiting in the queue
+          from when S found it.
+    correct: keeps
+    followUps:
+      relabel-append:
+        prompt: When A checks B, is `"B" not in dist` true?
+        options:
+          - id: labeled
+            text: No, B was labeled when S found it
+          - id: unlabeled
+            text: Yes, B has not been processed yet
+          - id: depends
+            text: Only if B's label is larger than A's
+        correct: labeled
+        explanation: A node joins `dist` when it is found, not when it is processed. So a later finder skips it.
+      relabel:
+        prompt: Which label is the fewest moves from S to B?
+        options:
+          - id: one
+            text: 1, by the edge from S
+          - id: two
+            text: 2, through A
+          - id: last
+            text: Whichever route was found last
+        correct: one
+        explanation: B is one edge from S. A route through A is longer, so the first label stays.
+      append:
+        prompt: Where is B when A checks it?
+        options:
+          - id: waiting
+            text: Still in the queue, behind A
+          - id: gone
+            text: Already processed and gone
+          - id: nowhere
+            text: Nowhere, since it has not been found
+        correct: waiting
+        explanation: S found B and appended it. It already has its turn coming, so a second entry would only repeat work.
+
+  - id: traversal-stack-first-label
+    heading: Is the first label the fewest moves?
+    tags: [bfs, dfs, grid]
+    workedExample: |-
+      Consider `links = {"A": ["B", "C"], "B": ["A"], "C": ["A", "D"], "D": ["C"]}` and the
+      labeling loop with `frontier.pop()`, which takes the item added last, starting from A.
+
+      1. Popping A labels B and C with `0 + 1`, which is 1, so the frontier is `["B", "C"]`.
+      2. `pop()` takes C, the item added last, and labels D with `1 + 1`, which is 2. B waits.
+      3. Here every label is also the fewest moves, because each node has only one route from A.
+    prompt: |-
+      This BFS labeling loop is changed to keep its frontier in a plain list and take `frontier.pop()`, the item added last, instead of `popleft()`. A list where `pop()` takes the item added last is a stack, and a stack frontier gives depth-first search, which follows one route as far as it goes before backing up. A cell gets its label when it is found, `dist[nb] = dist[cell] + 1`, and a labeled cell is skipped. On this open grid, from S at `(0, 0)`, checking right, down, left, then up, what label does `(0, 2)` get?
 
       ```text
-      S . . X S
+      S...
+      ....
       ```
     options:
-      - id: correct
-        text: The source to the right of X
-        explanation: The right source is one move away, closer than the left source. Starting both together makes
-          X’s label the smaller distance.
-      - id: other
-        text: The source to the left of X
-        explanation: Count from both starting positions to X.
-    correct: correct
+      - id: four-not-fewest
+        text: 4, which is not its fewest moves
+        explanation: >-
+          `pop()` takes `(1, 0)` before `(0, 1)`, so the search follows row 1 right and labels
+          `(1, 1)` with 2 and `(1, 2)` with 3. Popping `(1, 2)` finds `(0, 2)` and labels it 4,
+          though two steps right reach it.
+      - id: two-fewest
+        text: 2, its fewest moves
+        explanation: >-
+          2 is its fewest moves, which a queue would give. The stack processes row 1 first, and
+          `(1, 2)` finds `(0, 2)` before `(0, 1)` gets its turn.
+      - id: four-fewest
+        text: 4, which is its fewest moves
+        explanation: >-
+          The label is 4, but two steps right along row 0 reach `(0, 2)`. A stack's first label is
+          the length of the route it happened to follow.
+      - id: no-label
+        text: It never gets a label
+        explanation: >-
+          The grid is open, so every cell is found and labeled. The question is only which route
+          finds `(0, 2)` first.
+    correct: four-not-fewest
     followUps:
-      other:
-        prompt: How many moves does the source to the left need to reach X?
+      two-fewest:
+        prompt: After `(0, 0)` adds `(0, 1)` and then `(1, 0)`, which cell does `pop()` take next?
         options:
-          - id: 'yes'
+          - id: last
+            text: '`(1, 0)`, the item added last'
+          - id: first
+            text: '`(0, 1)`, the item added first'
+          - id: nearer
+            text: Whichever is nearer `(0, 2)`
+        correct: last
+        explanation: A stack takes the item added last, so the search runs along row 1 before it returns to `(0, 1)`.
+      four-fewest:
+        prompt: How many moves does the route `(0, 0)`, `(0, 1)`, `(0, 2)` take?
+        options:
+          - id: two
+            text: Two moves
+          - id: three
             text: Three moves
-          - id: 'no'
-            text: One move
-        correct: 'yes'
-        explanation: The right source is one move away. The left source is three moves away. Starting both together
-          makes X’s label the smaller distance.
+          - id: four
+            text: Four moves
+        correct: two
+        explanation: Two moves right reach `(0, 2)`. The stack labeled it 4 because it found it from `(1, 2)` first.
+      no-label:
+        prompt: Does a stack frontier label every cell it can reach?
+        options:
+          - id: all
+            text: Yes, it only finds them in another order
+          - id: some
+            text: No, it skips cells off its route
+          - id: row
+            text: No, it labels only the start's row
+        correct: all
+        explanation: A stack and a queue find the same cells. A queue makes each first label the fewest moves, and a stack does not always.
+
+  - id: traversal-source-zero
+    heading: How should the queue start?
+    tags: [bfs]
+    workedExample: |-
+      One machine, M, starts sending a message at minute 0, and each link takes 1 minute. A node's
+      label is the minute it first has the message.
+
+      1. M has the message at minute 0, before any link is crossed, so its label is 0.
+      2. BFS grows outward from nodes whose labels are already known. So M goes into the queue with
+         label 0, and is marked seen, before any node is processed.
+      3. When M is popped, each neighbor one link away gets label `0 + 1`, which is 1.
+    prompt: >-
+      Two machines, M and N, both start sending the same message at minute 0. Each link takes one
+      minute, and a node's label is the minute it first has the message. A node that starts with
+      the message is a source, and every source is marked seen when it joins the queue. How should
+      BFS set up its queue before processing any node?
+    options:
+      - id: both-zero
+        text: Put M and N in the queue, each labeled 0
+        explanation: >-
+          Both have the message at minute 0, so both start with label 0. One queue then spreads
+          from both at once, a layer per minute.
+      - id: offset
+        text: Put M in labeled 0, and N labeled 1
+        explanation: >-
+          N does not wait for anything. It has the message at minute 0, the same as M, so its label
+          is 0.
+      - id: one-then-other
+        text: Put M in, and add N once M's search has finished
+        explanation: >-
+          Both send at the same time. Running M's search first labels nodes near N with long routes
+          from M, though N reaches them sooner.
+      - id: one-source
+        text: Put M in, and label N when a link from M reaches it
+        explanation: >-
+          That treats N as an ordinary node. N already has the message at minute 0, so it starts in
+          the queue like M.
+    correct: both-zero
+    followUps:
+      offset:
+        prompt: Does the message have to travel to N before N can send it?
+        options:
+          - id: has-it
+            text: No, N has it at minute 0
+          - id: travel
+            text: Yes, it must come from M first
+          - id: queue-order
+            text: Yes, since N is second in the queue
+        correct: has-it
+        explanation: A source's label is the minute it starts with the message, which is 0 for both. Queue order only decides which is popped first.
+      one-then-other:
+        prompt: A node is one link from N and five links from M. When does it first have the message?
+        options:
+          - id: one
+            text: Minute 1
+          - id: five
+            text: Minute 5
+          - id: six
+            text: Minute 6
+        correct: one
+        explanation: Both spread at the same time, so a node gets the message from the nearer source. Starting both in one queue gives that.
+      one-source:
+        prompt: What is N's label?
+        options:
+          - id: zero
+            text: 0, since it starts with the message
+          - id: links
+            text: Its number of links from M
+          - id: one
+            text: 1, since it is the second source
+        correct: zero
+        explanation: Every source starts at minute 0, so every source goes into the queue with label 0 before any node is processed.
+
+  - id: traversal-nearer-source
+    format: tap-cell
+    heading: Which source arrives first?
+    tags: [bfs]
+    workedExample: |-
+      Consider the row `S . X . . S`, with indices 0 to 5. Both sources start at minute 0, and each
+      minute the spread moves one index left or right.
+
+      1. The left S is at index 0 and X is at index 2, so it needs `2 - 0`, which is 2 minutes.
+      2. The right S is at index 5, so it needs `5 - 2`, which is 3 minutes.
+      3. Both sources start together, so X is first reached after the smaller count, 2 minutes, by
+         the left source.
+    prompt: >-
+      Both sources, `S`, start at minute 0, and each minute the spread moves one index left or
+      right. Tap the source that reaches `X` first.
+    code: |
+      row = ["S", ".", ".", "X", "S"]
+    sequence:
+      kind: array
+      name: row
+      cells: [S, ., ., X, S]
+    correct: 4
+    explanation: >-
+      The right source is at index 4, one move from X at index 3. The left source needs 3 moves, so
+      X is first reached at minute 1, from the right.
+    misses:
+      - index: 0
+        explanation: The left source is at index 0, so it needs `3 - 0`, which is 3 moves. The right source needs 1.
+      - index: 1
+        explanation: Index 1 is an open cell, not a source. The sources are at indices 0 and 4.
+      - index: 2
+        explanation: Index 2 is an open cell, not a source. The sources are at indices 0 and 4.
+      - index: 3
+        explanation: Index 3 is X itself. The sources are at indices 0 and 4.

@@ -59,7 +59,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
-	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
+	'trees-and-graphs': { keep: 0, rewrite: 4, exam: 8, retire: 6 },
 	'problem-solving-patterns': { keep: 1, rewrite: 8, exam: 12, retire: 1 }
 };
 
@@ -213,9 +213,9 @@ describe('shipped curriculum', () => {
 			'binary-search-preconditions/python-overflow retire exact-search',
 			'subarray-sum-k/sort-sweep retire method-selection',
 			'heapq-min-heap/plain-pops retire priority-order',
-			'grid-bounds-and-cost/quadratic rewrite reachability',
+			'grid-bounds-and-cost/quadratic retire reachability',
 			'count-components-edge-list/one-search rewrite reachability',
-			'shortest-path-grid/dijkstra rewrite weighted-paths',
+			'shortest-path-grid/dijkstra retire weighted-paths',
 			'tiling-recurrence/empty-is-zero rewrite one-dimensional-tables'
 		]);
 	});

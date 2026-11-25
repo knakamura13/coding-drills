@@ -1,18 +1,21 @@
 id: reachability
 title: Reachability
-description: Find legal neighbors, mark each discovery, and explore a region of land.
+description: Find legal neighbors, mark each cell when it is found, and finish one region of land.
 questions:
   - id: reachability-tap-east
     format: tap-cell
-    tags:
-      - bfs
+    heading: Which cell is one step right?
+    tags: [grid]
     workedExample: |-
-      Consider `row = [0, 1, 1, 1]` and `start = 1`, where 1 is land and 0 is water. One step right
-      adds one to the column.
+      Reachability asks which land cells a walk can get to from a start cell. The map is a grid of
+      `1` (land) and `0` (water), and each step moves one cell up, down, left or right, onto land
+      only. This example uses one row of a grid, `row = [1, 0, 1, 1, 0]`, with the walk at
+      `start = 2`.
 
-      1. `start` is column 1, so one step right is column `1 + 1`, which is 2.
-      2. `row` has 4 cells, numbered 0 to 3, so column 2 is inside the row.
-      3. `row[2]` is 1, so the cell one step right of the start is land, at index 2.
+      1. A step right adds one to the index, so from index 2 it reaches index `2 + 1`, which is 3.
+      2. `row` has 5 cells, numbered 0 to 4, so index 3 is inside the row and can be read.
+      3. `row[3]` is `1`, so the cell one step right of the start is land, and the walk can step
+         onto index 3.
     prompt: In `row`, 1 is land and 0 is water. Starting at the marked cell, tap the land cell one step right.
     code: |
       row = [1, 1, 0]
@@ -20,232 +23,619 @@ questions:
     sequence:
       kind: array
       name: row
-      cells:
-        - '1'
-        - '1'
-        - '0'
+      cells: ['1', '1', '0']
     markers:
       - name: start
         at: 0
     correct: 1
-    explanation: One step right increases the column by one. Column 1 is in bounds and holds land.
+    explanation: One step right adds one to the index, so it reaches index 1. Index 1 is inside the row and holds land.
     misses:
       - index: 0
-        explanation: This is the starting cell. Moving right increases the column.
+        explanation: This is the starting cell. A step right adds one to the index.
       - index: 2
-        explanation: This is two columns away and contains water.
+        explanation: This is two steps right of the start, and it holds water.
+
   - id: reachability-diagonal-neighbor
-    tags:
-      - bfs
-      - dfs
+    heading: Which cell is one legal move away?
+    tags: [grid]
     workedExample: |-
-      Cells are written `(row, column)`. A legal move goes up, down, left or right, so it changes
-      exactly one coordinate, by one. Consider `(1, 1)` and `(0, 1)`.
+      A grid is a list of rows, so `grid[r][c]` is the cell in row `r` and column `c`, written
+      `(r, c)`. A legal move goes one cell up, down, left or right, so it changes exactly one
+      coordinate, by one. Consider `(1, 1)` and `(0, 1)`.
 
       1. From `(1, 1)` to `(0, 1)` the row goes from 1 to 0, a change of one.
       2. The column is 1 in both cells, so only one coordinate changes.
       3. So `(0, 1)` is one legal move from `(1, 1)`: a single step up.
-    prompt: With moves up, down, left and right only, is (2, 2) one step from (1, 1)?
-    options:
-      - id: valid
-        text: It is two moves away
-        explanation: The row and column both change. A legal move changes exactly one coordinate by one.
-      - id: mistake
-        text: It is one move away
-        explanation: A diagonal step is not one of the four moves. Reaching (2, 2) from (1, 1) takes a step down
-          and then a step right.
-    correct: valid
-    followUps:
-      mistake:
-        prompt: Which coordinates change from (1, 1) to (2, 2)?
-        options:
-          - id: right
-            text: Both row and column
-          - id: wrong
-            text: The row only
-        correct: right
-        explanation: The row and column both change. A legal move changes exactly one coordinate by one.
-  - id: reachability-reject-negative-row
-    tags:
-      - bfs
-      - dfs
-    workedExample: |-
-      Consider `grid = [[1, 0, 1], [1, 1, 0]]`, which has 3 columns, numbered 0 to 2. A step left
-      takes one away from the column `c`.
-
-      1. A step left from column 0 gives `c = -1`, which is off the left edge of the grid.
-      2. Python reads a negative index from the end, so `grid[0][-1]` is `grid[0][2]`, the last
-         column. It raises no error.
-      3. The check `c < len(grid[0])` asks whether `-1 < 3`, which is true. So that check alone lets
-         the step through, and the search reads a cell on the far right edge.
-    prompt: At row 0, which check stops an upward step from reading Python’s last row?
-    options:
-      - id: valid
-        text: '`0 <= r < len(grid)`'
-        explanation: Moving up from row 0 produces −1. Python accepts a negative index and reads from the end
-          unless the guard rejects it.
-      - id: mistake
-        text: '`r < len(grid)`'
-        explanation: This catches only the bottom edge. An upward step from row 0 gives −1, which is less than
-          2, so it passes and `grid[-1]` reads the last row.
-    correct: valid
-    followUps:
-      mistake:
-        prompt: Does row −1 pass the check `r < 2`?
-        options:
-          - id: right
-            text: Yes, −1 is less than 2
-          - id: wrong
-            text: No, the check requires nonnegative rows
-        correct: right
-        explanation: Moving up from row 0 produces −1. Python accepts a negative index and reads from the end
-          unless the guard rejects it.
-  - id: reachability-mark-convergence
-    tags:
-      - bfs
-      - dfs
-    workedExample: |-
-      A search pops A and finds its neighbor B, which is not in `seen`. The rule is to add a cell to
-      `seen` at the moment it joins the queue.
-
-      1. B is not in `seen`, so A appends B to the queue.
-      2. B has now been discovered, so A adds B to `seen` in the same step, even though B's turn has
-         not come yet.
-      3. So `seen` holds B the whole time B waits in the queue. `seen` means discovered, not
-         finished.
     prompt: >-
-      A search pops cell A, finds its neighbor B and puts B in the queue. Later, cell C finds B
-      beside it, while B is still waiting in the queue. What should C do?
+      A grid is a list of rows: `grid[r][c]` is the cell in row `r` and column `c`, written
+      `(r, c)`, with both counted from 0. A legal move goes one cell up, down, left or right. In a
+      grid of 3 rows and 4 columns, which cell is one legal move from `(1, 2)`?
     options:
-      - id: valid
-        text: Skip B because it is already seen
-        explanation: Seen means discovered, including cells still waiting in the queue. B already has a turn
-          coming.
-      - id: mistake
-        text: Queue B because it has not had a turn
-        explanation: B has not had its turn, but one is already coming. Queuing it again gives B two turns, so
-          its neighbors are checked twice.
-    correct: valid
+      - id: down
+        text: '`(2, 2)`'
+        explanation: >-
+          The row goes from 1 to 2 and the column stays 2, so exactly one coordinate changes, by
+          one. That is a single step down.
+      - id: down-right
+        text: '`(2, 3)`'
+        explanation: >-
+          The row and the column both change, so this cell is diagonal. Reaching it takes two
+          moves, such as down and then right.
+      - id: up-left
+        text: '`(0, 1)`'
+        explanation: >-
+          Going up lowers the row and keeps the column, so up from `(1, 2)` is `(0, 2)`. `(0, 1)`
+          also changes the column, so it is diagonal.
+      - id: two-left
+        text: '`(1, 0)`'
+        explanation: >-
+          Only the column changes, but it changes by two, from 2 to 0. A legal move changes one
+          coordinate by exactly one.
+    correct: down
     followUps:
-      mistake:
-        prompt: Can a cell be in seen before it is popped?
+      down-right:
+        prompt: From `(1, 2)` to `(2, 3)`, which coordinates change?
         options:
-          - id: right
-            text: Yes, once it is queued
-          - id: wrong
-            text: No, seen only holds finished cells
-        correct: right
-        explanation: Seen means discovered, including cells still waiting in the queue. B already has a turn
-          coming.
+          - id: both
+            text: Both the row and the column
+          - id: row
+            text: Only the row
+          - id: column
+            text: Only the column
+        correct: both
+        explanation: A legal move changes exactly one coordinate by one. A diagonal changes both, so it takes two moves.
+      up-left:
+        prompt: Which cell is one step up from `(1, 2)`?
+        options:
+          - id: straight
+            text: '`(0, 2)`, with the row one lower and the column the same'
+          - id: lean
+            text: '`(0, 1)`, with both coordinates one lower'
+          - id: left
+            text: '`(1, 1)`, with the column one lower'
+        correct: straight
+        explanation: A step up lowers the row by one and leaves the column alone, so up from `(1, 2)` is `(0, 2)`.
+      two-left:
+        prompt: How many columns apart are `(1, 2)` and `(1, 0)`?
+        options:
+          - id: two
+            text: 2 columns
+          - id: one
+            text: 1 column
+          - id: zero
+            text: None, since they share a row
+        correct: two
+        explanation: Column 2 to column 0 is two steps left. A legal move covers one step, so this cell is two moves away.
+
+  - id: reachability-negative-wraps
+    format: tap-cell
+    heading: Which row does it read?
+    tags: [grid, python]
+    workedExample: |-
+      Consider `grid = [[1, 0], [0, 0], [0, 1], [1, 1]]`, which has 4 rows, and a step down from
+      row 3. A step down adds one to the row.
+
+      1. A step down from row 3 gives `r = 3 + 1`, which is 4.
+      2. The rows are numbered 0 to 3, so index 4 is past the end of `grid`.
+      3. So `grid[4]` raises `IndexError`. A step off the bottom edge fails loudly, because an index
+         past the end is not a real index.
+    prompt: >-
+      `grid` has 3 rows. A step up subtracts one from the row, so a step up from row 0 gives
+      `r = -1`, which is off the top edge. Tap the row that `grid[r]` reads.
+    code: |
+      grid = [[1, 1, 0],
+              [0, 1, 0],
+              [1, 0, 1]]
+      r = 0 - 1   # a step up from row 0
+      print(grid[r])
+    sequence:
+      kind: array
+      name: grid
+      cells: ['[1, 1, 0]', '[0, 1, 0]', '[1, 0, 1]']
+    markers:
+      - name: start
+        at: 0
+    correct: 2
+    explanation: >-
+      A negative index counts back from the end, so `grid[-1]` is the last row, row 2. Python
+      raises no error, so a step off the top edge quietly reads a row on the bottom edge.
+    misses:
+      - index: 0
+        explanation: Row 0 is where the step started. The step gives `r = -1`, and `-1` counts back from the end.
+      - index: 1
+        explanation: >-
+          Row 1 is one step down from row 0, not up. `grid[-1]` reads the last row, which is row 2.
+
+  - id: reachability-reject-negative-row
+    heading: Which test keeps the walk inside the grid?
+    tags: [grid, python]
+    workedExample: |-
+      Consider `row = [1, 0, 1, 1, 0]`, so `len(row)` is 5, and the test `0 <= c <= len(row)`. A
+      test is right only if it accepts every real index and rejects every index off either end.
+
+      1. The real indices are 0 to 4. Each is at least 0 and at most 5, so the test accepts them
+         all.
+      2. Off the left end, `c = -1` fails `0 <= c`, so it is rejected, as it should be.
+      3. Off the right end, `c = 5` passes `5 <= 5`, but index 5 is past the end, and `row[5]`
+         raises `IndexError`. So this test is not the right one.
+    prompt: >-
+      `grid` has 2 rows and 3 columns, so `len(grid)` is 2 and `len(grid[0])` is 3. A step can
+      leave the grid on any side, so the walk tests each new `(r, c)` before it reads
+      `grid[r][c]`. Which test is true for every cell inside `grid` and false for every cell
+      outside it?
+    options:
+      - id: full
+        text: '`0 <= r < len(grid) and 0 <= c < len(grid[0])`'
+        explanation: >-
+          Each coordinate must be at least 0 and below its own length: rows below `len(grid)`,
+          columns below `len(grid[0])`. That accepts exactly the six real cells.
+      - id: no-lower
+        text: '`r < len(grid) and c < len(grid[0])`'
+        explanation: >-
+          A step up from row 0 gives `r = -1`, and `-1 < 2` is true, so the test lets it through.
+          `grid[-1]` then quietly reads the last row instead of raising an error.
+      - id: rows-for-columns
+        text: '`0 <= r < len(grid) and 0 <= c < len(grid)`'
+        explanation: >-
+          Columns run from 0 to 2, but this compares them with `len(grid)`, which is 2. So
+          `(0, 2)`, a real cell, fails `2 < 2` and is rejected.
+      - id: at-most
+        text: '`0 <= r <= len(grid) and 0 <= c <= len(grid[0])`'
+        explanation: >-
+          `r = 2` passes `2 <= 2`, but the rows are 0 and 1, so row 2 is past the end, and reading
+          `grid[2]` raises `IndexError`.
+    correct: full
+    followUps:
+      no-lower:
+        prompt: Does `r = -1` pass the test `r < 2`?
+        options:
+          - id: passes
+            text: Yes, since `-1` is less than 2
+          - id: fails
+            text: No, since a row cannot be negative
+          - id: error
+            text: No, the comparison raises an error
+        correct: passes
+        explanation: '`-1 < 2` is true, so only a test like `0 <= r` stops a step off the top edge.'
+      rows-for-columns:
+        prompt: Which length gives the number of columns?
+        options:
+          - id: row-length
+            text: '`len(grid[0])`, the length of one row'
+          - id: grid-length
+            text: '`len(grid)`, the number of rows'
+          - id: either
+            text: Either one, since a grid is always square
+        correct: row-length
+        explanation: '`len(grid)` counts the rows. Each row holds one cell per column, so `len(grid[0])` counts the columns.'
+      at-most:
+        prompt: In a grid with 2 rows, what is the last row index?
+        options:
+          - id: one
+            text: Row 1
+          - id: two
+            text: Row 2
+          - id: three
+            text: Row 3
+        correct: one
+        explanation: Indices start at 0, so 2 rows are rows 0 and 1. An index equal to the length is already past the end.
+
+  - id: reachability-frontier-trace
+    format: step-trace
+    heading: Follow the search
+    tags: [grid, graph]
+    workedExample: |-
+      Consider `row = [1, 1, 0, 1]` and `start = 0`. The search keeps a frontier of cells found but
+      not yet processed, and adds a cell to `seen` when it adds it to the frontier.
+
+      1. The frontier starts as `[0]`, and `seen` is `{0}`. Popping 0 checks index `-1`, which
+         fails `0 <= n`, and index 1, which is land and not in `seen`. So 1 joins `seen` and the
+         frontier.
+      2. Popping 1 checks index 0, which is already in `seen`, and index 2, which is water. Nothing
+         joins, so the frontier is empty and the loop ends.
+      3. So `seen` is `{0, 1}`. Index 3 is land, but water at index 2 cuts it off.
+    prompt: >-
+      This search finds the land (1) a walk along `row` can reach from `start`. Its frontier holds
+      the cells found but not yet processed, and `frontier.pop()` takes the item added last. A
+      cell joins `seen` the moment it is added to the frontier, so it is never added twice. `and`
+      stops at its first false test, so `row[n]` is read only when `n` is inside the row. Predict
+      each step.
+    code: |
+      frontier = [start]
+      seen = {start}
+      while frontier:
+          c = frontier.pop()
+          for n in (c - 1, c + 1):
+              if 0 <= n < len(row) and row[n] == 1 and n not in seen:
+                  seen.add(n)
+                  frontier.append(n)
+    sequence:
+      kind: array
+      name: row
+      cells: ['0', '1', '1', '1', '0', '1']
+    start:
+      - name: c
+        at: 2
+    steps:
+      - line: 4
+        ask: '`c` is 2, the start. Which cells join `seen` and the frontier on this pass?'
+        options:
+          - id: both
+            text: '`1` and `3`'
+            explanation: >-
+              Index 1 and index 3 are both land and not yet in `seen`, so both are added, 1 first.
+              The frontier is now `[1, 3]`.
+          - id: right-only
+            text: '`3` only'
+            explanation: The loop checks `c - 1` as well as `c + 1`. Index 1 is land, so it joins too.
+          - id: all-land
+            text: '`1`, `3` and `5`'
+            explanation: >-
+              Only `c - 1` and `c + 1` are checked, the cells one step away. Index 5 is land but is
+              three steps from index 2.
+        correct: both
+      - line: 4
+        ask: Tap the cell `c` names on the next pass.
+        pointer: c
+        correct: 3
+        explanation: The frontier is `[1, 3]`, and `pop()` takes the item added last, which is 3.
+        misses:
+          - index: 1
+            explanation: Index 1 joined first, but `pop()` takes the item added last, which is 3.
+          - index: 2
+            explanation: Index 2 was popped on the first pass, so it has left the frontier.
+        elsewhere: The frontier holds only 1 and 3, and `pop()` takes 3, the item added last.
+      - line: 3
+        ask: The frontier is empty and the loop ends. What does `seen` hold?
+        options:
+          - id: region
+            text: '`{1, 2, 3}`'
+            explanation: >-
+              Popping 3 finds 2 in `seen` and 4 as water, and popping 1 finds 0 as water and 2 in
+              `seen`. Nothing else joins, so `seen` holds the three cells the walk can reach.
+          - id: every-land
+            text: '`{1, 2, 3, 5}`'
+            explanation: Index 5 is land, but water at index 4 cuts it off. No pop ever reaches it.
+          - id: no-start
+            text: '`{1, 3}`'
+            explanation: The start joined `seen` on the second line, before the loop began, and stays there.
+        correct: region
+        also:
+          - name: c
+            at: 1
+
+  - id: reachability-mark-convergence
+    heading: What should C do?
+    tags: [grid, graph]
+    workedExample: |-
+      Consider `row = [1, 1, 1]` and a search from index 0 that adds a cell to `seen` when it adds
+      it to the frontier.
+
+      1. Popping 0 finds index 1, which is land and not in `seen`, so 1 joins `seen` and the
+         frontier.
+      2. Popping 1 finds index 0, which is in `seen`, so it is skipped. It finds index 2, which is
+         new, so 2 joins.
+      3. Popping 2 finds index 1 in `seen` and skips it. Each cell entered the frontier exactly
+         once.
+    prompt: >-
+      A search adds a cell to `seen` when it adds it to the frontier. Processing cell A finds its
+      land neighbor B, so B joins `seen` and the frontier. Later, while B is still waiting in the
+      frontier, processing cell C finds B beside it too. What should C do with B?
+    options:
+      - id: skip
+        text: Skip B, because B is already in `seen`
+        explanation: >-
+          `seen` holds every cell found so far, including cells still waiting their turn. B
+          already has an entry in the frontier, so one more would give it two turns.
+      - id: unprocessed
+        text: Add B again, because B has not been processed yet
+        explanation: >-
+          B has not had its turn, but its turn is already coming. A second entry makes the search
+          process B twice and check its neighbors twice.
+      - id: per-finder
+        text: Add B again, because C reached B from a different cell
+        explanation: >-
+          The frontier holds one entry per cell found, not one per cell that finds it. Which
+          neighbor finds B does not change what processing B does.
+      - id: process-now
+        text: Process B right away, before the rest of the frontier
+        explanation: >-
+          Finding a cell only adds it to the frontier, where it waits for its turn to be popped and
+          processed.
+    correct: skip
+    followUps:
+      unprocessed:
+        prompt: Can a cell be in `seen` before it is processed?
+        options:
+          - id: once-added
+            text: Yes, from the moment it is added to the frontier
+          - id: finished
+            text: No, `seen` holds only processed cells
+          - id: popped
+            text: No, a cell joins `seen` when it is popped
+        correct: once-added
+        explanation: In this search a cell joins `seen` when it is found. That is what stops a second neighbor from adding it again.
+      per-finder:
+        prompt: How many entries does a cell get in the frontier?
+        options:
+          - id: one
+            text: One, however many neighbors find it
+          - id: per-neighbor
+            text: One for each neighbor that finds it
+          - id: per-side
+            text: One for each side it can be entered from
+        correct: one
+        explanation: The first neighbor to find a cell adds it and marks it. Every later neighbor sees the mark and skips it.
+      process-now:
+        prompt: When does a cell in the frontier get processed?
+        options:
+          - id: on-pop
+            text: When `frontier.pop()` takes it
+          - id: on-find
+            text: As soon as a neighbor finds it
+          - id: on-mark
+            text: When it is added to `seen`
+        correct: on-pop
+        explanation: Processing means popping a cell and checking its neighbors. Finding a cell only adds it to the frontier to wait.
+
   - id: reachability-mark-start
-    tags:
-      - bfs
-      - dfs
+    heading: What goes wrong?
+    tags: [grid, graph]
     workedExample: |-
-      A search pops A and finds its neighbor B, which is not in `seen` yet. Each cell is added to
-      `seen` when it is queued.
+      Consider `row = [0, 1, 1, 0]` and `start = 1`, with `seen = {start}` as the frontier is set
+      up.
 
-      1. B is not in `seen`, so A queues B and adds B to `seen` in the same step.
-      2. Later, another cell next to B checks whether B is in `seen`. It is, so that cell does not
-         queue B again.
-      3. So B gets exactly one turn in the queue, because it was marked the moment it was queued.
-    prompt: The start A is queued first. When should A be marked?
-    options:
-      - id: valid
-        text: As soon as A is queued
-        explanation: The start follows the same rule as every neighbor. A later visit to a neighbor must not
-          rediscover A.
-      - id: mistake
-        text: Never, as A is the start
-        explanation: No neighbor queued A, but A can still be found again. Left unmarked, A looks new when B
-          checks its neighbors, so B queues A a second time.
-    correct: valid
-    followUps:
-      mistake:
-        prompt: If a neighbor can walk back to an unmarked start, what can it do?
-        options:
-          - id: right
-            text: Queue the start a second time
-          - id: wrong
-            text: Skip it because its turn already ended
-        correct: right
-        explanation: The start follows the same rule as every neighbor. A later visit to a neighbor must not
-          rediscover A.
-  - id: reachability-stop-at-water
-    tags:
-      - bfs
-      - dfs
-    workedExample: |-
-      Consider the one-row grid `[[0, 1, 1, 0, 1]]`, where 1 is land and 0 is water, and search from
-      (0, 1). A search steps only onto land, one cell up, down, left or right.
-
-      1. There is no row above or below, so only left and right are possible. Left of (0, 1) is
-         (0, 0), which is water, so the search does not step there.
-      2. Right of (0, 1) is (0, 2), which is land, so the search reaches it. Right of (0, 2) is
-         (0, 3), which is water, so the search stops going right.
-      3. (0, 4) is land, but every way to it from (0, 2) passes (0, 3), which is water. So the
-         search reaches (0, 1) and (0, 2) only.
+      1. Popping 1 finds index 0, which is water, and index 2, which is land and not in `seen`.
+         So 2 joins `seen` and the frontier.
+      2. Popping 2 finds index 1, which has been in `seen` since the start, so it is skipped.
+         Index 3 is water.
+      3. The frontier is empty after two pops, one for each land cell.
     prompt: |-
-      In the grid below, which land does a search from (0, 0) reach? Move only in the four cardinal directions.
+      This version of the search starts with `seen` empty, so the start is not marked when it joins the frontier. It runs on `row = [0, 1, 1, 0]` from `start = 1`.
+
+      ```python
+      frontier = [start]
+      seen = set()
+      while frontier:
+          c = frontier.pop()
+          for n in (c - 1, c + 1):
+              if 0 <= n < len(row) and row[n] == 1 and n not in seen:
+                  seen.add(n)
+                  frontier.append(n)
+      ```
+
+      Which statement is true when it ends?
+    options:
+      - id: twice
+        text: Index 1 was processed twice, since index 2 found it unmarked
+        explanation: >-
+          Popping 1 adds 2. Popping 2 finds index 1 missing from `seen`, so it adds 1 again. The
+          second pop of 1 finds 2 in `seen`, so the loop ends after three pops.
+      - id: once
+        text: Index 1 was processed once, since it was first in the frontier
+        explanation: >-
+          Being first gives the start its first turn, but nothing marks it. When 2 is popped, index
+          1 is land and not in `seen`, so it is added again.
+      - id: forever
+        text: The loop never ends, since 1 and 2 keep adding each other
+        explanation: >-
+          Index 2 added 1 back, but it also marked 1 then. When 1 is popped again, 2 is already in
+          `seen`, so nothing is added and the frontier empties.
+      - id: missing
+        text: '`seen` ends without index 1, since the start was never added'
+        explanation: >-
+          The start was not added at the beginning, but index 2 added it to `seen` when it found
+          it. So `seen` ends as `{1, 2}`.
+    correct: twice
+    followUps:
+      once:
+        prompt: When 2 is popped and checks index 1, what makes it add index 1?
+        options:
+          - id: not-seen
+            text: Index 1 is land and is not in `seen`
+          - id: first
+            text: Index 1 was first in the frontier
+          - id: popped
+            text: Index 1 has already been popped
+        correct: not-seen
+        explanation: The test checks only bounds, land and `seen`. Leaving the frontier records nothing, so an unmarked start looks new.
+      forever:
+        prompt: When index 1 is popped the second time, is index 2 in `seen`?
+        options:
+          - id: yes-seen
+            text: Yes, so nothing is added
+          - id: no-seen
+            text: No, so 2 is added again
+          - id: removed
+            text: No, popping 2 took it out of `seen`
+        correct: yes-seen
+        explanation: Every cell added after the start is marked when it is added. So the extra work stops after one repeat of the start.
+      missing:
+        prompt: What does index 2 do when it finds index 1 unmarked?
+        options:
+          - id: adds-both
+            text: Adds 1 to `seen` and to the frontier
+          - id: frontier-only
+            text: Adds 1 to the frontier only
+          - id: nothing
+            text: Nothing, since 1 is the start
+        correct: adds-both
+        explanation: A newly found cell joins `seen` and the frontier together, so the start ends up in `seen` too, one pop late.
+
+  - id: reachability-stop-at-water
+    heading: Which land does the fill reach?
+    tags: [grid]
+    workedExample: |-
+      Consider the one-row grid `[[0, 1, 1, 0, 1]]`, where 1 is land and 0 is water, and a search
+      from `(0, 1)`. It steps only onto land, one cell up, down, left or right.
+
+      1. There is no row above or below, so only left and right are possible. Left of `(0, 1)` is
+         `(0, 0)`, which is water, so the search does not step there.
+      2. Right of `(0, 1)` is `(0, 2)`, which is land, so the search reaches it. Right of `(0, 2)`
+         is `(0, 3)`, which is water, so the search stops going right.
+      3. `(0, 4)` is land, but every way to it passes `(0, 3)`, which is water. So the search
+         reaches `(0, 1)` and `(0, 2)` only.
+    prompt: |-
+      A flood fill is a search on a grid that spreads from the start to every land cell it can reach by moves up, down, left or right, never stepping onto water. Which cells does a flood fill from `(0, 0)` reach?
 
       ```text
-      1101
-      0001
+      11001
+      00100
       ```
     options:
-      - id: valid
-        text: The first two cells of the top row
-        explanation: The water in column 2 and the water beneath the left pair cut off the right region.
-      - id: mistake
-        text: All four land cells in the grid
-        explanation: A search never steps onto water. (0, 2) is water, and so is the row below the left pair, so
-          the land in column 3 is never reached.
-    correct: valid
+      - id: pair
+        text: '`(0, 0)` and `(0, 1)`'
+        explanation: >-
+          Right of `(0, 1)` is water, and so is the cell below each of the two. No legal move
+          leaves the pair, so the fill stops there.
+      - id: diagonal
+        text: '`(0, 0)`, `(0, 1)` and `(1, 2)`'
+        explanation: >-
+          `(1, 2)` touches `(0, 1)` only at a corner. Reaching it changes both the row and the
+          column, which no single move does, and its edge neighbors are all water.
+      - id: all-land
+        text: All four land cells
+        explanation: >-
+          A flood fill never steps onto water. `(0, 4)` and `(1, 2)` are cut off from the start by
+          water on every side.
+    correct: pair
     followUps:
-      mistake:
-        prompt: Can the top-right land be reached by crossing water?
+      diagonal:
+        prompt: Can a single legal move go from `(0, 1)` to `(1, 2)`?
         options:
-          - id: right
-            text: No, water stops the walk
-          - id: wrong
-            text: Yes, if land resumes afterward
-        correct: right
-        explanation: The water in column 2 and the water beneath the left pair cut off the right region.
-  - id: reachability-empty-frontier
-    tags:
-      - bfs
-      - dfs
-    workedExample: |-
-      Consider the one-row grid `[[0, 1, 0]]`, where 1 is land, with the search starting at (0, 1).
-      The frontier starts with just the start, and each pop offers the popped cell's land neighbors
-      that are not yet seen.
+          - id: two-changes
+            text: No, it changes both coordinates
+          - id: yes-corner
+            text: Yes, since the cells touch at a corner
+          - id: yes-land
+            text: Yes, since both cells are land
+        correct: two-changes
+        explanation: A legal move changes one coordinate by one. Cells that touch only at a corner are two moves apart.
+      all-land:
+        prompt: Can a flood fill reach land on the far side of water?
+        options:
+          - id: only-around
+            text: Only along a route of land that goes around the water
+          - id: jumps
+            text: Yes, if land starts again right after the water
+          - id: always
+            text: Yes, every land cell in the grid is reached
+        correct: only-around
+        explanation: Every step lands on land. If water surrounds a cell, no route of land reaches it.
 
-      1. The search pops (0, 1). That was the only cell in the frontier, so the frontier is now
-         empty.
-      2. The neighbors of (0, 1) in the grid are (0, 0) and (0, 2), and both are water. So nothing
-         joins the frontier.
-      3. Nothing is left to pop, so the search ends after one pop. It has explored (0, 1), the only
-         land its start can reach.
-    prompt: In a larger walk, what does an empty frontier mean when each popped land cell offers all its legal
-      neighbors?
+  - id: reachability-empty-frontier
+    heading: What does seen hold?
+    tags: [graph]
+    workedExample: |-
+      Consider `links = {"P": ["Q", "R"], "Q": ["P"], "R": ["P"]}` and the search from `"P"`, with
+      `seen = {"P"}` at the start.
+
+      1. Popping P finds Q and R. Neither is in `seen`, so both join `seen` and the frontier, which
+         is now `["Q", "R"]`.
+      2. Popping R finds P, which is in `seen`, so nothing joins. Popping Q finds P too.
+      3. The frontier is empty, and `seen` is `{"P", "Q", "R"}`.
+    prompt: |-
+      A graph is a set of nodes joined by edges. A grid is one kind of graph: each cell is a node, and each legal move is an edge. `links` lists each node's neighbors, the nodes one edge away.
+
+      ```python
+      links = {"A": ["B"], "B": ["A", "C"], "C": ["B"], "D": []}
+      frontier = ["A"]
+      seen = {"A"}
+      while frontier:
+          node = frontier.pop()
+          for n in links[node]:
+              if n not in seen:
+                  seen.add(n)
+                  frontier.append(n)
+      ```
+
+      What does `seen` hold when the frontier is empty?
     options:
-      - id: valid
-        text: The current region has been explored
-        explanation: Every discovered cell has been processed. Any still-undiscovered land lies outside the
-          start’s reachable region.
-      - id: mistake
-        text: Every patch of land in the grid is explored
-        explanation: The frontier only ever holds cells reached from this start. Land with no path to the start
-          never enters it, so that land can still be unexplored.
-    correct: valid
+      - id: region
+        text: '`{"A", "B", "C"}`'
+        explanation: >-
+          A finds B, and B finds C. No edge leads to D, so D never joins the frontier. An empty
+          frontier means the start's whole region has been found, not the whole graph.
+      - id: every-node
+        text: '`{"A", "B", "C", "D"}`'
+        explanation: >-
+          The frontier only ever holds nodes found from A. D has no edge to any of them, so the
+          search ends without it.
+      - id: one-step
+        text: '`{"A", "B"}`'
+        explanation: >-
+          B is processed in its turn as well. Popping B finds C, which is new, so C joins before
+          the frontier empties.
+    correct: region
     followUps:
-      mistake:
-        prompt: If a patch of land has no path from the start, will it ever enter this frontier?
+      every-node:
+        prompt: How could D ever join the frontier?
         options:
-          - id: right
-            text: No, it requires a new start
-          - id: wrong
-            text: Yes, when the last cell is popped
-        correct: right
-        explanation: Every discovered cell has been processed. Any still-undiscovered land lies outside the
-          start’s reachable region.
+          - id: edge
+            text: Only through an edge from a node the search found
+          - id: end
+            text: When the frontier empties, the last nodes are added
+          - id: listed
+            text: Every key in `links` is added in turn
+        correct: edge
+        explanation: A node joins only when a popped node lists it as a neighbor. A node with no route from the start needs a new search.
+      one-step:
+        prompt: When B is popped, which node does it add?
+        options:
+          - id: c
+            text: C, since C is not in `seen`
+          - id: a
+            text: A, since A is B's neighbor
+          - id: none
+            text: None, since B was found from A
+        correct: c
+        explanation: Every popped node checks its own neighbors. A is in `seen`, so only C is added, and the search reaches two edges from A.
+
+  - id: reachability-next-region
+    format: tap-cell
+    heading: Where does the next fill start?
+    tags: [grid]
+    workedExample: |-
+      Consider `row = [0, 1, 1, 1, 0, 1]`. A scan walks it left to right and starts a flood fill
+      from land, and each fill marks its whole island. Each island must be counted once.
+
+      1. Index 0 is water. Index 1 is land and unmarked, so the first fill starts there and marks
+         indices 1, 2 and 3. The count is 1.
+      2. Indices 2 and 3 are land, but the first fill marked them. A fill there would count the
+         same island again, so the scan passes them.
+      3. Index 4 is water, and index 5 is unmarked land, so the second fill starts at index 5. The
+         count is 2.
+    prompt: >-
+      An island is a group of land cells joined by legal moves. To count islands, a scan walks
+      `row` from left to right looking for land to start a flood fill from. Each fill marks its
+      whole island and adds one to the count, and each island must be counted once. In a grid the
+      scan goes row by row; here the grid is one row. The first fill, from index 0, has marked
+      indices 0 and 1. Tap where the second fill starts.
+    code: |
+      row = [1, 1, 0, 1, 0, 0, 1]
+      seen = {0, 1}   # marked by the first fill
+    sequence:
+      kind: array
+      name: row
+      cells: ['1', '1', '0', '1', '0', '0', '1']
+    correct: 3
+    explanation: >-
+      Indices 0 and 1 are marked, and index 2 is water. Index 3 is the first land the first fill
+      did not reach, so it starts a new island.
+    misses:
+      - index: 0
+        explanation: Index 0 started the first fill. It is marked, and the scan has moved past it.
+      - index: 1
+        explanation: >-
+          Index 1 is land, but the first fill marked it. Starting a fill there would count the
+          first island a second time.
+      - index: 2
+        explanation: Index 2 is water. A fill starts only from land.
+      - index: 4
+        explanation: Index 4 is water, and the scan reaches unmarked land at index 3 first.
+      - index: 5
+        explanation: Index 5 is water, and the scan reaches unmarked land at index 3 first.
+      - index: 6
+        explanation: >-
+          Index 6 starts the third fill. The scan meets unmarked land at index 3 before it gets
+          here.
