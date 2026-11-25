@@ -1,0 +1,302 @@
+id: design-structures-review
+title: "Design structures: review"
+description: Fresh inputs for the Design structures skills, for recall on later days. No worked examples this time.
+heading: What does this give?
+
+questions:
+  - id: min-after-pops-review
+    heading: What does this print?
+    tags: [stack, python]
+    prompt: |-
+      Each entry is `(value, smallest so far)`, and `pop()` removes the top entry.
+
+      ```python
+      stack = []
+
+      def push(x):
+          if stack:
+              low = min(x, stack[-1][1])
+          else:
+              low = x
+          stack.append((x, low))
+
+      push(8)
+      push(3)
+      push(5)
+      stack.pop()
+      push(1)
+      stack.pop()
+      stack.pop()
+      print(stack[-1][1])
+      ```
+
+      What does this print?
+    options:
+      - id: bottom-only
+        text: '`8`'
+        explanation: >-
+          The pushes of 8, 3 and 5 store `(8, 8)`, `(3, 3)` and `(5, 3)`. The pops remove `(5, 3)`,
+          then `(1, 1)`, then `(3, 3)`, so `(8, 8)` is the one entry left, and its smallest so far is 8.
+      - id: three
+        text: '`3`'
+        explanation: >-
+          3 was the smallest while `(3, 3)` was on the stack, but the third pop removed it. The
+          entry left was stored before 3 arrived.
+      - id: one
+        text: '`1`'
+        explanation: >-
+          `(1, 1)` was pushed and then popped by the very next call. No entry left holds 1.
+      - id: five
+        text: '`5`'
+        explanation: >-
+          5 went on the stack as `(5, 3)` and was popped first. It never was a smallest so far.
+    correct: bottom-only
+    followUps:
+      three:
+        prompt: Which entries are on the stack after the last pop?
+        options:
+          - id: just-eight
+            text: Only `(8, 8)`
+          - id: eight-three
+            text: "`(8, 8)` and `(3, 3)`"
+          - id: eight-five
+            text: "`(8, 8)` and `(5, 3)`"
+        correct: just-eight
+        explanation: >-
+          Three pops follow three of the four pushes, and each removes the newest entry. Only the
+          first push is left, and an entry knows nothing about values pushed after it.
+      one:
+        prompt: When `push(1)` runs, which entry does it rest on, and what happens to it next?
+        options:
+          - id: popped-next
+            text: It rests on `(3, 3)` and is popped by the next call
+          - id: stays
+            text: It rests on `(5, 3)` and stays to the end
+          - id: bottom
+            text: It goes to the bottom, since 1 is the smallest
+        correct: popped-next
+        explanation: >-
+          A stack takes from where it adds. The 1 was the newest entry when the next pop ran, so it
+          left first, carrying its smallest so far with it.
+      five:
+        prompt: What pair does `push(5)` store?
+        options:
+          - id: five-three
+            text: "`(5, 3)`, since 3 is smaller than 5"
+          - id: five-five
+            text: "`(5, 5)`, since it is a new push"
+          - id: three-five
+            text: "`(3, 5)`, with the smallest first"
+        correct: five-three
+        explanation: >-
+          The push takes the smaller of 5 and the top's smallest so far, 3. The value comes first in
+          each pair, and the summary second.
+
+  - id: moves-in-run-review
+    heading: How many items move?
+    tags: [stack, queue, python]
+    prompt: |-
+      A queue built from two stacks moves items from `inbox` to `outbox` only when `outbox` is
+      empty.
+
+      ```python
+      def push(inbox, x):
+          inbox.append(x)
+
+      def pop(inbox, outbox):
+          if not outbox:
+              while inbox:
+                  outbox.append(inbox.pop())
+          return outbox.pop()
+      ```
+
+      Starting with both lists empty, the calls are push 5, pop, push 6, push 7, pop, pop. How many
+      items move from `inbox` to `outbox` in the whole run?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          The first pop moves the 5. The second pop finds `outbox` empty and moves the 7 and the 6,
+          then pops 6. The third pop takes the 7 from `outbox` without moving anything. Each item
+          crossed a single time.
+      - id: two
+        text: '2'
+        explanation: >-
+          The second pop moves two items, but the first pop moved one as well: the 5 had to cross
+          before it could be popped.
+      - id: four
+        text: '4'
+        explanation: >-
+          The third pop finds the 7 still in `outbox`, so it moves nothing. No item crosses twice.
+      - id: six
+        text: '6'
+        explanation: >-
+          A pop moves items only when `outbox` is empty, and then only what is in `inbox`. Three
+          items are pushed, so at most three can cross.
+    correct: three
+    followUps:
+      two:
+        prompt: Where does the first pop find the 5?
+        options:
+          - id: in-inbox
+            text: In `inbox`, so it moves it across first
+          - id: in-outbox
+            text: In `outbox`, so it moves nothing
+          - id: either
+            text: In both lists at once
+        correct: in-inbox
+        explanation: >-
+          A push only appends to `inbox`. Every item makes one trip to `outbox` before a pop can
+          return it.
+      four:
+        prompt: At the third pop, is `outbox` empty?
+        options:
+          - id: holds-seven
+            text: No, it still holds the 7
+          - id: empty
+            text: Yes, the second pop emptied it
+          - id: holds-six
+            text: No, it holds the 6 and the 7
+        correct: holds-seven
+        explanation: >-
+          The second pop moved the 7 and the 6 and returned only the 6. The 7 waits on top of
+          `outbox`, so the third pop moves nothing.
+      six:
+        prompt: What is the most times one item can move from `inbox` to `outbox`?
+        options:
+          - id: once
+            text: Once
+          - id: per-pop
+            text: Once for every pop after it arrives
+          - id: twice
+            text: Twice, there and back
+        correct: once
+        explanation: >-
+          Items move one way only. So the moves in a run never add up to more than the number of
+          pushes.
+
+  - format: tap-cell
+    id: lru-evict-review
+    heading: Which key is evicted?
+    tags: [hash-map, python]
+    prompt: >-
+      This LRU cache holds at most 3 keys and keeps them in an `OrderedDict`: a new key goes to the
+      end, `move_to_end(key)` moves a key to the end, and `popitem(last=False)` removes the key at
+      the front. The cells are the keys in the order they were first put. Tap the key that
+      `put('s', 4)` evicts.
+    code: |
+      from collections import OrderedDict
+      cache = OrderedDict()
+
+      def get(key):
+          if key not in cache:
+              return -1
+          cache.move_to_end(key)
+          return cache[key]
+
+      def put(key, val):
+          if key in cache:
+              cache.move_to_end(key)
+          cache[key] = val
+          if len(cache) > 3:
+              cache.popitem(last=False)
+
+      put('p', 1)
+      put('q', 2)
+      put('r', 3)
+      get('q')
+      put('p', 9)
+      put('s', 4)
+    sequence:
+      kind: array
+      name: keys
+      cells: [p, q, r]
+    correct: 2
+    explanation: >-
+      `get('q')` moves `q` to the end, and `put('p', 9)` finds `p` already there and moves it to the
+      end too. The order is `r`, `q`, `p`, so `put('s', 4)` evicts `r`, the key unused for longest.
+    misses:
+      - index: 0
+        explanation: >-
+          `p` was put first, but `put('p', 9)` used it again and moved it to the end. It is the most
+          recently used key when `s` arrives.
+      - index: 1
+        explanation: >-
+          `get('q')` moved `q` to the end. A `get` counts as a use, so `q` is newer than `r`.
+
+  - id: forward-walk-review
+    heading: What does the walk read?
+    tags: [linked-list, python]
+    prompt: |-
+      Each node has `next`, the node after it, and `prev`, the node before it. The list is
+      `3 <-> 6 <-> 1`, linked both ways, with `head` on the 3 and `c` on the 6. To unlink `c`, only
+      this line runs:
+
+      ```python
+      c.next.prev = c.prev
+      ```
+
+      What does a walk forward from `head`, following `next`, read?
+    options:
+      - id: still-there
+        text: '`3, 6, 1`'
+        explanation: >-
+          The line sets the 1's `prev` to the 3, so a walk backward skips the 6. The 3's `next` was
+          not touched and still leads to the 6, so a walk forward reads it. Unlinking also needs
+          `c.prev.next = c.next`.
+      - id: skipped
+        text: '`3, 1`'
+        explanation: >-
+          That is what a walk forward reads once `c.prev.next = c.next` runs too. This line only
+          rewrites a `prev` link, which a forward walk never follows.
+      - id: cut
+        text: '`3`'
+        explanation: >-
+          The line writes nothing into `next`, so every forward link is as it was: the 3 leads to
+          the 6, and the 6 to the 1.
+      - id: raises
+        text: It raises `AttributeError`
+        explanation: >-
+          `c.next` is the 1, a real node, so setting its `prev` is safe. The walk forward then
+          follows links that all lead to real nodes, until the 1's `next`, which is `None`.
+    correct: still-there
+    followUps:
+      skipped:
+        prompt: Which direction of walk does `c.next.prev = c.prev` change?
+        options:
+          - id: backward
+            text: Only a walk backward, along `prev`
+          - id: forward
+            text: Only a walk forward, along `next`
+          - id: both
+            text: Both directions
+        correct: backward
+        explanation: >-
+          The line writes one `prev` link. A forward walk reads only `next` links, so it still
+          reaches the 6 through the 3.
+      cut:
+        prompt: After the line runs, where does the 6's own `next` lead?
+        options:
+          - id: to-one
+            text: To the 1, as before
+          - id: to-none
+            text: To `None`
+          - id: to-three
+            text: Back to the 3
+        correct: to-one
+        explanation: >-
+          The line reads `c.prev` and writes `c.next.prev`. Neither touches the 6's own `next`, so
+          the walk goes on from the 6 to the 1.
+      raises:
+        prompt: Is `c.next.prev = c.prev` safe when `c` is in the middle of the list?
+        options:
+          - id: safe
+            text: Yes, `c.next` and `c.prev` are both real nodes
+          - id: unsafe
+            text: No, `c.prev` is read after it changes
+          - id: tail-only
+            text: Only when `c` is the tail
+        correct: safe
+        explanation: >-
+          A middle node has a node on each side, so both reads land on real nodes. The danger is at
+          the ends of a list, which is why designs often add dummy nodes there.

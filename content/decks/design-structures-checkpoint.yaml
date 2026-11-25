@@ -1,0 +1,303 @@
+id: design-structures-checkpoint
+title: "Design structures: checkpoint"
+description: Pick the design that meets a stated set of costs, or find the call a near-miss design gets wrong. Each item combines a summary carried in each entry, two stacks, or two structures kept in step.
+heading: Which design meets the costs?
+
+questions:
+  - id: checkpoint-lru-pair
+    heading: Which design meets every cost?
+    tags: [hash-map, linked-list, complexity]
+    prompt: >-
+      A cache must look up a key and store a key, each in O(1) on average, and every lookup or
+      store counts as a use of that key. When it is full, it must evict the least recently used key
+      in O(1). Removing an item from the middle of a Python list moves every later item. Which
+      design meets every cost?
+    options:
+      - id: dict-doubly
+        text: A dict from key to node, and a doubly linked list in order of use
+        explanation: >-
+          The dict finds a key's node in O(1) on average. With `prev`, that node unlinks itself in
+          O(1) and joins the most-recent end in O(1), and the least recently used node sits at the
+          other end, ready to evict.
+      - id: dict-singly
+        text: A dict from key to node, and a singly linked list in order of use
+        explanation: >-
+          Each use moves a node to the most-recent end. Unlinking it needs the node before it, and
+          without `prev` only a walk from the head finds that, which is O(n).
+      - id: pair-list
+        text: One Python list of `(key, value)` pairs in order of use
+        explanation: >-
+          Each use moves its pair to the end of the list. Finding the pair is a scan, and removing
+          it from the middle moves every later pair, so each use is O(n).
+      - id: dict-times
+        text: A dict from key to the time of its last use
+        explanation: >-
+          Lookups and stores are O(1) on average, but nothing keeps the keys in order of use.
+          Finding the oldest time to evict means checking every key, which is O(n).
+    correct: dict-doubly
+    followUps:
+      dict-singly:
+        prompt: You hold a node in a singly linked list. What does unlinking it need first?
+        options:
+          - id: node-before
+            text: The node before it, found by a walk from the head
+          - id: node-after
+            text: Only the node after it, one hop away
+          - id: nothing
+            text: Nothing, since the dict already holds the node
+        correct: node-before
+        explanation: >-
+          Unlinking rewrites the link that leads into the node, and that link belongs to the node
+          before it. `prev` reaches that node in one hop, and without it the walk is O(n).
+      pair-list:
+        prompt: What does moving a pair from the middle of a Python list to its end cost?
+        options:
+          - id: linear
+            text: O(n), to find the pair and to move every pair after it
+          - id: constant
+            text: O(1), since a list reads any index in one step
+          - id: log
+            text: O(log n), by halving the list
+        correct: linear
+        explanation: >-
+          Reading an index is O(1), but the list does not know which index holds the key, so it
+          scans. A gap in the middle is then closed by moving every later item.
+      dict-times:
+        prompt: With only a dict from key to its last-use time, how is the key to evict found?
+        options:
+          - id: scan
+            text: By checking every key's time, O(n)
+          - id: first-key
+            text: By reading the first key, O(1)
+          - id: lookup
+            text: By looking up the oldest time, O(1) on average
+        correct: scan
+        explanation: >-
+          A dict finds a key fast, but not the key with the smallest value. Keeping the keys in use
+          order is what makes the oldest one sit at a known end.
+
+  - id: checkpoint-random-set
+    heading: Which design meets every cost?
+    tags: [hash-map, complexity, python]
+    prompt: >-
+      A set of numbers must add a number, remove a number and return a random member, each in O(1)
+      on average. `random.choice(seq)` picks a random item of a list in O(1), but it cannot take a
+      set, which has no indices. Removing an item from the middle of a list moves every later item.
+      Which design meets every cost?
+    options:
+      - id: list-and-index
+        text: A list of the numbers, and a dict from each number to its index
+        explanation: >-
+          Adding appends to the list and stores the index. Removing reads the index from the dict,
+          copies the last number into that index, pops the end and updates the moved number's
+          index, all O(1) on average. `random.choice` works on the list.
+      - id: set-alone
+        text: A Python set of the numbers
+        explanation: >-
+          Adding and removing are O(1) on average, but `random.choice` cannot take a set. Copying
+          it into a list for each pick is O(n).
+      - id: list-alone
+        text: A list of the numbers
+        explanation: >-
+          Adding and picking are O(1), but removing needs a scan to find the number and then moves
+          every later item, so it is O(n).
+      - id: sorted-list
+        text: A sorted list of the numbers
+        explanation: >-
+          Keeping it sorted means each add goes to its place in order and moves every later item,
+          which is O(n). Removing has the same cost.
+    correct: list-and-index
+    followUps:
+      set-alone:
+        prompt: What does `random.choice` need that a set does not have?
+        options:
+          - id: indices
+            text: Indices, to pick the item at a random one
+          - id: order
+            text: Sorted order
+          - id: size
+            text: A known size
+        correct: indices
+        explanation: >-
+          `random.choice` picks a random index and reads the item there. A set has no indices, so
+          it would have to be copied into a list first, which takes O(n).
+      list-alone:
+        prompt: How does a plain list find the number to remove?
+        options:
+          - id: scan
+            text: By comparing items from the front, O(n)
+          - id: hash
+            text: By its hash, O(1) on average
+          - id: binary
+            text: By halving the list, O(log n)
+        correct: scan
+        explanation: >-
+          A list keeps no hash of its items. The dict from number to index is what finds the
+          number in O(1) on average.
+      sorted-list:
+        prompt: Where does a new number go in a sorted list?
+        options:
+          - id: in-order
+            text: At its place in order, which moves every later item
+          - id: at-end
+            text: At the end, since a list appends there
+          - id: at-front
+            text: At the front, in O(1)
+        correct: in-order
+        explanation: >-
+          Sorted order fixes where the number belongs, usually in the middle. Making room there
+          moves every item after it.
+
+  - id: checkpoint-min-stack-design
+    heading: Which design meets every cost?
+    tags: [stack, complexity, python]
+    prompt: >-
+      A stack must push, pop the newest item, and report its smallest value, each in O(1), even
+      right after the smallest value has been popped. Which design meets every cost?
+    options:
+      - id: pairs
+        text: One list of `(value, smallest so far)` pairs
+        explanation: >-
+          A push stores the smaller of the new value and the top's smallest so far beside it, in
+          O(1). A pop removes the top pair, and the pair below already holds the smallest of what
+          is left, so every operation is O(1).
+      - id: one-variable
+        text: One list of values, and one variable holding the smallest value
+        explanation: >-
+          A push can update the variable in O(1). But when the smallest value is popped, the
+          variable has nothing to fall back to, and finding the next smallest is a scan, O(n).
+      - id: min-on-demand
+        text: One list of values, and `min(stack)` when asked
+        explanation: >-
+          Push and pop are O(1), but `min` reads every item, so reporting the smallest value is
+          O(n).
+      - id: sorted
+        text: One list of values, kept sorted
+        explanation: >-
+          The smallest value is at the front, but a push has to go to its place in order, moving
+          every later item, which is O(n). The end no longer holds the newest item, so a pop can
+          take the wrong one.
+    correct: pairs
+    followUps:
+      one-variable:
+        prompt: The variable holds the smallest value, and that value is popped. What does the variable need next?
+        options:
+          - id: next-smallest
+            text: The next smallest value, which only a scan of the list finds
+          - id: nothing
+            text: Nothing, it can keep the old value
+          - id: top
+            text: The new top's value
+        correct: next-smallest
+        explanation: >-
+          One variable remembers one value. Keeping a smallest so far in every entry is what keeps
+          the answer one read away after any pop.
+      min-on-demand:
+        prompt: How many items does `min(stack)` read on a stack of `n` items?
+        options:
+          - id: all
+            text: All `n`
+          - id: one
+            text: One, the top
+          - id: half
+            text: About half of them
+        correct: all
+        explanation: >-
+          `min` has to compare every item, since any of them could be the smallest. That makes the
+          report O(n).
+      sorted:
+        prompt: In a list kept sorted, which item does `pop()` remove?
+        options:
+          - id: largest
+            text: The largest, which may not be the newest
+          - id: newest
+            text: The newest, as in any stack
+          - id: smallest
+            text: The smallest
+        correct: largest
+        explanation: >-
+          Sorting reorders the items, so the end holds the largest, not the most recent push. A
+          stack needs the newest item on top.
+
+  - id: checkpoint-debug-transfer
+    heading: Which run does it fail on?
+    tags: [stack, queue, python]
+    prompt: |-
+      A suggested queue built from two stacks should return items first in, first out. One detail
+      is slightly off:
+
+      ```python
+      def push(inbox, x):
+          inbox.append(x)
+
+      def pop(inbox, outbox):
+          while inbox:
+              outbox.append(inbox.pop())
+          return outbox.pop()
+      ```
+
+      Each run starts with both lists empty. `push(x)` stands for `push(inbox, x)` and `pop()` for
+      `pop(inbox, outbox)`. In which run does a `pop()` return the wrong item?
+    options:
+      - id: interleaved
+        text: '`push(4)`, `push(6)`, `pop()`, `push(8)`, `pop()`'
+        explanation: >-
+          The first pop moves 6 and 4, so `outbox` is `[6, 4]`, and returns 4. The 8 then arrives,
+          and the second pop moves it on top of the 6 and returns 8, though the 6 came first. A
+          pop must move items only when `outbox` is empty.
+      - id: pushes-first
+        text: '`push(4)`, `push(6)`, `push(8)`, `pop()`, `pop()`, `pop()`'
+        explanation: >-
+          The first pop moves all three, leaving `outbox` as `[8, 6, 4]`, and returns 4. `inbox`
+          stays empty, so the later pops move nothing and return 6 and 8, which is right.
+      - id: alternating
+        text: '`push(4)`, `pop()`, `push(6)`, `pop()`'
+        explanation: >-
+          Each pop finds `outbox` empty, so moving everything is harmless here. The pops return 4
+          and then 6, which is right.
+      - id: pair
+        text: '`push(4)`, `push(6)`, `pop()`, `pop()`'
+        explanation: >-
+          The first pop moves both, leaving `[6, 4]`, and returns 4. `inbox` is empty at the second
+          pop, so it returns 6, which is right.
+    correct: interleaved
+    followUps:
+      pushes-first:
+        prompt: When every push comes before every pop, how often does `while inbox` move anything?
+        options:
+          - id: first-pop
+            text: Only on the first pop, since `inbox` is empty after it
+          - id: every-pop
+            text: On every pop
+          - id: never
+            text: Never
+        correct: first-pop
+        explanation: >-
+          With no pushes between the pops, `inbox` stays empty after the first move. The bug needs
+          a new item to arrive while older items still wait in `outbox`.
+      alternating:
+        prompt: In this run, what does `outbox` hold each time a pop starts?
+        options:
+          - id: empty
+            text: Nothing, so moving `inbox` across is the right step
+          - id: old-items
+            text: The items from earlier pops
+          - id: everything
+            text: Every item pushed so far
+        correct: empty
+        explanation: >-
+          Each pop takes the only item `outbox` held. Moving items onto an empty `outbox` keeps the
+          order right, so the run cannot show the bug.
+      pair:
+        prompt: At the second pop, which lists hold items?
+        options:
+          - id: outbox-only
+            text: Only `outbox`, holding the 6
+          - id: both
+            text: Both lists
+          - id: inbox-only
+            text: Only `inbox`
+        correct: outbox-only
+        explanation: >-
+          Both items crossed on the first pop, and nothing was pushed after it. With `inbox` empty,
+          the `while` loop moves nothing and the order stays right.
