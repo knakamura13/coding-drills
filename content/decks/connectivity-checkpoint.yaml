@@ -6,7 +6,6 @@ questions:
     format: tap-cell
     tags:
       - graph
-      - dfs
     prompt: >-
       The loop starts a search at each unseen node, in order from 0 to 7, and each search marks its
       whole component. Tap the node where the last search starts.
@@ -49,7 +48,6 @@ questions:
   - id: connectivity-exam-one-way-build
     tags:
       - graph
-      - dfs
     prompt: |-
       The graph is undirected with `n = 5` nodes and the edges `(0, 1), (2, 1), (3, 4)`. This count stores each edge in one list only. What is `count` after this runs?
 
@@ -163,7 +161,7 @@ questions:
           - id: yes-later
             text: Yes, answers are revised when the stream ends
           - id: only-cycles
-            text: Only when the later link closes a cycle
+            text: Only when the later link closes a loop
         correct: no-later
         explanation: >-
           The stream is answered online. Each `same` reflects the sets at that moment, and later links
@@ -219,3 +217,169 @@ questions:
         explanation: >-
           Every node starts as its own set. A node that no union has touched stays a set of one, and
           it counts.
+
+  - id: connectivity-exam-count-components
+    heading: Which approach counts the components?
+    tags: [graph]
+    prompt: >-
+      A graph has `n = 10` nodes labelled 0 to 9 and is given as an undirected edge list:
+      `(0, 3), (3, 5), (5, 0), (1, 6), (4, 7), (7, 8)`. It may contain cycles, routes of edges that
+      lead from a node back to itself (here `0, 3, 5`), and some nodes have no edges at all. A
+      connected component is a group of nodes that can all reach one another, and this graph has 5
+      of them. Which approach returns the right count for every such graph?
+    options:
+      - id: no-visited-set
+        text: Run a search from every node, count the starts, and keep no `seen` set
+        explanation: >-
+          An undirected edge can be walked in both directions, so the search goes `0 -> 3 -> 0 -> 3`
+          and never finishes. Even a single edge `(0, 1)` does this, cycle or not. Only a graph with
+          no edges would finish, with the count `n`. A `seen` set marks a node as already found.
+      - id: nodes-minus-edges
+        text: Return `n` minus the number of edges, since each edge joins two components
+        explanation: >-
+          An edge lowers the count only when it joins two different components. An edge inside a
+          component, such as `(5, 0)`, which closes the triangle, lowers nothing. Here the formula
+          gives 10 - 6 = 4, but the answer is 5.
+      - id: one-search
+        text: Run one search from node 0 with a `seen` set and return how many nodes it reaches
+        explanation: >-
+          One search finds only the component of node 0. Here it reaches `0, 3, 5`, so this returns 3
+          instead of 5, and it would return `n` for a graph with one component. The search has to start
+          again from every node that no earlier search reached, and the number of starts is the answer.
+      - id: search-each-new
+        text: Loop over all nodes; at each one not in `seen`, run a search and add 1
+        explanation: >-
+          Each search marks its whole component as seen, so a new search starts only for a component
+          not yet counted. Here the starts are 0, 1, 2, 4 and 9, one for each of the 5 components.
+    correct: search-each-new
+    followUps:
+      no-visited-set:
+        prompt: With only the edge `(0, 1)`, what does a search with no `seen` set do on reaching node 1?
+        options:
+          - id: walks-back
+            text: It walks back to 0, then to 1 again, forever, since an undirected edge works both ways
+          - id: stops-leaf
+            text: It stops, because node 1 has just one edge and the search already used it to get there
+          - id: stops-acyclic
+            text: It stops, because a graph with a single edge cannot contain a cycle to loop around
+        correct: walks-back
+        explanation: >-
+          Without a `seen` set nothing says the search has been to 0 before. An undirected edge sits
+          in both adjacency lists, so one edge is already a two-node loop. Skipping only the node it
+          just came from avoids this when there is no cycle, but still loops on a real cycle such as
+          `0, 3, 5`.
+      nodes-minus-edges:
+        prompt: When does `n - len(edges)` equal the number of components?
+        options:
+          - id: no-cycles
+            text: Only when the graph has no cycle, so every edge joins two separate components
+          - id: connected
+            text: Only when the graph has one component, so every edge was needed to join it
+          - id: fewer-edges
+            text: Whenever the graph has fewer edges than it has nodes, since then edges cannot form cycles
+        correct: no-cycles
+        explanation: >-
+          In a graph with no cycle, each edge merges two components, so the count falls by exactly one
+          per edge. A cycle adds an edge that merges nothing. Fewer edges than nodes is not enough:
+          a triangle plus three isolated nodes has 6 nodes, 3 edges, and 4 components.
+      one-search:
+        prompt: A search from node 0 ends when its frontier is empty. What has it found?
+        options:
+          - id: one-component
+            text: Exactly the nodes reachable from node 0, which is one component
+          - id: whole-graph
+            text: Every node of the graph, as long as the search keeps a `seen` set
+          - id: component-count
+            text: The number of components, since the frontier empties once per component
+        correct: one-component
+        explanation: >-
+          The frontier empties when no unseen neighbor is left, which happens once per search, and the
+          search covers only what node 0 can reach. Nodes in other components stay unseen, and the
+          outer loop finds them.
+
+  - id: connectivity-exam-debug-union
+    heading: Which call does it fail on?
+    tags: [graph]
+    prompt: |-
+      A suggested solution should report whether nodes `a` and `b` are joined once every link in `links` has arrived.
+
+      ```python
+      def find(parent, x):
+          while parent[x] != x:
+              x = parent[x]
+          return x
+
+      def joined(n, links, a, b):
+          parent = list(range(n))
+          for x, y in links:
+              parent[x] = find(parent, y)
+          return find(parent, a) == find(parent, b)
+      ```
+
+      Which call returns the wrong answer?
+    options:
+      - id: chain
+        text: '`joined(4, [(0, 1), (1, 2), (2, 3)], 0, 3)`'
+        explanation: >-
+          The links write `parent[0] = 1`, `parent[1] = 2` and `parent[2] = 3`, each into a node no
+          earlier link has written. Every write lands on a root, so `find` from 0 walks to 3, and it
+          returns True, which is right.
+      - id: star
+        text: '`joined(4, [(1, 0), (2, 0), (3, 0)], 1, 3)`'
+        explanation: >-
+          The links write `parent[1]`, `parent[2]` and `parent[3]`, three nodes that are still roots.
+          All four end at 0, so it returns True, which is right.
+      - id: rewrite
+        text: '`joined(4, [(1, 2), (0, 1), (1, 3)], 0, 3)`'
+        explanation: >-
+          The first link writes `parent[1] = 2`, and the second writes `parent[0] = 2`. The third
+          writes `parent[1] = 3` over the link to 2, so 1 moves to 3's set while 0 and 2 stay behind.
+          `find` gives 2 for node 0 and 3 for node 3, so it returns False, but the links join all four
+          nodes. Writing into `parent[find(parent, x)]` would hang root 2 under 3 instead.
+      - id: late-join
+        text: '`joined(4, [(0, 1), (2, 3), (1, 3)], 0, 2)`'
+        explanation: >-
+          The links write `parent[0] = 1` and `parent[2] = 3`, then `parent[1] = 3`, and node 1 was
+          still a root. `find` walks 0, 1, 3 from node 0 and gives 3 for node 2, so it returns True,
+          which is right.
+    correct: rewrite
+    followUps:
+      chain:
+        prompt: When the second link writes `parent[1]`, is node 1 a root?
+        options:
+          - id: still-root
+            text: Yes, no link has written its cell yet
+          - id: under-zero
+            text: No, the first link put it under 0
+          - id: last-only
+            text: No, only the last node of the list is a root
+        correct: still-root
+        explanation: >-
+          Writing a root's cell is what a correct union does too. The bug shows only when a link writes
+          a node that is no longer a root.
+      star:
+        prompt: In `[(1, 0), (2, 0), (3, 0)]`, which node's cell is written more than once?
+        options:
+          - id: none-twice
+            text: None, each link writes a different first node
+          - id: shared
+            text: Node 0, which is in every link
+          - id: last
+            text: Node 3, the last one written
+        correct: none-twice
+        explanation: >-
+          The line writes the cell of each link's first node. Node 0 is only ever the second node, so
+          its cell keeps 0 and no link is overwritten.
+      late-join:
+        prompt: When `(1, 3)` arrives, which cell does a correct union write?
+        options:
+          - id: root-one
+            text: '`parent[1]`, since 1 is the root of {0, 1}'
+          - id: first-zero
+            text: '`parent[0]`, since 0 joined first'
+          - id: second-three
+            text: '`parent[3]`, since 3 is the second node'
+        correct: root-one
+        explanation: >-
+          A correct union writes the root of the first node's set. Here that root is node 1 itself, so
+          the buggy line writes the same cell.

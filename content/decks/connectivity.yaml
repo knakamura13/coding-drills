@@ -1,15 +1,27 @@
 id: connectivity
 title: Connectivity
-description: Read an adjacency list, count components, and follow union-find roots as links arrive.
+description: Read an adjacency list, count components, and join sets with union-find as links arrive.
 questions:
   - id: connectivity-adj-both-lists
     format: tap-cell
     tags:
       - graph
       - python
+    workedExample: |-
+      Connectivity asks which nodes of a graph are joined by some chain of edges. An undirected edge
+      `(a, b)` joins two nodes and can be walked either way. A search needs each node's neighbors,
+      so the edges are stored as an adjacency list: `adj[v]` lists the nodes that share an edge with
+      `v`. Here `edges = [(0, 1), (1, 3)]` and `adj = [[], [], [], []]`.
+
+      1. The edge `(0, 1)` can be walked from 0 to 1 and from 1 to 0, so the loop appends 1 to
+         `adj[0]` and 0 to `adj[1]`.
+      2. The edge `(1, 3)` likewise appends 3 to `adj[1]` and 1 to `adj[3]`.
+      3. So `adj` ends as `[[1], [0, 3], [], [1]]`. Node 1 lists both of its neighbors, and node 2,
+         which no edge touches, keeps an empty list.
     prompt: >-
-      An undirected edge `(a, b)` can be walked either way, so the build loop writes it into two
-      lists. After this loop, `adj[3]` holds exactly one node. Tap that node.
+      An undirected edge `(a, b)` joins nodes `a` and `b` and can be walked either way. The loop
+      below stores the edges as an adjacency list: `adj[v]` lists the nodes that share an edge with
+      `v`. After the loop, `adj[3]` holds exactly one node. Tap that node.
     code: |
       edges = [(0, 2), (2, 3), (1, 4)]
       adj = [[] for _ in range(5)]
@@ -42,16 +54,24 @@ questions:
   - id: connectivity-adj-total-entries
     tags:
       - graph
-      - complexity
+    workedExample: |-
+      Consider `edges = [(0, 1), (1, 2)]` and `adj = [[], [], []]`. The build loop runs
+      `adj[a].append(b)` and `adj[b].append(a)` for each edge.
+
+      1. The edge `(0, 1)` appends 1 to `adj[0]` and 0 to `adj[1]`, which adds 2 entries.
+      2. The edge `(1, 2)` appends 2 to `adj[1]` and 1 to `adj[2]`, which adds 2 more.
+      3. So `adj` is `[[1], [0, 2], [1]]`, with 1 + 2 + 1 = 4 entries for 2 edges. Node 1 holds two
+         entries because two edges touch it.
     prompt: >-
-      Six undirected edges are added to `adj` with both `adj[a].append(b)` and `adj[b].append(a)`. No
-      edge repeats, and none joins a node to itself. How many entries do all the lists hold together?
+      Six undirected edges are added to the adjacency list `adj`, each with both
+      `adj[a].append(b)` and `adj[b].append(a)`. No edge repeats, and none joins a node to itself.
+      How many entries do all the lists hold together?
     options:
       - id: twelve
         text: 12, two for every edge
         explanation: >-
-          Each edge is written once from each end, so the lists hold 2 × 6 = 12 entries. That is why a
-          full search reads O(V + E) entries: every list is scanned once, and the lists add up to 2E.
+          Each edge is written once from each end, so the lists hold 2 × 6 = 12 entries. A search
+          that reads every list meets each edge twice, once from each of its nodes.
       - id: six
         text: 6, one for every edge
         explanation: >-
@@ -95,10 +115,20 @@ questions:
     format: step-trace
     tags:
       - graph
-      - dfs
+    workedExample: |-
+      Consider 3 nodes and the single edge `(0, 2)`. The loop starts `explore` at each node that is
+      still unseen, and each call marks the start's whole component as seen.
+
+      1. Node 0 is unseen, so `count` becomes 1, and `explore(0)` marks 0 and 2.
+      2. Node 1 is unseen, since no edge joins it to 0 or 2. So `count` becomes 2, and `explore(1)`
+         marks node 1 alone.
+      3. Node 2 is already seen, so the loop skips it. `count` ends at 2: the components are
+         {0, 2} and {1}.
     prompt: >-
-      The graph has 6 nodes and the edges `(0, 2), (2, 4), (1, 3)`. Node 5 has none. `explore`
-      marks every node it can reach as seen. Predict each step.
+      A connected component is a group of nodes that can all reach one another by edges, with no
+      edge to any node outside the group. The graph has 6 nodes and the edges
+      `(0, 2), (2, 4), (1, 3)`. Node 5 has none. `explore(start)` marks every node it can reach as
+      seen, so each call marks one whole component. Predict each step.
     code: |-
       count = 0
       for start in range(6):
@@ -169,8 +199,17 @@ questions:
     tags:
       - graph
       - python
+    workedExample: |-
+      Consider `adj = defaultdict(list)` and the one line `adj[7].append(2)`. Reading a missing key
+      of a `defaultdict` adds that key with an empty list.
+
+      1. Before the line runs, `adj` has no keys, so `len(adj)` is 0.
+      2. `adj[7]` reads key 7, which is missing, so it adds 7 with `[]`, and `append(2)` makes that
+         list `[2]`.
+      3. Node 2 is only a value in the list and is never read as a key. So `adj` is `{7: [2]}`,
+         `len(adj)` is 1, and `2 in adj` is `False`.
     prompt: |-
-      The graph has `n = 6` nodes, numbered 0 to 5, and the edges `(0, 1), (2, 3), (3, 4)`. Node 5 has no edges. What is `count` after this runs?
+      `defaultdict(list)`, from `collections`, works like a dict, except that reading a missing key, as in `adj[key]`, first adds that key with an empty list. So a key exists only once the code has read it. The graph has `n = 6` nodes, numbered 0 to 5, and the edges `(0, 1), (2, 3), (3, 4)`. Node 5 has none. `explore(start)` marks every node it can reach as seen. What is `count` after this runs?
 
       ```python
       adj = defaultdict(list)
@@ -185,21 +224,21 @@ questions:
       ```
     options:
       - id: two
-        text: '2, because node 5 is never a key in `adj`'
+        text: '2'
         explanation: >-
-          A `defaultdict` creates a key only when the code indexes it, and only edges do that here. The
-          loop sees 0 to 4 and counts {0, 1} and {2, 3, 4}. Looping over `range(n)` counts node 5 as
-          well and gives the true answer, 3.
+          The build loop reads `adj[a]` and `adj[b]` only for nodes in some edge, so the keys are 0 to
+          4, and the loop over `adj` never meets node 5. It counts {0, 1} and {2, 3, 4}. Looping over
+          `range(n)` instead also counts node 5 and gives the true answer, 3.
       - id: three
-        text: '3, one for each component'
+        text: '3'
         explanation: >-
-          There are three components, but this loop never visits node 5. Check which keys exist in
-          `adj` when the loop runs.
-      - id: six
-        text: '6, because there are six nodes'
+          There are three components, but this loop runs over the keys of `adj`, not over every node.
+          Check which keys exist when it runs.
+      - id: five
+        text: '5'
         explanation: >-
-          A search marks its whole component as seen, so 1, 3 and 4 never start a search. Count only
-          the starts.
+          `adj` has five keys, but a key that an earlier search marked fails `start not in seen` and
+          starts nothing. Count only the starts.
     correct: two
     followUps:
       three:
@@ -213,9 +252,9 @@ questions:
             text: 0, 2 and 3, the first node of each edge
         correct: touched
         explanation: >-
-          A `defaultdict` adds a key the first time the code indexes it, as in `adj[key]`. Node 5 is in
-          no edge, so it is never indexed or added, and the loop over `adj` skips it.
-      six:
+          A `defaultdict` adds a key the first time the code reads it, as in `adj[key]`. Node 5 is in
+          no edge, so it is never read or added, and the loop over `adj` skips it.
+      five:
         prompt: When the loop reaches node 1, why does it not start a search?
         options:
           - id: marked
@@ -233,9 +272,20 @@ questions:
     format: drag-pointers
     tags:
       - graph
+    workedExample: |-
+      Consider `parent = [1, 1, 0]` and `find(2)`. Each cell holds that node's parent, and the loop
+      moves `x` to its parent until it reaches a node whose cell holds its own index.
+
+      1. `x` starts at 2. `parent[2]` is 0, not 2, so `x` moves to 0.
+      2. `parent[0]` is 1, not 0, so `x` moves to 1.
+      3. `parent[1]` is 1, so node 1 is its own parent. The loop stops, and `find(2)` returns the
+         root, 1.
     prompt: >-
-      Union-find stores one parent per node, and a root is its own parent. `parent[4]` is 2, so
-      node 4 points at node 2. Drag `x` to the node where `find(4)` stops.
+      Links between nodes can also arrive one at a time, with questions in between about whether
+      two nodes are joined yet. Union-find answers each question without a new search. It keeps one
+      `parent` cell per node, and following `parent` links from any node ends at a root, a node that
+      is its own parent. The root names the set the node belongs to. `parent[4]` is 2, so node 4
+      points at node 2. Drag `x` to the node where `find(4)` stops.
     code: |-
       def find(x):
           while parent[x] != x:
@@ -270,13 +320,117 @@ questions:
           Read each cell as the next node: 4 points at 2, 2 at 1, 1 at 0. Stop at the node whose cell
           holds its own index.
 
+  - id: connectivity-compress-path
+    tags:
+      - graph
+    workedExample: |-
+      Consider `parent = [1, 2, 2]`, a chain from 0 to 1 to 2, and `find(0)` with path compression.
+      The first loop finds the root, and the second walks the chain again and writes the root into
+      each cell it passes.
+
+      1. The first loop walks from 0 to 1 to 2. `parent[2]` is 2, so `root` is 2.
+      2. The second loop starts at `x = 0`. `parent[0]` is 1, not the root, so it saves 1 in `nxt`,
+         writes `parent[0] = 2` and moves `x` to 1.
+      3. `parent[1]` is already 2, the root, so the loop stops. `parent` is `[2, 2, 2]`, and a later
+         `find(0)` takes one step.
+    prompt: |-
+      A long chain of `parent` links makes every `find` on it walk many steps. Path compression shortens the chain: once this `find` knows the root, its second loop walks from `x` again and points each node on the way straight at the root. What is `parent` after `find(4)`?
+
+      ```python
+      parent = [0, 0, 1, 2, 3, 5]
+
+      def find(x):
+          root = x
+          while parent[root] != root:
+              root = parent[root]
+          while parent[x] != root:
+              nxt = parent[x]
+              parent[x] = root
+              x = nxt
+          return root
+
+      find(4)
+      ```
+    options:
+      - id: all-root
+        text: '`[0, 0, 0, 0, 0, 5]`'
+        explanation: >-
+          The first loop walks 4, 3, 2, 1, 0 and finds root 0. The second loop points 4, 3 and 2 at 0,
+          and stops at 1, whose cell already holds 0. Node 5 is not on the walk, so its cell keeps 5.
+          A later `find` from 2, 3 or 4 now takes one step.
+      - id: start-only
+        text: '`[0, 0, 1, 2, 0, 5]`'
+        explanation: >-
+          That rewrites only the node `find` started from. The second loop moves `x` along the chain
+          with `x = nxt`, so 3 and 2 are rewritten too.
+      - id: unchanged
+        text: '`[0, 0, 1, 2, 3, 5]`'
+        explanation: >-
+          `find` still returns 0, but its second loop writes into `parent`, so the cells on the walk
+          change. That write is what makes later calls shorter.
+      - id: every-cell
+        text: '`[0, 0, 0, 0, 0, 0]`'
+        explanation: >-
+          Node 5 is the root of its own set, and no link joins it to 0. Compression rewrites only the
+          nodes on the walk from 4, so it never merges sets.
+    correct: all-root
+    followUps:
+      start-only:
+        prompt: After the second loop rewrites `parent[4]`, where does `x` go next?
+        options:
+          - id: old-parent
+            text: To 3, the old parent it saved in `nxt`
+          - id: new-parent
+            text: To 0, the root it just wrote
+          - id: stops
+            text: Nowhere, since the loop ends after one write
+        correct: old-parent
+        explanation: >-
+          `nxt` keeps the old parent before the cell is overwritten, so `x` still follows the original
+          chain and rewrites each node on it until it meets a node that already points at the root.
+      unchanged:
+        prompt: Which line changes `parent`?
+        options:
+          - id: write-root
+            text: '`parent[x] = root`, once for each node it passes'
+          - id: none
+            text: None, since `find` only reads the cells
+          - id: climb
+            text: '`root = parent[root]`, as the first loop climbs'
+        correct: write-root
+        explanation: >-
+          The first loop only reads. The second loop assigns into `parent`, which points each node on
+          the walk at the root.
+      every-cell:
+        prompt: Does path compression change which set a node belongs to?
+        options:
+          - id: same-set
+            text: No, each node it rewrites already ended at that root
+          - id: joins-all
+            text: Yes, it points every node at the first root it finds
+          - id: joins-passed
+            text: Yes, it joins the sets of the nodes it passes
+        correct: same-set
+        explanation: >-
+          Every node on the walk from 4 already led to root 0. Pointing it straight at 0 keeps the same
+          root and only removes steps.
+
   - id: connectivity-union-write-root
     format: tap-cell
     tags:
       - graph
+    workedExample: |-
+      Consider `parent = [0, 1, 1]`, which holds the sets {0} with root 0 and {1, 2} with root 1,
+      and `union(2, 0)`. The union runs `parent[find(a)] = find(b)`.
+
+      1. `find(2)` moves from 2 to 1, and `parent[1]` is 1, so the root of node 2's set is 1.
+      2. `find(0)` is 0, since node 0 is its own parent.
+      3. So the line runs `parent[1] = 0`. Root 1 now hangs under root 0, and node 2 reaches 0
+         through 1, so all three nodes share root 0.
     prompt: >-
-      Sets {0, 1} and {2, 3} have roots 0 and 2. `union(1, 3)` joins them by changing one cell.
-      Tap the cell it writes.
+      `union(a, b)` joins the set that holds `a` with the set that holds `b`. Sets {0, 1} and
+      {2, 3} have roots 0 and 2, and `union(1, 3)` joins them by changing one cell. Tap the cell it
+      writes.
     code: |-
       parent = [0, 0, 2, 2]
 
@@ -306,13 +460,108 @@ questions:
           Node 3 is the argument `b`, but the code never writes `parent[b]`. It writes the parent of
           the root it finds from `a`.
 
+  - id: connectivity-union-same-root
+    tags:
+      - graph
+    workedExample: |-
+      Consider `parent = [0, 0, 2]`, which holds the sets {0, 1} with root 0 and {2} with root 2,
+      and `union(1, 2)`, which runs `parent[find(a)] = find(b)`.
+
+      1. `find(1)` moves from 1 to 0, and `parent[0]` is 0, so it returns 0. `find(2)` returns 2.
+      2. The roots 0 and 2 differ, so `parent[0] = 2` hangs root 0 under root 2.
+      3. Now 0, 1 and 2 all end at root 2. The two sets became one, so a count of sets drops from 2
+         to 1.
+    prompt: |-
+      `parent` holds two sets: {0, 1, 2} with root 2, and {3} with root 3. `find` is the plain loop that follows `parent` links to the root. What does `union(0, 2)` do?
+
+      ```python
+      parent = [1, 2, 2, 3]
+
+      def union(a, b):
+          parent[find(a)] = find(b)
+
+      union(0, 2)
+      ```
+    options:
+      - id: no-change
+        text: Nothing changes, and there are still 2 sets
+        explanation: >-
+          `find(0)` walks 0, 1, 2 and returns 2, and `find(2)` is 2. So the line runs
+          `parent[2] = 2`, which is already there. Both ends were in one set, so a count of sets must
+          not drop on this union.
+      - id: merge
+        text: Two sets merge, and 1 set is left
+        explanation: >-
+          A union merges only when the two roots differ. Here both `find` calls return 2, so the line
+          rewrites root 2 with its own index.
+      - id: shortcut
+        text: '`parent[0]` becomes 2, and there are still 2 sets'
+        explanation: >-
+          The line writes into `parent[find(a)]`, and `find(0)` is 2, so it writes `parent[2]`.
+          `parent[0]` stays 1.
+      - id: endless
+        text: '`parent[2]` points at 2, so later `find` calls never stop'
+        explanation: >-
+          A root is always its own parent, and that is where `find` stops. `parent[2]` held 2 before
+          the union and still does, so `find` ends at 2 as before.
+    correct: no-change
+    followUps:
+      merge:
+        prompt: What do `find(0)` and `find(2)` return here?
+        options:
+          - id: same
+            text: 2 and 2, the same root
+          - id: parents
+            text: 1 and 2, the parents of 0 and of 2
+          - id: arguments
+            text: 0 and 2, the two arguments
+        correct: same
+        explanation: >-
+          Both nodes are already in the set whose root is 2. A union of a set with itself has nothing
+          to join.
+      shortcut:
+        prompt: Which cell does `parent[find(a)] = find(b)` write?
+        options:
+          - id: root-cell
+            text: The cell of the root of `a`'s set
+          - id: a-cell
+            text: The cell of `a` itself
+          - id: b-cell
+            text: The cell of `b` itself
+        correct: root-cell
+        explanation: >-
+          `find(a)` runs first, so the write lands on a root. Here that root is 2, and writing 2 into
+          it changes nothing.
+      endless:
+        prompt: When does the loop in `find` stop?
+        options:
+          - id: own-index
+            text: At a node whose `parent` cell holds its own index
+          - id: all-visited
+            text: After it has visited every node once
+          - id: smallest
+            text: When it reaches the smallest index in the set
+        correct: own-index
+        explanation: >-
+          The loop runs while `parent[x] != x`. A root's cell holds its own index, so that is where
+          every walk ends.
+
   - id: connectivity-later-same-trace
     format: step-trace
     tags:
       - graph
+    workedExample: |-
+      Consider nodes 0 to 2, each its own root, and the events `union(0, 1)`, then
+      `find(0) == find(2)`, then `union(2, 0)`. Each test uses the links made so far.
+
+      1. `union(0, 1)` runs `parent[0] = 1`, so 0 now points at 1, the root of {0, 1}.
+      2. `find(0)` walks to 1, and `find(2)` is 2. The roots differ, so the first test is `False`.
+      3. `union(2, 0)` runs `parent[2] = find(0)`, which is `parent[2] = 1`. Now `find(2)` is 1 as
+         well, so the same test would give `True`.
     prompt: >-
-      Nodes 0 to 3 start as four sets, each its own root. Events arrive in order. Use `root` to show
-      where `find` stops, and pick each `same` answer as it happens.
+      Nodes 0 to 3 start as four sets, each its own root. Events arrive in order, and each `print`
+      uses only the links made before it. Use `root` to show where `find` stops, and pick each
+      answer as it happens.
     code: |-
       def union(a, b):
           parent[find(a)] = find(b)
