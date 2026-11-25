@@ -1,6 +1,6 @@
 id: link-rewrites-review
 title: "Link rewrites: review"
-description: Fresh inputs for following a next link, saving a link before redirecting it, and handling the first node. No worked examples.
+description: Fresh inputs for following a next link, saving a link before redirecting it, and handling the first node, including a merge where one list runs out first. No worked examples.
 heading: What happens next?
 
 questions:
@@ -306,7 +306,7 @@ questions:
             text: The node two after `p`, which holds 8
         correct: after-p
         explanation: >-
-          The line points `p` past its successor. Taking a node out of the walk means changing the
+          The line points `p` past the node after it. Taking a node out of the walk means changing the
           link that leads to it, and that link belongs to the node before it.
 
   - id: insert-three-lines-review
@@ -351,7 +351,7 @@ questions:
         correct: new-node
         explanation: >-
           `p.next` was changed first, so it already leads to the new node. A line reads a link as
-          it is when the line runs, so saving the old successor only works before the link is
+          it is when the line runs, so saving the old link only works before the link is
           overwritten.
       wrong-save:
         prompt: What does `new.next` hold before any line sets it?
@@ -665,10 +665,10 @@ questions:
           - id: cleared
             text: "`None`, set when it was removed"
           - id: dummy
-            text: "`dummy`, its old predecessor"
+            text: "`dummy`, the node that came before it"
         correct: still-one
         explanation: >-
-          Removing a node rewrites its predecessor's link only. The removed node still links into
+          Removing a node rewrites only the link of the node before it. The removed node still links into
           the list, which is why returning it gives a wrong answer that looks plausible.
       dummy:
         prompt: Which node does `return head` hand back?
@@ -683,3 +683,97 @@ questions:
         explanation: >-
           `head` is the parameter, and the function never assigns to it. It returns the same node
           the caller passed in, whatever happened to the links around it.
+
+  - id: merge-runs-out-review
+    heading: What does this give?
+    tags: [linked-list, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      def merge(a, b):
+          dummy = Node(0)
+          tail = dummy
+          while a is not None and b is not None:
+              if a.val <= b.val:
+                  tail.next = a
+                  a = a.next
+              else:
+                  tail.next = b
+                  b = b.next
+              tail = tail.next
+          if a is not None:
+              tail.next = a
+          else:
+              tail.next = b
+          return dummy.next
+
+      a = Node(2, Node(6))
+      b = Node(3, Node(7, Node(8, Node(9))))
+      print(values(merge(a, b)))
+      ```
+
+      How many passes does the `while` loop make, and what does this print?
+    options:
+      - id: right
+        text: '3 passes, then `[2, 3, 6, 7, 8, 9]`'
+        explanation: >-
+          The passes link the 2, the 3 and the 6, and then `a` is `None`, so the loop stops.
+          `tail.next = b` links the 7 in one step, and the 8 and 9 come with it, since their links
+          were never touched.
+      - id: every-node
+        text: '6 passes, then `[2, 3, 6, 7, 8, 9]`'
+        explanation: >-
+          The loop runs only while both lists have a node. Once the 6 is linked, `a` is `None` and
+          the loop stops after 3 passes. The rest of `b` is linked after the loop.
+      - id: rest-lost
+        text: '3 passes, then `[2, 3, 6]`'
+        explanation: >-
+          The loop stops after 3 passes, but the lines after it still run. `a` is `None`, so the
+          `else` branch links `b`, which is on the 7.
+      - id: one-node
+        text: '3 passes, then `[2, 3, 6, 7]`'
+        explanation: >-
+          `tail.next = b` links the node `b` is on, the 7, and the 7 keeps its own link to the 8.
+          So the 8 and the 9 come along with it.
+    correct: right
+    followUps:
+      every-node:
+        prompt: After the 6 is linked, `a` is `None`. What does the loop test do?
+        options:
+          - id: stops
+            text: It fails, since it needs both `a` and `b` to be nodes
+          - id: goes-on
+            text: It passes, since `b` still has nodes
+          - id: raises
+            text: It raises an error on `a.val`
+        correct: stops
+        explanation: >-
+          The test asks for both lists to have a node, so the loop ends as soon as one list runs
+          out. The other list's nodes are already in sorted order, so they need no more passes.
+      rest-lost:
+        prompt: When the loop ends with `a` as `None`, which line runs next?
+        options:
+          - id: else-branch
+            text: '`tail.next = b`, from the `else` branch'
+          - id: return
+            text: '`return dummy.next`, since the merge is done'
+          - id: if-branch
+            text: '`tail.next = a`, which links `None`'
+        correct: else-branch
+        explanation: >-
+          The `if` after the loop picks whichever list still has nodes. Here that is `b`, so its
+          remaining nodes are linked on before the return.
+      one-node:
+        prompt: '`tail.next = b` runs while `b` is on the 7. Which nodes does the merged list gain?'
+        options:
+          - id: all-rest
+            text: The 7, the 8 and the 9, since the 7 still links to the 8
+          - id: only-seven
+            text: Only the 7, since one assignment links one node
+          - id: none
+            text: None of them, since `b` is a name, not a node
+        correct: all-rest
+        explanation: >-
+          One assignment writes one link, but that link reaches the 7, and the 7's own link reaches
+          the rest. The leftover list is joined in one step, however long it is.

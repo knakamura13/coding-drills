@@ -93,6 +93,7 @@ questions:
               enters the heap.
         correct: twelve
 
+
   - id: checkpoint-closest-names
     heading: What does this print?
     tags: [heap, python]
@@ -171,6 +172,90 @@ questions:
           The push can bring the heap to 3 for a moment, and `len(h) > 2` then pops one, so every
           pass ends with 2 entries.
 
+
+  - id: checkpoint-debug-kth-read
+    heading: Which call does it fail on?
+    tags: [heap, python]
+    prompt: |-
+      A suggested `kth_largest` should return the `k`th largest value of `nums`, the same value as
+      `sorted(nums)[-k]`. One detail is slightly off:
+
+      ```python
+      from heapq import heappush, heappop
+
+      def kth_largest(nums, k):
+          h = []
+          for x in nums:
+              heappush(h, x)
+              if len(h) > k:
+                  heappop(h)
+          return h[-1]
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: distinct-kept
+        text: '`kth_largest([6, 1, 5, 3], 2)`'
+        explanation: >-
+          The loop keeps the 2 largest, and `h` ends as `[5, 6]`. The root, 5, is the 2nd largest,
+          but `h[-1]` is 6, so the call returns 6. The last cell of a heap is a leaf, not the
+          smallest kept value. Reading the root, `h[0]`, gives the `k`th largest.
+      - id: one-kept
+        text: '`kth_largest([8, 2, 7], 1)`'
+        explanation: >-
+          With `k = 1` the heap holds a single value, 8, so `h[-1]` and the root are the same cell.
+          The call returns 8, which is right.
+      - id: equal-pair
+        text: '`kth_largest([2, 7, 7], 2)`'
+        explanation: >-
+          The heap keeps `[7, 7]`. `h[-1]` is not the root's cell, but it holds the same value, so
+          the call returns 7, which is right.
+      - id: all-same
+        text: '`kth_largest([5, 5, 1, 5], 3)`'
+        explanation: >-
+          The heap keeps three 5s, so every cell holds the right answer, and the call returns 5.
+    correct: distinct-kept
+    followUps:
+      one-kept:
+        prompt: With `k = 1`, how many values does `h` hold when the loop ends?
+        options:
+          - id: one
+            text: One, so `h[-1]` is the root
+          - id: two
+            text: Two, so `h[-1]` is the larger one
+          - id: all
+            text: All three, so `h[-1]` is the last one pushed
+        correct: one
+        explanation: >-
+          The pop runs whenever the heap holds more than 1, so it ends with the single largest
+          value. In a one-item list the first and last cells are the same, so the bug cannot show.
+      equal-pair:
+        prompt: '`h` ends as `[7, 7]`. Can reading `h[-1]` instead of `h[0]` change the answer?'
+        options:
+          - id: no
+            text: No, both cells hold 7
+          - id: yes
+            text: Yes, `h[-1]` is the value pushed last
+          - id: error
+            text: Yes, `h[-1]` raises on a heap
+        correct: no
+        explanation: >-
+          The wrong cell gives the right answer whenever it holds the same value as the root. The
+          bug shows only when the kept values differ, as in `[5, 6]`.
+      all-same:
+        prompt: The heap ends holding three 5s. What does `h[-1]` return?
+        options:
+          - id: five
+            text: 5, the right answer, since every cell holds 5
+          - id: one
+            text: 1, the smallest value pushed
+          - id: none
+            text: Nothing, since the last cell is a leaf
+        correct: five
+        explanation: >-
+          The 1 was popped when the 4th value arrived. With every kept value equal, any cell of `h`
+          gives the `k`th largest.
+
   - id: checkpoint-refill-line
     heading: Which line completes it?
     tags: [heap, python]
@@ -181,14 +266,16 @@ questions:
       def merge(runs):
           h = [(r[0], i, 0) for i, r in enumerate(runs) if r]
           heapify(h)
+          out = []
           while h:
               x, i, j = heappop(h)
-              yield x
+              out.append(x)
               # REFILL
+          return out
       ```
 
-      Which `REFILL` makes `list(merge([[2, 9, 11], [4, 5], [1, 7]]))` return all seven values
-      in order, with at most one entry per run in the heap?
+      Which `REFILL` makes `merge([[2, 9, 11], [4, 5], [1, 7]])` return all seven values in order,
+      with at most one entry per run in the heap?
     options:
       - id: same-run
         text: '`if j + 1 < len(runs[i]): heappush(h, (runs[i][j + 1], i, j + 1))`'
@@ -211,15 +298,15 @@ questions:
         prompt: 'The pop returns `(5, 1, 0)`, an entry for run 1''s second value that still records position 0. What gets pushed?'
         options:
           - id: same-again
-            text: '`(5, 1, 0)` again, so the merge yields 5 forever'
+            text: '`(5, 1, 0)` again, so the merge appends 5 forever'
           - id: next
-            text: The next value, since the value field moved on
+            text: The next value, since the value item moved on
           - id: nothing
             text: Nothing, since run 1 is finished
         correct: same-again
         explanation: >-
-          The position never advances, so `runs[1][0 + 1]` is read again and again. Python yields
-          1, 2, 4 and then 5 without end.
+          The position never advances, so `runs[1][0 + 1]` is read again and again. `out` grows to
+          1, 2, 4 and then 5 over and over, and the call never returns.
       every-run:
         prompt: After the 1 pops, this pushes a value from every run. What follows?
         options:
@@ -232,8 +319,8 @@ questions:
         correct: duplicates
         explanation: >-
           Only the popped run lost its entry. Runs 0 and 1 still have their fronts waiting, so each
-          gets a second entry. Python yields 21 values: 5, 7 and 9 three times each, and 11 nine
-          times.
+          gets a second entry. The call returns 21 values: 5, 7 and 9 three times each, and 11
+          nine times.
       guard-on-heap:
         prompt: The pop takes the last entry and leaves `h` empty, but its run still has values. What does `if h and ...` do?
         options:
@@ -245,8 +332,8 @@ questions:
             text: It raises `IndexError` on the empty heap
         correct: drops-tail
         explanation: >-
-          `h` is empty and falsy, so the push is skipped and `while h` ends. Here run 0's 11 is
-          lost, and the result is `[1, 2, 4, 5, 7, 9]`.
+          `h` is empty and counts as false, so the push is skipped and `while h` ends. Here run 0's
+          11 is lost, and the result is `[1, 2, 4, 5, 7, 9]`.
 
   - format: tap-cell
     id: checkpoint-next-push-tap
@@ -254,19 +341,15 @@ questions:
     tags: [heap, python]
     prompt: >-
       The cells lay out `runs[0]`, `runs[1]` and `runs[2]` side by side (indices 0 to 2, 3 to 4,
-      and 5 to 7). The merge has printed 1, 2 and 3. Which value does it push right after it
-      prints the 3? Tap it.
+      and 5 to 7). The runs are merged with a heap of `(value, run, position)` entries that starts
+      with each run's front, and the merge prints each value it pops. It has printed 1, 2 and 3.
+      Which value does it push right after it prints the 3? Tap it.
     code: |
-      from heapq import heapify, heappop, heappush
+      from heapq import heapify
 
       runs = [[3, 6, 7], [1, 9], [2, 4, 5]]
       h = [(r[0], i, 0) for i, r in enumerate(runs)]
       heapify(h)
-      while h:
-          x, i, j = heappop(h)
-          print(x)
-          if j + 1 < len(runs[i]):
-              heappush(h, (runs[i][j + 1], i, j + 1))
     sequence:
       kind: array
       cells: [3, 6, 7, 1, 9, 2, 4, 5]
@@ -291,3 +374,42 @@ questions:
         explanation: The 1 was printed first. Its pop pushed the 9.
       - index: 5
         explanation: The 2 was printed second. Its pop pushed the 4.
+
+  - format: tap-cell
+    id: checkpoint-tied-fronts-tap
+    heading: Which 4 comes out last?
+    tags: [heap, python]
+    prompt: >-
+      The cells lay out `runs[0]`, `runs[1]` and `runs[2]` side by side (indices 0 to 1, 2 to 3,
+      and 4 to 5). The runs are merged with a heap of `(value, run, position)` entries that starts
+      with each run's front, and the merge prints each value it pops. Three of the values are 4.
+      Which 4 is printed last? Tap it.
+    code: |
+      from heapq import heapify
+
+      runs = [[4, 7], [2, 4], [4, 9]]
+      h = [(r[0], i, 0) for i, r in enumerate(runs)]
+      heapify(h)
+    sequence:
+      kind: array
+      cells: [4, 7, 2, 4, 4, 9]
+    correct: 4
+    explanation: >-
+      The 2 pops first, and run 1 pushes its next value, its 4. The heap then holds three entries
+      with the value 4, so each tie moves on to the run number. Run 0's 4 comes out first, then run
+      1's, then run 2's, so the last 4 printed is run 2's.
+    misses:
+      - index: 0
+        explanation: >-
+          Run 0's 4 ties with the other two, and its run number, 0, is the smallest. It is the
+          first 4 out.
+      - index: 3
+        explanation: >-
+          Run 1's 4 entered the heap last, after the 2 left, but arrival order does not break the
+          tie. It compares run numbers, and 1 is smaller than 2, so this 4 comes out second.
+      - index: 1
+        explanation: '7 is not a 4. Run 0 pushes it when its 4 pops, and it comes out after all three 4s.'
+      - index: 2
+        explanation: '2 is not a 4. It is the smallest front, so it is printed first of all.'
+      - index: 5
+        explanation: '9 is not a 4. Run 2 pushes it when its 4 pops, and it is printed last of all.'

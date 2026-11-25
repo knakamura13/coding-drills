@@ -82,8 +82,9 @@ paths:
 
   - id: bounded-heaps
     title: Bounded heaps
-    summary: Evict to keep a size limit. Merging sorted streams is a separate fork.
-    after: [priority-order, operation-costs]
+    summary: Evict to keep a size limit, and price it. Merging sorted runs is a separate fork.
+    after: [heap-operations]
+    afterNote: Heap operations brings `heapify`, the O(log n) cost of one push or pop, and tuple entries that settle ties. Priority order comes through it, with the negated push that pops the largest first.
     levels:
       - id: track-eviction-candidate
         title: Track the eviction candidate
@@ -94,9 +95,9 @@ paths:
         title: Merge
         levels:
           - id: expose-stream-head
-            title: Expose one head per stream
+            title: Put one front per run in the heap
           - id: replenish-popped-stream
-            title: Replenish the stream just popped
+            title: Refill the run just popped
     checkpoints:
       - id: top-k-or-merge
         title: Top K or a lazy merge
@@ -105,19 +106,20 @@ paths:
 
   - id: link-rewrites
     title: Link rewrites
-    summary: Follow a successor, save and redirect an edge, and handle the first node.
-    after: [names-and-objects]
+    summary: Follow a link, save and redirect a link, and handle the first node.
+    after: [names-and-objects, operation-costs]
+    afterNote: Names and objects brings names that share one object and what rebinding a parameter does. Operation costs brings the cost of inserting into a Python list and, through Growth rates, the big-O names, which the linked-list cost card uses.
     levels:
       - id: follow-successor
-        title: Follow a successor
+        title: Follow a link
       - id: save-and-redirect
-        title: Save and redirect an edge
+        title: Save and redirect a link
       - id: handle-first-node
         title: Handle the first node
     checkpoints:
       - id: reverse-links
-        title: Reverse links
-        summary: Reverse links without losing the remainder.
+        title: Reverse or merge links
+        summary: Reverse or merge linked lists without losing the rest.
 
   - id: pointer-walks
     title: Pointer walks
@@ -145,11 +147,9 @@ drills:
     path: priority-order
     note: 'Absorbed into Priority order as `largest-first-negate`. The older deck stays as a fixture.'
   - questionId: top-k-min-heap
-    disposition: exam
+    disposition: retire
     path: bounded-heaps
-    tests: [track-eviction-candidate, preserve-size-limit]
-    covers: [top-k]
-    note: Choose which score to evict, then justify the size bound for a stream.
+    note: 'Not copied: every top-k item in `bounded-heaps-checkpoint` shows the capped min-heap in code, which answers this approach choice, and `capped-cost` teaches its bound. The older deck stays as a fixture.'
   - questionId: heapify-vs-pushes
     disposition: retire
     path: heap-operations
@@ -159,26 +159,22 @@ drills:
     path: heap-operations
     note: 'Its first half is absorbed into Heap operations as `payload-typeerror`, and its fix half is `unique-tie-breaker`. The older deck stays as a fixture.'
   - questionId: merge-k-sorted
-    disposition: exam
+    disposition: retire
     path: bounded-heaps
-    tests: [expose-stream-head, replenish-popped-stream]
-    covers: [merge]
-    note: Track one head per stream, choose which to replenish and bound memory.
+    note: 'Not copied: its answer, a heap of one front per list refilled from the popped list, is the shape `checkpoint-refill-line` shows and asks for. The older deck stays as a fixture.'
   - questionId: reverse-in-place
-    disposition: exam
+    disposition: retire
     path: link-rewrites
-    tests: [follow-successor, save-and-redirect]
-    note: Combine saving the successor, redirecting an edge and advancing both references.
+    note: 'Not copied: its answer, the order of the four reversal lines, appears in the code of three `link-rewrites-checkpoint` items. The older deck stays as a fixture.'
   - questionId: middle-node
     disposition: keep
     path: pointer-walks
     skill: handle-walk-termination
     note: Trace one- and two-hop cursors on an even-length list after one-hop practice.
   - questionId: dummy-head
-    disposition: rewrite
+    disposition: retire
     path: link-rewrites
-    skill: handle-first-node
-    note: Draw a sentinel before a one-node list and ask which edge changes when the head is removed.
+    note: 'Absorbed into Link rewrites as `first-node-missed`, which shows the node a loop without a dummy never tests. The older deck stays as a fixture.'
   - questionId: remove-nth-from-end
     disposition: exam
     path: pointer-walks
@@ -190,10 +186,9 @@ drills:
     skill: advance-safely
     note: First trace safe two-hop access on odd and even lists, then distinguish node identity from equal values.
   - questionId: cost-model
-    disposition: rewrite
+    disposition: retire
     path: link-rewrites
-    skill: save-and-redirect
-    note: Separate locating a node from splicing after a node already held; compare array insertion later.
+    note: 'Carried by Link rewrites'' `linked-list-cost`: a splice after a held node against reaching a node and inserting into a Python list. The older deck stays as a fixture.'
   - questionId: two-push-trace
     disposition: keep
     path: stack-matching
@@ -646,117 +641,148 @@ drills:
     disposition: keep
     path: link-rewrites
     skill: follow-successor
-    note: New teaching card (tap the cell). Three nodes linked out of creation order. Tap the node two hops reach.
+    note: 'Tap the node `a.next.next` reaches when three nodes are linked out of creation order. The prompt shows the `Node` class and defines head and tail, and the worked example introduces the path.'
   - questionId: empty-tail
     disposition: keep
     path: link-rewrites
     skill: follow-successor
-    note: New teaching card for the empty tail. A walk that runs past the tail reads `.val` from `None`.
-  - questionId: insert-order
-    disposition: keep
-    path: link-rewrites
-    skill: save-and-redirect
-    note: New teaching card. Insert after a held node by copying its link before redirecting it. Part of the cost-model rewrite (splicing after a held node).
+    note: 'Predict that a walk which runs past the tail reads `.val` from `None` and raises `AttributeError`.'
   - questionId: lost-remainder
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
-    note: New teaching card (tap the cell). Overwrite a link without saving it, then tap where a walk from the head stops.
+    note: Overwrite a link without reading it first, then tap where a walk from the head stops.
+  - questionId: insert-order
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Pick the order that inserts after a held node: copy its link into the new node, then redirect it.'
+  - questionId: unlink-next
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Predict the list after `p.next = p.next.next`, which removes the node after `p`, against removing `p`, cutting the rest and no change.'
+  - questionId: linked-list-cost
+    disposition: keep
+    path: link-rewrites
+    skill: save-and-redirect
+    note: 'Pick the operation whose cost does not grow with `n`: a splice after a held node, against reaching the middle, `nums.insert(1, x)` and adding after the tail from the head. The explanation names O(1), O(k) and O(n).'
   - questionId: reverse-one-pass
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
-    note: New teaching card (drag the pointers). Place prev, cur and nxt after one save-turn-advance pass.
+    note: Drag `prev`, `cur` and `nxt` to where one more save, turn and advance pass of a reversal leaves them. The prompt names the goal.
   - questionId: push-front-return
     disposition: keep
     path: link-rewrites
     skill: handle-first-node
-    note: New teaching card. A function that builds a new first node without returning it leaves the caller's list unchanged.
+    note: A function that builds a new first node without returning it leaves the caller's list unchanged.
+  - questionId: first-node-missed
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: 'Tap the node a `remove_val` without a dummy never tests: it only tests `node.next`, so the head is never checked.'
   - questionId: sentinel-only-node
     disposition: keep
     path: link-rewrites
     skill: handle-first-node
-    note: New teaching card (tap the cell). Delete the only node via a sentinel and tap the node whose link changes. Part of the dummy-head rewrite.
+    note: 'Tap the node whose link changes when a dummy node removes the only node. The prompt states what `dummy = Node(0, head)` gives the first node.'
+  - questionId: merge-sorted-drag
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    note: Drag `tail`, `a` and `b` to where three passes of a merge of two sorted lists behind a dummy leave them. Only the side whose node was linked moves.
   - questionId: kth-node-trace-review
     disposition: keep
     path: link-rewrites
     skill: follow-successor
     variant: true
-    note: Review variant on a fresh input (step-through trace). Reaching position k takes k hops, and one hop past the tail fails. Part of the cost-model rewrite (locating a node).
+    note: Trace a walk of `k` links. Reaching index `k` takes `k` hops, and one hop past the tail fails.
   - questionId: three-node-review
     disposition: keep
     path: link-rewrites
     skill: follow-successor
     variant: true
-    note: Review variant on a fresh input. Three nodes linked out of creation order, and an unset link stays None.
+    note: Three nodes linked out of creation order, and a link no line sets stays `None`.
   - questionId: values-after-review
     disposition: keep
     path: link-rewrites
     skill: follow-successor
     variant: true
-    note: Review variant on a fresh input. A walk that tests the next link stops on the tail and skips the start.
+    note: A walk that tests the next link stops on the tail and skips the start.
   - questionId: delete-after-review
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
     variant: true
-    note: Review variant on a fresh input. Unlinking the node after p leaves the removed node's own link alone.
+    note: Unlinking the node after `p` leaves the removed node's own link alone.
   - questionId: insert-three-lines-review
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
     variant: true
-    note: Review variant on a fresh input. Order three lines that save a link, redirect it and link the new node.
+    note: Order three lines that save a link, redirect it and link the new node.
   - questionId: unsaved-hop-review
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
     variant: true
-    note: Review variant on a fresh input (tap the cell). Without a saved successor, cur follows the turned link back.
+    note: Tap where `cur` goes when a reversal pass forgets to save `cur.next` first.
   - questionId: two-passes-review
     disposition: keep
     path: link-rewrites
     skill: save-and-redirect
     variant: true
-    note: Review variant on a fresh input. Read the turned part and the remainder after two reversal passes.
+    note: Read the turned part and the remainder after two reversal passes.
   - questionId: drop-first-review
     disposition: keep
     path: link-rewrites
     skill: handle-first-node
     variant: true
-    note: Review variant on a fresh input. Moving a parameter past the first node leaves the caller's name and the node's link alone.
+    note: Moving a parameter past the first node leaves the caller's name and the node's link alone.
   - questionId: sentinel-two-matches-review
     disposition: keep
     path: link-rewrites
     skill: handle-first-node
     variant: true
-    note: Review variant on a fresh input (tap the cell). Removing two matching first nodes leaves p on the dummy.
+    note: Tap where `p` stops when two matching first nodes are removed behind a dummy.
   - questionId: return-head-review
     disposition: keep
     path: link-rewrites
     skill: handle-first-node
     variant: true
-    note: Review variant on a fresh input. Returning head instead of dummy.next hands back the removed first node.
+    note: 'Returning `head` instead of `dummy.next` hands back the removed first node.'
+  - questionId: merge-runs-out-review
+    disposition: keep
+    path: link-rewrites
+    skill: handle-first-node
+    variant: true
+    note: 'Count the passes of a merge where one list runs out first, and see the leftover list joined by one `tail.next` assignment.'
   - questionId: checkpoint-reverse-trace
     disposition: exam
     path: link-rewrites
     tests: [follow-successor, save-and-redirect]
-    note: New checkpoint item (step-through trace). Trace a full reversal, including where cur stops and the list returned.
+    note: Trace a full reversal, including where `cur` stops and the list returned.
   - questionId: checkpoint-old-head
     disposition: exam
     path: link-rewrites
     tests: [save-and-redirect, handle-first-node]
-    note: New checkpoint item. After a reversal, the caller's old head is the one-node tail.
+    note: After a reversal, the caller's old head is the one-node tail.
   - questionId: checkpoint-advance-bug
     disposition: exam
     path: link-rewrites
     tests: [follow-successor, save-and-redirect]
-    note: New checkpoint item. A reversal that advances with cur.next instead of the saved nxt loses the remainder after one pass.
+    note: 'A reversal that advances with `cur.next` instead of the saved `nxt` loses the rest after one pass.'
   - questionId: checkpoint-reverse-front
     disposition: exam
     path: link-rewrites
     tests: [save-and-redirect, handle-first-node]
-    note: New checkpoint item (drag the pointers). Place prev and cur after reversing the first k nodes, before the old head is joined to the rest.
+    note: Drag `prev` and `cur` to where reversing the first `k` nodes leaves them, before the old head is joined to the rest.
+  - questionId: checkpoint-debug-merge-rest
+    disposition: exam
+    path: link-rewrites
+    tests: [save-and-redirect, handle-first-node]
+    note: 'Debugging: pick the input a suggested `merge` gets wrong because it always links `a` after the loop, so a leftover `b` is lost.'
   - questionId: odd-length-hops
     disposition: keep
     path: pointer-walks
@@ -1017,126 +1043,142 @@ drills:
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
-    note: New teaching card (tap the cell). Tap the root a capped min-heap evicts when a larger score arrives.
+    note: Tap the root a capped min-heap evicts when a larger score arrives. The worked example introduces the path.
   - questionId: capped-stream-trace
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
-    note: New teaching card (step-through trace). Follow each eviction over a stream with k = 3, including an arrival that is evicted at once.
+    note: 'Follow each eviction over a stream with `k = 3`, including an arrival evicted at once, then read `h[0]` as the 3rd largest score.'
   - questionId: pop-condition-off-by-one
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
-    note: New teaching card. Popping when len(h) >= k keeps k - 1 scores.
+    note: 'Popping when `len(h) >= k` keeps `k - 1` scores.'
   - questionId: replace-before-compare
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
-    note: New teaching card. heapreplace on every arrival evicts the root before comparing, so a late small score is kept.
+    note: '`heapreplace` on every arrival evicts the root before comparing, so a late small score is kept. The prompt states what `heapreplace` does.'
+  - questionId: keep-k-smallest
+    disposition: keep
+    path: bounded-heaps
+    skill: track-eviction-candidate
+    note: 'Tap the distance evicted when the 2 smallest are kept by pushing `-d`: the largest kept distance, whose negation is the root.'
+  - questionId: capped-cost
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    note: 'Pick O(n log k) time and O(k) memory for a capped heap, against O(n log n) with O(n) memory, O(n × k), and the cost of one arrival. The prompt restates O(log m) per push or pop.'
   - questionId: initial-heads
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
-    note: New teaching card. The merge heap starts with one front per run, not the k smallest values or all of them.
+    note: 'The merge heap starts with one front per sorted run, not the 3 smallest values, all of them, or one. The prompt states the goal and the lazy reads, and the worked example calls the heap merge the two-run merge with `k` runs. Opens the merge fork.'
   - questionId: head-entry-shape
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
-    note: New teaching card. Pick (value, run) over (value, iterator), (run, value) and a bare value.
-  - questionId: merge-heads-trace
-    disposition: keep
-    path: bounded-heaps
-    skill: replenish-popped-stream
-    note: New teaching card (step-through trace). Tap each value the merge prints next, then pick the entry pushed for the popped run.
+    note: 'Pick `(value, run, position)` over a run-first tuple, a dict payload that ties reach, and a bare value. The prompt states the tuple rule.'
   - questionId: replenish-which-run
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
-    note: New teaching card. Push the popped run's next value, against the smallest unread value, both, or nothing.
+    note: Push the popped run's next value, against the smallest unread value, both, or nothing.
+  - questionId: merge-heads-trace
+    disposition: keep
+    path: bounded-heaps
+    skill: replenish-popped-stream
+    note: Tap each value the merge prints next, then pick the entry pushed for the popped run.
   - questionId: arrival-evicted-tap
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant (tap the cell). An arrival smaller than every kept score sifts to the root and is the one evicted.
+    note: Tap the value evicted when an arrival smaller than every kept score sifts to the root.
   - questionId: k-smallest-orientation
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant. Negate distances to keep the k smallest with heapq, against plain pushes, h.pop() and the first k.
+    note: 'Negate distances to keep the k smallest with `heapq`, against plain pushes, `h.pop()` and the first k.'
   - questionId: replace-condition
     disposition: keep
     path: bounded-heaps
     skill: track-eviction-candidate
     variant: true
-    note: Review variant. Replace only when the arrival beats h[0], against h[-1], below the root and max(h).
+    note: 'Replace only when the arrival beats `h[0]`, against `h[-1]`, below the root and `max(h)`.'
   - questionId: pop-before-push
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant on a fresh input. Popping before the push lets a late small score in.
+    note: Popping before the push lets a late small score in.
   - questionId: peak-heap-size
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant. Push then pop holds k + 1 for a moment, never n or 2k.
+    note: 'Push then pop holds `k + 1` for a moment, never `n` or `2k`.'
   - questionId: kth-largest-tap
     disposition: keep
     path: bounded-heaps
     skill: preserve-size-limit
     variant: true
-    note: Review variant (tap the cell). The root of the capped heap is the kth largest of the stream.
+    note: Tap the root of the capped heap as the kth largest of the stream.
   - questionId: empty-run-guard
     disposition: keep
     path: bounded-heaps
     skill: expose-stream-head
     variant: true
-    note: Review variant. An empty run has no front, so r[0] raises IndexError unless it is filtered out.
-  - questionId: tied-iterator-heads
-    disposition: keep
-    path: bounded-heaps
-    skill: expose-stream-head
-    variant: true
-    note: Review variant. Tied fronts stored with their iterators raise TypeError after the first pop.
+    note: 'An empty run has no front, so `r[0]` raises `IndexError` unless it is filtered out.'
   - questionId: heads-after-pops-drag
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
     variant: true
-    note: Review variant on a fresh input (drag the pointers). Place each run's entry after three values are printed.
+    note: Drag each run's entry to where it sits after three values are printed.
   - questionId: break-on-exhausted
     disposition: keep
     path: bounded-heaps
     skill: replenish-popped-stream
     variant: true
-    note: Review variant. Breaking when a run runs out drops the other runs' values.
+    note: Breaking when a run runs out drops the other runs' values.
   - questionId: checkpoint-pushpop-trace
     disposition: exam
     path: bounded-heaps
     tests: [track-eviction-candidate, preserve-size-limit]
     covers: [top-k]
-    note: New checkpoint item (step-through trace). Follow heappushpop evictions on a fresh stream, then read h[0].
+    note: 'Follow `heappushpop` evictions on a fresh stream, then read `h[0]`.'
   - questionId: checkpoint-closest-names
     disposition: exam
     path: bounded-heaps
     tests: [track-eviction-candidate, preserve-size-limit]
     covers: [top-k]
-    note: New checkpoint item. Predict the k nearest names kept with negated distances.
+    note: Predict the k nearest names kept with negated distances.
+  - questionId: checkpoint-debug-kth-read
+    disposition: exam
+    path: bounded-heaps
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
+    note: 'Debugging: pick the call a suggested `kth_largest` gets wrong because it returns `h[-1]`, a leaf, instead of the root.'
   - questionId: checkpoint-refill-line
     disposition: exam
     path: bounded-heaps
     tests: [expose-stream-head, replenish-popped-stream]
     covers: [merge]
-    note: New checkpoint item. Pick the refill line, against a stale position, every run, and a guard that drops the last run's tail.
+    note: Pick the refill line, against a stale position, every run, and a guard that drops the last run's tail.
   - questionId: checkpoint-next-push-tap
     disposition: exam
     path: bounded-heaps
     tests: [expose-stream-head, replenish-popped-stream]
     covers: [merge]
-    note: New checkpoint item (tap the cell). Tap the value pushed right after the third value is printed.
+    note: Tap the value pushed right after the third value is printed, with the refill rule left unstated.
+  - questionId: checkpoint-tied-fronts-tap
+    disposition: exam
+    path: bounded-heaps
+    tests: [expose-stream-head, replenish-popped-stream]
+    covers: [merge]
+    note: Tap the 4 printed last when three runs hold a 4 and the run numbers break the ties.
 
 followUps:
   - questionId: heapq-min-heap

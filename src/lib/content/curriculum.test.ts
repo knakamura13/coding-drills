@@ -57,7 +57,7 @@ const PATH_TITLES = [
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 10, rewrite: 3, exam: 4, retire: 4 },
+	'data-structures': { keep: 10, rewrite: 1, exam: 1, retire: 9 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
 };
@@ -250,7 +250,9 @@ describe('shipped curriculum', () => {
 			'stack-matching',
 			'monotonic-stack',
 			'priority-order',
-			'heap-operations'
+			'heap-operations',
+			'bounded-heaps',
+			'link-rewrites'
 		]) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
