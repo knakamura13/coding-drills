@@ -56,7 +56,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 1, rewrite: 1, exam: 5, retire: 17 },
+	'sequences-and-search': { keep: 1, rewrite: 0, exam: 2, retire: 21 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -202,7 +202,7 @@ describe('shipped curriculum', () => {
 			'sorted-array-search-loop/lo-equals-mid retire exact-search',
 			'binary-search-preconditions/linked-list-ok retire operation-costs',
 			'binary-search-preconditions/python-overflow retire exact-search',
-			'subarray-sum-k/sort-sweep rewrite method-selection',
+			'subarray-sum-k/sort-sweep retire method-selection',
 			'heapq-min-heap/plain-pops keep priority-order',
 			'grid-bounds-and-cost/quadratic rewrite reachability',
 			'count-components-edge-list/one-search rewrite reachability',

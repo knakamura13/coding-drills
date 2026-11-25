@@ -161,7 +161,7 @@ paths:
 
   - id: prefix-counts
     title: Prefix counts
-    summary: Build a prefix, subtract two prefixes, and count earlier matches.
+    summary: Build a prefix sum list, subtract two entries to sum a subarray, and count earlier matches.
     after: [hash-lookups, arrays-and-strings]
     levels:
       - id: build-prefix
@@ -172,8 +172,8 @@ paths:
         title: Count prior matching prefixes
     checkpoints:
       - id: count-signed-ranges
-        title: Count signed ranges
-        summary: Count signed ranges with repeated or zero prefixes.
+        title: Count signed subarrays
+        summary: Count the subarrays with a given sum when prefix sums repeat or return to 0.
 
   - id: variable-windows
     title: Variable windows
@@ -188,8 +188,8 @@ paths:
         title: Restore validity before recording results
     checkpoints:
       - id: count-valid-suffixes
-        title: Count valid suffixes
-        summary: Count valid suffixes or bound time and space on a fresh log.
+        title: Count valid subarrays
+        summary: Count the valid subarrays, repair a scan or bound its time and space on a fresh log.
         mix: [valid-suffixes, cost-bound]
 
   - id: window-limits
@@ -262,10 +262,9 @@ drills:
     path: hash-lookups
     note: '`checkpoint-why-linear` explains the same approach, so this item could be answered from memory. The older deck stays as a fixture.'
   - questionId: subarray-sum-equals-k
-    disposition: exam
+    disposition: retire
     path: prefix-counts
-    tests: [build-prefix, subtract-prefixes, count-prior-prefixes]
-    note: Combine a prefix difference, earlier-prefix frequencies and the empty prefix on signed input.
+    note: 'Absorbed into the Prefix counts checkpoint as `checkpoint-pick-count-method`, with every pair of prefix sum entries in place of the untaught sliding window. The older deck stays as a fixture.'
   - questionId: contains-duplicate-tradeoff
     disposition: retire
     path: hash-lookups
@@ -277,7 +276,7 @@ drills:
   - questionId: subarray-sum-k
     disposition: retire
     path: prefix-counts
-    note: Duplicates the signed exact-sum objective in subarray-sum-equals-k. Salvage its sorting-destroys-contiguity follow-up for mixed review.
+    note: 'Retired: it asks the same signed exact-sum question as `checkpoint-pick-count-method`. Its follow-ups retire with it.'
   - questionId: merge-intervals-sort-start
     disposition: retire
     path: interval-merging
@@ -568,26 +567,21 @@ drills:
     tests: [allow-one-skip]
     note: 'Debugging: pick the call a suggested one-deletion check gets wrong because it never leaves out the right character.'
   - questionId: longest-run-at-most-k-types
-    disposition: rewrite
+    disposition: retire
     path: variable-windows
-    skill: restore-validity
-    note: Add one element to a tiny window and update its distinct count before asking for the full scan.
+    note: 'Absorbed into the Variable windows teaching deck as `record-after-repair`, the card that places the record after the repair. The older deck stays as a fixture.'
   - questionId: shrink-while-not-if
-    disposition: exam
+    disposition: retire
     path: variable-windows
-    tests: [maintain-moving-counts, restore-validity]
-    covers: [valid-suffixes]
-    note: Combine frequency deletion, repeated shrinking and counting valid suffixes.
+    note: 'Absorbed into the Variable windows checkpoint as `checkpoint-repair-shrink`, on a zero-count rule so that no other item in the pool prints its fix. The older deck stays as a fixture.'
   - questionId: slow-fast-keep-distinct
     disposition: retire
     path: pointer-scans
     note: Retired (decided on #11). Read-then-write, first-write and the compaction review drills already cover what this rewrite planned.
   - questionId: window-loop-cost
-    disposition: exam
+    disposition: retire
     path: variable-windows
-    tests: [maintain-moving-counts, restore-validity]
-    covers: [cost-bound]
-    note: Combine total pointer advances with the peak number of live dictionary keys.
+    note: '`checkpoint-count-cost` asks for the same bound, O(n) time and O(k) extra space, on the same function family. The older deck stays as a fixture.'
   - questionId: window-needs-monotonic-sums
     disposition: exam
     path: window-limits
@@ -1042,117 +1036,132 @@ drills:
     disposition: keep
     path: prefix-counts
     skill: build-prefix
-    note: New teaching card for building a prefix. Pick the list that starts with the empty prefix, over one without it, a copy of the values and a dropped sign.
+    note: 'Pick the prefix sum list that starts with the empty prefix, against one without it, a copy of the values and a dropped sign. Defines "subarray", and its worked example introduces the path.'
   - questionId: trace-build-prefix
     disposition: keep
     path: prefix-counts
     skill: build-prefix
-    note: New step-trace teaching card. Predict each appended total, including one that returns to 0, and the finished list.
+    note: 'Step through `prefix.append(prefix[-1] + x)`, including a prefix sum that returns to 0, and predict the finished list.'
   - questionId: tap-subtracted-prefix
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
-    note: New tap-cell teaching card for one range subtraction. Tap the prefix that sum(nums[i:j]) subtracts.
-  - questionId: range-from-zero
+    note: 'Tap the entry that `sum(nums[2:5])` subtracts from `prefix[5]`: the one where the subarray starts.'
+  - questionId: subarray-from-zero
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
-    note: New teaching card for a range starting at zero. It subtracts prefix[0], not prefix[-1], which Python reads as the last entry.
+    note: 'A subarray from index 0 subtracts `prefix[0]`, not `prefix[-1]`, which Python reads as the last entry.'
   - questionId: drag-equal-prefixes
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
-    note: New drag-pointers teaching card for two equal prefix totals. Place i and j on the equal totals that bound a range summing to 0.
+    note: 'Place `i` and `j` on two equal prefix sums, which bound a subarray that sums to 0.'
+  - questionId: needed-earlier-prefix
+    disposition: keep
+    path: prefix-counts
+    skill: count-prior-prefixes
+    note: 'Given the current prefix sum `p` and the target `k`, pick the earlier prefix sum a subarray ending here needs: `p - k`.'
   - questionId: count-ending-here
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
-    note: New teaching card for counting earlier matches. Look up p - k and count every earlier copy of it.
-  - questionId: trace-count-ranges
+    note: 'Count the subarrays ending here: every earlier copy of `p - k` is a different start.'
+  - questionId: trace-count-subarrays
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
-    note: New step-trace teaching card. Trace the counting loop through a seed match, a repeated total and the return value.
+    note: 'Step through the dictionary count: a match through the starting entry `0: 1`, a repeated prefix sum and the return value. States what `.get` with a default returns.'
   - questionId: prefix-list-review
     disposition: keep
     path: prefix-counts
     skill: build-prefix
     variant: true
-    note: Review variant on a fresh input. Pick the prefix list of a signed list with a 0 in it.
+    note: 'Pick the prefix sum list of a signed list with a 0 in it, on fresh values.'
   - questionId: prefix-start-review
     disposition: keep
     path: prefix-counts
     skill: build-prefix
     variant: true
-    note: Review variant on a fresh input. Choose the starting line, [0], over [], [nums[0]] and n zeros.
+    note: 'Choose the first line, `[0]`, over `[]`, `[nums[0]]` and `len(nums)` zeros.'
   - questionId: trace-prefix-review
     disposition: keep
     path: prefix-counts
     skill: build-prefix
     variant: true
-    note: Review variant on a fresh input (step-through trace). Predict the totals and which entries are 0, the empty prefix included.
+    note: 'Step through a fresh build and name the entries that are 0, the empty prefix included.'
   - questionId: tap-larger-prefix-review
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the larger prefix for an inclusive range.
-  - questionId: range-from-zero-review
+    note: 'Tap the larger entry for a subarray given by its first and last index: one past the last value.'
+  - questionId: subarray-from-zero-review
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
     variant: true
-    note: Review variant on a fresh input. sum(nums[0:3]) subtracts prefix[0], against prefix[-1] and an end one too far.
+    note: '`sum(nums[0:3])` subtracts `prefix[0]`, against `prefix[-1]` and an end one entry too far.'
   - questionId: drag-target-sum-review
     disposition: keep
     path: prefix-counts
     skill: subtract-prefixes
     variant: true
-    note: Review variant on a fresh input (drag the pointers). The only range summing to 4 starts at index 0, so i sits on the empty prefix.
-  - questionId: ranges-ending-here-review
+    note: 'Place `i` and `j` on the one pair of entries 4 apart, which puts `i` on the empty prefix.'
+  - questionId: subarrays-ending-here-review
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
     variant: true
-    note: Review variant on a fresh input. Count the ranges ending here when k is negative and the total to look for repeats.
+    note: 'Count the subarrays ending here when `k` is negative and the prefix sum to look for repeats.'
   - questionId: empty-seed-review
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
     variant: true
-    note: Review variant on a fresh input. Starting seen empty misses both ranges that start at index 0.
+    note: 'Starting `seen` empty misses both subarrays that start at index 0.'
   - questionId: store-first-review
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
     variant: true
-    note: Review variant on a fresh input. Storing before the lookup adds one per pass when k is 0.
-  - questionId: trace-count-ranges-review
+    note: 'Storing before the lookup adds one per pass when `k` is 0.'
+  - questionId: trace-count-subarrays-review
     disposition: keep
     path: prefix-counts
     skill: count-prior-prefixes
     variant: true
-    note: Review variant on a fresh input (step-through trace). Negative k, and a total of 0 that repeats the empty prefix.
+    note: 'Step through the dictionary count with a negative `k` and a prefix sum of 0 that repeats the empty prefix.'
   - questionId: checkpoint-zero-sum-count
     disposition: exam
     path: prefix-counts
     tests: [build-prefix, count-prior-prefixes]
-    note: New checkpoint item. Count the ranges summing to 0 when the total returns to 0 twice and another total repeats.
-  - questionId: checkpoint-zero-totals-ranges
+    note: 'Count the subarrays summing to 0 when the prefix sum returns to 0 twice and another prefix sum repeats.'
+  - questionId: checkpoint-zero-prefix-subarrays
     disposition: exam
     path: prefix-counts
     tests: [build-prefix, subtract-prefixes, count-prior-prefixes]
-    note: New checkpoint item. Name the ranges counted when the last pass matches the empty prefix and two later zero totals.
+    note: 'Name the subarrays counted when the last pass matches the empty prefix and two later zero prefix sums.'
   - questionId: checkpoint-longer-match-start
     disposition: exam
     path: prefix-counts
     tests: [subtract-prefixes, count-prior-prefixes]
-    note: New tap-cell checkpoint item. Tap where the longer of two matched ranges starts, from a repeated total.
+    note: 'Tap where the longer of two matched subarrays starts, from a repeated prefix sum.'
   - questionId: checkpoint-missing-seed
     disposition: exam
     path: prefix-counts
     tests: [build-prefix, count-prior-prefixes]
-    note: New checkpoint item. Pick the input on which a missing entry for the empty prefix gives a wrong count, against a later range, a zero total and two later ranges.
+    note: 'Pick the input on which a count without the starting entry `0: 1` goes wrong, against a later subarray, a zero prefix sum and two later subarrays.'
+  - questionId: checkpoint-pick-count-method
+    disposition: exam
+    path: prefix-counts
+    tests: [build-prefix, subtract-prefixes, count-prior-prefixes]
+    note: 'Pick the approach that counts subarrays with a signed sum in O(n) time on average, against every pair of prefix sum entries, a set and an unseeded dictionary. Absorbed from `subarray-sum-equals-k`.'
+  - questionId: checkpoint-debug-short-prefix
+    disposition: exam
+    path: prefix-counts
+    tests: [build-prefix, subtract-prefixes]
+    note: 'Debugging: pick the call that makes a suggested subarray sum read past the end, since its prefix sum list is one entry short.'
   - questionId: insertion-slot
     disposition: keep
     path: boundary-search
@@ -1678,121 +1687,142 @@ drills:
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
-    note: New teaching card for one slide. Subtract the value that leaves and add the one that comes in, against subtracting a value that stays, swapped signs and no subtraction.
+    note: 'Pick the slide update: subtract the value that leaves and add the one that comes in, against a kept value, swapped signs and no subtraction. Defines "subarray" and "window", and its worked example introduces the path.'
   - questionId: drag-fixed-window
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
-    note: New drag-pointers teaching card. Move both edges of a size-3 window after two passes, not onto the cell that just left.
+    note: 'Move both edges of a size-3 window after two passes, not onto the cell that just left.'
   - questionId: tap-leaving-cell
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
-    note: New tap-cell teaching card for outgoing arithmetic. Tap nums[right - k], against the new first cell and the cell that comes in.
+    note: 'Tap `nums[right - k]`, the cell that leaves, against the new first cell and the cell that comes in.'
   - questionId: drop-one-copy
     disposition: keep
     path: variable-windows
     skill: maintain-moving-counts
-    note: New teaching card for one removal. A copy of the leaving type stays, so its count drops and its key stays.
+    note: 'Defines `counts` and types. A copy of the leaving letter stays, so its count drops and its key stays.'
   - questionId: trace-window-types
     disposition: keep
     path: variable-windows
     skill: maintain-moving-counts
-    note: New step-trace teaching card. Trace a size-3 window's counts through a kept copy, an equal type in and out, and last-copy deletion.
+    note: 'Step through a size-3 window''s counts: a kept copy, an equal letter in and out, and a last copy whose key is deleted. States what `.get` with a default returns.'
   - questionId: drag-shrink-to-valid
     disposition: keep
     path: variable-windows
     skill: restore-validity
-    note: New drag-pointers teaching card for several left moves. Only the third removal empties a count, so left moves three cells.
+    note: 'States the longest-substring task and defines a valid window. Only the third removal empties a count, so `left` moves three cells.'
+  - questionId: record-after-repair
+    disposition: keep
+    path: variable-windows
+    skill: restore-validity
+    note: 'Pick the plan that records the length after the shrink, against a fixed width, a restart and recording before the shrink. Absorbed from `longest-run-at-most-k-types`.'
   - questionId: count-suffixes-here
     disposition: keep
     path: variable-windows
     skill: restore-validity
-    note: New teaching card for valid suffixes. After the repair, right - left + 1 stretches end at right.
+    note: 'After the repair, `right - left + 1` valid substrings end at `right`.'
+  - questionId: left-moves-total
+    disposition: keep
+    path: variable-windows
+    skill: restore-validity
+    note: 'Count every `left += 1` over a whole scan, which is where `left` ends and at most `len(s)`, then the most keys `counts` holds, `k + 1`.'
   - questionId: slide-signed-sum-review
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
     variant: true
-    note: Review variant on a fresh input. One slide over negative values, where swapped signs are easy to miss.
+    note: 'One slide over negative values, where swapped signs are easy to miss.'
   - questionId: leaving-index-review
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
     variant: true
-    note: Review variant on a fresh input. Fill in the leaving index, i - k, against i - k + 1, i - 1 and a wrapping i - k - 1.
+    note: 'Fill in the leaving index, `i - k`, against `i - k + 1`, `i - 1` and a wrapping `i - k - 1`.'
   - questionId: tap-leaving-review
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the cell a size-3 window drops when right moves to 5.
+    note: 'Tap the cell a size-3 window drops when `right` moves to 5.'
   - questionId: first-full-window-review
     disposition: keep
     path: variable-windows
     skill: update-fixed-window
     variant: true
-    note: Review variant on a fresh input. Record from right >= k - 1, not after the first slide or from the first pass.
+    note: 'Record from `right >= k - 1`, not after the first slide or from the first pass.'
   - questionId: last-copy-review
     disposition: keep
     path: variable-windows
     skill: maintain-moving-counts
     variant: true
-    note: Review variant on a fresh input. The leaving type's last copy goes, so its key is deleted.
+    note: 'The leaving letter''s last copy goes, so its key is deleted.'
   - questionId: overwrite-count-review
     disposition: keep
     path: variable-windows
     skill: maintain-moving-counts
     variant: true
-    note: Review variant on a fresh input. Fix a count that is overwritten with 1, against a looser deletion test and a reordering that only hides it.
+    note: 'Fix a count that is overwritten with 1, against a looser deletion test and a reordering that only hides it.'
   - questionId: trace-types-review
     disposition: keep
     path: variable-windows
     skill: maintain-moving-counts
     variant: true
-    note: Review variant on a fresh input (step-through trace). A kept copy, a last-copy deletion and an equal type that stays.
+    note: 'Step through a fresh fixed window: a kept copy, a last-copy deletion and an equal letter that stays.'
   - questionId: drag-shrink-review
     disposition: keep
     path: variable-windows
     skill: restore-validity
     variant: true
-    note: Review variant on a fresh input (drag the pointers). The leading run is not the whole type, so left moves four cells.
+    note: 'The leading run of copies is not the whole type, so `left` moves four cells.'
   - questionId: record-after-shrink-review
     disposition: keep
     path: variable-windows
     skill: restore-validity
     variant: true
-    note: Review variant on a fresh input. Record the length after the repair, not before it or inside it.
+    note: 'Place the record after the repair loop, not before it or inside it.'
   - questionId: zero-limit-suffixes-review
     disposition: keep
     path: variable-windows
     skill: restore-validity
     variant: true
-    note: Review variant on a fresh input with a different limit, at most one 0. Count the valid stretches after three left moves.
+    note: 'Count the valid subarrays ending here under a different limit, at most one 0, after three `left` moves.'
   - questionId: checkpoint-count-log
     disposition: exam
     path: variable-windows
     tests: [maintain-moving-counts, restore-validity]
     covers: [valid-suffixes]
-    note: New checkpoint item. Count valid stretches on a fresh log, where one arrival forces two removals.
+    note: 'Count the valid subarrays of a fresh log, where one arrival forces two removals.'
   - questionId: checkpoint-no-repeat-left
     disposition: exam
     path: variable-windows
     tests: [maintain-moving-counts, restore-validity]
     covers: [valid-suffixes]
-    note: New tap-cell checkpoint item. A new validity rule, no repeated letter, where a repeat of a letter that already left moves nothing.
+    note: 'A new validity rule, no repeated letter, where a repeat of a letter that already left moves nothing.'
   - questionId: checkpoint-count-cost
     disposition: exam
     path: variable-windows
     tests: [maintain-moving-counts, restore-validity]
     covers: [cost-bound]
-    note: New checkpoint item. Bound the time and space of counting stretches, whose answer can be quadratic though the scan is linear.
+    note: 'Bound the time and extra space of counting valid subarrays, whose answer can be quadratic though the scan is linear.'
   - questionId: checkpoint-fixed-window-cost
     disposition: exam
     path: variable-windows
-    tests: [update-fixed-window, maintain-moving-counts]
+    tests: [update-fixed-window, maintain-moving-counts, restore-validity]
     covers: [cost-bound]
-    note: New checkpoint item. Bound the time and space of a fixed window that tracks its types.
+    note: 'Bound the time and extra space of a fixed window that tracks its types: constant work per pass and at most `k + 1` keys.'
+  - questionId: checkpoint-repair-shrink
+    disposition: exam
+    path: variable-windows
+    tests: [restore-validity]
+    covers: [valid-suffixes]
+    note: 'Repair a count of subarrays with at most `k` zeros that shrinks with `if`: `while zeros > k`, against `>= k`, two `if` blocks and skipping the count. Absorbed from `shrink-while-not-if`.'
+  - questionId: checkpoint-debug-record-early
+    disposition: exam
+    path: variable-windows
+    tests: [restore-validity]
+    note: 'Debugging: pick the call a suggested longest-substring scan gets wrong because it records the length before the repair.'
 
   - questionId: limit-trace-shortest
     disposition: keep
@@ -1933,6 +1963,6 @@ followUps:
     note: Drop the language-specific overflow aside from this Python search path.
   - questionId: subarray-sum-k
     optionId: sort-sweep
-    disposition: rewrite
+    disposition: retire
     path: method-selection
-    note: Move the contiguity counterexample to Method selection. The other two follow-ups retire with the duplicated parent.
+    note: Retired with its parent (COMBINED 2.10). Method selection does not pick up the contiguity counterexample.

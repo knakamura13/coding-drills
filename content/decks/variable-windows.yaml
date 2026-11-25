@@ -8,18 +8,23 @@ questions:
     heading: Which update is right?
     tags: [sliding-window, python]
     workedExample: |-
-      Consider `nums = [2, 7, 1, 8, 2]` and `k = 3`. The window `nums[0:3]` sums to `s = 10`, and
-      one slide turns it into `nums[1:4]`.
+      A window is a subarray that a scan slides along a list. This path starts with windows of a
+      fixed size `k`, then lets the edges move on their own. Consider `nums = [2, 7, 1, 8, 2]` and
+      `k = 3`. The window `nums[0:3]` sums to `s = 10`, and one slide turns it into `nums[1:4]`.
 
-      1. `nums[0:3]` covers indexes 0, 1 and 2, and `nums[1:4]` covers 1, 2 and 3. So index 0 is the
-         only one that leaves, and index 3 is the only one that comes in.
-      2. Since only `nums[0] = 2` leaves, the sum must lose 2. Since only `nums[3] = 8` comes in, it
-         must gain 8.
-      3. So the new sum is `10 - 2 + 8 = 16`, which matches `7 + 1 + 8`. The two values that stay, 7
-         and 1, are never added again.
+      1. `nums[0:3]` covers indices 0, 1 and 2, and `nums[1:4]` covers 1, 2 and 3. So index 0 is
+         the only one that leaves, and index 3 is the only one that comes in.
+      2. Since only `nums[0] = 2` leaves, the sum loses 2. Since only `nums[3] = 8` comes in, it
+         gains 8.
+      3. So the new sum is `10 - 2 + 8 = 16`, which matches `7 + 1 + 8`. The 7 and the 1 stay in
+         the window and are never added again.
     prompt: |-
-      Now `nums = [4, 1, 6, 3, 5]`, `k = 3`, and `s = 11`, the sum of `nums[0:3]`. Which line
-      turns `s` into the sum of `nums[1:4]`?
+      A subarray is the values of a list from one index up to another, with none skipped: the
+      slice `nums[i:j]`. A window is the subarray a scan holds as it slides along the list, here
+      always `k` values wide.
+
+      `nums = [4, 1, 6, 3, 5]`, `k = 3`, and `s = 11`, the sum of `nums[0:3]`. Which line turns
+      `s` into the sum of `nums[1:4]`?
     options:
       - id: right
         text: '`s += nums[3] - nums[0]`, giving 10'
@@ -183,8 +188,12 @@ questions:
       3. A count of 0 means no `p` is left in the window, so the key is deleted. `counts` becomes
          `{"q": 2}` and `len(counts)` is 1.
     prompt: |-
-      Now the window is `y, x, y, z`, so `counts` is `{"y": 2, "x": 1, "z": 1}`. The `y` at the
-      left edge leaves. What are `counts` and `len(counts)` afterwards?
+      A window over a string can count its letters. `counts` maps each letter in the window to
+      how many copies of it the window holds, so `len(counts)` is the number of types, the
+      distinct letters in the window.
+
+      The window is `y, x, y, z`, so `counts` is `{"y": 2, "x": 1, "z": 1}`. The `y` at the left
+      edge leaves. What are `counts` and `len(counts)` afterwards?
     options:
       - id: right
         text: '`{"y": 1, "x": 1, "z": 1}`, so 3 types'
@@ -218,8 +227,8 @@ questions:
         correct: at-zero
         explanation: >-
           A key stands for a type that is present, so it goes only when no `y` is left in the
-          window. Deleting it while a copy remains undercounts
-          the types, and leaving a 0 behind overcounts them.
+          window. Deleting it while a copy remains undercounts the types, and leaving a 0 behind
+          overcounts them.
       unchanged:
         prompt: '`counts["y"]` stays 2 after a `y` leaves. What goes wrong when the other `y` leaves later?'
         options:
@@ -257,7 +266,8 @@ questions:
       3. The `a` count is 1, not 0, so its key stays. `counts` is `{"a": 1, "b": 1}`, this pass
          records 2, and the call returns `[1, 2]`.
     prompt: >-
-      Below, the first window `a, b, a` has been counted and `counts` is
+      Line 5 reads `counts.get(ch, 0)`, the stored count of `ch`, or 0 for a letter not yet in
+      `counts`. Below, the first window `a, b, a` has been counted and `counts` is
       `{"a": 2, "b": 1}`. Step through the rest and predict each value before it is shown.
     code: |
       def types_per_window(s, k):
@@ -369,10 +379,14 @@ questions:
       2. Since there are still 3 types, the loop runs again and removes `s[1]`, the other `x`. Its
          count reaches 0, so the key is deleted, 2 types remain, and `left` becomes 2.
       3. 2 types is within the limit, so the `while` stops. `left` is 2 and the window is `y, z`.
-    prompt: >-
-      Below, at most 2
-      types are allowed, the window is `a, b, a, b`, and the `c` at index 4 has just come in.
-      Drag `left` to where the loop stops.
+    prompt: |-
+      To find the longest substring with at most `k` types, a window lets its two edges move on
+      their own. A window with at most `k` types is valid. Each pass adds the letter at `right`,
+      and while the window holds more than `k` types, the loop below takes away the letter at
+      `left` and moves `left` one cell right.
+
+      Here `k = 2`, the window was `a, b, a, b`, and the `c` at index 4 has just come in. Drag
+      `left` to where the loop stops.
     code: |
       # counts == {"a": 2, "b": 2, "c": 1}
       while len(counts) > 2:
@@ -406,33 +420,130 @@ questions:
               2 types.
         elsewhere: The loop runs until the window holds at most 2 types, and stops there.
 
+  - id: record-after-repair
+    heading: Which plan fits?
+    tags: [sliding-window, hash-map]
+    workedExample: |-
+      Consider `s = "ppqr"` with at most 2 types. Each pass adds the letter at `right`, and a
+      `while` then drops letters from the left until the window holds at most 2 types.
+
+      1. After the `q` comes in, the window `p, p, q` holds 2 types, so it is valid and its length,
+         3, can be recorded.
+      2. The `r` comes in next, and `p, p, q, r` holds 3 types. It is not valid, so its length, 4,
+         is not an answer and is not recorded yet.
+      3. The `while` drops both `p`s, which leaves `q, r`, a valid window of length 2. The best
+         valid length so far is still 3, from `p, p, q`.
+    prompt: >-
+      A daily log records the main task type of each day. The task is to find the longest
+      subarray of days with at most `k` types. For `k = 2` and
+      `["review", "bug", "docs", "docs", "bug", "docs", "docs", "deploy", "docs"]` the answer is 6,
+      from the days `bug, docs, docs, bug, docs, docs`. Which plan computes it?
+    options:
+      - id: fixed-width
+        text: Slide a window of exactly `k` days and keep the largest result
+        explanation: >-
+          `k` limits how many types a subarray may hold, not how many days it spans. A window of
+          exactly `k` days can never be longer than `k`, so on this log it returns 2 where the
+          answer is 6. When the best length is the unknown, the window has to grow and shrink.
+      - id: restart
+        text: "Grow until a `(k + 1)`th type appears, record the length, then restart at that day"
+        explanation: >-
+          Restarting at the day that broke the window throws away earlier days that could still
+          be part of a longer valid subarray. On this log it returns 5: the first `docs` breaks
+          `review, bug`, the restart begins at that `docs` and loses the `bug` before it, and the
+          best subarray needs that `bug`.
+      - id: update-early
+        text: Add each day, record the length, then shrink while there are more than `k` types
+        explanation: >-
+          Recording before the shrink counts a window that may still hold more than `k` types.
+          Right after the `deploy` is added, the window runs from the first `bug` to the `deploy`
+          and holds three types, so this version returns 7 instead of 6.
+      - id: shrink-then-record
+        text: Add each day, shrink while there are more than `k` types, then record the length
+        explanation: >-
+          Each day extends the window on the right. While the window holds more than `k` types,
+          the left edge moves in until it is valid again, and only then is its length recorded.
+          Every length recorded belongs to a valid subarray, and the longest valid one ending at
+          each day is measured.
+    correct: shrink-then-record
+    followUps:
+      fixed-width:
+        prompt: What does `k` limit in this problem?
+        options:
+          - id: types
+            text: The number of types inside the subarray, so its length is free to vary
+          - id: days
+            text: The number of days in the subarray
+          - id: subarrays
+            text: The number of subarrays that may be compared
+        correct: types
+        explanation: >-
+          The limit is on what the subarray holds, and the length is what is being maximized. A
+          fixed-width window fits problems about "every `k` consecutive days". Here the width
+          changes as the window grows and shrinks.
+      restart:
+        prompt: >-
+          The window `review, bug` meets the first `docs`. If the scan restarts at that `docs`,
+          which earlier day is lost?
+        options:
+          - id: drops-valid-tail
+            text: The `bug` just before it, which the best subarray needs, since `bug, docs` was still valid
+          - id: drops-review
+            text: The `review`, which the best subarray needs
+          - id: nothing-lost
+            text: None, because a restart keeps the last `k` days
+        correct: drops-valid-tail
+        explanation: >-
+          After a new type breaks the limit, the days nearest the new day can still form a valid
+          subarray. Here `bug, docs` is valid, and the best subarray begins with that `bug`.
+          Shrinking from the left keeps those days, while restarting at the `docs` throws them
+          away.
+      update-early:
+        prompt: >-
+          Just after the `deploy` is added, the window holds `bug, docs, docs, bug, docs, docs,
+          deploy`. Is that a subarray the problem allows?
+        options:
+          - id: three-types
+            text: No, it holds three types, so recording its length overstates the answer
+          - id: later-valid
+            text: Yes, because the limit applies only after the left edge has moved
+          - id: ends-valid
+            text: Yes, because it ends on a day that was valid on its own
+        correct: three-types
+        explanation: >-
+          The limit applies to every subarray reported. The window may break it for a moment
+          while it is being repaired, so it is measured after the repair. Measuring before gives
+          7 here.
+
   - id: count-suffixes-here
-    heading: How many valid stretches end here?
+    heading: How many valid substrings end here?
     tags: [sliding-window]
     workedExample: |-
       Consider `s = "pqrr"` with at most 2 types. On the pass with `right` at 3, the shrink leaves
       `left` at 1, so the window `s[1:4]` is `q, r, r`, which is valid.
 
-      1. A stretch that ends at index 3 and starts at `left` or later sits inside the window. Dropping
-         letters cannot add a type, so each such stretch holds at most 2 types and is valid.
+      1. A substring that ends at index 3 and starts at `left` or later sits inside the window.
+         Dropping letters cannot add a type, so each such substring holds at most 2 types and is
+         valid.
       2. The starts 1, 2 and 3 give `q, r, r`, `r, r` and `r`. That is
-         `right - left + 1 = 3 - 1 + 1 = 3` stretches.
+         `right - left + 1 = 3 - 1 + 1 = 3` substrings.
       3. The only earlier start is index 0, giving `p, q, r, r` with 3 types, which is why the loop
-         moved `left` past it. So 3 valid stretches end at index 3.
+         moved `left` past it. So 3 valid substrings end at index 3.
     prompt: |-
-      Now `s = "abacbbc"`, with at most 2 types allowed. On the pass with `right` at 6, the window after
-      the shrink is `s[3:7]`, which is `c, b, b, c`. How many valid stretches end at index 6?
+      `s = "abacbbc"`, with at most 2 types allowed. On the pass with `right` at 6, the window
+      after the shrink is `s[3:7]`, which is `c, b, b, c`. How many valid substrings end at
+      index 6?
     options:
       - id: four
         text: '4'
         explanation: >-
-          The starts 3, 4, 5 and 6 each give a valid stretch: `cbbc`, `bbc`, `bc` and `c`. That
+          The starts 3, 4, 5 and 6 each give a valid substring: `cbbc`, `bbc`, `bc` and `c`. That
           is `right - left + 1`, 6 - 3 + 1.
       - id: three
         text: '3'
         explanation: >-
-          That is `right - left`, which leaves out one start. The single letter `c` at index 6 is a
-          stretch too.
+          That is `right - left`, which leaves out one start. The single letter `c` at index 6 is
+          a substring too.
       - id: seven
         text: '7'
         explanation: >-
@@ -441,7 +552,7 @@ questions:
       - id: one
         text: '1'
         explanation: >-
-          That counts only the whole window. The shorter stretches ending at index 6 that start
+          That counts only the whole window. The shorter substrings ending at index 6 that start
           inside it are valid too.
     correct: four
     followUps:
@@ -454,9 +565,9 @@ questions:
         correct: four
         explanation: >-
           The indices from `left` to `right`, both included, number `right - left + 1`. Each is
-          the start of a different valid stretch that ends at `right`.
+          the start of a different valid substring that ends at `right`.
       seven:
-        prompt: Why is `s[2:7]`, the stretch `a, c, b, b, c`, not counted?
+        prompt: Why is `s[2:7]`, the substring `a, c, b, b, c`, not counted?
         options:
           - { id: invalid, text: 'It holds 3 types, one over the limit' }
           - { id: earlier, text: 'It was already counted on an earlier pass' }
@@ -464,15 +575,104 @@ questions:
         correct: invalid
         explanation: >-
           The loop moved `left` past index 2 only because the window starting there broke the
-          limit. A stretch that starts earlier and ends at the same index holds those types and
+          limit. A substring that starts earlier and ends at the same index holds those types and
           more, so it is invalid too.
       one:
-        prompt: Is `b, c`, the stretch `s[5:7]`, valid with at most 2 types?
+        prompt: Is `b, c`, the substring `s[5:7]`, valid with at most 2 types?
         options:
           - { id: inside, text: 'Yes: it sits inside a valid window, so it cannot hold more types' }
-          - { id: longest-only, text: 'No, only the longest stretch ending here counts' }
+          - { id: longest-only, text: 'No, only the longest substring ending here counts' }
           - { id: earlier, text: 'Only if it was the whole window on an earlier pass' }
         correct: inside
         explanation: >-
-          Dropping letters from the left of a valid window cannot add a type. Once `s[left:right + 1]`
-          is valid, every stretch that ends at `right` and starts at `left` or later is valid.
+          Dropping letters from the left of a valid window cannot add a type. Once
+          `s[left:right + 1]` is valid, every substring that ends at `right` and starts at `left`
+          or later is valid.
+
+  - id: left-moves-total
+    format: step-trace
+    heading: Predict each step
+    tags: [sliding-window, complexity, hash-map]
+    workedExample: |-
+      Consider `longest("abc", 1)`. `left` starts at 0, and line 11 is the only line that changes
+      it, always by 1.
+
+      1. The `b` at index 1 makes 2 types, so the `while` drops the `a`, and `left` becomes 1.
+      2. The `c` at index 2 makes 2 types again, so the `while` drops the `b`, and `left` becomes
+         2.
+      3. `left` ended at 2 and only ever went up by 1, so line 11 ran 2 times in all, no more than
+         `len(s)`, which is 3.
+    prompt: >-
+      A `while` inside a `for` can still be cheap. `left` only moves right and never passes
+      `right`, so each letter leaves the window at most once, and line 11 runs at most `len(s)`
+      times over the whole call, however the moves are spread across passes. Predict each step
+      before it is shown.
+    code: |
+      def longest(s, k):
+          counts = {}
+          left = best = 0
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              while len(counts) > k:
+                  gone = s[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+              best = max(best, right - left + 1)
+          return best
+
+      longest("aabccbdd", 2)
+    sequence: { kind: string, name: s, cells: [a, a, b, c, c, b, d, d] }
+    start:
+      - { name: left, at: 0 }
+      - { name: right, at: 0 }
+    steps:
+      - line: 6
+        ask: Over the whole call, how many times does line 11, `left += 1`, run?
+        options:
+          - id: five
+            text: '5'
+            explanation: >-
+              The `c` at index 3 pushes out both `a`s, and the `d` at index 6 pushes out a `b` and
+              both `c`s. That is 2 + 3 moves, and `left` ends at 5, since it starts at 0 and only
+              ever adds 1.
+          - id: two
+            text: '2'
+            explanation: >-
+              Two passes shrink the window, but one pass can move `left` more than once. The pass
+              for the `d` moves it three times.
+          - id: eight
+            text: '8'
+            explanation: >-
+              8 is `len(s)`, the most moves possible. `left` ends at 5, and each move adds 1 to
+              it, so it moved 5 times.
+          - id: three
+            text: '3'
+            explanation: >-
+              That is the most moves in one pass, the pass for the `d`. The pass for the `c` moved
+              `left` twice more.
+        correct: five
+        also:
+          - { name: left, at: 5 }
+          - { name: right, at: 7 }
+      - line: 5
+        ask: What is the most keys `counts` holds at any moment of the call?
+        options:
+          - id: three
+            text: '3'
+            explanation: >-
+              Right after line 5 adds a third type, `counts` holds `k + 1` keys until the `while`
+              repairs the window. Between passes it holds at most `k`, so its size grows with `k`,
+              not with `len(s)`.
+          - id: two
+            text: '2'
+            explanation: >-
+              2 is the limit after each repair. Line 5 adds the new letter before the `while`
+              runs, so for a moment there are `k + 1` keys.
+          - id: four
+            text: '4'
+            explanation: >-
+              `s` holds 4 types, but a key is deleted when the last copy of its letter leaves, so
+              the four are never in `counts` at once.
+        correct: three

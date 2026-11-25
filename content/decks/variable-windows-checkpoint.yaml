@@ -1,6 +1,6 @@
 id: variable-windows-checkpoint
 title: "Variable windows: checkpoint"
-description: Count valid stretches and bound the cost of a window scan on new logs. Each item combines the Variable windows skills.
+description: Count valid subarrays, repair or debug a window scan and bound its cost on new logs. Most items combine the Variable windows skills.
 heading: Which one is right?
 
 questions:
@@ -9,7 +9,7 @@ questions:
     tags: [sliding-window, hash-map, python]
     prompt: |-
       ```python
-      def count_stretches(days, k):
+      def count_valid(days, k):
           counts = {}
           left = total = 0
           for right, d in enumerate(days):
@@ -24,7 +24,7 @@ questions:
           return total
 
       log = ["plan", "test", "plan", "ship", "ship", "test", "ship"]
-      count_stretches(log, 2)
+      count_valid(log, 2)
       ```
 
       What does the call return?
@@ -43,7 +43,7 @@ questions:
         explanation: Is every window counted after it holds at most 2 types?
       - id: short-count
         text: '11'
-        explanation: How many stretches end at `right` when `left == right`?
+        explanation: How many subarrays end at `right` when `left == right`?
     correct: right
     followUps:
       one-removal:
@@ -66,25 +66,25 @@ questions:
           - { id: half, text: 'Only the starts from 1 to 3' }
         correct: after
         explanation: >-
-          A stretch from index 0 or 1 to index 3 holds three types. Counting before the `while`
-          adds those invalid stretches, which happens on two passes here.
+          A subarray from index 0 or 1 to index 3 holds three types. Counting before the `while`
+          adds those invalid subarrays, which happens on two passes here.
       short-count:
-        prompt: On the first pass, `left` and `right` are both 0. How many valid stretches end there?
+        prompt: On the first pass, `left` and `right` are both 0. How many valid subarrays end there?
         options:
           - { id: one, text: 'One, the single first day' }
           - { id: zero, text: 'None, since `right - left` is 0' }
-          - { id: two, text: 'Two, the day and the empty stretch' }
+          - { id: two, text: 'Two, the day and the empty subarray' }
         correct: one
         explanation: >-
           The starts run from `left` to `right`, both included, so each pass adds
-          `right - left + 1`. Dropping the `+ 1` loses one stretch on every pass, 7 in all here.
+          `right - left + 1`. Dropping the `+ 1` loses one subarray on every pass, 7 in all here.
 
   - id: checkpoint-no-repeat-left
     format: tap-cell
     heading: Tap where the left edge sits
     tags: [sliding-window, hash-map, python]
     prompt: >-
-      This function counts the stretches of `s` in which no letter repeats. After its last pass,
+      This function counts the substrings of `s` in which no letter repeats. After its last pass,
       tap the cell where `left` sits.
     code: |
       def count_no_repeat(s):
@@ -132,12 +132,13 @@ questions:
     heading: What is the complexity?
     tags: [sliding-window, complexity, hash-map]
     prompt: |-
-      `count_stretches(days, k)` adds `right - left + 1` on every pass, so on a log of one type
-      it returns `n(n + 1) / 2`. Assume `1 <= k <= n` and that each dictionary read, write and
-      delete takes O(1). What are its tightest worst-case time and extra space?
+      `count_valid(days, k)` adds `right - left + 1` on every pass, so on a log of one type it
+      returns `n(n + 1) / 2`. Assume `1 <= k <= n` and that each dictionary read, write and
+      delete takes O(1). What are its tightest worst-case time and extra space, the memory it
+      uses beyond its input?
 
       ```python
-      def count_stretches(days, k):
+      def count_valid(days, k):
           counts = {}
           left = total = 0
           for right, d in enumerate(days):
@@ -157,10 +158,10 @@ questions:
         explanation: >-
           Each day enters once and leaves at most once, since `left` never moves back, so all the
           `while` passes together remove at most `n` days. Each pass adds a whole group of
-          stretches with one subtraction, and `counts` never holds more than `k + 1` keys.
+          subarrays with one subtraction, and `counts` never holds more than `k + 1` keys.
       - id: quadratic
         text: O(n²) time and O(k) extra space
-        explanation: Does the loop visit each stretch, or add them up in groups?
+        explanation: Does the loop visit each subarray, or add them up in groups?
       - id: k-per-pass
         text: O(nk) time and O(k) extra space
         explanation: Is the number of removals bounded per pass, or over the whole call?
@@ -173,11 +174,11 @@ questions:
         prompt: On a pass with `left` at 2 and `right` at 9, how much work does `total += right - left + 1` do?
         options:
           - { id: one, text: 'Constant work, for all 8 at once' }
-          - { id: eight, text: 'Eight steps, one per stretch' }
+          - { id: eight, text: 'Eight steps, one per subarray' }
           - { id: ten, text: 'Ten steps, one per index so far' }
         correct: one
         explanation: >-
-          The count of valid stretches ending at `right` is a formula, not a list to walk. The
+          The count of valid subarrays ending at `right` is a formula, not a list to walk. The
           answer can be far larger than the work, so the time is set by the moves of `left` and
           `right`.
       k-per-pass:
@@ -210,7 +211,7 @@ questions:
     prompt: |-
       The function returns the most task types in any `k` consecutive days. Assume `1 <= k <= n`
       and that each dictionary read, write and delete takes O(1). What are its tightest
-      worst-case time and extra space?
+      worst-case time and extra space, the memory it uses beyond its input?
 
       ```python
       def most_types(days, k):
@@ -273,5 +274,187 @@ questions:
         correct: window
         explanation: >-
           `counts` maps each type in the window to its copies there, at most `k` of them between
-          passes, so it grows with `k`. A
-          dictionary whose size depends on the input is not O(1) extra space.
+          passes, so it grows with `k`. A dictionary whose size depends on the input is not O(1)
+          extra space.
+
+  - id: checkpoint-repair-shrink
+    heading: Which change fixes it?
+    tags: [sliding-window, python]
+    prompt: |-
+      This function counts the subarrays of `nums` that hold at most `k` zeros. It shrinks the
+      window with `if`.
+
+      ```python
+      def count_few_zeros(nums, k):
+          zeros = left = total = 0
+          for right, x in enumerate(nums):
+              if x == 0:
+                  zeros += 1
+              if zeros > k:
+                  if nums[left] == 0:
+                      zeros -= 1
+                  left += 1
+              total += right - left + 1
+          return total
+      ```
+
+      For `[1, 1, 1, 0, 1, 0]` and `k = 1` it returns 20, but the true count is 17. Which change
+      makes it correct for every input?
+    options:
+      - id: while-gt
+        text: Replace the `if` with `while zeros > k`
+        explanation: >-
+          Removing the value at `left` lowers `zeros` only when that value is a 0. When the second
+          0 arrives, the three 1s and the first 0 all have to leave, four removals. A `while` keeps
+          removing until the window is valid, so every counted window is valid and the total is
+          17.
+      - id: while-ge
+        text: Replace the `if` with `while zeros >= k`
+        explanation: >-
+          A window with exactly `k` zeros is valid, but `>= k` shrinks it anyway and loses valid
+          subarrays. Here it returns 7, the count of subarrays with no 0 at all. The limit is "at
+          most `k`", so the test is `> k`.
+      - id: two-ifs
+        text: Repeat the `if` block once more, right after the first one
+        explanation: >-
+          Two removals are enough only when at most two values need to leave. Here four must
+          leave, so the window still holds two 0s after two removals, and the function returns
+          19. How many removals a pass needs depends on the data, so it needs a loop.
+      - id: count-valid-only
+        text: Keep the `if`, but add to `total` only when `zeros <= k`
+        explanation: >-
+          Skipping the count hides the invalid pass but does not repair the window. The function
+          returns 15 instead of 17.
+    correct: while-gt
+    followUps:
+      while-ge:
+        prompt: A window holds exactly `k` zeros. Should the left edge move?
+        options:
+          - id: no-valid
+            text: "No: exactly `k` zeros still meets \"at most `k`\", so every subarray inside it is valid"
+          - id: yes-room
+            text: Yes, the window must hold fewer than `k` zeros to leave room for the next value
+          - id: yes-length
+            text: It depends on how many values the window spans, not on its zeros
+        correct: no-valid
+        explanation: >-
+          The limit is "at most `k`", so a window at the limit is still valid. Shrinking only when
+          the count goes above `k` keeps every valid subarray.
+      two-ifs:
+        prompt: In `[1, 1, 1, 0, 1, 0]` with `k = 1`, how many values must leave when the second 0 arrives?
+        options:
+          - id: four
+            text: Four, the three 1s and then the first 0
+          - id: one
+            text: One, because each new value pushes out exactly one old value
+          - id: two
+            text: Two, which is `k + 1`
+        correct: four
+        explanation: >-
+          The window stays invalid until the first 0 leaves, and three 1s sit in front of it. The
+          number of removals is set by the data, not by `k`, and over the whole call they still
+          add up to at most `n`.
+      count-valid-only:
+        prompt: >-
+          After one `if` shrink on the last pass, the window is `1, 1, 0, 1, 0`. What does skipping
+          `total +=` leave wrong?
+        options:
+          - id: left-too-far
+            text: The left edge is still too far left, so the valid `1, 0` and `0` at the end are never counted
+          - id: nothing
+            text: Nothing, because every subarray ending at the last value is invalid
+          - id: zeros
+            text: The `zeros` count, which is now too low
+        correct: left-too-far
+        explanation: >-
+          The subarrays `1, 0` and `0` hold one 0 each and end at the last value. They are missed
+          because the left edge never reached them. The window has to be repaired before it is
+          counted, which is what the `while` does.
+
+  - id: checkpoint-debug-record-early
+    heading: Which call does it fail on?
+    tags: [sliding-window, hash-map, python]
+    prompt: |-
+      A suggested solution returns the length of the longest substring of `s` with at most `k`
+      types. One detail is slightly off:
+
+      ```python
+      def longest(s, k):
+          counts = {}
+          left = best = 0
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              best = max(best, right - left + 1)
+              while len(counts) > k:
+                  gone = s[left]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+                  left += 1
+          return best
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: broken-longest
+        text: '`longest("aabbc", 2)`'
+        explanation: >-
+          When the `c` arrives, the window `a, a, b, b, c` holds 3 types, and its length, 5, is
+          recorded before the `while` repairs it. The call returns 5, but the longest valid
+          substring is `aabb`, of length 4. Moving the record below the `while` fixes it.
+      - id: tie
+        text: '`longest("caabb", 2)`'
+        explanation: >-
+          The broken window `c, a, a, b` is recorded as 4 before the repair, but `aabb` is 4 too,
+          so the call returns 4, which is right.
+      - id: shorter
+        text: '`longest("abcbb", 2)`'
+        explanation: >-
+          The broken window `a, b, c` is recorded as 3, less than `bcbb`, of length 4. The call
+          returns 4, which is right.
+      - id: tie-end
+        text: '`longest("cbbaa", 2)`'
+        explanation: >-
+          The broken window `c, b, b, a` is recorded as 4, the same as `bbaa`. The call returns 4,
+          which is right.
+    correct: broken-longest
+    followUps:
+      tie:
+        prompt: In `longest("caabb", 2)`, the broken window `c, a, a, b` is recorded. Why does that not change the result?
+        options:
+          - id: no-longer
+            text: Its length, 4, is no more than the true answer, `aabb`
+          - id: erased
+            text: The `while` erases the record when it repairs the window
+          - id: never
+            text: A broken window is never recorded
+        correct: no-longer
+        explanation: >-
+          A record taken before the repair can be one letter longer than the last valid window.
+          It changes the result only when that length beats every valid substring.
+      shorter:
+        prompt: When can recording before the repair change the result?
+        options:
+          - id: beats
+            text: When a broken window is longer than every valid substring
+          - id: any-repair
+            text: Whenever any pass repairs the window
+          - id: ends-new
+            text: Only when the string ends with a new type
+        correct: beats
+        explanation: >-
+          `max` keeps the largest length seen. In `abcbb` the only broken window, `a, b, c`, has
+          length 3, below the answer 4, so it never becomes the largest.
+      tie-end:
+        prompt: The broken window `c, b, b, a` is recorded as 4. What is the longest valid substring of `cbbaa`?
+        options:
+          - id: bbaa
+            text: '`bbaa`, also of length 4'
+          - id: cbb
+            text: '`cbb`, of length 3'
+          - id: baa
+            text: '`baa`, of length 3'
+        correct: bbaa
+        explanation: >-
+          `bbaa` holds 2 types, so it is valid, and its length ties the broken record. `max`
+          returns 4 either way, so this call cannot expose the misplaced line.
