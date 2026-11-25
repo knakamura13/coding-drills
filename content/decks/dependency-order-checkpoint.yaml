@@ -212,107 +212,83 @@ questions:
         correct: 'no'
         explanation: A cycle blocks its own tasks and everything downstream of them. Ship is downstream of docs, but build and test come before ship and do not depend on the cycle.
 
-  - id: dep-exam-short-result
-    heading: What does a short result mean?
+  - id: dep-exam-final-counts
+    heading: What counts are left?
     tags: [graph, queue]
     prompt: |-
-      Kahn's algorithm below orders a directed graph of `n` nodes given as an edge list,
-      where `(a, b)` means `a` must come before `b`. The graph may contain cycles.
+      Kahn's algorithm starts the queue with every node whose in-degree is 0 and repeats the lines below until the queue is empty. For `n = 6` and the edges `(0, 2), (1, 2), (2, 3), (3, 4), (4, 3), (3, 5), (4, 5)`, where `(a, b)` means a comes before b, `indeg[v]` starts as the number of edges that end at `v`, and `out[v]` lists the nodes `v` points to. What is `indeg` when the queue is empty?
 
       ```python
-      from collections import deque
-
-      def kahn(n, edges):
-          out = [[] for _ in range(n)]
-          indeg = [0] * n
-          for a, b in edges:
-              out[a].append(b)
-              indeg[b] += 1
-          queue = deque(v for v in range(n) if indeg[v] == 0)
-          order = []
-          while queue:
-              v = queue.popleft()
-              order.append(v)
-              for w in out[v]:
-                  indeg[w] -= 1
-                  if indeg[w] == 0:
-                      queue.append(w)
-          return order
+      v = queue.popleft()
+      order.append(v)
+      for w in out[v]:
+          indeg[w] -= 1
+          if indeg[w] == 0:
+              queue.append(w)
       ```
-
-      For `n = 7` and edges `(0, 1), (1, 2), (2, 3), (3, 1), (3, 4), (5, 6), (5, 4)` it returns
-      `[0, 5, 6]`. Which statement is true?
     options:
-      - id: restart
-        text: No start node leads to nodes 1 to 4, so the loop should restart from node 1
+      - id: stuck-counts
+        text: '`[0, 0, 0, 1, 1, 2]`'
         explanation: >-
-          The premise is false: 0 points at 1, and 5 points at 4, so the start nodes lead to every
-          missing node. Being reachable is not enough, since a node joins the queue only when its
-          count reaches 0. Restarting from node 1 would put it in the order while its prerequisite 3
-          is still unfinished.
-      - id: only-cycle-nodes
-        text: The 4 missing nodes are exactly the nodes that lie on a cycle
+          `indeg` starts as `[0, 0, 2, 2, 1, 2]`. Processing 0 and then 1 lowers `indeg[2]` to 0, so 2
+          is processed and lowers `indeg[3]` from 2 to 1. Nodes 3 and 4 wait for each other, so
+          neither is processed. Node 5 waits for both of them, so its count stays 2.
+      - id: one-each
+        text: '`[0, 0, 0, 1, 1, 1]`'
         explanation: >-
-          Node 4 is missing but is not on a cycle, because the only cycle is 1, 2, 3. In general the
-          unprocessed nodes are the cycle nodes plus everything reachable from them.
-      - id: append-rest
-        text: "`[0, 5, 6]` is a valid prefix, and the other nodes can be appended in any order"
+          Node 5 has two prerequisites, 3 and 4, and both sit on the cycle. Neither is processed, so
+          neither lowers its count, which stays 2.
+      - id: cycle-only
+        text: '`[0, 0, 0, 1, 1, 0]`'
         explanation: >-
-          Node 3 must come before 1, 1 before 2, and 2 before 3. Those three requirements chase each
-          other, so appending the leftover nodes in any order breaks at least one of them.
-      - id: cycle-exists
-        text: A cycle exists, so no valid order does; missing nodes sit on or after a cycle
+          Node 5 is not on the cycle, but both of its prerequisites are. They are never processed, so
+          nothing lowers its count.
+      - id: start-counts
+        text: '`[0, 0, 0, 2, 1, 2]`'
         explanation: >-
-          `indeg[v]` counts the prerequisites of `v` not yet processed, and the queue holds the nodes
-          with none left. Each node on a cycle has a prerequisite on that cycle that is itself
-          waiting, so its count never reaches 0, and the nodes after it wait too. Here 1, 2 and 3 form
-          the cycle, and 4 waits for 3.
-    correct: cycle-exists
+          Processing 2 runs `indeg[w] -= 1` for its successor 3, even though 3 never reaches 0. Its
+          count drops from 2 to 1.
+    correct: stuck-counts
     followUps:
-      restart:
-        prompt: Which nodes does the queue hold before the loop starts?
+      one-each:
+        prompt: How many edges end at node 5?
         options:
-          - id: all-zero-indegree
-            text: Every node whose in-degree is 0, wherever it sits in the graph
-          - id: only-zero
-            text: Only node 0, the node with the first label
-          - id: has-outgoing
-            text: Only the nodes that have at least one outgoing edge to some later node
-        correct: all-zero-indegree
+          - id: two
+            text: 2, from 3 and from 4
+          - id: last
+            text: 1, from 4, the last node before it
+          - id: one-at-a-time
+            text: 1, since a node waits for one task at a time
+        correct: two
         explanation: >-
-          Here that is 0 and 5, and between them they lead to every other node. A node that never
-          joins is held back by an unfinished prerequisite, not by a missing start.
-      only-cycle-nodes:
-        prompt: Node 4 is not on a cycle. What keeps its in-degree from reaching 0?
+          `(3, 5)` and `(4, 5)` both end at 5, so its count starts at 2. Only processing 3 or 4 could
+          lower it.
+      cycle-only:
+        prompt: Processing which nodes would lower `indeg[5]`?
         options:
-          - id: prerequisite-stuck
-            text: Its prerequisite 3 is never processed, so 3 never lowers the count of 4
-          - id: once-per-node
-            text: The queue lowers a node's count at most once, even when two edges enter it
-          - id: edge-order
-            text: The edge `(5, 4)` comes last in the list, so the count for 4 was taken too late
-        correct: prerequisite-stuck
+          - id: own-prereq
+            text: 3 and 4, since `(3, 5)` and `(4, 5)` end at 5
+          - id: via-two
+            text: 2 as well, since a path from 2 leads to 5
+          - id: any
+            text: Any node, since each processed node lowers the counts after it
+        correct: own-prereq
         explanation: >-
-          Node 4 has two incoming edges, from 3 and from 5. Node 5 lowers the count once, but 3 is
-          stuck behind the cycle, so the count stays at 1. A node is held back by any stuck
-          prerequisite, not just by being on a cycle. The order of the edge list changes no count.
-      append-rest:
-        prompt: >-
-          Nodes 1, 2, 3 are left with the pairs `(1, 2)`, `(2, 3)`, `(3, 1)`. Could some order of the
-          three satisfy all three pairs?
+          Processing `v` lowers only the counts of the nodes in `out[v]`. Node 5 is in `out[3]` and
+          `out[4]`, and the cycle keeps both 3 and 4 out of the queue, so nothing lowers its count.
+      start-counts:
+        prompt: When 2 is processed, what happens to `indeg[3]`?
         options:
-          - id: impossible
-            text: No. Whichever goes first has a prerequisite among the other two that comes later
-          - id: one-violation
-            text: Yes. Order 1, 2, 3 breaks only the pair `(3, 1)`, and one broken pair is acceptable here
-          - id: pick-a-start
-            text: Yes. Start with 1 and let 3 break the tie later, since a cycle only needs one node to start
-        correct: impossible
+          - id: drops
+            text: It drops from 2 to 1, and 3 keeps waiting for 4
+          - id: unchanged
+            text: Nothing, because 3 does not reach 0
+          - id: joins
+            text: It drops to 0, and 3 joins the queue
+        correct: drops
         explanation: >-
-          A valid order must satisfy every pair, and these three chase each other in a circle: any node
-          placed first still needs a prerequisite that would come after it. A cycle has no node that
-          can start, and tolerating a broken pair turns "an order that works" into a best effort,
-          which a dependency list cannot use.
+          `indeg[w] -= 1` runs for every successor of the processed node. The `if` only decides whether
+          the successor joins the queue.
 
   - id: dep-exam-debug-seed
     heading: Which call does it fail on?

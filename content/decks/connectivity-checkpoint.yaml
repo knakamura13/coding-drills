@@ -218,84 +218,59 @@ questions:
           Every node starts as its own set. A node that no union has touched stays a set of one, and
           it counts.
 
-  - id: connectivity-exam-count-components
-    heading: Which approach counts the components?
+  - id: connectivity-exam-largest-component
+    heading: How big is the largest component?
     tags: [graph]
     prompt: >-
-      A graph has `n = 10` nodes labelled 0 to 9 and is given as an undirected edge list:
-      `(0, 3), (3, 5), (5, 0), (1, 6), (4, 7), (7, 8)`. It may contain cycles, routes of edges that
-      lead from a node back to itself (here `0, 3, 5`), and some nodes have no edges at all. A
-      connected component is a group of nodes that can all reach one another, and this graph has 5
-      of them. Which approach returns the right count for every such graph?
+      A graph has `n = 12` nodes, numbered 0 to 11, and the undirected edges
+      `(0, 4), (2, 6), (9, 1), (4, 8), (3, 7), (6, 9), (8, 0)`. Nodes 5, 10 and 11 have no edges.
+      A connected component is a group of nodes that can all reach one another, with no edge to any
+      node outside the group. How many nodes does the largest component hold?
     options:
-      - id: no-visited-set
-        text: Run a search from every node, count the starts, and keep no `seen` set
+      - id: four
+        text: '4'
         explanation: >-
-          An undirected edge can be walked in both directions, so the search goes `0 -> 3 -> 0 -> 3`
-          and never finishes. Even a single edge `(0, 1)` does this, cycle or not. Only a graph with
-          no edges would finish, with the count `n`. A `seen` set marks a node as already found.
-      - id: nodes-minus-edges
-        text: Return `n` minus the number of edges, since each edge joins two components
+          The components are {0, 4, 8}, {1, 2, 6, 9}, {3, 7}, {5}, {10} and {11}. The edges `(2, 6)`
+          and `(6, 9)` join 2, 6 and 9, and `(9, 1)` joins 1 to them, so that component holds 4 nodes.
+      - id: three
+        text: '3'
         explanation: >-
-          An edge lowers the count only when it joins two different components. An edge inside a
-          component, such as `(5, 0)`, which closes the triangle, lowers nothing. Here the formula
-          gives 10 - 6 = 4, but the answer is 5.
-      - id: one-search
-        text: Run one search from node 0 with a `seen` set and return how many nodes it reaches
+          That is {0, 4, 8}, the component a search from node 0 finds, or {2, 6, 9} without node 1. An
+          undirected edge joins both of its ends, so `(9, 1)` adds 1 to the chain 2, 6, 9, and that
+          component holds 4.
+      - id: six
+        text: '6'
         explanation: >-
-          One search finds only the component of node 0. Here it reaches `0, 3, 5`, so this returns 3
-          instead of 5, and it would return `n` for a graph with one component. The search has to start
-          again from every node that no earlier search reached, and the number of starts is the answer.
-      - id: search-each-new
-        text: Loop over all nodes; at each one not in `seen`, run a search and add 1
-        explanation: >-
-          Each search marks its whole component as seen, so a new search starts only for a component
-          not yet counted. Here the starts are 0, 1, 2, 4 and 9, one for each of the 5 components.
-    correct: search-each-new
+          That is how many components there are, one per search start. The question asks how many
+          nodes the biggest one holds.
+    correct: four
     followUps:
-      no-visited-set:
-        prompt: With only the edge `(0, 1)`, what does a search with no `seen` set do on reaching node 1?
+      three:
+        prompt: Which nodes can node 1 reach?
         options:
-          - id: walks-back
-            text: It walks back to 0, then to 1 again, forever, since an undirected edge works both ways
-          - id: stops-leaf
-            text: It stops, because node 1 has just one edge and the search already used it to get there
-          - id: stops-acyclic
-            text: It stops, because a graph with a single edge cannot contain a cycle to loop around
-        correct: walks-back
+          - id: chain
+            text: 2, 6 and 9, through the edge `(9, 1)`
+          - id: none
+            text: None, since node 1 appears only at the end of an edge
+          - id: nine-only
+            text: Only 9, its one direct neighbor
+        correct: chain
         explanation: >-
-          Without a `seen` set nothing says the search has been to 0 before. An undirected edge sits
-          in both adjacency lists, so one edge is already a two-node loop. Skipping only the node it
-          just came from avoids this when there is no cycle, but still loops on a real cycle such as
-          `0, 3, 5`.
-      nodes-minus-edges:
-        prompt: When does `n - len(edges)` equal the number of components?
+          An undirected edge works both ways, so 1 reaches 9, then 6 through `(6, 9)`, then 2 through
+          `(2, 6)`.
+      six:
+        prompt: What does each new search start add 1 to?
         options:
-          - id: no-cycles
-            text: Only when the graph has no cycle, so every edge joins two separate components
-          - id: connected
-            text: Only when the graph has one component, so every edge was needed to join it
-          - id: fewer-edges
-            text: Whenever the graph has fewer edges than it has nodes, since then edges cannot form cycles
-        correct: no-cycles
+          - id: components
+            text: The number of components
+          - id: largest
+            text: The size of the largest component
+          - id: edges
+            text: The number of edges read
+        correct: components
         explanation: >-
-          In a graph with no cycle, each edge merges two components, so the count falls by exactly one
-          per edge. A cycle adds an edge that merges nothing. Fewer edges than nodes is not enough:
-          a triangle plus three isolated nodes has 6 nodes, 3 edges, and 4 components.
-      one-search:
-        prompt: A search from node 0 ends when its frontier is empty. What has it found?
-        options:
-          - id: one-component
-            text: Exactly the nodes reachable from node 0, which is one component
-          - id: whole-graph
-            text: Every node of the graph, as long as the search keeps a `seen` set
-          - id: component-count
-            text: The number of components, since the frontier empties once per component
-        correct: one-component
-        explanation: >-
-          The frontier empties when no unseen neighbor is left, which happens once per search, and the
-          search covers only what node 0 can reach. Nodes in other components stay unseen, and the
-          outer loop finds them.
+          Each start marks one whole component, so 6 starts mean 6 components. A component's size is
+          the number of nodes its own search marks.
 
   - id: connectivity-exam-debug-union
     heading: Which call does it fail on?
