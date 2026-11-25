@@ -1,6 +1,6 @@
 id: sort-order-checkpoint
 title: "Sort order: checkpoint"
-description: Predict the order a sort produces and which lists it changes, on new inputs. Each item combines reading the key, handling ties, and telling a sort in place from a returned copy.
+description: Predict a sort's order and which lists it changes, and find the call that breaks a suggested solution, on new inputs. Each item combines the key, ties, and in place versus returned.
 heading: What does this give?
 
 questions:
@@ -233,3 +233,82 @@ questions:
         explanation: >-
           B2 ties with b2, because the key lowercases the letter: both keys are `('2', 'b')`. The
           codes themselves are never compared, so input order decides, and b2 came first.
+
+  - id: checkpoint-debug-leaderboard
+    heading: Which call does it fail on?
+    tags: [sorting, python]
+    prompt: |-
+      A suggested solution should list players from the highest score to the lowest, and
+      players with equal scores by name from A to Z. Each row is a `(name, score)` pair. One
+      detail is slightly off:
+
+      ```python
+      def leaderboard(rows):
+          ranked = sorted(rows, key=lambda r: (r[1], r[0]), reverse=True)
+          return [name for name, score in ranked]
+      ```
+
+      Which call returns the wrong order?
+    options:
+      - id: tie
+        text: "`leaderboard([(\"bea\", 6), (\"cal\", 6)])`"
+        explanation: >-
+          The keys are `(6, "bea")` and `(6, "cal")`. `reverse=True` runs from the largest key
+          down, and the names are part of the key, so the tie comes out Z to A: cal, then bea. The
+          task wants bea first. Negating only the score fixes it: `key=lambda r: (-r[1], r[0])`
+          with no `reverse`.
+      - id: names-flip
+        text: "`leaderboard([(\"ann\", 1), (\"bob\", 2)])`"
+        explanation: >-
+          It returns bob, then ann. The names do run Z to A, but only because bob has the higher
+          score, and that is the order the task asks for.
+      - id: three-scores
+        text: "`leaderboard([(\"dan\", 7), (\"eve\", 2), (\"fin\", 5)])`"
+        explanation: >-
+          The scores all differ, so the first part of each key decides, and the largest comes
+          first: dan, fin, eve. That is right.
+      - id: one-row
+        text: "`leaderboard([(\"ivy\", 5)])`"
+        explanation: >-
+          A single row has nothing to compare with, so it comes back as `['ivy']`, which is right.
+    correct: tie
+    followUps:
+      names-flip:
+        prompt: For `[("ann", 1), ("bob", 2)]`, which part of the key decides the order?
+        options:
+          - id: score
+            text: The scores, 1 and 2, because they differ
+          - id: name
+            text: The names, because `reverse=True` reverses them
+          - id: both
+            text: Both parts, scores and names together
+        correct: score
+        explanation: >-
+          A tuple key moves to its second part only on a tie. These scores differ, so the names
+          never come into it, and bob leads because 2 is larger.
+      three-scores:
+        prompt: When does the name part of the key `(r[1], r[0])` change the result?
+        options:
+          - id: tie
+            text: Only when two players have the same score
+          - id: always
+            text: Always, because `reverse=True` reverses every part
+          - id: never
+            text: Never, the score alone decides
+        correct: tie
+        explanation: >-
+          Tuples compare item by item from the left. With three different scores, the scores
+          settle every comparison, so the reversed names cannot show.
+      one-row:
+        prompt: What can a one-row input test about the sort?
+        options:
+          - id: nothing
+            text: Nothing about order, since there is no pair to compare
+          - id: reverse
+            text: Whether `reverse=True` works
+          - id: ties
+            text: How ties are broken
+        correct: nothing
+        explanation: >-
+          A bug in how two rows are ordered can show only on an input with at least two rows, and
+          a tie-breaking bug only on two rows with the same score.

@@ -1,6 +1,6 @@
 id: interval-merging-checkpoint
 title: "Interval merging: checkpoint"
-description: Insert a new range into a sorted list of ranges when it overlaps several of them, on new inputs. Each item combines drawing endpoints, the touching rule, and the running end.
+description: Insert an interval that overlaps several in a sorted list, and find the call that breaks a suggested merge, on new inputs. Each item combines endpoints, the touching rule and the running end.
 heading: Which one is right?
 
 questions:
@@ -8,14 +8,14 @@ questions:
     heading: What does the insert give?
     tags: [intervals]
     prompt: >-
-      A list of ranges is sorted by start, and no two of them overlap. The ranges are hours on a
-      clock, so fractions of an hour count. Touching ranges merge. What does inserting `[4, 10]`
+      A list of intervals is sorted by start, and no two of them overlap. The intervals are hours on a
+      clock, so fractions of an hour count. Touching intervals merge. What does inserting `[4, 10]`
       into `[[1, 2], [3, 5], [6, 7], [8, 9], [11, 13]]` give?
     options:
       - id: right
         text: "`[[1, 2], [3, 10], [11, 13]]`"
         explanation: >-
-          `[1, 2]` ends before 4, so it is copied. `[3, 5]` overlaps the new range and starts
+          `[1, 2]` ends before 4, so it is copied. `[3, 5]` overlaps the new interval and starts
           earlier, so the merged start is 3. `[6, 7]` and `[8, 9]` lie inside it, so the end stays
           10. `[11, 13]` starts past 10 and is copied as it is.
       - id: bridged
@@ -25,11 +25,11 @@ questions:
       - id: new-start
         text: "`[[1, 2], [4, 10], [11, 13]]`"
         explanation: >-
-          Every range the new one absorbs adds its points. Look at where `[3, 5]` begins.
+          Every interval the new one absorbs adds its points. Look at where `[3, 5]` begins.
       - id: last-end
         text: "`[[1, 2], [3, 9], [11, 13]]`"
         explanation: >-
-          9 is where the last absorbed range ends, but the new range itself reaches further.
+          9 is where the last absorbed interval ends, but the new interval itself reaches further.
     correct: right
     followUps:
       bridged:
@@ -43,33 +43,33 @@ questions:
             text: Yes, both lie inside `[3, 13]`
         correct: right
         explanation: >-
-          Touching means one range ends exactly where the other starts. A gap, however small,
+          Touching means one interval ends exactly where the other starts. A gap, however small,
           keeps them apart, so the insert copies `[11, 13]` unchanged.
       new-start:
-        prompt: The new range `[4, 10]` absorbs `[3, 5]`. What is the merged start?
+        prompt: The new interval `[4, 10]` absorbs `[3, 5]`. What is the merged start?
         options:
           - id: right
             text: 3, the smaller of the two starts
           - id: new
-            text: 4, the start of the range being inserted
+            text: 4, the start of the interval being inserted
           - id: overlap
             text: 5, where the two first overlap
         correct: right
         explanation: >-
-          Absorbing a range keeps every point of both, so the start is `min(4, 3)`. The first
-          absorbed range can begin before the new one does.
+          Absorbing an interval keeps every point of both, so the start is `min(4, 3)`. The first
+          absorbed interval can begin before the new one does.
       last-end:
         prompt: The insert absorbs `[8, 9]` last. What is the merged end?
         options:
           - id: right
-            text: 10, the larger of 9 and the new range's end
+            text: 10, the larger of 9 and the new interval's end
           - id: nine
-            text: 9, the end of the last range absorbed
+            text: 9, the end of the last interval absorbed
           - id: seven
             text: 7, the end of `[6, 7]`
         correct: right
         explanation: >-
-          The end is a running `max`. Ranges nested inside the new one cannot pull it back
+          The end is a running `max`. Intervals nested inside the new one cannot pull it back
           from 10.
 
   - id: checkpoint-absorbed-run
@@ -77,8 +77,8 @@ questions:
     heading: Place the absorbed run
     tags: [intervals]
     prompt: >-
-      The ranges are sorted by start and none overlap. Touching ranges merge. The new range
-      `[5, 13]` is inserted. Drag `first` and `last` to the first and the last existing range that
+      The intervals are sorted by start and none overlap. Touching intervals merge. The new interval
+      `[5, 13]` is inserted. Drag `first` and `last` to the first and the last existing interval that
       merge with it.
     code: |
       spans = [[1, 2], [4, 5], [6, 8], [9, 10], [13, 15], [17, 18]]
@@ -92,39 +92,39 @@ questions:
         start: 5
         correct: 1
         explanation: >-
-          `[4, 5]` ends at 5, where the new range starts, so the two touch and merge. `[1, 2]`
+          `[4, 5]` ends at 5, where the new interval starts, so the two touch and merge. `[1, 2]`
           ends before 5.
         misses:
           - index: 2
             explanation: >-
               `[6, 8]` merges, but it is not the first. `[4, 5]` shares the point 5 with the new
-              range, and touching ranges merge.
+              interval, and touching intervals merge.
           - index: 0
-            explanation: "`[1, 2]` ends at 2, before the new range starts at 5, so it is copied as it is."
-        elsewhere: The run starts at the first range that ends at or after the new start, 5.
+            explanation: "`[1, 2]` ends at 2, before the new interval starts at 5, so it is copied as it is."
+        elsewhere: The run starts at the first interval that ends at or after the new start, 5.
       - name: last
         start: 0
         correct: 4
         explanation: >-
-          `[13, 15]` starts at 13, where the new range ends, so it merges and the result is
+          `[13, 15]` starts at 13, where the new interval ends, so it merges and the result is
           `[4, 15]`. `[17, 18]` starts past 15.
         misses:
           - index: 3
             explanation: >-
               `[9, 10]` merges, but it is not the last. `[13, 15]` shares the point 13 with the
-              new range.
+              new interval.
           - index: 5
             explanation: >-
               `[17, 18]` starts at 17. Even after the merge reaches 15, 17 is past it, so it stays
               apart.
-        elsewhere: The run ends at the last range that starts at or before the merged end.
+        elsewhere: The run ends at the last interval that starts at or before the merged end.
 
   - id: checkpoint-insert-trace
     format: step-trace
     heading: Predict each step
     tags: [intervals, python]
     prompt: >-
-      The ranges are sorted by start and none overlap. Touching ranges merge. Predict each step
+      The intervals are sorted by start and none overlap. Touching intervals merge. Predict each step
       before it is shown.
     code: |
       def insert(spans, new):
@@ -160,9 +160,9 @@ questions:
             explanation: "`[0, 1]` ends at 1, before 2, so the first loop copies it and moves on."
           - index: 2
             explanation: >-
-              `[3, 4]` ends at 4, not before the new start 2. It reaches into the new range, so
+              `[3, 4]` ends at 4, not before the new start 2. It reaches into the new interval, so
               the copying stops there.
-        elsewhere: The first loop stops at the first range that does not end before 2.
+        elsewhere: The first loop stops at the first interval that does not end before 2.
       - line: 7
         ask: Where is `i` when the second `while` stops?
         pointer: i
@@ -174,29 +174,29 @@ questions:
           - index: 3
             explanation: >-
               `[8, 11]` starts at 8, and `hi` is 8 by then. `8 <= 8` is True, so the touching
-              range is absorbed and the loop moves on.
+              interval is absorbed and the loop moves on.
           - index: 2
             explanation: "`[5, 7]` lies inside `[2, 8]`, so it is absorbed."
           - index: 1
             explanation: "`[3, 4]` starts at 3, at most 8, so the second loop absorbs it."
-        elsewhere: The second loop stops at the first range that starts after `hi`.
+        elsewhere: The second loop stops at the first interval that starts after `hi`.
       - line: 12
         ask: What does the call return?
         options:
           - id: right
             text: '`[[0, 1], [2, 11], [13, 14]]`'
             explanation: >-
-              `lo` stays 2, since every absorbed range starts later. `hi` ends at 11 from
+              `lo` stays 2, since every absorbed interval starts later. `hi` ends at 11 from
               `[8, 11]`. `[13, 14]` is the tail that `spans[i:]` adds back.
           - id: absorbed-start
             text: '`[[0, 1], [3, 11], [13, 14]]`'
             explanation: >-
-              3 is where the first absorbed range starts, but `lo` is `min(2, 3)`, and the new
-              range starts earlier.
+              3 is where the first absorbed interval starts, but `lo` is `min(2, 3)`, and the new
+              interval starts earlier.
           - id: touch-apart
             text: '`[[0, 1], [2, 8], [8, 11], [13, 14]]`'
             explanation: >-
-              `[8, 11]` touches `[2, 8]` at 8, and touching ranges merge, so it was absorbed.
+              `[8, 11]` touches `[2, 8]` at 8, and touching intervals merge, so it was absorbed.
           - id: bridged
             text: '`[[0, 1], [2, 14]]`'
             explanation: >-
@@ -207,7 +207,7 @@ questions:
     heading: What does this print?
     tags: [intervals, python]
     prompt: |-
-      Touching ranges merge, but this insert's second loop uses `<`.
+      Touching intervals merge, but this insert's second loop uses `<`.
 
       ```python
       def insert(spans, new):
@@ -233,7 +233,7 @@ questions:
         explanation: >-
           The first loop is unchanged, so `[1, 3]` is not copied: it ends at the new start, not
           before it. The second loop absorbs it, and `lo` becomes 1. `[6, 9]` starts at 6, and
-          `6 < 6` fails, so it is left out though it touches the new range.
+          `6 < 6` fails, so it is left out though it touches the new interval.
       - id: correct-merge
         text: "`[[1, 9], [10, 12]]`"
         explanation: >-
@@ -241,7 +241,7 @@ questions:
       - id: both-apart
         text: "`[[1, 3], [3, 6], [6, 9], [10, 12]]`"
         explanation: >-
-          The first loop copies only ranges that end before 3. Check where `[1, 3]` ends.
+          The first loop copies only intervals that end before 3. Check where `[1, 3]` ends.
       - id: left-apart
         text: "`[[1, 3], [3, 9], [10, 12]]`"
         explanation: >-
@@ -257,7 +257,7 @@ questions:
             text: "`True`, so `[6, 9]` is absorbed"
         correct: right
         explanation: >-
-          `6 < 6` is False. The strict test treats a range that starts exactly at `hi` as
+          `6 < 6` is False. The strict test treats an interval that starts exactly at `hi` as
           separate, which breaks the touching rule on the right side.
       both-apart:
         prompt: Does the first loop copy `[1, 3]` when the new start is 3?
@@ -268,7 +268,7 @@ questions:
             text: Yes, it ends at 3, which is not after the new start
         correct: right
         explanation: >-
-          The first loop copies only ranges that end strictly before the new start. `[1, 3]`
+          The first loop copies only intervals that end strictly before the new start. `[1, 3]`
           touches `[3, 6]`, so it falls through to the merge loop.
       left-apart:
         prompt: Which side of `[3, 6]` does the strict `<` break?
@@ -284,3 +284,163 @@ questions:
           The left touch is decided by the first loop's `<`, which is still right: `[1, 3]` is
           not copied, so it is absorbed. The right touch is decided by the second loop, which now
           leaves `[6, 9]` out.
+
+  - id: checkpoint-insert-plan
+    heading: Which one-pass plan works?
+    tags: [intervals]
+    prompt: >-
+      A list of intervals is sorted by start, and no two of them overlap. Touching intervals merge.
+      The task is to insert one new interval in a single pass over the list, without sorting
+      again, and keep the result sorted with no overlaps. For example, inserting `[4, 9]` into
+      `[[0, 2], [3, 5], [6, 7], [9, 10], [12, 15]]` gives `[[0, 2], [3, 10], [12, 15]]`. Which
+      plan works?
+    options:
+      - id: three-phases
+        text: Copy those that end before it, absorb those that start by the merged end, copy the rest
+        explanation: >-
+          On the example, `[0, 2]` ends before 4 and is copied. `[3, 5]`, `[6, 7]` and `[9, 10]`
+          each start at or before the merged end, so they are absorbed: the start drops to 3 and
+          the end grows to 10. `[12, 15]` starts past 10 and is copied. In a sorted list the
+          intervals that meet the new one sit next to each other, so one pass finds them all.
+      - id: starts-inside
+        text: Copy those that start before it, absorb those that start inside it, copy the rest
+        explanation: >-
+          `[3, 5]` starts at 3, before 4, so this plan copies it, though it reaches into `[4, 9]`.
+          The result would hold both `[3, 5]` and `[4, 10]`, which overlap.
+      - id: append-scan
+        text: Append it at the end, then run the merge scan once, without sorting
+        explanation: >-
+          The scan never lowers a start, so it needs the starts in order. `[4, 9]` is read last,
+          and `4 <= 15`, so it is folded into `[12, 15]` and lost. The scan returns the original
+          list unchanged.
+      - id: nearest
+        text: Merge it with the one interval whose start is nearest its own, copy the rest
+        explanation: >-
+          `[3, 5]` has the nearest start, and merging only it gives `[3, 9]`. `[6, 7]` lies inside
+          that and `[9, 10]` touches it, so the result still overlaps itself.
+    correct: three-phases
+    followUps:
+      starts-inside:
+        prompt: "`[3, 5]` starts before the new start, 4. Does it overlap `[4, 9]`?"
+        options:
+          - id: overlaps
+            text: Yes, both cover 4 to 5
+          - id: before
+            text: No, it starts before the new interval does
+          - id: touching
+            text: Only because touching intervals merge
+        correct: overlaps
+        explanation: >-
+          An interval that starts earlier can still reach into the new one. The test for copying
+          it unchanged is whether it ends before the new start, and 5 is not before 4.
+      append-scan:
+        prompt: Why does the scan lose the appended `[4, 9]`?
+        options:
+          - id: starts
+            text: It compares only the start, 4, with the last end, 15, so `[4, 9]` is folded in
+          - id: apart
+            text: It keeps `[4, 9]` apart, since it does not overlap `[12, 15]`
+          - id: ends
+            text: The ends are out of order, and the scan needs sorted ends
+        correct: starts
+        explanation: >-
+          The scan checks one side only, which is safe only when no start comes before the last
+          one. Out of order, an interval far to the left passes the test and its start is lost.
+      nearest:
+        prompt: How many existing intervals can one new interval absorb?
+        options:
+          - id: run
+            text: Any number, always ones that sit next to each other in the list
+          - id: one
+            text: At most one
+          - id: inside
+            text: Only those that lie fully inside it
+        correct: run
+        explanation: >-
+          A long new interval can reach across several, partly or fully. Since the list is sorted
+          and has no overlaps, the ones it meets form one run, which the middle phase absorbs with
+          `min` on the start and `max` on the end.
+
+  - id: checkpoint-debug-sort-key
+    heading: Which call does it fail on?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      A suggested solution should merge every group of overlapping intervals in a list given in
+      any order. Touching intervals merge. One detail is slightly off:
+
+      ```python
+      def merge(intervals):
+          out = []
+          for s, e in sorted(intervals, key=lambda iv: iv[1]):
+              if out and s <= out[-1][1]:
+                  out[-1][1] = max(out[-1][1], e)
+              else:
+                  out.append([s, e])
+          return out
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: nested
+        text: "`merge([[2, 9], [3, 4]])`"
+        explanation: >-
+          The sort orders by end, so `[3, 4]` comes first and is appended with the start 3.
+          `[2, 9]` starts at 2, and `2 <= 4`, so it merges and the end grows to 9, but nothing
+          lowers the start. The call returns `[[3, 9]]` instead of `[[2, 9]]`. Sorting by start,
+          `key=lambda iv: iv[0]`, fixes it.
+      - id: unsorted
+        text: "`merge([[5, 7], [1, 3]])`"
+        explanation: >-
+          Sorted by end, the order is `[1, 3]`, `[5, 7]`, the same as sorted by start. 5 is past 3,
+          so it returns `[[1, 3], [5, 7]]`, which is right.
+      - id: partial
+        text: "`merge([[1, 3], [2, 6]])`"
+        explanation: >-
+          `[1, 3]` ends first and also starts first, so the order matches a sort by start. `2 <= 3`,
+          so it returns `[[1, 6]]`, which is right.
+      - id: touching
+        text: "`merge([[4, 6], [6, 8]])`"
+        explanation: >-
+          `[4, 6]` both starts and ends first, and `6 <= 6`, so the touching pair merges into
+          `[[4, 8]]`, which is right.
+    correct: nested
+    followUps:
+      unsorted:
+        prompt: "For `[[5, 7], [1, 3]]`, in what order does the loop read the intervals?"
+        options:
+          - id: by-end
+            text: "`[1, 3]` then `[5, 7]`, since 3 is the smaller end"
+          - id: given
+            text: "`[5, 7]` then `[1, 3]`, as given"
+          - id: largest
+            text: Largest end first
+        correct: by-end
+        explanation: >-
+          The loop reads the sorted list, smallest end first. Here the interval that ends first
+          also starts first, so the wrong key does no harm.
+      partial:
+        prompt: When does sorting by end give a different order from sorting by start?
+        options:
+          - id: later-start
+            text: When an interval that starts later ends no later, as a nested one does
+          - id: unsorted
+            text: Whenever the input is not already sorted
+          - id: never
+            text: Never, both keys give the same order
+        correct: later-start
+        explanation: >-
+          The two keys can disagree only when one interval starts later but ends no later than
+          another. Then the later start can be read first, and the earlier start is lost.
+      touching:
+        prompt: Does the sort key change the order of `[4, 6]` and `[6, 8]`?
+        options:
+          - id: same
+            text: No, it leads under both keys, since 4 < 6 and 6 < 8
+          - id: swaps
+            text: Yes, sorting by end puts `[6, 8]` first
+          - id: tie
+            text: Yes, the two keys tie at 6
+        correct: same
+        explanation: >-
+          The wrong key can hurt only when an interval that starts later ends no later. Here the
+          earlier start also has the earlier end, so the scan reads the pair in the right order.

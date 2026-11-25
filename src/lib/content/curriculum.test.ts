@@ -56,7 +56,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 3, rewrite: 6, exam: 8, retire: 7 },
+	'sequences-and-search': { keep: 2, rewrite: 4, exam: 7, retire: 11 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -232,7 +232,7 @@ describe('shipped curriculum', () => {
 	});
 
 	it('names the skills each drafted exam item checks, on its own path', () => {
-		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans', 'palindromes']) {
+		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans', 'palindromes', 'sort-order', 'interval-merging']) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			const exams = curriculum.drills.filter((drill) => drill.pathId === pathId && drill.disposition === 'exam');
