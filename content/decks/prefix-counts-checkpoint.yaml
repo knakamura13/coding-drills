@@ -1,6 +1,6 @@
 id: prefix-counts-checkpoint
 title: "Prefix counts: checkpoint"
-description: Count ranges with a signed sum on new inputs where running totals repeat or return to 0. Each item combines the Prefix counts skills.
+description: Count the subarrays with a given sum on new inputs where prefix sums repeat or return to 0. Most items combine the Prefix counts skills.
 heading: Which one is right?
 
 questions:
@@ -9,7 +9,7 @@ questions:
     tags: [prefix-sum, hash-map, python]
     prompt: |-
       ```python
-      def count_ranges(nums, k):
+      def count_subarrays(nums, k):
           seen = {0: 1}
           p = 0
           total = 0
@@ -19,7 +19,7 @@ questions:
               seen[p] = seen.get(p, 0) + 1
           return total
 
-      count_ranges([3, 0, -2, -1, 5, -5], 0)
+      count_subarrays([3, 0, -2, -1, 5, -5], 0)
       ```
 
       What does the call return?
@@ -27,37 +27,38 @@ questions:
       - id: right
         text: '4'
         explanation: >-
-          The running totals, empty prefix first, are 0, 3, 3, 1, 0, 5, 0. With `k` at 0 every
-          pair of equal totals is one range. The two 3s give the lone 0, and the three 0s give
+          The prefix sums, empty prefix first, are 0, 3, 3, 1, 0, 5, 0. With `k` at 0 every pair
+          of equal prefix sums is one subarray. The two 3s give the lone 0, and the three 0s give
           three pairs: `nums[0:4]`, `nums[0:6]` and `nums[4:6]`.
       - id: distinct
         text: '3'
-        explanation: How many times does each total appear?
+        explanation: How many times does each prefix sum appear?
       - id: no-seed
         text: '2'
-        explanation: Which ranges start at index 0?
+        explanation: Which subarrays start at index 0?
       - id: self-match
         text: '10'
-        explanation: Does a pass ever find the total it is about to store?
+        explanation: Does a pass ever find the prefix sum it is about to store?
     correct: right
     followUps:
       distinct:
         prompt: >-
-          The total 0 appears three times: as the empty prefix, after index 3 and after index 5.
-          How many ranges summing to 0 do those three make?
+          The prefix sum 0 appears three times: as the empty prefix, after index 3 and after
+          index 5. How many subarrays summing to 0 do those three make?
         options:
           - id: three
             text: Three, one for each pair of them
           - id: two
             text: Two, one for each repeat
           - id: one
-            text: One, since they are the same total
+            text: One, since they are the same prefix sum
         correct: three
         explanation: >-
-          Any two equal totals mark a range between them that sums to 0. Three equal totals make
-          three pairs, so the count has to know how many times each total appeared.
+          Any two equal prefix sums mark a subarray between them that sums to 0. Three equal
+          prefix sums make three pairs, so the count has to know how many times each prefix sum
+          appeared.
       no-seed:
-        prompt: A version that starts with `seen = {}` returns 2 here. Which ranges does it miss?
+        prompt: A version that starts with `seen = {}` returns 2 here. Which subarrays does it miss?
         options:
           - id: from-start
             text: '`nums[0:4]` and `nums[0:6]`, the two from index 0'
@@ -67,28 +68,29 @@ questions:
             text: None of them, since `k` is 0
         correct: from-start
         explanation: >-
-          A range from index 0 subtracts the empty prefix. Without the starting entry `0: 1`,
-          those ranges have nothing to match, even when `k` is 0.
+          A subarray from index 0 subtracts the empty prefix. Without the starting entry `0: 1`,
+          those subarrays have nothing to match, even when `k` is 0.
       self-match:
         prompt: If the line that stores `p` ran before the lookup, what would each pass find when `k` is 0?
         options:
           - id: own
-            text: Its own total too, so each pass adds one too many
+            text: Its own prefix sum too, so each pass adds one too many
           - id: earlier
-            text: Only earlier totals, as before
+            text: Only earlier prefix sums, as before
           - id: nothing
             text: Nothing, since the store and the lookup use different keys
         correct: own
         explanation: >-
           With `k` at 0, the key `p - k` is `p` itself. Storing first means every pass matches
-          the empty range ending at itself, which adds 6 here. Looking up before storing avoids it.
+          the empty subarray ending at itself, which adds 6 here. Looking up before storing
+          avoids it.
 
-  - id: checkpoint-zero-totals-ranges
-    heading: Which ranges does it count?
+  - id: checkpoint-zero-prefix-subarrays
+    heading: Which subarrays does it count?
     tags: [prefix-sum, hash-map, python]
     prompt: |-
       ```python
-      def count_ranges(nums, k):
+      def count_subarrays(nums, k):
           seen = {0: 1}
           p = 0
           total = 0
@@ -99,77 +101,77 @@ questions:
           return total
 
       nums = [5, -4, -1, 0, 5, -3]
-      count_ranges(nums, 2)
+      count_subarrays(nums, 2)
       ```
 
-      Which ranges does the call count?
+      Which subarrays does the call count?
     options:
       - id: right
         text: '`nums[0:6]`, `nums[3:6]` and `nums[4:6]`'
         explanation: >-
-          The totals, empty prefix first, are 0, 5, 1, 0, 0, 5, 2. Only the last pass finds a
-          match: 2 - 2 is 0, and 0 has been seen three times. Each 0 starts one range that ends
-          at the last value.
+          The prefix sums, empty prefix first, are 0, 5, 1, 0, 0, 5, 2. Only the last pass finds
+          a match: 2 - 2 is 0, and 0 has been seen three times. Each 0 starts one subarray that
+          ends at the last value.
       - id: no-seed
         text: '`nums[3:6]` and `nums[4:6]`'
-        explanation: Is the whole list a range that sums to 2?
+        explanation: Is the whole list a subarray that sums to 2?
       - id: once
         text: '`nums[0:6]` only'
-        explanation: How many earlier totals equal 0?
+        explanation: How many earlier prefix sums equal 0?
       - id: overshoot
-        text: None, since the total overshoots 2 on the first value
+        text: None, since the sum passes 2 on the first value
         explanation: Can a negative value bring a sum back down?
     correct: right
     followUps:
       no-seed:
-        prompt: The whole list sums to 2. Which earlier total does that range subtract?
+        prompt: The whole list sums to 2. Which earlier prefix sum does that subarray subtract?
         options:
           - id: empty
             text: The empty prefix, 0, from the starting entry
           - id: first
-            text: The total after the first value, 5
+            text: The prefix sum after the first value, 5
           - id: none
-            text: None, a range over the whole list is never counted
+            text: None, a subarray over the whole list is never counted
         correct: empty
         explanation: >-
-          A range from index 0 subtracts the total of no values. The starting entry `0: 1` is that
-          total, so the last pass finds it along with the two later 0s.
+          A subarray from index 0 subtracts the sum of no values. The starting entry `0: 1` is
+          that prefix sum, so the last pass finds it along with the two later 0s.
       once:
-        prompt: On the last pass the total is 2, and three earlier totals are 0. How many ranges end there with sum 2?
+        prompt: On the last pass the prefix sum is 2, and three earlier prefix sums are 0. How many subarrays end there with sum 2?
         options:
           - id: three
             text: Three, one per earlier 0
           - id: one
-            text: One, since the three totals are equal
+            text: One, since the three prefix sums are equal
           - id: two
             text: Two, the 0s after values, not the empty one
         correct: three
         explanation: >-
-          Each earlier 0 sits at a different index, so each starts a different range. The count
-          keeps how many times a total appeared, and that number is what the pass adds.
+          Each earlier 0 sits at a different index, so each starts a different subarray. The count
+          keeps how many times a prefix sum appeared, and that number is what the pass adds.
       overshoot:
-        prompt: The values can be negative. Once a running sum passes 2, can a longer range still sum to 2?
+        prompt: The values can be negative. Once a subarray's sum passes 2, can a longer subarray still sum to 2?
         options:
           - id: yes
             text: Yes, later negative values can bring it back down
           - id: no
-            text: No, a sum only grows as a range gets longer
+            text: No, a sum only grows as a subarray gets longer
           - id: zero-only
             text: Only if the next value is 0
         correct: yes
         explanation: >-
-          5, then -4 and -1, brings the total back to 0, and later values reach 2 again. Prefix
-          counts never shrink a window, so they handle signed values.
+          5, then -4 and -1, brings the prefix sum back to 0, and later values reach 2 again.
+          Counting with prefix sums does not depend on the values being positive.
 
   - id: checkpoint-longer-match-start
     format: tap-cell
-    heading: Tap where the longer range starts
+    heading: Tap where the longer subarray starts
     tags: [prefix-sum, hash-map]
     prompt: >-
-      On its last pass, `count_ranges(nums, 2)` adds 2 to `total`, because two ranges that end at
-      the last value sum to 2. Tap the first value of the longer one.
+      On its last pass, `count_subarrays(nums, 2)` adds 2 to `total`, because two subarrays that
+      end at the last value sum to 2. Tap the first value of the longer one.
     code: |
-      def count_ranges(nums, k):
+      def count_subarrays(nums, k):
           seen = {0: 1}
           p = 0
           total = 0
@@ -179,28 +181,29 @@ questions:
               seen[p] = seen.get(p, 0) + 1
           return total
 
-      count_ranges([2, -3, 3, 3, -1], 2)
+      count_subarrays([2, -3, 3, 3, -1], 2)
     sequence:
       kind: array
       name: nums
       cells: [2, -3, 3, 3, -1]
     correct: 1
     explanation: >-
-      The totals are 0, 2, -1, 2, 5, 4. On the last pass 4 - 2 is 2, which appeared after index 0
-      and after index 2. The earlier copy starts the range at index 1: -3 + 3 + 3 + -1 is 2.
+      The prefix sums are 0, 2, -1, 2, 5, 4. On the last pass 4 - 2 is 2, which appeared after
+      index 0 and after index 2. The earlier copy starts the subarray at index 1:
+      -3 + 3 + 3 + -1 is 2.
     misses:
       - index: 0
         explanation: >-
-          The whole list sums to 4. A range from index 0 matches the empty prefix, and the last
-          pass looks for the total 2.
+          The whole list sums to 4. A subarray from index 0 matches the empty prefix, and the last
+          pass looks for the prefix sum 2.
       - index: 2
-        explanation: '3 + 3 + -1 is 5. That range subtracts the total -1, not a 2.'
+        explanation: '3 + 3 + -1 is 5. That subarray subtracts the prefix sum -1, not a 2.'
       - index: 3
         explanation: >-
-          `nums[3:5]` does sum to 2, but it starts after the second 2. The longer range starts
+          `nums[3:5]` does sum to 2, but it starts after the second 2. The longer subarray starts
           after the first one.
       - index: 4
-        explanation: The -1 alone sums to -1. That range subtracts the total 5.
+        explanation: The -1 alone sums to -1. That subarray subtracts the prefix sum 5.
 
   - id: checkpoint-missing-seed
     heading: Which input exposes the bug?
@@ -209,7 +212,7 @@ questions:
       This version starts `seen` empty instead of `{0: 1}`:
 
       ```python
-      def count_ranges(nums, k):
+      def count_subarrays(nums, k):
           seen = {}
           p = 0
           total = 0
@@ -229,51 +232,221 @@ questions:
           prefix. This version never stored a 0, so it returns 0 instead of 1.
       - id: later-range
         text: '`[5, 3, -2]`'
-        explanation: Which earlier total does the one range here subtract?
+        explanation: Which earlier prefix sum does the one subarray here subtract?
       - id: zero-total
         text: '`[2, -2, 4]`'
-        explanation: Does any range here sum to 3?
+        explanation: Does any subarray here sum to 3?
       - id: two-ranges
         text: '`[-2, 1, 3, -1]`'
-        explanation: Where do the ranges that sum to 3 start?
+        explanation: Where do the subarrays that sum to 3 start?
     correct: from-start
     followUps:
       later-range:
-        prompt: The only range summing to 3 here is `[3]`. Which earlier total does it subtract?
+        prompt: The only subarray summing to 3 here is `[3]`. Which earlier prefix sum does it subtract?
         options:
           - id: five
             text: 5, which a pass has already stored
           - id: empty
             text: 0, the empty prefix
           - id: eight
-            text: 8, the total after the 3
+            text: 8, the prefix sum after the 3
         correct: five
         explanation: >-
-          The range starts at index 1, after the 5. A pass stores that total, so the empty `seen`
-          does not matter and both versions return 1.
+          The subarray starts at index 1, after the 5. A pass stores that prefix sum, so the empty
+          `seen` does not matter and both versions return 1.
       zero-total:
-        prompt: The total is 0 after two values. Does any range of `[2, -2, 4]` sum to 3?
+        prompt: The prefix sum is 0 after two values. Does any subarray of `[2, -2, 4]` sum to 3?
         options:
           - id: none
             text: No, so both versions return 0
           - id: after-zero
-            text: Yes, the range after the 0 total
+            text: Yes, the subarray after the 0 prefix sum
           - id: whole
             text: Yes, the whole list
         correct: none
         explanation: >-
-          The ranges sum to 2, -2, 4, 0, 2 and 4. A total of 0 partway through is stored like
-          any other, so the missing starting entry costs nothing here.
+          The subarrays sum to 2, -2, 4, 0, 2 and 4. A prefix sum of 0 partway through is stored
+          like any other, so the missing starting entry costs nothing here.
       two-ranges:
-        prompt: '`[3]` and `[1, 3, -1]` both sum to 3. Which ranges does the missing `0: 1` affect?'
+        prompt: '`[3]` and `[1, 3, -1]` both sum to 3. Which subarrays does the missing `0: 1` affect?'
         options:
           - id: from-start
-            text: Only ranges that start at index 0
+            text: Only subarrays that start at index 0
           - id: every
-            text: Every range the function should count
+            text: Every subarray the function should count
           - id: zero-sum
-            text: Only ranges that sum to 0
+            text: Only subarrays that sum to 0
         correct: from-start
         explanation: >-
-          Both ranges here start after an earlier total that a pass stores, -2 or -1, so both
-          versions return 2. Only a range from index 0 needs the empty prefix.
+          Both subarrays here start after an earlier prefix sum that a pass stores, -2 or -1, so
+          both versions return 2. Only a subarray from index 0 needs the empty prefix.
+
+  - id: checkpoint-balanced-votes
+    heading: Which call counts them?
+    tags: [prefix-sum, hash-map, python]
+    prompt: |-
+      A vote log `votes` holds `"Y"` and `"N"`. You need the number of subarrays of the log with
+      as many `"Y"` votes as `"N"` votes. `["Y", "Y", "N", "Y"]` has 2: `Y, N` and `N, Y`.
+
+      ```python
+      def count_subarrays(nums, k):
+          seen = {0: 1}
+          p = 0
+          total = 0
+          for x in nums:
+              p += x
+              total += seen.get(p - k, 0)
+              seen[p] = seen.get(p, 0) + 1
+          return total
+      ```
+
+      Which call returns that number for every log?
+    options:
+      - id: plus-minus
+        text: '`count_subarrays([1 if v == "Y" else -1 for v in votes], 0)`'
+        explanation: >-
+          With `"Y"` as 1 and `"N"` as -1, a subarray sums to 0 exactly when it holds as many of
+          each, and two equal prefix sums mark it. On the example the prefix sums, empty prefix
+          first, are 0, 1, 2, 1, 2: the two 1s give `Y, N` and the two 2s give `N, Y`.
+      - id: zero-for-no
+        text: '`count_subarrays([1 if v == "Y" else 0 for v in votes], 0)`'
+        explanation: >-
+          With `"N"` as 0, a subarray sums to 0 only when it holds no `"Y"` at all. On the example
+          that is the lone `N`, so the call returns 1.
+      - id: plus-minus-one
+        text: '`count_subarrays([1 if v == "Y" else -1 for v in votes], 1)`'
+        explanation: >-
+          A sum of 1 means one more `"Y"` than `"N"`, such as a lone `Y`. On the example the call
+          returns 5.
+      - id: half-log
+        text: '`count_subarrays([1 if v == "Y" else 0 for v in votes], len(votes) // 2)`'
+        explanation: >-
+          This counts the subarrays with exactly `len(votes) // 2` votes of `"Y"`, which is 2 here,
+          whatever their length. On the example that is `Y, Y`, `Y, Y, N` and `Y, N, Y`, so the
+          call returns 3.
+    correct: plus-minus
+    followUps:
+      zero-for-no:
+        prompt: With `"N"` as 0, which subarrays of `["Y", "Y", "N", "Y"]` sum to 0?
+        options:
+          - id: lone-n
+            text: Only the lone `N`
+          - id: balanced
+            text: '`Y, N` and `N, Y`'
+          - id: none
+            text: None, since the log starts with `Y`
+        correct: lone-n
+        explanation: >-
+          A 0 adds nothing, so any `"Y"` makes the sum positive. For an `"N"` to cancel a `"Y"`,
+          it has to count as -1.
+      plus-minus-one:
+        prompt: A subarray holds as many `"Y"` as `"N"` votes. With `"Y"` as 1 and `"N"` as -1, what does it sum to?
+        options:
+          - id: zero
+            text: 0, since each `"N"` cancels one `"Y"`
+          - id: one
+            text: 1, one for the subarray
+          - id: half
+            text: Half its length
+        correct: zero
+        explanation: >-
+          The 1s and -1s cancel in pairs, so a balanced subarray sums to 0 whatever its length.
+          The `k` to pass is 0.
+      half-log:
+        prompt: A balanced subarray of length 2 holds one `"Y"`. How many does a balanced subarray of length 4 hold?
+        options:
+          - id: two
+            text: Two, half its own length
+          - id: one
+            text: One, the same as before
+          - id: half-log
+            text: Half the length of the whole log
+        correct: two
+        explanation: >-
+          The `"Y"` count a balanced subarray needs grows with its own length, so no single `k`
+          over a 0 and 1 list fits them all. With `"N"` as -1, every balanced subarray sums to 0.
+
+  - id: checkpoint-debug-short-prefix
+    heading: Which call does it fail on?
+    tags: [prefix-sum, python]
+    prompt: |-
+      A suggested solution builds a prefix sum list, where `prefix[t]` is the sum of the first
+      `t` values, and uses it to sum `nums[i]` through `nums[j]`, both included. One detail is
+      slightly off:
+
+      ```python
+      def sum_between(nums, i, j):
+          prefix = [0] * len(nums)
+          for t in range(1, len(nums)):
+              prefix[t] = prefix[t - 1] + nums[t - 1]
+          return prefix[j + 1] - prefix[i]
+
+      nums = [4, -1, 3, 5, -2]
+      ```
+
+      Which call fails?
+    options:
+      - id: last-value
+        text: '`sum_between(nums, 3, 4)`'
+        explanation: >-
+          The list has 5 entries, `prefix[0]` to `prefix[4]`, one too few: the sum of all five
+          values never gets an entry. This call ends at the last value, so it reads `prefix[5]`
+          and raises `IndexError`. The list needs `len(nums) + 1` entries, filled by
+          `range(1, len(nums) + 1)`.
+      - id: from-zero
+        text: '`sum_between(nums, 0, 2)`'
+        explanation: >-
+          `prefix[0]` is 0, the empty prefix, so a sum from index 0 subtracts nothing extra. The
+          call returns `prefix[3] - prefix[0]`, which is 6, and 4 + -1 + 3 is 6.
+      - id: middle
+        text: '`sum_between(nums, 1, 3)`'
+        explanation: >-
+          The call reads `prefix[4]` and `prefix[1]`, which are 11 and 4, and returns 7. That is
+          -1 + 3 + 5, so it is right.
+      - id: single
+        text: '`sum_between(nums, 2, 2)`'
+        explanation: >-
+          The call reads `prefix[3]` and `prefix[2]`, which are 6 and 3, and returns 3, the value
+          of `nums[2]`. That is right.
+    correct: last-value
+    followUps:
+      from-zero:
+        prompt: What does `prefix[0]` hold in this version?
+        options:
+          - id: zero
+            text: 0, the sum of the first 0 values
+          - id: first
+            text: 4, the first value
+          - id: unset
+            text: Nothing, since the loop never writes it
+        correct: zero
+        explanation: >-
+          The list starts as all zeros and the loop starts at `t = 1`, so `prefix[0]` keeps its 0,
+          the empty prefix. The entry this version lacks is at the other end.
+      middle:
+        prompt: Which call reads an entry the list does not have?
+        options:
+          - id: last-j
+            text: One whose `j` is 4, the last index, since it reads `prefix[5]`
+          - id: zero-i
+            text: One whose `i` is 0, since it reads `prefix[0]`
+          - id: equal
+            text: One whose `i` equals `j`, since it reads two neighbors
+        correct: last-j
+        explanation: >-
+          `prefix[j + 1]` exists only while `j + 1` is at most 4, the last index of a 5-entry
+          list. A full prefix sum list has one more entry than `nums`, for the sum of all of it.
+      single:
+        prompt: How many entries does a full prefix sum list for 5 values have?
+        options:
+          - id: six
+            text: Six, one more than the values
+          - id: five
+            text: Five, one per value
+          - id: four
+            text: Four, one per gap between values
+        correct: six
+        explanation: >-
+          One entry for the empty prefix and one after each value makes six. This version builds
+          five, so the sum through the last value has no entry, and only a call that ends there
+          fails.

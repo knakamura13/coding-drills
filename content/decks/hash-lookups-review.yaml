@@ -195,12 +195,12 @@ questions:
     tags: [hash-map]
     prompt: >-
       A one-pass pair search keeps the values it has seen in a dictionary. The target is 6 and the
-      loop reaches `x = -2`. Which key should it look up to find a partner for -2?
+      loop reaches `x = -2`. Which key should it look up to find the complement of -2?
     options:
       - id: eight
         text: '`8`'
         explanation: >-
-          The partner has to lift -2 up to 6, so it is 8, and -2 + 8 is 6. Subtracting a negative
+          The complement has to lift -2 up to 6, so it is 8, and -2 + 8 is 6. Subtracting a negative
           number adds its size.
       - id: minus-eight
         text: '`-8`'
@@ -228,7 +228,7 @@ questions:
             text: '-6'
         correct: minus-ten
         explanation: >-
-          The partner is `target - x`. Swapping the two flips the sign of the answer, and here it
+          The complement is `target - x`. Swapping the two flips the sign of the answer, and here it
           gives -8 instead of 8.
       four:
         prompt: What is `6 - (-2)`?
@@ -264,7 +264,9 @@ questions:
       groups = {}
       for w in ["noon", "nono", "non", "onon", "oon"]:
           key = "".join(sorted(w))
-          groups.setdefault(key, []).append(w)
+          if key not in groups:
+              groups[key] = []
+          groups[key].append(w)
       print(len(groups))
       ```
 
@@ -313,7 +315,7 @@ questions:
             text: Equal length doesn't make anagrams
           - id: slow
             text: Computing a length takes too long
-          - id: unhashable
+          - id: not-a-key
             text: A length can't be a dictionary key
         correct: not-enough
         explanation: >-
@@ -333,7 +335,7 @@ questions:
           The key forgets the order of the letters and keeps the counts. Two anagrams differ only
           in order, so their keys are equal.
 
-  - id: predecessor-review
+  - id: one-below-review
     format: tap-cell
     heading: Tap the value it finds
     tags: [hash-map]
@@ -359,7 +361,7 @@ questions:
       - index: 3
         explanation: 5 belongs to the other run, 5 and 6. The check for 15 looks up `15 - 1`.
       - index: 4
-        explanation: That is `x` itself. The check looks up the value just below it.
+        explanation: That is `x` itself. The check looks up the value one below it.
 
   - id: seen-scan-trace-review
     format: step-trace
@@ -527,7 +529,7 @@ questions:
               The 2 at index 4 comes after the 5. When the 5 looks up 2, only the 2 at index 1 is
               stored.
           - index: 3
-            explanation: That is the 5 itself. `seen[need]` is the index of its partner.
+            explanation: That is the 5 itself. `seen[need]` is the index of its complement.
           - index: 0
             explanation: 6 needs 1, which never appears, so it pairs with nothing.
         elsewhere: '`seen[2]` is 1, where the first 2 was stored.'
@@ -546,7 +548,7 @@ questions:
             explanation: >-
               When the first 2 arrives it needs 5, which hasn't been seen yet. It is stored and the
               loop goes on.
-        elsewhere: The first value whose partner is already stored is the 5 at index 3.
+        elsewhere: The first value whose complement is already stored is the 5 at index 3.
 
   - id: add-before-test-review
     heading: Which input gives False?
@@ -609,3 +611,73 @@ questions:
         explanation: >-
           Testing first means `seen` holds only values from earlier passes, so a value can't match
           itself. Adding first makes every value its own match.
+
+  - id: duplicate-check-cost-review
+    heading: Which one is linear?
+    tags: [hash-map, complexity]
+    prompt: >-
+      A function gets a list of `n` values and should report whether any value appears twice,
+      stopping at the first repeat it finds. Which approach takes O(n) time on average, even
+      when no value repeats?
+    options:
+      - id: nested-loops
+        text: Compare every pair of indices with two nested loops
+        explanation: >-
+          With no repeat, the loops compare about n²/2 pairs, which is O(n²) time. They need only
+          O(1) extra space, but the time grows much faster than n.
+      - id: sort-neighbors
+        text: Sort a copy, then compare each value with the one before it
+        explanation: >-
+          The neighbor scan is O(n), but the sort costs O(n log n), and the larger cost sets the
+          total.
+      - id: list-seen
+        text: Scan once, testing `x in seen` where `seen` is a list that grows
+        explanation: >-
+          `in` on a list compares `x` with its items one by one, up to `n` of them, so the scan
+          takes O(n²) time when no value repeats.
+      - id: set-seen
+        text: Scan once, testing `x in seen` where `seen` is a set that grows
+        explanation: >-
+          Each test and each `add` on a set costs O(1) on average, so the scan is O(n) time on
+          average and can stop at the first repeat. The set costs O(n) extra space.
+    correct: set-seen
+    followUps:
+      nested-loops:
+        prompt: With no repeat, about how many pairs do two nested loops over `n` values compare?
+        options:
+          - id: half-square
+            text: About n²/2, since each value meets every value after it
+          - id: n
+            text: About n, one comparison per value
+          - id: two-n
+            text: About 2n, two comparisons per value
+        correct: half-square
+        explanation: >-
+          The first value meets n - 1 others, the next n - 2, and so on. That adds up to about
+          n²/2, which is O(n²).
+      sort-neighbors:
+        prompt: An O(n log n) sort runs, then an O(n) scan. Which cost sets the total?
+        options:
+          - id: sort
+            text: The sort, since n log n grows faster than n
+          - id: scan
+            text: The scan, since it runs last
+          - id: product
+            text: Their product, O(n² log n)
+        correct: sort
+        explanation: >-
+          Two steps that run one after the other add their costs, and the faster-growing one sets
+          the total: O(n log n).
+      list-seen:
+        prompt: '`seen` is a list holding `k` values, and `x` is not among them. How many comparisons does `x in seen` make?'
+        options:
+          - id: k
+            text: '`k`, one for each value in the list'
+          - id: one
+            text: About one, the same as on a set
+          - id: log
+            text: About log k
+        correct: k
+        explanation: >-
+          A list keeps no hash of its values, so `in` checks them from the front until it finds `x`
+          or runs out. A set looks in about one place on average.

@@ -112,7 +112,7 @@ questions:
     prompt: |-
       ```python
       words = ["beta", "Alpha", "gamma", "Delta"]
-      print(sorted(words, key=str.lower))
+      print(sorted(words, key=lambda w: w.lower()))
       ```
 
       What does it print?
@@ -126,16 +126,16 @@ questions:
         text: "`['Alpha', 'Delta', 'beta', 'gamma']`"
         explanation: >-
           That is the plain sort, where every capital A to Z comes before every lowercase a to z.
-          With `key=str.lower`, beta is compared as beta and Delta as delta, so beta goes first.
-      - id: type-error
-        text: It raises `TypeError`, since `str.lower` gets no string to lower
+          With the key, beta is compared as beta and Delta as delta, so beta goes first.
+      - id: keys
+        text: That order, but with every word in lowercase
         explanation: >-
-          Without parentheses, `str.lower` is passed as a function, and `sorted` calls it on each
-          word in turn. It would fail only as `key=str.lower()`, which calls it with no word.
+          The order is right, but lowercase words are the keys. The sort compares the lowercased words and
+          hands back the original ones, capitals and all.
     correct: right
     followUps:
       default:
-        prompt: What does `key=str.lower` change about comparing `"beta"` and `"Delta"`?
+        prompt: "What does `key=lambda w: w.lower()` change about comparing `\"beta\"` and `\"Delta\"`?"
         options:
           - id: compare-lower
             text: They are compared as beta and delta, so b comes before d
@@ -147,19 +147,19 @@ questions:
         explanation: >-
           The key runs on every word before comparing. Once both are lowercase, the capital D no
           longer pulls Delta ahead.
-      type-error:
-        prompt: What does `key=str.lower` hand to `sorted`?
+      keys:
+        prompt: "Does `sorted(words, key=lambda w: w.lower())` change the words it returns?"
         options:
-          - id: function
-            text: The function itself, which `sorted` calls once per word
-          - id: result
-            text: The result of calling `str.lower` once, before sorting
-          - id: copy
-            text: A lowercased copy of the whole list
-        correct: function
+          - id: originals
+            text: No, it returns the original words, ordered by their lowercased keys
+          - id: lowered
+            text: Yes, it returns every word in lowercase
+          - id: first-only
+            text: Only the words that had a capital
+        correct: originals
         explanation: >-
-          A name without parentheses is the function object. `sorted` calls it as
-          `str.lower(word)` for each word, which is the same as `word.lower()`.
+          A key is used only to compare. To get lowercase words back, lower them first, as in
+          `sorted(w.lower() for w in words)`.
 
   - id: pair-ends-review
     format: drag-pointers
@@ -245,57 +245,73 @@ questions:
     tags: [sorting, python]
     prompt: |-
       ```python
-      words = ["fig", "plum", "kiwi", "pear", "date"]
+      words = ["kiwi", "fig", "banana", "grape"]
       print(sorted(words, key=len, reverse=True))
       ```
 
       What does it print?
     options:
       - id: right
-        text: "`['plum', 'kiwi', 'pear', 'date', 'fig']`"
+        text: "`['banana', 'grape', 'kiwi', 'fig']`"
         explanation: >-
-          The 4-letter words come first and fig last. `reverse=True` keeps the sort stable, so the
-          four tied words come out as they went in: plum, kiwi, pear, date.
-      - id: flipped
-        text: "`['date', 'pear', 'kiwi', 'plum', 'fig']`"
+          The keys are the lengths 4, 3, 6 and 5. `reverse=True` runs from the largest key down, so
+          banana (6) leads, then grape (5), kiwi (4) and fig (3).
+      - id: ascending
+        text: "`['fig', 'kiwi', 'grape', 'banana']`"
         explanation: >-
-          That is `sorted(words, key=len)[::-1]`, which flips the tied words too. `reverse=True`
-          orders the keys from large to small without reversing the ties.
-      - id: alphabetical
-        text: "`['date', 'kiwi', 'pear', 'plum', 'fig']`"
+          That is the order with no `reverse`, shortest first. `reverse=True` starts from the
+          largest key.
+      - id: input-reversed
+        text: "`['grape', 'banana', 'fig', 'kiwi']`"
         explanation: >-
-          That breaks the tie by spelling. The key is only `len`, and the words themselves are never
-          compared.
+          That is the input back to front, `words[::-1]`. `reverse=True` reverses the key order,
+          so the lengths still decide.
+      - id: spelling-reversed
+        text: "`['kiwi', 'grape', 'fig', 'banana']`"
+        explanation: >-
+          That is the words by spelling from Z to A, which ignores the key. With `key=len`, every
+          comparison uses the lengths.
     correct: right
     followUps:
-      flipped:
-        prompt: >-
-          Do `sorted(words, key=len, reverse=True)` and `sorted(words, key=len)[::-1]` give the
-          same list here?
+      ascending:
+        prompt: With `reverse=True`, which word comes first?
         options:
-          - id: differ
-            text: No, the first keeps equal-length words in their input order
-          - id: same
-            text: Yes, `reverse=True` just reverses the finished list
-          - id: alpha
-            text: No, `reverse=True` also sorts tied words alphabetically
-        correct: differ
+          - id: largest
+            text: The word with the largest key, the longest
+          - id: smallest
+            text: The word with the smallest key, the shortest
+          - id: last-input
+            text: The last word in the input
+        correct: largest
         explanation: >-
-          `reverse=True` sorts as if each comparison were flipped, and it stays stable. Slicing
-          with `[::-1]` reverses the finished list, so equal-length words come out back to front.
-      alphabetical:
-        prompt: What decides the order of plum, kiwi, pear and date here?
+          A sort runs from the smallest key up unless it is given `reverse=True`, which makes it
+          start from the largest key.
+      input-reversed:
+        prompt: What does `reverse=True` reverse?
         options:
+          - id: keys
+            text: The order of the keys, so the largest key comes first
           - id: input
-            text: The order they were in before the sort
-          - id: a-to-z
-            text: Their spelling, from A to Z
-          - id: z-to-a
-            text: Their spelling, from Z to A, because of `reverse=True`
-        correct: input
+            text: The input list, before anything is compared
+          - id: result
+            text: Nothing, unless two keys tie
+        correct: keys
         explanation: >-
-          All four have length 4, so their keys tie, and a stable sort leaves tied items as it
-          found them. `reverse=True` reverses the key order, not the order inside a tie.
+          The sort still compares the lengths. `reverse=True` only turns that order around, so the
+          longest word leads, wherever it was in the input.
+      spelling-reversed:
+        prompt: "With `key=len`, what decides whether kiwi or grape comes first?"
+        options:
+          - id: lengths
+            text: Their lengths, 4 and 5
+          - id: spelling
+            text: Their spelling, k against g
+          - id: input
+            text: Their order in the input
+        correct: lengths
+        explanation: >-
+          The key stands in for each word in every comparison. The words are compared by spelling
+          only in a sort with no key.
 
   - id: two-pass-review
     heading: What does this print?
@@ -419,6 +435,8 @@ questions:
     heading: What does this print?
     tags: [sorting, python]
     prompt: |-
+      `sorted` can read a string. It returns the string's characters in a new list, in order.
+
       ```python
       word = "tide"
       letters = sorted(word)
@@ -430,17 +448,18 @@ questions:
       - id: right
         text: "`tide ['d', 'e', 'i', 't']`"
         explanation: >-
-          `sorted` reads the string's characters and returns them as a new list. A string can't be
-          changed, so `word` is still `"tide"`.
+          `sorted` reads the string's characters and returns them as a new list. It never changes
+          what it reads, so `word` is still `"tide"`.
       - id: in-place
         text: "`deit ['d', 'e', 'i', 't']`"
         explanation: >-
-          That changes `word` itself. `sorted` never changes its input, and a string has no `.sort()`
-          method because it can't be changed in place.
-      - id: string
-        text: "`tide deit`"
+          That changes `word` itself. `sorted` never changes its input, and a string cannot be
+          changed in place anyway.
+      - id: none
+        text: "`tide None`"
         explanation: >-
-          `word` is right, but `sorted` does not join the characters back into a string.
+          `word` is right, but `None` is what the method `.sort()` returns. The function `sorted`
+          returns the new list, and `letters` holds it.
     correct: right
     followUps:
       in-place:
@@ -454,22 +473,22 @@ questions:
             text: Yes, it reorders its input
         correct: never
         explanation: >-
-          `sorted` only reads its input and returns a new list, and a string can't be changed
+          `sorted` only reads its input and returns a new list, and a string cannot be changed
           anyway. To keep the sorted letters, assign the result, as `letters = sorted(word)` does
           here.
-      string:
-        prompt: What type does `sorted` return when it is given a string?
+      none:
+        prompt: Which of these returns `None`?
         options:
-          - id: list
-            text: A list
-          - id: str
-            text: A string
-          - id: same
-            text: Whatever type it was given
-        correct: list
+          - id: method
+            text: The method `xs.sort()`
+          - id: function
+            text: The function `sorted(xs)`
+          - id: both
+            text: Both of them
+        correct: method
         explanation: >-
-          `sorted` returns a new list, whatever it reads. To get a string back, join the result:
-          `"".join(sorted(word))` is `"deit"`.
+          `.sort()` reorders a list in place and returns `None`. `sorted` builds a new list and
+          returns it, which is how `letters` gets the characters.
 
   - id: sort-then-index-review
     format: tap-cell

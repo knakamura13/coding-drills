@@ -1,0 +1,549 @@
+id: palindromes
+title: Palindromes
+description: Compare mirrored characters, allow one deletion, and grow a palindrome from its center. Each card asks for one decision, with a worked example on hand.
+heading: What happens next?
+
+questions:
+  - format: drag-pointers
+    id: mirrored-pair-third
+    heading: Which pair is compared?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      A palindrome reads the same forwards and backwards, like `noon` or `kayak`. To check a
+      string, compare its mirrored pairs: the first and last characters, then the second and the
+      second to last, moving inward. Consider `s = "kayak"`, with `l = 0` and `r = 4`.
+
+      1. `s[0]` and `s[4]` are both `k`, so the first pair matches, and `l` and `r` step inward to
+         1 and 3.
+      2. `s[1]` and `s[3]` are both `a`, so the second pair matches too, and the pointers step to
+         2 and 2.
+      3. With both pointers on the middle `y`, which has no partner, `l < r` is false and the
+         check stops. Every pair matched, so `"kayak"` is a palindrome.
+    prompt: >-
+      A palindrome reads the same forwards and backwards. `is_palindrome` checks one by comparing
+      mirrored pairs from the outside in: `s[l]` with `s[r]`, then `l` steps right and `r` steps
+      left. Drag `l` and `r` onto the third pair it compares.
+    code: |
+      def is_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return False
+              l += 1
+              r -= 1
+          return True
+
+      is_palindrome("racecar")
+    sequence:
+      kind: string
+      name: s
+      cells: [r, a, c, e, c, a, r]
+    pointers:
+      - name: l
+        start: 0
+        correct: 2
+        explanation: >-
+          The first pair is indices 0 and 6, the second 1 and 5, and each match moves `l` one step
+          right. So the third pair starts at index 2, the first `c`.
+        misses:
+          - index: 1
+            explanation: Index 1 is in the second pair, with index 5. One more match moves `l` to 2.
+          - index: 3
+            explanation: >-
+              Index 3 is the middle `e`, and no pair includes it. When both pointers reach it,
+              `l < r` is false and the loop stops.
+        elsewhere: '`l` moves one step per matched pair: 0, then 1, then 2 for the third pair.'
+      - name: r
+        start: 6
+        correct: 4
+        explanation: >-
+          `r` mirrors `l`: 6, then 5, then 4. Index 4 holds the second `c`, the partner of index 2.
+        misses:
+          - index: 5
+            explanation: Index 5 is in the second pair, with index 1. One more match moves `r` to 4.
+          - index: 3
+            explanation: >-
+              Index 3 is the middle `e`. It has no partner, so no pair includes it.
+        elsewhere: '`r` moves one step left per matched pair: 6, then 5, then 4 for the third pair.'
+
+  - format: drag-pointers
+    id: first-mismatch-stops
+    heading: Where does the check stop?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `is_palindrome("rover")`. The check compares mirrored pairs from the outside in,
+      and `return False` runs at the first pair that differs.
+
+      1. `s[0]` and `s[4]` are both `r`, so they match, and the pointers step to 1 and 3.
+      2. `s[1]` is `o` and `s[3]` is `e`. They differ, so the call returns `False` right there.
+      3. The middle `v` is never reached, because one mismatch already proves the string is not a
+         palindrome.
+    prompt: >-
+      `is_palindrome` compares mirrored pairs from the outside in, and returns `False` as soon as
+      one pair differs. Drag `l` and `r` to the pair it is comparing when it returns.
+    code: |
+      def is_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return False
+              l += 1
+              r -= 1
+          return True
+
+      is_palindrome("reporter")
+    sequence:
+      kind: string
+      name: s
+      cells: [r, e, p, o, r, t, e, r]
+    pointers:
+      - name: l
+        start: 0
+        correct: 2
+        explanation: >-
+          Indices 0 and 7 are both `r`, and indices 1 and 6 are both `e`. Then `s[2]` is `p` and
+          `s[5]` is `t`, so the call returns `False` with `l` on 2.
+        misses:
+          - index: 0
+            explanation: >-
+              `s[0]` and `s[7]` are both `r`, so the first pair matches and the check moves on.
+          - index: 3
+            explanation: >-
+              The check never gets this far. `p` and `t` differ at indices 2 and 5, and
+              `return False` ends the call there.
+        elsewhere: 'Two pairs match, so the third pair, indices 2 and 5, is where `p` meets `t`.'
+      - name: r
+        start: 7
+        correct: 5
+        explanation: '`r` mirrors `l`: 7, then 6, then 5, where `t` differs from the `p` at index 2.'
+        misses:
+          - index: 7
+            explanation: >-
+              `s[7]` matches `s[0]`, so `r` steps left. The mismatch comes two pairs later.
+          - index: 4
+            explanation: >-
+              The call returns before this pair. Indices 2 and 5 already differ.
+        elsewhere: '`r` steps left once per matched pair, so it sits on index 5 at the mismatch.'
+
+  - format: drag-pointers
+    id: skip-non-letters
+    heading: Which pair is compared?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `s = "Ab,a"`. A character that is not a letter or digit is skipped, case is
+      ignored, and each inner loop also tests `l < r`, so the pointers never pass each other.
+
+      1. `s[0]` is `A` and `s[3]` is `a`. Both are letters, so neither loop skips, and
+         `"A".lower()` equals `"a"`. The pointers step to 1 and 2.
+      2. `s[2]` is a comma, so the second inner loop moves `r` to 1. Then `l < r` is false, so it
+         stops there instead of passing `l`.
+      3. Both pointers name `b`, which matches itself. They step past each other, and the call
+         returns `True`.
+    prompt: >-
+      This check ignores every character that is not a letter or a digit: `ch.isalnum()` is
+      `True` only for a letter or a digit. `ch.lower()` gives the lowercase form, so `B` and `b`
+      match. Drag `l` and `r` to the cells line 8 compares first.
+    code: |
+      def is_clean_palindrome(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              while l < r and not s[l].isalnum():
+                  l += 1
+              while l < r and not s[r].isalnum():
+                  r -= 1
+              if s[l].lower() != s[r].lower():
+                  return False
+              l += 1
+              r -= 1
+          return True
+
+      is_clean_palindrome("'Bob!'")
+    sequence:
+      kind: string
+      name: s
+      cells: ["'", B, o, b, "!", "'"]
+    pointers:
+      - name: l
+        start: 0
+        correct: 1
+        explanation: >-
+          The quote mark at index 0 is not a letter or digit, so the first inner loop moves `l`
+          to 1. `B` is a letter, so `l` stops there.
+        misses:
+          - index: 0
+            explanation: >-
+              `s[0]` is a quote mark, and `isalnum()` is `False` for it, so the first inner loop
+              moves `l` past it.
+        elsewhere: '`l` skips only the quote mark at index 0 and stops on `B` at index 1.'
+      - name: r
+        start: 5
+        correct: 3
+        explanation: >-
+          The quote mark at index 5 and the `!` at index 4 are not letters or digits, so the
+          second inner loop moves `r` twice, to the `b` at index 3. `B` and `b` match once
+          lowered.
+        misses:
+          - index: 5
+            explanation: >-
+              `s[5]` is a quote mark, so the second inner loop moves `r` left before any
+              comparison.
+          - index: 4
+            explanation: >-
+              The inner loop is a `while`, so it keeps going: `!` is not a letter or digit
+              either, and `r` moves on to 3.
+        elsewhere: '`r` skips the quote mark and the `!`, and stops on `b` at index 3.'
+
+  - id: one-deletion-checks
+    heading: Which checks run?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `almost("abca")`. At the first mirrored pair that differs, one of those two
+      characters must be the one to delete, so `almost` checks the part between them with the
+      left one left out, then with the right one left out.
+
+      1. `s[0]` and `s[3]` are both `a`, so the pointers step to 1 and 2.
+      2. `s[1]` is `b` and `s[2]` is `c`, the first pair that differs. The first check is
+         `is_pal(s, 2, 2)`, which leaves out the `b`.
+      3. Indices 2 to 2 hold one character, which is a palindrome, so `or` stops there and
+         `almost` returns `True`: deleting the `b` gives `aca`.
+    prompt: |-
+      `almost` returns `True` when deleting at most one character makes `s` a palindrome.
+      `is_pal(s, l, r)` checks whether indices `l` to `r` read the same both ways.
+
+      ```python
+      def is_pal(s, l, r):
+          while l < r:
+              if s[l] != s[r]:
+                  return False
+              l += 1
+              r -= 1
+          return True
+
+      def almost(s):
+          l, r = 0, len(s) - 1
+          while l < r:
+              if s[l] != s[r]:
+                  return is_pal(s, l + 1, r) or is_pal(s, l, r - 1)
+              l += 1
+              r -= 1
+          return True
+      ```
+
+      For `almost("abcdcxba")`, which checks run at the first pair that differs?
+    options:
+      - id: both-sides
+        text: "Indices 3 to 5 (`dcx`), then indices 2 to 4 (`cdc`)"
+        explanation: >-
+          Pairs 0 and 7, then 1 and 6, match. `s[2]` is `c` and `s[5]` is `x`. Leaving out the
+          `c` gives `dcx`, which fails, so `or` runs the second check: leaving out the `x` gives
+          `cdc`, a palindrome. The call returns `True`.
+      - id: drop-both
+        text: "Indices 3 to 4 (`dc`) only"
+        explanation: >-
+          That leaves out both the `c` and the `x`, which is two deletions. Each check leaves out
+          only one of them.
+      - id: restart
+        text: "Indices 1 to 7, then indices 0 to 6"
+        explanation: >-
+          That starts again from the ends. Pairs 0 and 7, and 1 and 6, already matched, so the
+          checks begin at the pair that differs.
+      - id: left-only
+        text: "Indices 3 to 5 (`dcx`) only"
+        explanation: >-
+          `dcx` is not a palindrome, so that check returns `False`, and `or` goes on to its right
+          side.
+    correct: both-sides
+    followUps:
+      drop-both:
+        prompt: "`s[2]` is `c` and `s[5]` is `x`. How many of them may the fix delete?"
+        options:
+          - id: one
+            text: One, either the `c` or the `x`
+          - id: both
+            text: Both, since they are the pair that differs
+          - id: neither
+            text: Neither, the fix deletes a character elsewhere
+        correct: one
+        explanation: >-
+          Only one deletion is allowed, so `almost` tries leaving out the left character, then
+          the right one, and keeps the other in the check.
+      restart:
+        prompt: "When `s[2]` and `s[5]` differ, what is already known about indices 0, 1, 6 and 7?"
+        options:
+          - id: matched
+            text: They form matching mirrored pairs, so the checks need only indices 2 to 5
+          - id: unknown
+            text: Nothing, a deletion shifts every character
+          - id: wrong
+            text: One of them must be deleted
+        correct: matched
+        explanation: >-
+          Deleting a character between indices 2 and 5 leaves the outer pairs where they were,
+          still matching. So `is_pal` starts from `l + 1` or ends at `r - 1`, not from the ends.
+      left-only:
+        prompt: "`is_pal(s, 3, 5)` returns `False`. What does `False or is_pal(s, 2, 4)` do?"
+        options:
+          - id: runs-right
+            text: It runs `is_pal(s, 2, 4)` and returns its result
+          - id: stops
+            text: It returns `False` without running the right side
+          - id: error
+            text: It raises an error, since the left side failed
+        correct: runs-right
+        explanation: >-
+          `or` evaluates its right side whenever the left side is false. It stops early only when
+          the left side is true.
+
+  - format: drag-pointers
+    id: grow-odd-center
+    heading: How far does it grow?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `grow("abcbd", 2, 2)`. Both pointers start on the center index, and each pass
+      steps `l` left and `r` right while both stay inside the string and their characters
+      match.
+
+      1. `s[2]` matches itself, so `l` and `r` step to 1 and 3.
+      2. `s[1]` and `s[3]` are both `b`, so they step to 0 and 4.
+      3. `s[0]` is `a` and `s[4]` is `d`, which differ, so the loop stops with `l = 0` and `r = 4`.
+         The palindrome is the part strictly between them, `s[1:4]`, which is `bcb`.
+    prompt: >-
+      A palindrome can also be found from its middle. `grow` starts `l` and `r` on one center and
+      steps them outward while the two characters match, so `s[l + 1:r]` is the longest
+      palindrome around that center. Drag `first` and `last` onto the first and last characters
+      of the palindrome `grow(s, 3, 3)` returns.
+    code: |
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+
+      s = "xyabaye"
+      grow(s, 3, 3)
+    sequence:
+      kind: string
+      name: s
+      cells: [x, "y", a, b, a, "y", e]
+    pointers:
+      - name: first
+        start: 2
+        correct: 1
+        explanation: >-
+          `a` matches `a` at indices 2 and 4, and `y` matches `y` at 1 and 5. Then `x` and `e`
+          differ, so the loop stops with `l = 0`, and the palindrome starts at `l + 1`, index 1.
+        misses:
+          - index: 2
+            explanation: >-
+              The pair at indices 2 and 4 matches, so the loop grows once more, to 1 and 5, where
+              `y` matches `y`.
+          - index: 0
+            explanation: >-
+              The loop stops because `x` and `e` differ, so index 0 is outside the palindrome. It
+              starts at `l + 1`.
+        elsewhere: 'The palindrome is `yabay`, from index 1 to index 5.'
+      - name: last
+        start: 4
+        correct: 5
+        explanation: >-
+          The loop stops with `r = 6`, on the `e` that failed to match. The slice `s[l + 1:r]`
+          stops before `r`, so the last character is at index 5.
+        misses:
+          - index: 4
+            explanation: >-
+              Indices 1 and 5 also match, `y` with `y`, so the palindrome reaches index 5.
+          - index: 6
+            explanation: >-
+              `e` at index 6 did not match `x`, so it is outside. The slice stops before `r`.
+        elsewhere: 'The palindrome is `yabay`, from index 1 to index 5.'
+
+  - id: even-center-missed
+    heading: What does it return?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `s = "abba"`. A center can be one index, as in `grow(s, i, i)`, or the gap
+      between two neighbors, as in `grow(s, i, i + 1)`.
+
+      1. `grow(s, 1, 1)` starts on the first `b`. `s[0]` is `a` and `s[2]` is `b`, which differ,
+         so it returns just `b`.
+      2. `grow(s, 1, 2)` starts on the gap between the two `b`s. They match, then `s[0]` and
+         `s[3]` are both `a`, so it returns `abba`.
+      3. So `abba` grows only from the gap: no single index sits in its middle.
+    prompt: |-
+      `grow(s, l, r)` steps `l` left and `r` right while the characters match, and returns the
+      palindrome between them. `longest_odd` calls `grow(s, i, i)` for every index `i` and keeps
+      the longest result.
+
+      ```python
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+
+      def longest_odd(s):
+          best = ""
+          for i in range(len(s)):
+              p = grow(s, i, i)
+              if len(p) > len(best):
+                  best = p
+          return best
+      ```
+
+      What does `longest_odd("abacddc")` return?
+    options:
+      - id: aba
+        text: "`aba`"
+        explanation: >-
+          Every call starts both pointers on one index, so it finds only palindromes of odd
+          length, with a middle character. `aba` grows from index 1. `cddc` is longer, but its
+          middle falls between indices 4 and 5, and no call starts there.
+      - id: cddc
+        text: "`cddc`"
+        explanation: >-
+          `cddc` is the longest palindrome in the string, but its middle falls between the two
+          `d`s. Every call here starts both pointers on one index.
+      - id: dd
+        text: "`dd`"
+        explanation: >-
+          `grow(s, 4, 4)` starts on one `d`. `s[3]` is `c` and `s[5]` is `d`, which differ, so it
+          returns a single `d`.
+      - id: single
+        text: "`a`"
+        explanation: >-
+          `grow(s, 1, 1)` starts on `b`, and `s[0]` and `s[2]` are both `a`, so it grows to three
+          characters.
+    correct: aba
+    followUps:
+      cddc:
+        prompt: "Which `grow` call returns `cddc`?"
+        options:
+          - id: gap
+            text: "`grow(s, 4, 5)`, starting on the gap between the two `d`s"
+          - id: index-four
+            text: "`grow(s, 4, 4)`, starting on the first `d`"
+          - id: index-five
+            text: "`grow(s, 5, 5)`, starting on the second `d`"
+        correct: gap
+        explanation: >-
+          A palindrome of even length has no middle character, so it grows only from a gap
+          between neighbors. `longest_odd` never makes that call.
+      dd:
+        prompt: "`grow(s, 4, 4)` starts both pointers on index 4. What does its first pass compare?"
+        options:
+          - id: self
+            text: "`s[4]` with itself, then `s[3]` with `s[5]`"
+          - id: neighbors
+            text: "`s[4]` with `s[5]`, the two `d`s"
+          - id: outer
+            text: "`s[3]` with `s[6]`, the two `c`s"
+        correct: self
+        explanation: >-
+          Starting on one index, the first pass compares a character with itself. The next pass
+          compares `c` with `d`, which differ, so the result is one `d`.
+      single:
+        prompt: "`grow(s, 1, 1)` starts on `b`. What do `s[0]` and `s[2]` hold?"
+        options:
+          - id: both-a
+            text: Both hold `a`, so it grows to `aba`
+          - id: differ
+            text: "`a` and `c`, so it stops at `b`"
+          - id: edge
+            text: Nothing, `s[0]` is past the edge
+        correct: both-a
+        explanation: >-
+          `s` is `abacddc`, so indices 0 and 2 both hold `a`. The call returns `aba`, longer than
+          any one character.
+
+  - id: count-comparisons
+    heading: How many comparisons?
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `s = "aaa"`, which has 3 characters and 2 gaps, so 5 centers. Each center grows
+      until a pair differs or a pointer passes an end, and every test of `s[l] == s[r]` counts as
+      one comparison.
+
+      1. The centers at indices 0 and 2 compare their own character once, then a pointer passes
+         an end: 1 each. Index 1 compares itself, then `s[0]` with `s[2]`: 2.
+      2. Each gap compares its two neighbors once, then a pointer passes an end: 1 each.
+      3. So the total is 1 + 2 + 1 for the indices and 1 + 1 for the gaps, which is 6.
+    prompt: |-
+      To find the longest palindrome, `grow` is called on every center: each index, with
+      `grow(s, i, i)`, and each gap between neighbors, with `grow(s, i, i + 1)`. A string of
+      length `n` has `n` indices and `n - 1` gaps, so `2n - 1` centers.
+
+      ```python
+      def grow(s, l, r):
+          while l >= 0 and r < len(s) and s[l] == s[r]:
+              l -= 1
+              r += 1
+          return s[l + 1:r]
+      ```
+
+      `and` checks its tests from the left and stops at the first one that is false, so
+      `s[l] == s[r]` runs only while both pointers are inside the string.
+
+      On `s = "aaaaa"`, every pair matches. How many times does `s[l] == s[r]` run over all 9
+      centers?
+    options:
+      - id: fifteen
+        text: "15"
+        explanation: >-
+          Every pair matches, so each center grows until a pointer passes an end. The indices
+          give 1, 2, 3, 2 and 1, which is 9. The gaps give 1, 2, 2 and 1, which is 6. In all, 15.
+      - id: nine
+        text: "9"
+        explanation: >-
+          That counts one comparison per center. Each match lets a center grow, and here every
+          pair matches, so most centers compare more than once.
+      - id: twenty-five
+        text: "25"
+        explanation: >-
+          That is `5 * 5`. A center stops once a pointer passes an end, so a center near an end
+          compares only once or twice.
+      - id: five
+        text: "5"
+        explanation: >-
+          That counts only the index centers, once each. The 4 gaps are centers too, and each
+          center keeps comparing while its pairs match.
+    correct: fifteen
+    followUps:
+      nine:
+        prompt: "How many comparisons does `grow(s, 2, 2)` make on `aaaaa`?"
+        options:
+          - id: three
+            text: "3: index 2 with itself, then 1 with 3, then 0 with 4"
+          - id: one
+            text: "1: the center with itself"
+          - id: five
+            text: "5: one for each character"
+        correct: three
+        explanation: >-
+          Each match moves both pointers out one step and runs the test again. The middle center
+          grows until both ends are reached.
+      twenty-five:
+        prompt: "How many comparisons does `grow(s, 0, 0)` make on `aaaaa`?"
+        options:
+          - id: one
+            text: "1: index 0 with itself, then `l` is -1 and the loop stops"
+          - id: five
+            text: "5: one for each character"
+          - id: three
+            text: "3: the same as the middle center"
+        correct: one
+        explanation: >-
+          `l` steps to -1 after the first match, so `l >= 0` is false and the comparison never runs
+          again. Centers near an end stop early.
+      five:
+        prompt: "Which calls start on a gap of `aaaaa`?"
+        options:
+          - id: four-gaps
+            text: "`grow(s, i, i + 1)` for `i` from 0 to 3, four calls"
+          - id: none
+            text: None, every center is an index
+          - id: five-gaps
+            text: "`grow(s, i, i + 1)` for `i` from 0 to 4, five calls"
+        correct: four-gaps
+        explanation: >-
+          Five characters have four gaps between neighbors, and each gap is a center that compares
+          its two neighbors first.

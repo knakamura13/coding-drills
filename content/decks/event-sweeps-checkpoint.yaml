@@ -1,6 +1,6 @@
 id: event-sweeps-checkpoint
 title: "Event sweeps: checkpoint"
-description: Determine how many rooms a schedule needs, on new inputs. Each item combines turning meetings into events, ordering ties, and tracking the peak count.
+description: Determine how many rooms a schedule needs, on new inputs, and find the call a suggested sweep gets wrong. The items combine turning meetings into events, ordering ties, and tracking the peak count.
 heading: How many rooms?
 
 questions:
@@ -28,7 +28,7 @@ questions:
         explanation: Can a room be used again once its meeting has ended?
       - id: merged
         text: "1"
-        explanation: Does one unbroken busy stretch tell you how many meetings run at once?
+        explanation: Does one merged interval tell you how many meetings run at once?
     correct: right
     followUps:
       starts-first:
@@ -139,7 +139,7 @@ questions:
         explanation: Are all four bookings ever in use at the same hour?
       - id: merged
         text: "1"
-        explanation: Does an unbroken stretch from 12 to 20 mean one instrument covers it?
+        explanation: Does one merged interval from 12 to 20 mean one instrument covers it?
     correct: right
     followUps:
       ends-first:
@@ -169,17 +169,17 @@ questions:
           A sweep counts bookings in use at one moment. Bookings linked through a chain of clashes
           need not all clash with each other.
       merged:
-        prompt: "The bookings form one busy stretch, `[12, 20]`. What does that show about the instruments needed?"
+        prompt: "Merging the bookings gives one interval, `[12, 20]`. What does that show about the instruments needed?"
         options:
           - id: nothing
             text: Not the number needed, which depends on the busiest moment
           - id: one
-            text: One instrument covers the whole stretch
+            text: One instrument covers the whole interval
           - id: each
-            text: One instrument for each booking in the stretch
+            text: One instrument for each booking in the interval
         correct: nothing
         explanation: >-
-          A merged range says when the lab is busy, not how busy. The peak count of active bookings
+          A merged interval says when the lab is busy, not how busy. The peak count of active bookings
           is the number of instruments.
 
   - id: checkpoint-time-only-key
@@ -262,3 +262,92 @@ questions:
         explanation: >-
           A key only decides the order. The sort returns the original tuples, so each change is
           still there for the loop.
+
+  - id: checkpoint-debug-studio-ties
+    heading: Which call does it fail on?
+    tags: [intervals, sorting, python]
+    prompt: |-
+      A studio booking `[start, end]` holds its studio through its end minute, so a session that
+      ends at minute 30 clashes with one that starts at minute 30. A suggested solution should
+      return how many studios the bookings need. One detail is slightly off:
+
+      ```python
+      def studios(bookings):
+          events = []
+          for s, e in bookings:
+              events.append((s, 1))
+              events.append((e, -1))
+          events.sort()
+          active = peak = 0
+          for t, d in events:
+              active += d
+              peak = max(peak, active)
+          return peak
+      ```
+
+      Which call returns the wrong number?
+    options:
+      - id: apart
+        text: "`studios([[30, 45], [10, 20]])`"
+        explanation: >-
+          No two events share a minute, so the tie order never comes into it. The sort puts
+          `[10, 20]` first, `active` runs 1, 0, 1, 0, and the call returns 1, which is right.
+      - id: touching
+        text: "`studios([[5, 30], [30, 50]])`"
+        explanation: >-
+          Both sessions hold a studio at minute 30, so 2 studios are needed. The plain sort puts
+          `(30, -1)` before `(30, 1)`, so `active` drops to 0 before the second session starts,
+          and the call returns 1. A key that puts starts first at a tie fixes it:
+          `events.sort(key=lambda ev: (ev[0], -ev[1]))`.
+      - id: same-start
+        text: "`studios([[5, 25], [5, 15]])`"
+        explanation: >-
+          Both events at 5 are starts, so their order cannot change the count: `active` reaches 2
+          either way. The call returns 2, which is right.
+      - id: same-end
+        text: "`studios([[10, 40], [20, 40]])`"
+        explanation: >-
+          Both events at 40 are ends, and `active` reached 2 at minute 20, before either of them.
+          The call returns 2, which is right.
+    correct: touching
+    followUps:
+      apart:
+        prompt: Which kind of input can expose a mistake in the tie order?
+        options:
+          - id: end-start
+            text: One where a session ends at the same minute another starts
+          - id: unsorted
+            text: Any input whose bookings are not listed in time order
+          - id: many
+            text: Any input with more than two bookings
+        correct: end-start
+        explanation: >-
+          The sort fixes the listing order before the loop runs, and a key that sorts by time
+          first only changes the order of events that share a minute. Without an end and a start
+          at the same minute, every such key gives the same `peak`.
+      same-start:
+        prompt: At minute 5, `events` holds `(5, 1)` twice. Can their order change `peak`?
+        options:
+          - id: either-order
+            text: No, both add 1, so `active` is 2 after them in either order
+          - id: waits
+            text: Yes, one of them has to wait until the other session ends
+          - id: plain
+            text: Yes, the plain sort applies one of them as an end
+        correct: either-order
+        explanation: >-
+          A tie matters only between a start and an end, because only then does `active` dip or
+          rise in between. Two starts, or two ends, give the same count in either order.
+      same-end:
+        prompt: For `[[10, 40], [20, 40]]`, when does `active` first reach 2?
+        options:
+          - id: twenty
+            text: At minute 20, before either end at 40
+          - id: forty
+            text: At minute 40, when both sessions end
+          - id: never
+            text: Never, because the plain sort applies the ends first
+        correct: twenty
+        explanation: >-
+          The second session starts at 20 while the first is still running, so `active` is 2 from
+          then on. The two ends at 40 only bring it down.

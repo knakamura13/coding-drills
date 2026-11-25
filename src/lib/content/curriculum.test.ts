@@ -16,15 +16,16 @@ const PATH_TITLES = [
 	'Bit manipulation',
 	'Exact search',
 	'Boundary search',
-	'Feasible limits',
-	'Hash lookups',
-	'Prefix counts',
+	'Pointer scans',
+	'Palindromes',
 	'Sort order',
 	'Interval merging',
 	'Event sweeps',
-	'Pointer scans',
+	'Hash lookups',
+	'Prefix counts',
 	'Variable windows',
 	'Window limits',
+	'Feasible limits',
 	'Stack matching',
 	'Monotonic stack',
 	'Priority order',
@@ -55,7 +56,7 @@ const PATH_TITLES = [
 
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 3, rewrite: 7, exam: 11, retire: 3 },
+	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
@@ -124,7 +125,7 @@ describe('shipped curriculum', () => {
 	const paths = curriculum.branches.flatMap((item) => item.paths);
 	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
-	it('lists the 44 skill paths in plan order', () => {
+	it('lists the 45 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
@@ -168,7 +169,7 @@ describe('shipped curriculum', () => {
 
 	it('gives every checkpoint the skills that lead into it, including a converging path', () => {
 		const byId = new Map(paths.map((item) => [item.id, item]));
-		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(45);
+		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(46);
 		for (const item of paths) {
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			for (const skill of item.skills) expect(skillIds.has(skill.id)).toBe(true);
@@ -177,7 +178,15 @@ describe('shipped curriculum', () => {
 		}
 
 		const feasible = byId.get('feasible-limits')!.checkpoints[0]!;
-		for (const skillId of ['discard-sorted-half', 'identify-local-rule', 'price-primitive', 'evaluate-one-limit']) {
+		for (const skillId of [
+			'locate-insertion-boundary',
+			'retain-equal-side',
+			'identify-sorted-half',
+			'choose-rotated-side',
+			'identify-local-rule',
+			'price-primitive',
+			'evaluate-one-limit'
+		]) {
 			expect(feasible.requires, skillId).toContain(skillId);
 		}
 		expect(feasible.requires).not.toContain('follow-reference');
@@ -197,11 +206,11 @@ describe('shipped curriculum', () => {
 
 	it('records the follow-up exceptions and no others', () => {
 		expect(curriculum.followUps.map((item) => `${item.questionId}/${item.optionId} ${item.disposition} ${item.pathId}`)).toEqual([
-			'sorted-array-search-loop/lt-inclusive rewrite exact-search',
-			'sorted-array-search-loop/lo-equals-mid exam exact-search',
-			'binary-search-preconditions/linked-list-ok rewrite operation-costs',
+			'sorted-array-search-loop/lt-inclusive retire exact-search',
+			'sorted-array-search-loop/lo-equals-mid retire exact-search',
+			'binary-search-preconditions/linked-list-ok retire operation-costs',
 			'binary-search-preconditions/python-overflow retire exact-search',
-			'subarray-sum-k/sort-sweep rewrite method-selection',
+			'subarray-sum-k/sort-sweep retire method-selection',
 			'heapq-min-heap/plain-pops keep priority-order',
 			'grid-bounds-and-cost/quadratic rewrite reachability',
 			'count-components-edge-list/one-search rewrite reachability',
@@ -231,7 +240,7 @@ describe('shipped curriculum', () => {
 	});
 
 	it('names the skills each drafted exam item checks, on its own path', () => {
-		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans']) {
+		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans', 'palindromes', 'sort-order', 'interval-merging']) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			const exams = curriculum.drills.filter((drill) => drill.pathId === pathId && drill.disposition === 'exam');

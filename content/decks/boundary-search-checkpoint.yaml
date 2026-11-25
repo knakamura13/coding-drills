@@ -1,6 +1,6 @@
 id: boundary-search-checkpoint
 title: "Boundary search: checkpoint"
-description: Repair a boundary update, and search a rotated list, on new values. Each item combines the two skills that lead into its checkpoint.
+description: Repair a boundary update, pick the call that breaks a suggested solution, and search a rotated list, on new values. Most items combine the two skills that lead into its checkpoint.
 heading: Which one is right?
 
 questions:
@@ -34,7 +34,9 @@ questions:
           the `hi` side. The call then returns 1.
       - id: minus-one
         text: "`return lo - 1`"
-        explanation: Try an `x` that is not in the list.
+        explanation: >-
+          That returns 3 here, the last 9, not the first. The `<=` test still sends `lo` past
+          every copy, so changing the return only lands on a different wrong cell.
       - id: hi-minus
         text: "`hi = mid - 1` in the `else` branch"
         explanation: Trace the call again. Which cells does the first probe drop?
@@ -166,6 +168,173 @@ questions:
           With `lo = 0` and `hi = 1`, rounding up gives 1, and `hi` is outside the list, so
           reading `a[1]` raises `IndexError`. A half-open loop has to round down so that `mid` stays below `hi`.
 
+  - id: checkpoint-pick-boundary-loop
+    heading: Which loop is correct?
+    tags: [binary-search]
+    prompt: >-
+      A sorted list `a` may hold copies of a value. You need the first index `i` with
+      `a[i] >= x`, or `len(a)` when there is none, which is what `bisect_left(a, x)` returns. For
+      `a = [2, 4, 4, 4, 9, 11]` and `x = 4` it is 1. Each loop starts `lo` at 0, probes
+      `mid = (lo + hi) // 2`, moves either `lo` or `hi` after each probe, and ends with
+      `return lo`. All four move `lo` the same way, after the same probes, and that part is right.
+      They differ only in where `hi` starts, the loop test, and what `hi` becomes when it moves.
+      Which loop returns the right index for every sorted list and every `x`?
+    options:
+      - id: lt-moves-right
+        text: "`hi` starts at `len(a)`, the loop runs while `lo < hi`, and `hi` moves to `mid`"
+        explanation: >-
+          The answer always lies from `lo` to `hi`, both included, and with `hi` starting at
+          `len(a)` that covers the answer past the end. `hi` moves only after a probe that may be
+          the answer, so `hi = mid` keeps it. When `lo == hi`, one index is left, and it is the
+          answer, possibly `len(a)`.
+      - id: le-loop
+        text: "`hi` starts at `len(a)`, the loop runs while `lo <= hi`, and `hi` moves to `mid`"
+        explanation: >-
+          With `lo <= hi` the loop runs again when `lo == hi`, though that index is already the
+          answer. On this list with `x = 20`, `lo` reaches 6 and the loop reads `a[6]`, past the
+          end. With `x = 10`, it reaches `lo = hi = 5`, probes the 11, and `hi` moves to 5 again,
+          so it loops forever.
+      - id: hi-len-minus-one
+        text: "`hi` starts at `len(a) - 1`, the loop runs while `lo < hi`, and `hi` moves to `mid`"
+        explanation: >-
+          Starting `hi` at `len(a) - 1` means the loop can never end on `len(a)`, so it can't
+          report that every value is below `x`. With `x = 20` it returns 5, but the right answer
+          is 6.
+      - id: hi-minus-one
+        text: "`hi` starts at `len(a)`, the loop runs while `lo < hi`, and `hi` moves to `mid - 1`"
+        explanation: >-
+          `hi` moves after a probe that may be the answer, and `mid - 1` throws that probe away.
+          On this list with `x = 10`, the probe at index 5 reads 11, larger than 10, so `hi` drops
+          to 4 and the call returns 4. The right answer is 5, the 11.
+    correct: lt-moves-right
+    followUps:
+      le-loop:
+        prompt: >-
+          On `[2, 4, 4, 4, 9, 11]` with `x = 20`, `lo` reaches 6 while `hi` is 6. What does
+          `while lo <= hi` do next?
+        options:
+          - id: past-end
+            text: It probes index 6, past the end, and raises `IndexError`
+          - id: returns
+            text: It returns 6, since the bounds have met
+          - id: moves-hi
+            text: It moves `hi` to 5 and stops
+        correct: past-end
+        explanation: >-
+          `hi` starts at `len(a)`, which is never a real cell, so when `lo == hi` nothing is left
+          to read. `while lo < hi` stops there and returns 6.
+      hi-len-minus-one:
+        prompt: How many insertion points does a list of `len(a)` values have?
+        options:
+          - id: len-plus-one
+            text: "`len(a) + 1`: in front of each value, or after the last"
+          - id: len-answers
+            text: "`len(a)`: one per value, so `hi = len(a) - 1` covers them"
+          - id: hi-irrelevant
+            text: The starting `hi` does not matter, because the loop returns `lo`
+        correct: len-plus-one
+        explanation: >-
+          An insertion point can sit in front of each value or after the last one, which is
+          `len(a) + 1` choices. Starting at `hi = len(a) - 1` offers only `len(a)` of them and
+          never the one after the end.
+      hi-minus-one:
+        prompt: On `[2, 4, 4, 4, 9, 11]` with `x = 10`, a probe reads 11 at index 5. Can index 5 be the answer?
+        options:
+          - id: keep
+            text: Yes, 11 is larger than 10, so `hi` has to keep index 5
+          - id: drop
+            text: No, 11 is not 10, so index 5 can go
+          - id: last
+            text: Only because 11 is the last value
+        correct: keep
+        explanation: >-
+          The answer is the first index whose value is at least `x`, so a probe larger than `x`
+          can be it. Moving `hi` to `mid` keeps it, and `mid - 1` throws it away.
+
+  - id: checkpoint-debug-contains
+    heading: Which call does it fail on?
+    tags: [binary-search]
+    prompt: |-
+      A suggested solution checks whether the sorted list `a` holds `x`. `bisect_left(a, x)`
+      returns the first index whose value is at least `x`, or `len(a)` when no value is. One line
+      is slightly off:
+
+      ```python
+      from bisect import bisect_left
+
+      def contains(a, x):
+          i = bisect_left(a, x)
+          return a[i] == x
+
+      a = [4, 9, 15, 22]
+      ```
+
+      Which call fails?
+    options:
+      - id: above-all
+        text: "`contains(a, 30)`"
+        explanation: >-
+          No value is at least 30, so `bisect_left` returns 4, which is `len(a)`. The last line
+          then reads `a[4]`, past the end, and raises `IndexError`. The fix is
+          `return i < len(a) and a[i] == x`: `and` stops at a false `i < len(a)`, so `a[i]` is
+          read only when `i` is a real index.
+      - id: below-all
+        text: "`contains(a, 2)`"
+        explanation: >-
+          Every value is at least 2, so `bisect_left` returns 0. `a[0]` is 4, not 2, so the call
+          returns `False`, which is right.
+      - id: between
+        text: "`contains(a, 12)`"
+        explanation: >-
+          The first value that is at least 12 is 15, at index 2. 15 is not 12, so the call returns
+          `False`, which is right.
+      - id: last-value
+        text: "`contains(a, 22)`"
+        explanation: >-
+          The first value that is at least 22 is the 22 itself, at index 3, the last cell. The call
+          returns `True`, which is right.
+    correct: above-all
+    followUps:
+      below-all:
+        prompt: For `contains(a, 2)`, which index does `bisect_left` return, and what happens next?
+        options:
+          - id: zero-false
+            text: Index 0, and `a[0]` is 4, so it returns `False`
+          - id: minus-one
+            text: Index -1, so it raises an error
+          - id: zero-true
+            text: Index 0, and it returns `True`
+        correct: zero-false
+        explanation: >-
+          `bisect_left` never returns less than 0. An `x` smaller than every value gives the first
+          cell, a real cell, so comparing it is safe.
+      between:
+        prompt: When `x` is missing but some value is larger, which index does `bisect_left` return?
+        options:
+          - id: first-larger
+            text: The index of the first value larger than `x`, a real cell
+          - id: last-smaller
+            text: The index of the last value smaller than `x`
+          - id: past-end
+            text: "`len(a)`, past the end"
+        correct: first-larger
+        explanation: >-
+          That cell exists, so the comparison reads a real value and returns `False`. Only an `x`
+          larger than every value gives `len(a)`, past the end.
+      last-value:
+        prompt: "`bisect_left(a, 22)` returns 3. Is index 3 a real cell of `a`?"
+        options:
+          - id: real
+            text: Yes, the last one, so the comparison is safe
+          - id: past
+            text: No, it is past the end
+          - id: depends
+            text: Only if `a` holds more than four values
+        correct: real
+        explanation: >-
+          A four-item list has indices 0 to 3. `bisect_left` returns `len(a)` only when no value is
+          at least `x`, and 22 is in the list.
+
   - id: checkpoint-rotated-trace
     format: step-trace
     heading: Predict each step
@@ -203,10 +372,10 @@ questions:
         ask: The first probe is index 3. Which part is in order?
         options:
           - id: left-first
-            text: "`a[0..3]`: 57 to 74"
+            text: "Indices 0 to 3: 57 to 74"
             explanation: '`a[lo] = 57 <= a[mid] = 74`, so the left part has no drop.'
           - id: right-first
-            text: "`a[3..7]`: 74 to 41"
+            text: "Indices 3 to 7: 74 to 41"
             explanation: That part falls from 80 to 12, so it holds the drop.
           - id: both-first
             text: Both parts
@@ -231,10 +400,10 @@ questions:
         ask: The second probe is index 5. Which part is in order?
         options:
           - id: right-second
-            text: "`a[5..7]`: 12, 25, 41"
+            text: "Indices 5 to 7: 12, 25, 41"
             explanation: '`a[lo] = 80` is larger than `a[mid] = 12`, so the drop is on the left and 12, 25, 41 is in order.'
           - id: left-second
-            text: "`a[4..5]`: 80, 12"
+            text: "Indices 4 to 5: 80, 12"
             explanation: That part falls from 80 to 12. `a[lo] <= a[mid]` is `80 <= 12`, false.
           - id: both-second
             text: Both parts
@@ -378,7 +547,7 @@ questions:
         text: "`if a[mid] > a[hi]: lo = mid + 1`, else `hi = mid`"
         explanation: >-
           If `a[mid] > a[hi]`, the drop is right of `mid`, so `mid` is not the smallest and `lo`
-          steps past it. Otherwise `a[mid..hi]` ascends, so the smallest is `mid` or to its left,
+          steps past it. Otherwise indices `mid` to `hi` ascend, so the smallest is `mid` or to its left,
           and `hi = mid` keeps `mid`.
       - id: vs-lo
         text: "`if a[mid] >= a[lo]: lo = mid + 1`, else `hi = mid`"
