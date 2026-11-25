@@ -14,8 +14,8 @@ questions:
     code: |
       INF = float('inf')
       edges = [("C", "D", 2), ("S", "B", 4), ("S", "C", 7),
-               ("B", "C", 1), ("B", "D", 6)]
-      dist = {"S": 0, "B": INF, "C": INF, "D": INF}
+               ("B", "C", 1), ("B", "D", 6), ("D", "E", 1)]
+      dist = {"S": 0, "B": INF, "C": INF, "D": INF, "E": INF}
       for _ in range(2):  # two passes
           for u, v, w in edges:
               if dist[u] + w < dist[v]:
@@ -24,7 +24,7 @@ questions:
     sequence:
       kind: array
       name: nodes
-      cells: [S, B, C, D]
+      cells: [S, B, C, D, E]
     start:
       - { name: lowered, at: 0 }
     steps:
@@ -46,7 +46,7 @@ questions:
             explanation: '1 is the weight of `B -> C` alone. The route also pays 4 to reach `B`.'
         correct: five
       - line: 7
-        ask: 'The first pass ends with `B -> D`. What is `dist["D"]` after the first pass?'
+        ask: 'Next comes `B -> D`. What is `dist["D"]` after it?'
         options:
           - id: ten
             text: '`10`'
@@ -63,11 +63,17 @@ questions:
             explanation: '`B` is 4 by the time `B -> D` runs, so it offers 4 + 6 = 10, less than `inf`.'
         correct: ten
       - line: 6
-        ask: Which node's distance does the second pass lower? Move `lowered` to it.
+        ask: Which node's distance is the last one the second pass lowers? Move `lowered` to it.
         pointer: lowered
-        correct: 3
-        explanation: '`C -> D` now reads `C` at 5, and 5 + 2 = 7 is less than 10, so `D` drops.'
+        correct: 4
+        explanation: >-
+          `C -> D` now reads `C` at 5 and lowers `D`. `D -> E` is last in the list and reads that
+          lowered `D`, so `E` drops after it.
         misses:
+          - index: 3
+            explanation: >-
+              `C -> D` does lower `D`, but it is first in the list. `D -> E` runs later in the same
+              pass and reads the new `D`, so another distance drops after it.
           - index: 1
             explanation: '`B` is reached only by `S -> B`, and `S` stays at 0, so `B` stays 4.'
           - index: 2
@@ -76,22 +82,24 @@ questions:
               `S -> C` offers 7.
         elsewhere: '`S` is the start at 0, and no edge leads into it.'
       - line: 9
-        ask: 'What value does `print(dist)` show for `D`?'
+        ask: 'What value does `print(dist)` show for `E`?'
         options:
-          - id: seven
-            text: '`7`'
-            explanation: '`C -> D` in the second pass lowered `D` from 10 to 5 + 2 = 7.'
-          - id: nine
-            text: '`9`'
+          - id: eight
+            text: '`8`'
             explanation: >-
-              9 is 7 + 2, from `C`'s first cost. `C` dropped to 5 in the first pass, so the second
-              pass reads 5.
+              In the second pass `C -> D` lowered `D` from 10 to 5 + 2 = 7, and `D -> E`, later in
+              the same pass, lowered `E` from 11 to 7 + 1 = 8.
+          - id: eleven
+            text: '`11`'
+            explanation: >-
+              11 was `E` after the first pass, 10 + 1. `D -> E` runs again in the second pass, after
+              `C -> D` has lowered `D` to 7.
           - id: ten
             text: '`10`'
             explanation: >-
-              10 was `D` after the first pass. The second pass checks `C -> D` again, now with `C`
-              at 5, and lowers `D`.
-        correct: seven
+              10 is 7 + 2 + 1, from `C`'s first cost. `C` dropped to 5 in the first pass, so the
+              second pass reads 5.
+        correct: eight
 
   - id: wp-exam-min-relax
     heading: Which line relaxes the edge?
