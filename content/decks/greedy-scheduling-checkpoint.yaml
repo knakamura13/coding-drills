@@ -107,7 +107,7 @@ questions:
               False.
           - index: 0
             explanation: "`[3, 5]` starts on day 3, after day 2, so `3 > 2` holds and `last` moves."
-        elsewhere: Among indexes 1 and 2, only `[3, 5]` starts after day 2.
+        elsewhere: Among indices 1 and 2, only `[3, 5]` starts after day 2.
         also:
           - { name: i, at: 2 }
       - line: 4
@@ -290,3 +290,141 @@ questions:
         explanation: >-
           It must fit after `[1, 3]` and before `[8, 10]`. The earliest end among intervals that
           start at 3 or later always meets both.
+
+  - id: sched-exam-which-plan
+    heading: Which plan removes the fewest?
+    tags: [intervals, greedy, sorting]
+    prompt: >-
+      Remove as few intervals as possible so that the rest never overlap. Touching intervals,
+      like `[1, 2]` and `[2, 3]`, may both stay. Each plan below reads the intervals once. Which
+      plan always removes the fewest?
+    options:
+      - id: clash-keep-sooner
+        text: Sort by start, and on a clash with the last one kept, keep whichever ends sooner
+        explanation: >-
+          On a clash one of the two has to go, and the one that ends sooner leaves room for
+          everything the other does, and more. On `[[1, 10], [2, 3], [4, 5], [6, 7]]` it keeps
+          `[2, 3]` over `[1, 10]`, then keeps `[4, 5]` and `[6, 7]`, so it removes 1, the fewest.
+      - id: start-keep-first
+        text: Sort by start, and keep each one that starts at or after the last kept end
+        explanation: >-
+          An early start says nothing about the end. On `[[1, 10], [2, 3], [4, 5], [6, 7]]` it
+          keeps `[1, 10]` and removes the other three, though removing `[1, 10]` alone is enough.
+      - id: shortest-first
+        text: Sort by length, shortest first, and keep each one that overlaps nothing kept
+        explanation: >-
+          A short interval can still block a lot. On `[[1, 6], [5, 8], [7, 12]]` the shortest,
+          `[5, 8]`, overlaps both others, so it removes 2, though removing `[5, 8]` alone is
+          enough.
+      - id: merge-count
+        text: Merge the overlapping intervals, and remove one for each that merged away
+        explanation: >-
+          Merging finds the time covered, not what has to go. `[[1, 10], [2, 3], [4, 5], [6, 7]]`
+          merges into one interval, so this removes 3, though removing `[1, 10]` alone is enough.
+    correct: clash-keep-sooner
+    followUps:
+      start-keep-first:
+        prompt: "Sorted by start, `[[1, 10], [2, 3], [4, 5], [6, 7]]` begins with `[1, 10]`. How many does this plan keep, against the most that can stay?"
+        options:
+          - { id: one-three, text: 'It keeps 1, while 3 can stay' }
+          - { id: three-three, text: 'It keeps 3, the most that can stay' }
+          - { id: two-three, text: 'It keeps 2, while 3 can stay' }
+        correct: one-three
+        explanation: >-
+          `[1, 10]` starts first but ends last, so every later interval starts before 10 and is
+          skipped. Keeping the interval that ends sooner would have kept the three short ones.
+      shortest-first:
+        prompt: Which number of a kept interval decides what can come after it?
+        options:
+          - { id: end, text: 'Its end, since the next start must be at or after it' }
+          - { id: length, text: 'Its length, since a short interval blocks less time' }
+          - { id: start, text: 'Its start, since an early start leaves no gap' }
+        correct: end
+        explanation: >-
+          What follows a kept interval depends on where it ends, not on how long it is. A short
+          interval in the middle can overlap two longer ones that could both stay.
+      merge-count:
+        prompt: What does merging the overlapping intervals into one tell you?
+        options:
+          - { id: covered, text: 'Which time is covered, not how many intervals fit side by side' }
+          - { id: removals, text: 'How many intervals must be removed' }
+          - { id: kept, text: 'Which intervals to keep' }
+        correct: covered
+        explanation: >-
+          Intervals in one merged block can still sit side by side, as the three short ones do
+          here. Keeping the most is a selection problem, and the sooner end decides each clash.
+
+  - id: sched-exam-debug-last-end
+    heading: Which call does it fail on?
+    tags: [intervals, greedy, python]
+    prompt: |-
+      A suggested solution should return the most intervals that can be kept with no two
+      overlapping. Touching intervals may both be kept. `float('-inf')` is smaller than every
+      number. One detail is slightly off:
+
+      ```python
+      def most_kept(spans):
+          count, last_end = 0, float('-inf')
+          for s, e in sorted(spans, key=lambda iv: iv[1]):
+              if s >= last_end:
+                  count += 1
+              last_end = e
+          return count
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: skip-then-fit
+        text: "`most_kept([[1, 3], [2, 4], [3, 5]])`"
+        explanation: >-
+          `last_end = e` runs on every pass, not only after a keep. `[2, 4]` is skipped but still
+          sets `last_end` to 4, so `[3, 5]` fails `3 >= 4` and the call returns 1. `[1, 3]` and
+          `[3, 5]` touch, so 2 fit. Indenting `last_end = e` under the `if` fixes it.
+      - id: skip-harmless
+        text: "`most_kept([[1, 3], [2, 4], [5, 6]])`"
+        explanation: >-
+          The skipped `[2, 4]` sets `last_end` to 4, but `[5, 6]` starts at 5, after both 3 and
+          4, so it is kept either way. It returns 2, which is right.
+      - id: all-touch
+        text: "`most_kept([[4, 6], [1, 2], [2, 4]])`"
+        explanation: >-
+          Sorted by end, the order is `[1, 2]`, `[2, 4]`, `[4, 6]`, and each starts where the last
+          one ends. Every interval is kept, so `last_end` is only ever a kept end. It returns 3,
+          which is right.
+      - id: skip-last
+        text: "`most_kept([[1, 5], [2, 3]])`"
+        explanation: >-
+          Sorted by end, `[2, 3]` is kept, and `[1, 5]` starts before 3 and is skipped. Nothing
+          comes after it, so its end never reaches a test. It returns 1, which is right.
+    correct: skip-then-fit
+    followUps:
+      skip-harmless:
+        prompt: "After `[2, 4]` is skipped, `last_end` is 4 instead of 3. Does that change what happens to `[5, 6]`?"
+        options:
+          - { id: kept, text: 'No, 5 is at least 4 and at least 3' }
+          - { id: skipped, text: 'Yes, `[5, 6]` is now skipped' }
+          - { id: stops, text: 'Yes, the loop stops at the skipped interval' }
+        correct: kept
+        explanation: >-
+          A wrong `last_end` only hurts when the next start falls between the real kept end and
+          the skipped end. 5 is past both.
+      all-touch:
+        prompt: When does the line `last_end = e` run on an interval the loop does not keep?
+        options:
+          - { id: skip, text: 'On every skipped interval, since it sits outside the `if`' }
+          - { id: never, text: 'Never, since it runs only after `count += 1`' }
+          - { id: last, text: 'Only on the last interval' }
+        correct: skip
+        explanation: >-
+          The line is indented under the `for`, not the `if`. Here no interval is skipped, so it
+          only ever records a kept end, and the answer comes out right.
+      skip-last:
+        prompt: "`[1, 5]` is skipped and sets `last_end` to 5. Which interval reads that value?"
+        options:
+          - { id: none, text: 'None, since `[1, 5]` is the last one read' }
+          - { id: first, text: '`[2, 3]`, which is then skipped' }
+          - { id: itself, text: '`[1, 5]`, which is then kept' }
+        correct: none
+        explanation: >-
+          A wrong `last_end` matters only to the intervals read after it. The skipped interval is
+          last here, so the count is still right.

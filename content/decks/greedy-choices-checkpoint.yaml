@@ -206,3 +206,77 @@ questions:
         explanation: >-
           12 fits in 23, so the rule buys it. The next price, 14, does not fit in 11, so the rule
           ends at three, and no four gifts fit.
+
+  - id: greedy-exam-debug-rate-key
+    heading: Which call does it fail on?
+    tags: [greedy, sorting, python]
+    prompt: |-
+      A suggested solution should return the most value that fits in `room` kg. Each load is a
+      `(weight, value)` pair, and any part of a load can be taken for that part of its value. One
+      detail is slightly off:
+
+      ```python
+      def pack(loads, room):
+          total = 0
+          for weight, value in sorted(loads, key=lambda p: p[1], reverse=True):
+              take = min(weight, room)
+              total += value * take / weight
+              room -= take
+          return total
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: rate-beats-value
+        text: "`pack([(2, 10), (4, 12)], 3)`"
+        explanation: >-
+          The key is the value alone, so the load worth 12 comes first and 3 of its 4 kg give 9.0.
+          The load worth 10 is 5 per kg against 3 per kg, so the best is all 2 kg of it and 1 kg of
+          the other, 10 + 3 = 13.0. Sorting by `p[1] / p[0]` fixes it.
+      - id: orders-agree
+        text: "`pack([(3, 15), (5, 10)], 4)`"
+        explanation: >-
+          The load worth 15 has the larger value and also the better rate, 5 per kg against 2, so
+          both keys give the same order. It returns 15 + 2 = 17.0, which is right.
+      - id: all-fit
+        text: "`pack([(1, 4), (5, 15)], 6)`"
+        explanation: >-
+          The keys disagree on the order, but the loads weigh 6 kg together, so both are taken
+          whole whatever the order. It returns 19.0, which is right.
+      - id: rates-tie
+        text: "`pack([(2, 8), (4, 16)], 3)`"
+        explanation: >-
+          Both loads are worth 4 per kg, so every kg taken adds 4 whichever load it comes from. It
+          returns 12.0, which is right.
+    correct: rate-beats-value
+    followUps:
+      orders-agree:
+        prompt: "In `[(3, 15), (5, 10)]`, which load comes first by value, and which by value per kg?"
+        options:
+          - { id: same, text: 'The load worth 15 comes first under both keys' }
+          - { id: differ, text: 'The load worth 15 by value, the other by value per kg' }
+          - { id: neither, text: 'The 5 kg load under both keys, since it is heavier' }
+        correct: same
+        explanation: >-
+          15 is the larger value, and 15 over 3 kg is 5 per kg against 10 over 5 kg, 2 per kg. The
+          wrong key can only hurt when the two orders differ.
+      all-fit:
+        prompt: When every load fits in the room, does the order the loop visits them change the total?
+        options:
+          - { id: no-change, text: 'No, every load is taken whole in any order' }
+          - { id: first-most, text: 'Yes, the first load visited takes the most room' }
+          - { id: rate-only, text: 'Yes, unless the loads are sorted by value per kg' }
+        correct: no-change
+        explanation: >-
+          With room for everything, `min(weight, room)` is the whole weight on every pass. The
+          order only matters once a load has to be cut to fit.
+      rates-tie:
+        prompt: "In `[(2, 8), (4, 16)]`, what is each load worth per kg?"
+        options:
+          - { id: four, text: '4 per kg for both loads' }
+          - { id: differ, text: '4 per kg for one and 2 per kg for the other' }
+          - { id: values, text: '8 and 16, the values of the loads' }
+        correct: four
+        explanation: >-
+          8 over 2 kg and 16 over 4 kg are both 4 per kg. With equal rates, the 3 kg taken are
+          worth 12 from either load, so sorting by value does no harm here.
