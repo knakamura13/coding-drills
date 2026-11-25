@@ -80,8 +80,9 @@ questions:
             text: It pops 4 first, so each call starts with an empty list
         correct: appends
         explanation: >-
-          Every call above a leaf makes one choice of its own before it calls the next level. So
-          the call on level `i` starts with one entry for each of the items before it.
+          Every call above a leaf makes its own choice before it calls the next level. On the
+          first route down every call takes its item, so `explore(i)` first starts with one entry
+          for each item before it.
       own-item:
         prompt: Which call appends `items[2]`?
         options:
@@ -114,13 +115,14 @@ questions:
     heading: Where does the next call start?
     tags: [backtracking, recursion]
     workedExample: |-
-      Consider `items = [2, 9, 4]` and `pick(start)`, whose loop runs `j` from `start`, appends
+      Consider `items = [2, 9, 4, 6]` and `pick(start)`, whose loop runs `j` from `start`, appends
       `items[j]`, and calls `pick(j + 1)`.
 
-      1. `pick(0)` starts its loop at `j = 0` and appends `items[0] = 2`, so `path == [2]`.
-      2. It then calls `pick(j + 1)`, which is `pick(1)`. So the next level's loop starts at index 1
-         and can choose only the 9 or the 4.
-      3. The 2 at index 0 lies before that `start`, so the next level can never take it a second
+      1. `pick(0)` has tried the 2 and popped it, so its loop is at `j = 1`. It appends
+         `items[1] = 9`, so `path == [9]`.
+      2. It then calls `pick(j + 1)`, which is `pick(2)`. The argument comes from `j`, the item just
+         taken, so the next level's loop starts at index 2 and can choose only the 4 or the 6.
+      3. The 9 at index 1 lies before that `start`, so the next level can never take it a second
          time.
     prompt: >-
       `pick` lists every way to choose 3 items from `items`, each list in index order. Each level
@@ -156,23 +158,23 @@ questions:
               taken, not from this call's own `start`.
           - index: 2
             explanation: >-
-              Starting at `j` would let the next level take 5 again, giving `[7, 5, 5]`. The call
-              passes `j + 1`, one past the item just taken.
+              Index 2 is `j`, and also this call's `start + 1`. Starting there would let the next
+              level take 5 again, giving `[7, 5, 5]`. The call passes `j + 1`, one past the item
+              just taken.
         elsewhere: The call passes `j + 1`. With `j = 2` that is index 3.
 
   - id: choice-after-call
     heading: What does this do?
     tags: [backtracking, recursion]
     workedExample: |-
-      Consider `codes()` over the letters `"xy"`, which records `"".join(path)` once `path` holds 2
-      letters. Otherwise each pass of its loop appends a letter, calls `codes()`, and pops.
+      Consider `tags()` over the letters `"ab"`, which records `"".join(path)` once `path` holds 1
+      letter. Otherwise each pass of its loop appends a letter, calls `tags()`, and pops.
 
-      1. The top call appends `'x'` and then calls `codes()`. The append ran first, so that call
-         sees `['x']`.
-      2. That call appends `'x'` and then `'y'`, calling the next level each time with `['x', 'x']`
-         and then `['x', 'y']`. So it records `'xx'` and `'xy'`.
-      3. The top call pops its `'x'` and does the same with `'y'`, which records `'yx'` and `'yy'`.
-         It returns `['xx', 'xy', 'yx', 'yy']`.
+      1. The top call appends `'a'` and then calls `tags()`. The append ran first, so that call sees
+         `['a']`, passes the length check and records `'a'`.
+      2. The top call pops the `'a'`, appends `'b'` and calls again. That call sees `['b']` and
+         records `'b'`.
+      3. So `tags()` returns `['a', 'b']`. Each call saw only the letter appended before it started.
     prompt: |-
       ```python
       def codes():
@@ -306,7 +308,8 @@ questions:
         text: "`'b'`"
         explanation: >-
           The choice of `spell(0)`, `'a'`, is meant to stay while `spell(1)` works through its
-          letters. Even with the pop, the leaf would start from `['a']`.
+          letters. Even with the pop, `path` would be `['a']` when `'b'` goes in, so the leaf would
+          record `'ab'`, not `'b'`.
       - id: aa-again
         text: "`'aa'`"
         explanation: >-
@@ -444,8 +447,8 @@ questions:
         pointer: i
         correct: 2
         explanation: >-
-          The skip call is `explore(2)` with `path == [5]`. It is the sibling of the call that
-          took the 2.
+          The skip call is `explore(2)` with `path == [5]`. It is the sibling of the first
+          `explore(2)`, the call `explore(1)` made after taking the 2.
         misses:
           - index: 3
             explanation: >-
