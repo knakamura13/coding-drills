@@ -27,10 +27,30 @@ const id = z
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 
+/**
+ * How deep an item goes, shallowest first. A learner will see every item at or
+ * below the level they choose (#155). Keep the order when adding a level.
+ */
+export const DEPTHS = ['interview', 'deep'] as const;
+export type Depth = (typeof DEPTHS)[number];
+/** The depth of a path that does not set one. A skill or drill without one takes its parent's. */
+const DEFAULT_DEPTH: Depth = 'interview';
+
+const depth = z.enum(DEPTHS).optional();
+
+const shallower = (item: Depth, than: Depth): boolean => DEPTHS.indexOf(item) < DEPTHS.indexOf(than);
+
+/** A learner who chose a level must never meet an item that depends on something above it. */
+function assertNotShallower(item: string, depth: Depth, relation: string, other: string, otherDepth: Depth): void {
+	if (shallower(depth, otherDepth)) throw new ContentError(`${item} is ${depth}, shallower than ${relation} ${other} (${otherDepth})`);
+}
+
 const levelSchema = z
 	.object({
 		id,
-		title: text(90)
+		title: text(90),
+		/** Never shallower than the path. */
+		depth
 	})
 	.strict();
 
@@ -90,10 +110,10 @@ const drillSchema = z
 		 * checkpoints needs it, or the drills are paired with them by list position.
 		 */
 		checkpoint: id.optional(),
-		/** A correct older attempt passed the original single-item checkpoint. */
-		legacyPassBefore: z.number().int().min(2).optional(),
 		/** Exam drills only: the checkpoint `mix` kinds this item counts toward. */
 		covers: z.array(id).min(1).optional(),
+		/** Never shallower than the named skill, or the path when no skill is named. */
+		depth,
 		note: text(400)
 	})
 	.strict();
@@ -125,6 +145,7 @@ export const branchSchema = z
 					after: z.array(id),
 					/** Plan text that does not name a path, so it is not an edge. */
 					afterNote: text(300).optional(),
+					depth,
 					/** Extra skill ids the entrance and the single checkpoint wait on. */
 					needs: z.array(id).optional(),
 					levels: z.array(levelSchema).min(2).max(3),
@@ -160,6 +181,7 @@ export interface CurriculumSkill {
 	line: string;
 	/** Skill ids that come immediately before this one. */
 	after: readonly string[];
+	depth: Depth;
 }
 
 export interface CurriculumCheckpoint {
@@ -190,6 +212,7 @@ export interface CurriculumPath {
 	branchId: string;
 	after: readonly string[];
 	afterNote?: string;
+	depth: Depth;
 	skills: readonly CurriculumSkill[];
 	forks: readonly CurriculumFork[];
 	checkpoints: readonly CurriculumCheckpoint[];
@@ -215,9 +238,9 @@ export interface CurriculumDrill {
 	tests?: readonly string[];
 	/** For an exam drill: the checkpoint it belongs to, when the mapping names one. */
 	checkpointId?: string;
-	legacyPassBefore?: number;
 	/** Item kinds this exam drill counts toward. Empty for other dispositions. */
 	covers: readonly string[];
+	depth: Depth;
 	note: string;
 }
 
@@ -379,6 +402,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		const needs = dedupe(path.needs ?? []);
 		const entrance = [...path.after.map((prerequisite) => lastMain.get(prerequisite)!), ...needs];
 		const skills: CurriculumSkill[] = [];
+		const pathDepth = path.depth ?? DEFAULT_DEPTH;
 		path.levels.forEach((level, index) => {
 			const skill: CurriculumSkill = {
 				kind: 'skill',
@@ -387,7 +411,8 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				pathId,
 				branchId: branch.id,
 				line: 'main',
-				after: index === 0 ? [...entrance] : [path.levels[index - 1]!.id]
+				after: index === 0 ? [...entrance] : [path.levels[index - 1]!.id],
+				depth: level.depth ?? pathDepth
 			};
 			skills.push(skill);
 			skillIndex.set(skill.id, skill);
@@ -401,12 +426,14 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					pathId,
 					branchId: branch.id,
 					line: fork.id,
-					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id]
+					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id],
+					depth: level.depth ?? pathDepth
 				};
 				skills.push(skill);
 				skillIndex.set(skill.id, skill);
 			});
 		}
+		for (const skill of skills) assertNotShallower(`skill "${skill.id}"`, skill.depth, 'its path', `"${pathId}"`, pathDepth);
 		skillsByPath.set(pathId, skills);
 	}
 
@@ -421,6 +448,11 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 	const skillEdges = new Map<string, readonly string[]>([...skillIndex].map(([id, skill]) => [id, skill.after]));
 	const skillCycle = cycle(skillEdges);
 	if (skillCycle) throw new ContentError(`skills form a cycle: ${skillCycle.join(' → ')}`);
+	for (const skill of skillIndex.values()) {
+		for (const required of skill.after) {
+			assertNotShallower(`skill "${skill.id}"`, skill.depth, 'the skill it requires,', `"${required}"`, skillIndex.get(required)!.depth);
+		}
+	}
 
 	const compiledPaths = new Map<string, CurriculumPath>();
 	for (const [pathId, path] of pathFile) {
@@ -507,6 +539,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			branchId: branch.id,
 			after: path.after,
 			...(path.afterNote ? { afterNote: path.afterNote } : {}),
+			depth: path.depth ?? DEFAULT_DEPTH,
 			skills,
 			forks: (path.forks ?? []).map((fork) => ({
 				id: fork.id,
@@ -533,9 +566,6 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 			}
 			const source = questionsById.get(drill.questionId);
 			if (!source) throw new ContentError(`drill "${drill.questionId}" is not a question id in content/decks`);
-			if (drill.legacyPassBefore && drill.disposition !== 'exam') {
-				throw new ContentError(`drill "${drill.questionId}" sets legacyPassBefore, which only an exam drill can do`);
-			}
 			if (drill.covers && drill.disposition !== 'exam') {
 				throw new ContentError(`drill "${drill.questionId}" sets covers, which only an exam drill can do`);
 			}
@@ -569,6 +599,23 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					throw new ContentError(`drill "${drill.questionId}" names skill "${drill.skill}", which is not on path "${drill.path}"`);
 				}
 			}
+			const drillPath = compiledPaths.get(drill.path)!;
+			const skillDepth = (skillId: string) => drillPath.skills.find((skill) => skill.id === skillId)!.depth;
+			// Mastery pairs a drill that names no skill with one by list position, which the depth check cannot follow.
+			if (!drill.skill && (drill.disposition === 'keep' || drill.disposition === 'rewrite') && drillPath.skills.some((skill) => skill.depth !== drillPath.depth)) {
+				throw new ContentError(`drill "${drill.questionId}" must name its skill, because path "${drill.path}" has skills at another depth`);
+			}
+			const parent = drill.skill
+				? { kind: 'skill', id: drill.skill, depth: skillDepth(drill.skill) }
+				: { kind: 'path', id: drill.path, depth: drillPath.depth };
+			const drillDepth = drill.depth ?? parent.depth;
+			const item = `drill "${drill.questionId}"`;
+			assertNotShallower(item, drillDepth, `its ${parent.kind}`, `"${parent.id}"`, parent.depth);
+			for (const tested of drill.tests ?? []) assertNotShallower(item, drillDepth, 'the skill it tests,', `"${tested}"`, skillDepth(tested));
+			// A missed exam drill with no tests sends the learner back to every skill on the path.
+			if (drill.disposition === 'exam' && !drill.tests?.length && drillPath.skills.some((skill) => shallower(drillDepth, skill.depth))) {
+				throw new ContentError(`${item} must list the skills it tests, because path "${drill.path}" has skills deeper than the drill`);
+			}
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,
@@ -578,9 +625,9 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				...(drill.skill ? { skillId: drill.skill } : {}),
 				...(drill.variant ? { variant: drill.variant } : {}),
 				...(drill.tests ? { tests: dedupe(drill.tests) } : {}),
-				...(drill.legacyPassBefore ? { legacyPassBefore: drill.legacyPassBefore } : {}),
 				...(drill.checkpoint ? { checkpointId: drill.checkpoint } : {}),
 				covers: dedupe(drill.covers ?? []),
+				depth: drillDepth,
 				note: drill.note
 			});
 		}

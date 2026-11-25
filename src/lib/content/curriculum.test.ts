@@ -360,6 +360,102 @@ describe('compileCurriculum', () => {
 		const joined = compiled.branches[0]!.paths[2]!.checkpoints[0]!;
 		expect(joined.requires).toEqual(['joined-a', 'joined-b', 'alpha-a', 'alpha-b', 'beta-a', 'beta-b']);
 	});
+
+	function deepPath(id: string): BranchFile['paths'][number] {
+		const deep = path(id);
+		deep.depth = 'deep';
+		return deep;
+	}
+
+	it('resolves an unset depth to its parent, interview at the top, and keeps an explicit deep', () => {
+		const shallow = path('shallow');
+		shallow.levels = [shallow.levels[0]!, { ...shallow.levels[1]!, depth: 'deep' }];
+		shallow.forks = [{ id: 'side', title: 'Side', levels: [{ ...level('side-a'), depth: 'deep' }] }];
+		const files = [
+			branch('foundations', 1, [shallow, deepPath('deep')], [
+				{ questionId: 'plain', disposition: 'keep', path: 'shallow', skill: 'shallow-a', note: 'Default.' },
+				{ questionId: 'deep-card', disposition: 'keep', path: 'shallow', skill: 'shallow-b', note: 'Deep skill.' },
+				{ questionId: 'deep-exam', disposition: 'exam', path: 'deep', note: 'Deep path.' }
+			])
+		];
+		const compiled = compileCurriculum(files, questions('plain', 'deep-card', 'deep-exam'));
+		const [interviewPath, deep] = compiled.branches[0]!.paths;
+		expect(interviewPath!.depth).toBe('interview');
+		expect(interviewPath!.skills.map((skill) => [skill.id, skill.depth])).toEqual([
+			['shallow-a', 'interview'],
+			['shallow-b', 'deep'],
+			['side-a', 'deep']
+		]);
+		expect(deep!.depth).toBe('deep');
+		expect(deep!.skills.map((skill) => skill.depth)).toEqual(['deep', 'deep']);
+		expect(compiled.drills.map((drill) => drill.depth)).toEqual(['interview', 'deep', 'deep']);
+	});
+
+	it('rejects a skill shallower than its path', () => {
+		const main = deepPath('alpha');
+		main.levels = [main.levels[0]!, { ...level('alpha-b'), depth: 'interview' }];
+		expect(() => compileCurriculum([branch('foundations', 1, [main])], [])).toThrow(
+			'skill "alpha-b" is interview, shallower than its path "alpha" (deep)'
+		);
+		const forked = deepPath('alpha');
+		forked.forks = [{ id: 'side', title: 'Side', levels: [{ ...level('side-a'), depth: 'interview' }] }];
+		expect(() => compileCurriculum([branch('foundations', 1, [forked])], [])).toThrow(
+			'skill "side-a" is interview, shallower than its path "alpha" (deep)'
+		);
+	});
+
+	it('rejects a drill shallower than the skill it names, or its path when it names none', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const underSkill = [
+			branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'keep', path: 'alpha', skill: 'alpha-b', depth: 'interview', note: 'Teach it.' }])
+		];
+		expect(() => compileCurriculum(underSkill, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than its skill "alpha-b" (deep)'
+		);
+		const underPath = [branch('foundations', 1, [deepPath('beta')], [{ questionId: 'one', disposition: 'exam', path: 'beta', depth: 'interview', note: 'Exam.' }])];
+		expect(() => compileCurriculum(underPath, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than its path "beta" (deep)'
+		);
+	});
+
+	it('rejects an exam drill shallower than a skill it tests', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [
+			branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', tests: ['alpha-b'], note: 'Exam.' }])
+		];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than the skill it tests, "alpha-b" (deep)'
+		);
+	});
+
+	it('makes an exam drill list the skills it tests when the path holds deeper skills', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', note: 'Exam.' }])];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" must list the skills it tests, because path "alpha" has skills deeper than the drill'
+		);
+		const named = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', tests: ['alpha-a'], note: 'Exam.' }])];
+		expect(() => compileCurriculum(named, questions('one'))).not.toThrow();
+	});
+
+	it('rejects a skill that requires a deeper skill', () => {
+		const files = [branch('foundations', 1, [deepPath('alpha'), path('beta', ['alpha'])])];
+		expect(() => compileCurriculum(files, [])).toThrow(
+			'skill "beta-a" is interview, shallower than the skill it requires, "alpha-b" (deep)'
+		);
+	});
+
+	it('makes a teaching drill name its skill when the path holds skills at another depth', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'keep', path: 'alpha', note: 'Teach it.' }])];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" must name its skill, because path "alpha" has skills at another depth'
+		);
+	});
 });
 
 const scratch: string[] = [];
@@ -378,5 +474,16 @@ describe('loadCurriculum files', () => {
 			`id: foundations\ntitle: Foundations\nsummary: Shared.\norder: 1\npaths:\n  - id: arrays\n    title: Arrays\n    summary: Read.\n    after: []\n    levels:\n      - { id: a, title: A }\n      - { id: b, title: B }\n    checkpoints:\n      - { id: exam, title: Exam, summary: Combine. }\ndrills: []\n`
 		);
 		expect(() => loadCurriculum(dir, decks)).toThrow(/must match the file name/);
+	});
+
+	it('names the item when a depth is not one of the levels', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'curriculum-'));
+		const decks = mkdtempSync(join(tmpdir(), 'decks-'));
+		scratch.push(dir, decks);
+		writeFileSync(
+			join(dir, 'foundations.yaml'),
+			`id: foundations\ntitle: Foundations\nsummary: Shared.\norder: 1\npaths:\n  - id: arrays\n    title: Arrays\n    summary: Read.\n    after: []\n    levels:\n      - { id: a, title: A }\n      - { id: b, title: B, depth: shallow }\n    checkpoints:\n      - { id: exam, title: Exam, summary: Combine. }\ndrills: []\n`
+		);
+		expect(() => loadCurriculum(dir, decks)).toThrow(/paths\.0\.levels\.1\.depth/);
 	});
 });

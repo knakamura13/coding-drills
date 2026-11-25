@@ -10,7 +10,8 @@ function path(id: string, title: string): CurriculumPath {
 		summary: `${title}.`,
 		branchId: 'search',
 		after: [],
-		skills: [{ kind: 'skill', id: `${id}-skill`, title: `${title} skill`, pathId: id, branchId: 'search', line: 'main', after: [] }],
+		depth: 'interview',
+		skills: [{ kind: 'skill', id: `${id}-skill`, title: `${title} skill`, pathId: id, branchId: 'search', line: 'main', after: [], depth: 'interview' }],
 		forks: [],
 		checkpoints: []
 	};
@@ -33,6 +34,7 @@ const curriculum: Curriculum = {
 		pathId: id,
 		skillId: `${id}-skill`,
 		covers: [],
+		depth: 'interview' as const,
 		note: 'Noted.'
 	})),
 	followUps: []

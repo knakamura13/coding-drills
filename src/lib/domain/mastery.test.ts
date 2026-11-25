@@ -137,7 +137,7 @@ describe('rollup', () => {
 });
 
 function drill(questionId: string, pathId: string, disposition: CurriculumDrill['disposition']): CurriculumDrill {
-	return { questionId, deckId: 'deck', disposition, pathId, covers: [], note: 'Noted.' };
+	return { questionId, deckId: 'deck', disposition, pathId, covers: [], depth: 'interview', note: 'Noted.' };
 }
 
 function tree(): Curriculum {
@@ -155,9 +155,10 @@ function tree(): Curriculum {
 						summary: 'Start.',
 						branchId: 'one',
 						after: [],
+						depth: 'interview',
 						skills: [
-							{ kind: 'skill', id: 'a1', title: 'First', pathId: 'alpha', branchId: 'one', line: 'main', after: [] },
-							{ kind: 'skill', id: 'a2', title: 'Second', pathId: 'alpha', branchId: 'one', line: 'main', after: ['a1'] }
+							{ kind: 'skill', id: 'a1', title: 'First', pathId: 'alpha', branchId: 'one', line: 'main', after: [], depth: 'interview' },
+							{ kind: 'skill', id: 'a2', title: 'Second', pathId: 'alpha', branchId: 'one', line: 'main', after: ['a1'], depth: 'interview' }
 						],
 						forks: [],
 						checkpoints: [
@@ -188,8 +189,9 @@ function tree(): Curriculum {
 						branchId: 'two',
 						after: ['alpha'],
 						afterNote: 'Alpha leads in.',
+						depth: 'interview',
 						skills: [
-							{ kind: 'skill', id: 'b1', title: 'Beta skill', pathId: 'beta', branchId: 'two', line: 'main', after: ['a2'] },
+							{ kind: 'skill', id: 'b1', title: 'Beta skill', pathId: 'beta', branchId: 'two', line: 'main', after: ['a2'], depth: 'interview' },
 							{
 								kind: 'skill',
 								id: 'b-fork',
@@ -197,7 +199,8 @@ function tree(): Curriculum {
 								pathId: 'beta',
 								branchId: 'two',
 								line: 'side',
-								after: ['a2']
+								after: ['a2'],
+								depth: 'interview'
 							}
 						],
 						forks: [{ id: 'side', title: 'Side', after: null, skillIds: ['b-fork'] }],
@@ -380,6 +383,7 @@ describe('examDrills', () => {
 		summary: 'Two checkpoints.',
 		branchId: 'one',
 		after: [],
+		depth: 'interview' as const,
 		skills: [],
 		forks: [],
 		checkpoints: [

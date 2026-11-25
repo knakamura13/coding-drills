@@ -1,6 +1,6 @@
 import { localDay } from '$lib/domain/days';
 import { compareAttempts, isFlag, readAttempt } from './guards';
-import { EXAM_RULES_VERSION, MAX_NOTE_LENGTH, type Attempt, type Flag, type FlagStage } from './types';
+import { MAX_NOTE_LENGTH, type Attempt, type Flag, type FlagStage } from './types';
 
 /** The slice of the Web Storage API this app uses. */
 export interface KeyValueStore {
@@ -101,14 +101,13 @@ export class Repository {
 		this.#write(KEYS.attempts, [...attempts].sort(compareAttempts).slice(-MAX_ATTEMPTS));
 	}
 
-	recordAttempt(input: Omit<Attempt, 'id' | 'at' | 'day' | 'examRulesVersion'>): Attempt {
+	recordAttempt(input: Omit<Attempt, 'id' | 'at' | 'day'>): Attempt {
 		const now = this.#now();
 		const attempt: Attempt = {
 			...input,
 			id: this.#newId(),
 			at: now.toISOString(),
-			day: localDay(now),
-			examRulesVersion: EXAM_RULES_VERSION
+			day: localDay(now)
 		};
 		this.#writeAttempts([...this.attempts(), attempt]);
 		// Before the first sync every attempt counts as pending, so there is nothing to add.

@@ -159,7 +159,7 @@ describe('scheduleCounts', () => {
 describe('fresh review variants', () => {
 	const decks = [deck('alpha', ['a1', 'a2', 'a3']), deck('beta', ['original', 'fresh', 'older', 'other-skill'])];
 	const mapping = (deckId: string, questionId: string, skillId: string, variant?: true): CurriculumDrill => ({
-		deckId, questionId, skillId, variant, disposition: 'keep', pathId: 'path', covers: [], note: 'drill'
+		deckId, questionId, skillId, variant, disposition: 'keep', pathId: 'path', covers: [], depth: 'interview', note: 'drill'
 	});
 	const drills = [
 		...['a1', 'a2', 'a3'].map((id) => mapping('alpha', id, 'same')),
