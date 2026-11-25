@@ -109,8 +109,9 @@ questions:
     prompt: >-
       On a 2-by-2 block of land, this flood fill starts with `frontier = [(0, 0)]`. It adds a
       cell to `seen` when it pops it, not when it adds it, and adds every land neighbor not in
-      `seen`, checking right, down, left, then up. `frontier.pop()` takes the item added last.
-      What happens to `(0, 1)`?
+      `seen`, checking right, down, left, then up. It has no `seen` test at the pop, so every
+      entry it pops is processed. `frontier.pop()` takes the item added last. What happens to
+      `(0, 1)`?
     options:
       - id: twice
         text: It joins the frontier twice and is processed twice
@@ -127,11 +128,11 @@ questions:
         explanation: >-
           `(0, 1)` was added first, so `pop()` takes it last. By then `(1, 1)` has already checked
           it, found it unmarked, and added it again.
-      - id: skipped
-        text: It joins twice, but its second entry is skipped
+      - id: three-times
+        text: It joins three times, from `(0, 0)`, `(1, 0)` and `(1, 1)`
         explanation: >-
-          Nothing checks a cell when it is popped. Both entries are popped and processed, so
-          `(0, 1)` checks its neighbors twice.
+          `(1, 0)` is diagonal from `(0, 1)`, so processing it never checks `(0, 1)`. Only
+          `(0, 0)` and `(1, 1)` add it, so it joins twice and both entries are processed.
     correct: twice
     followUps:
       first-found:
@@ -156,17 +157,17 @@ questions:
             text: '`(1, 1)`, the cell furthest away'
         correct: last
         explanation: '`pop()` takes the last item, so `(1, 0)` and then `(1, 1)` are processed before `(0, 1)` gets its turn.'
-      skipped:
-        prompt: What does the loop do with a cell it pops?
+      three-times:
+        prompt: Does processing `(1, 0)` check `(0, 1)`?
         options:
-          - id: process
-            text: Marks it and checks its neighbors, every time
-          - id: skip
-            text: Skips it if it is already in `seen`
-          - id: drop
-            text: Drops it if it was added twice
-        correct: process
-        explanation: This loop has no test at the pop. Marking when a cell is added is what stops the second entry from forming.
+          - id: corner
+            text: No, the two cells touch only at a corner
+          - id: block
+            text: Yes, every cell in the block is its neighbor
+          - id: above
+            text: Yes, `(0, 1)` is one step up from it
+        correct: corner
+        explanation: Up from `(1, 0)` is `(0, 0)`, and right is `(1, 1)`. `(0, 1)` differs from it in both coordinates, so `(1, 0)` never adds it.
 
   - id: reachability-checkpoint-next-start
     tags: [grid]
@@ -235,81 +236,76 @@ questions:
         correct: corner
         explanation: A legal move changes one coordinate by one. `(2, 2)` differs from `(1, 1)` in both, so the first fill does not reach it.
 
-  - id: reachability-checkpoint-count-islands
-    heading: Which approach counts the islands?
-    tags: [grid, graph]
-    prompt: >-
-      A grid holds `1` for land and `0` for water. An island is a group of land cells joined by moves
-      up, down, left, or right. How do you count the islands?
+  - id: reachability-checkpoint-trapped-land
+    heading: How many land cells are trapped?
+    tags: [grid]
+    prompt: |-
+      `1` is land and `0` is water, and a walk moves up, down, left or right onto land. A land cell is trapped if no walk from it reaches a cell in the top or bottom row or the leftmost or rightmost column. A land cell already in one of those is not trapped. How many land cells in this grid are trapped?
+
+      ```text
+      10000
+      11000
+      00110
+      00100
+      00000
+      ```
     options:
-      - id: one-corner
-        text: Run one search from the top-left corner and return how many cells it reaches
+      - id: three
+        text: '3'
         explanation: >-
-          Two flaws. A search reaches only the cells connected to its start, so from one corner it
-          covers at most one island, and the start may even be water. And what it returns is a cell
-          count, not an island count. Each island needs its own start, and each start adds one.
-      - id: border-cells
-        text: Count the land cells that touch water or the grid edge
+          The island `(2, 2)`, `(2, 3)` and `(3, 2)` touches no outer row or column, so all three
+          of its cells are trapped. `(1, 1)` is away from the edge too, but it shares an island
+          with `(1, 0)`, which is in the leftmost column.
+      - id: four
+        text: '4'
         explanation: >-
-          That counts the rim of the land shapes, not the shapes. One island that is a 3 x 3 block of
-          land has eight such cells. Counting cells cannot tell whether two land cells belong to the
-          same island, but following connections can.
-      - id: every-land-cell
-        text: Start a search from every land cell with no `seen` check, adding one for each
+          That counts the land cells away from the edge. `(1, 1)` is one of them, but its left
+          neighbor, `(1, 0)`, is land in the leftmost column, so it is not trapped.
+      - id: one
+        text: '1'
         explanation: >-
-          With no `seen` check, every land cell starts its own search, so the answer is just the
-          number of land cells. An island of five cells would be counted five times.
-      - id: scan-unvisited
-        text: Scan all cells; at each land cell not in `seen`, start a search and add one
+          That counts the trapped islands. The question asks for land cells, and the one trapped
+          island holds three of them.
+      - id: zero
+        text: '0'
         explanation: >-
-          If a land cell were part of an earlier island, that island's search would already have
-          marked it. So each unmarked land cell found by the scan must be a new island. The search
-          marks the whole island, and the scan skips its other cells.
-    correct: scan-unvisited
+          That joins `(1, 1)` and `(2, 2)`, which touch only at a corner. No legal move links them,
+          so the lower island stays cut off from the edge.
+    correct: three
     followUps:
-      one-corner:
-        prompt: Which cells does a search started at one land cell reach?
+      four:
+        prompt: Can a walk from `(1, 1)` reach a cell in the leftmost column?
         options:
-          - id: all-land
-            text: Every land cell in the grid
-          - id: connected-only
-            text: Only the land cells connected to the start by up, down, left, or right steps
-          - id: neighbors-only
-            text: Only the start's four neighbors, because a search takes a single step
-        correct: connected-only
-        explanation: >-
-          A search follows legal moves, so it stops at water and never jumps to a separate island.
-          That is why the count needs a fresh start for each island, found by scanning every cell.
-      border-cells:
-        prompt: Why does counting land cells that touch water or the edge fail to give the island count?
+          - id: step-left
+            text: Yes, one step left reaches `(1, 0)`
+          - id: inside
+            text: No, since `(1, 1)` is away from the edge
+          - id: corner
+            text: Only by a diagonal step to `(0, 0)`
+        correct: step-left
+        explanation: A cell is trapped only if its whole island stays off the edge. `(1, 1)` shares an island with `(1, 0)` and `(0, 0)`, which are on it.
+      one:
+        prompt: Does the answer go up by one for each trapped island or for each trapped cell?
         options:
-          - id: same-island
-            text: It never checks whether two land cells are joined, so one big island contributes many cells
-          - id: thin-islands
-            text: It skips islands that are only one cell wide
-          - id: diagonals
-            text: It misses that diagonal neighbors also belong to the same island
-        correct: same-island
-        explanation: >-
-          An island is defined by how its cells are joined, and a per-cell count never looks at the
-          joins, so it measures rim length instead of islands. A search follows the joins, so one
-          search start stands for one island. Here islands join only by up, down, left, or right.
-      every-land-cell:
-        prompt: >-
-          A 2 x 2 block of land is one island. If a search starts from every land cell with no
-          `seen` check, how many does it add?
+          - id: per-cell
+            text: Each trapped cell, since the question counts land cells
+          - id: per-island
+            text: Each trapped island, since its cells share one walk
+          - id: per-water
+            text: Each cell next to water, since water traps it
+        correct: per-cell
+        explanation: The lower island holds `(2, 2)`, `(2, 3)` and `(3, 2)`, and each of those cells is trapped, so it adds three.
+      zero:
+        prompt: Can a single legal move go from `(1, 1)` to `(2, 2)`?
         options:
-          - id: one
-            text: '1'
-          - id: two
-            text: '2'
-          - id: four
-            text: '4'
-        correct: four
-        explanation: >-
-          Each of the four cells starts its own search, so the count is four for one island. The
-          `seen` mark is what lets the scan skip the other three after the first search has
-          marked them.
+          - id: two-changes
+            text: No, it changes both coordinates
+          - id: yes-corner
+            text: Yes, since the cells touch at a corner
+          - id: yes-land
+            text: Yes, since both cells are land
+        correct: two-changes
+        explanation: A legal move changes one coordinate by one. With no diagonal step, no walk from the lower island reaches `(1, 1)` or the edge.
 
   - id: reachability-checkpoint-debug-start
     heading: Which call does it fail on?

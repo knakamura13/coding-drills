@@ -213,85 +213,80 @@ questions:
         correct: found
         explanation: The label is written inside the `if`, as C is found from B. At that moment `minute` is 3.
 
-  - id: traversal-exam-rotting-oranges
-    tags: [bfs, grid]
-    prompt: >-
-      In a grid, `2` is a rotten orange, `1` is a fresh orange, and `0` is empty. Each minute, every
-      fresh orange next to a rotten one (up, down, left, right) turns rotten. Several oranges can start
-      rotten. How many minutes pass until no fresh orange is left (or -1 if some never rot)? Which
-      approach is the best fit?
+  - id: traversal-exam-shared-neighbor
+    heading: In what order are the nodes popped?
+    tags: [bfs, queue]
+    prompt: |-
+      M and N are both sources, so this BFS starts with both in the queue and both marked seen. In what order does it pop the nodes?
+
+      ```python
+      links = {"M": ["A", "B"], "N": ["B", "C"], "A": ["M", "D"],
+               "B": ["M", "N"], "C": ["N"], "D": ["A"]}
+      queue = deque(["M", "N"])
+      seen = {"M", "N"}
+      while queue:
+          node = queue.popleft()
+          for nb in links[node]:
+              if nb not in seen:
+                  seen.add(nb)
+                  queue.append(nb)
+      ```
     options:
-      - id: one-queue
-        text: Queue every rotten orange at minute 0 and run one BFS, one layer per minute
+      - id: layers
+        text: M, N, A, B, C, D
         explanation: >-
-          With all sources in the queue at distance 0, the search spreads from all of them at once.
-          Layer k holds the cells that rot at minute k, which matches how the rot spreads. Each cell
-          enters the queue once, however many sources there are.
-      - id: sum-times
-        text: Run a separate BFS from each rotten orange and add up their times
+          Popping M appends A and B behind N. Popping N finds B already seen and appends C. A then
+          appends D behind B and C, and B and C find nothing new.
+      - id: whole-search
+        text: M, A, B, D, N, C
         explanation: >-
-          Rotting happens everywhere at once, so the spreads overlap instead of taking turns. For the
-          row `[2, 1, 1, 1, 2]`, each separate BFS needs 3 minutes, so the sum is 6. The real answer
-          is 2, since the middle orange rots at minute 2.
-      - id: per-source-min
-        text: Run a BFS from each rotten orange, keep each cell's smallest time, take the largest
+          That finishes M's search before N is popped. N is in the queue from the start, right
+          behind M, so it pops second.
+      - id: twice
+        text: M, N, A, B, B, C, D
         explanation: >-
-          This gives the right answer, because a cell rots at its smallest distance to any source.
-          But it runs one search per source, and each can sweep the whole grid again, so it repeats
-          work that one shared queue does once.
-      - id: dfs-each
-        text: Run a depth-first search from each rotten orange and use its labels as the times
+          M added B to `seen` when it found it, so N skips B. B joins the queue once and is popped
+          once.
+      - id: depth
+        text: M, N, A, D, B, C
         explanation: >-
-          A depth-first label is the length of the route the search happened to follow, not the
-          shortest one, so it can overstate when a cell rots. Handling each source on its own also
-          ignores that another source may reach the cell sooner.
-    correct: one-queue
+          A appends D at the back of the queue, behind B and C, which joined earlier. So D is
+          popped after them.
+    correct: layers
     followUps:
-      sum-times:
-        prompt: >-
-          Two rotten oranges both start spreading at minute 0. What does the total time depend on?
+      whole-search:
+        prompt: Right after M is popped and appends A and B, what is the queue, front first?
         options:
-          - id: latest-rot
-            text: The latest minute at which any fresh orange rots, since the spreads run in parallel
-          - id: sum-alone
-            text: The sum of the times each orange would need on its own
-          - id: source-count
-            text: The number of rotten oranges at the start
-        correct: latest-rot
-        explanation: >-
-          Everything spreads in the same minutes, so the answer is the maximum over cells of the
-          earliest time each is reached. Adding single-source times double counts the minutes that the
-          spreads share.
-      per-source-min:
-        prompt: >-
-          With several rotten oranges, how does the work of separate BFS runs compare with one BFS
-          that starts from all of them?
+          - id: n-first
+            text: N, A, B
+          - id: no-n
+            text: A, B
+          - id: n-last
+            text: A, B, N
+        correct: n-first
+        explanation: N was in the queue from the start, and `append` adds A and B behind it. So N is popped next.
+      twice:
+        prompt: When N checks B, is B in `seen`?
         options:
-          - id: repeats
-            text: It repeats the search once per source, so a cell can be visited once per source
-          - id: same-total
-            text: It is the same, because every cell is still visited once in total
-          - id: lower
-            text: It is lower, since each BFS covers only the cells near its source
-        correct: repeats
-        explanation: >-
-          Each separate BFS can sweep the whole connected region, and nothing is shared between them.
-          One queue holding every source lets each cell be claimed once by whichever source reaches it
-          first.
-      dfs-each:
-        prompt: Why is the minute a cell rots its BFS distance from the nearest source, not a depth-first label?
+          - id: 'yes'
+            text: Yes, M added it when it found B
+          - id: 'no'
+            text: No, B has not been popped yet
+          - id: sources
+            text: No, only the sources are in `seen`
+        correct: 'yes'
+        explanation: A node joins `seen` when it is found, not when it is popped, so N skips B.
+      depth:
+        prompt: When A appends D, where does D go?
         options:
-          - id: shortest-route
-            text: Rot spreads one step per minute along shortest routes, while a depth-first label can reflect a longer route
-          - id: no-marks
-            text: A depth-first search cannot mark cells seen
-          - id: single-source
-            text: A depth-first search only works from a single source
-        correct: shortest-route
-        explanation: >-
-          A cell rots as soon as any neighbor is rotten, so its time is the length of the shortest
-          route from the nearest source. A depth-first search can mark cells and start from many
-          sources, but it does not find cells in order of distance.
+          - id: back
+            text: To the back, behind B and C
+          - id: front
+            text: To the front, so it is popped next
+          - id: between
+            text: Between B and C
+        correct: back
+        explanation: '`append` adds at the back. B and C joined before D, so they are popped first.'
 
   - id: traversal-exam-debug-stack
     heading: Which input does it fail on?
