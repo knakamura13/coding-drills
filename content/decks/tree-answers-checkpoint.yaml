@@ -316,7 +316,7 @@ questions:
     prompt: |-
       An ancestor of a node is any node on the path from the root down to it, the node itself
       included. `lca` returns the lowest common ancestor of two nodes, the lowest node that is an
-      ancestor of both. `lca(root, 'E', 'H')` runs on the tree below. Tap the node that the call on B
+      ancestor of both. `lca(root, 'G', 'D')` runs on the tree below. Tap the node that the call on C
       returns.
 
       ```text
@@ -347,33 +347,35 @@ questions:
       kind: array
       name: nodes
       cells: [A, B, C, D, E, F, G, H]
-    correct: 2
+    correct: 6
     explanation: >-
-      C's left call returns E and its right call on F passes up H, so C returns itself. B gets C from
-      its left and `None` from D, so it passes C up rather than returning itself.
+      C's left call on E finds nothing. Its right call on F gets G from F's left and `None` from H, so
+      F passes G up, and C passes it up again.
     misses:
       - index: 0
-        explanation: A is above B. A call returns a node from its own subtree.
+        explanation: A is above C. A call returns a node from its own subtree, never one above it.
       - index: 1
+        explanation: B is C's parent, above it. A call returns a node from its own subtree.
+      - index: 2
         explanation: >-
-          B returns itself only when both of its sides found something. D's side holds neither
-          target, so B passes up the C from its left.
+          C returns itself only when both of its sides found a target. E's side found none, so C passes
+          up what its right side found.
       - index: 3
-        explanation: D is not a target and has nothing below it, so its call returns `None`.
+        explanation: >-
+          D is a target, but it is B's right child, outside C's subtree, so C's call cannot return it.
       - index: 4
-        explanation: E is a target and returns itself to C, but C also gets H from its other side.
+        explanation: E is not a target and has nothing below it, so its call returns `None`.
       - index: 5
-        explanation: F has only H below it, so it passes H up to C.
-      - index: 6
-        explanation: G is not a target, so its call returns `None`.
+        explanation: >-
+          F is not a target, so it does not return itself. It passes up what it found below, G.
       - index: 7
-        explanation: H comes up to C through F. C has a target on each side, so it returns itself.
+        explanation: H is not a target and has nothing below it, so its call returns `None`.
 
   - id: tree-answers-exam-unvisited
-    heading: Which node is never reached?
+    heading: How many calls find something?
     tags: [tree, dfs, recursion]
     prompt: |-
-      `lca(root, 'R', 'W')` runs on the tree below. Values are distinct and both targets are in the
+      `lca(root, 'Q', 'S')` runs on the tree below. Values are distinct and both targets are in the
       tree.
 
       ```python
@@ -401,57 +403,57 @@ questions:
            V   W
       ```
 
-      Which of these nodes does `lca` never start a call on?
+      Not counting the calls on `None`, how many calls return a node rather than `None`?
     options:
-      - id: w
-        text: W
+      - id: five
+        text: "`5`"
         explanation: >-
-          The call on R returns R as soon as it sees a target, so nothing below R gets a call. W is
-          never reached, and the answer R is still right, since R is an ancestor of W.
-      - id: q
-        text: Q
+          Q and S return themselves. N passes Q up and O passes S up, and M gets a node from each
+          side and returns itself. R, V and W find no target and return `None`.
+      - id: two
+        text: "`2`"
         explanation: >-
-          N calls its left child Q before its right child R. Q is not a target, so its call runs and
-          returns `None`.
-      - id: s
-        text: S
+          Q and S return themselves, but a call that gets a node from one side returns it too. N
+          passes Q up, O passes S up, and M returns itself.
+      - id: three
+        text: "`3`"
         explanation: >-
-          M's left call returns R, but M still runs its right call. The search goes down through O to
-          S, which returns `None`.
-      - id: o
-        text: O
+          That counts the calls that return their own node: Q, S and M. N and O return nodes as
+          well, each passing up the target found below it.
+      - id: eight
+        text: "`8`"
         explanation: >-
-          The line that calls `lca(node.right, p, q)` runs in M whatever its left call found, so O
-          gets a call and returns `None`.
-    correct: w
+          8 is every call on a node of the tree. R's subtree holds neither target, so R, V and W
+          return `None`.
+    correct: five
     followUps:
-      q:
-        prompt: In which order does the call on N start its two calls?
+      two:
+        prompt: What does the call on N return?
         options:
-          - { id: left-first, text: "Q first, then R" }
-          - { id: right-first, text: "R first, then Q" }
-          - { id: only-r, text: "Only R, since R is a target" }
-        correct: left-first
+          - { id: n-q, text: "Q, passed up from its left call" }
+          - { id: n-none, text: "`None`, since N is not a target" }
+          - { id: n-self, text: "N, since it has two children" }
+        correct: n-q
         explanation: >-
-          The left call is written first and runs first, whatever is below. Q's call returns `None`
-          before R's call starts.
-      s:
-        prompt: M's left call returned R. Does M still make its right call?
+          A call that is not a target still returns what one side found. N gets Q from its left and
+          `None` from R, so it passes Q up to M.
+      three:
+        prompt: What does the call on O return?
         options:
-          - { id: still-runs, text: "Yes. Both calls run before M checks what they found" }
-          - { id: stops, text: "No. Finding a target ends the search" }
-          - { id: only-if, text: "Only if R is not the answer" }
-        correct: still-runs
+          - { id: o-s, text: "S, passed up from its right call" }
+          - { id: o-none, text: "`None`, since O is not a target" }
+          - { id: o-self, text: "O, since a target is below it" }
+        correct: o-s
         explanation: >-
-          A call stops early only when its own node is a target. M is not, so it runs both lines
-          before it decides what to return.
-      o:
-        prompt: Which calls stop without calling their children?
+          O's left side is empty and its right call returns S, so O returns S. A call between a
+          target and the answer returns the target it received, not itself.
+      eight:
+        prompt: What does the call on R return?
         options:
-          - { id: target-or-none, text: "Calls on `None` and calls on a target" }
-          - { id: any-found, text: "Any call after a target has been found anywhere" }
-          - { id: leaves-only, text: "Only calls on leaves" }
-        correct: target-or-none
+          - { id: r-none, text: "`None`, since neither target is in R's subtree" }
+          - { id: r-self, text: "R, since it has two children" }
+          - { id: r-w, text: "W, its last child" }
+        correct: r-none
         explanation: >-
-          The two early returns are for `None` and for a node that is a target. Every other call runs
-          both child calls, so O and S are reached.
+          V and W are not targets and have nothing below them, so both return `None`, and R passes
+          `None` up. A call returns a node only when its subtree holds a target.
