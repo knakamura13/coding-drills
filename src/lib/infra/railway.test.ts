@@ -54,6 +54,15 @@ describe('.railway/railway.ts', () => {
 		expect(existsSync(join(root, web.build?.dockerfilePath ?? 'missing'))).toBe(true);
 	});
 
+	it('serves the custom domain and its www name', async () => {
+		const web = appOf((await evaluate()).resources);
+		// The app listens on Railway's PORT, 8080, so each domain must route there.
+		expect(web.networking?.customDomains).toEqual({
+			'facetlearning.app': { port: 8080 },
+			'www.facetlearning.app': { port: 8080 }
+		});
+	});
+
 	it('health-checks a route that exists', async () => {
 		const web = appOf((await evaluate()).resources);
 		expect(web.deploy?.healthcheckPath).toBe('/healthz');

@@ -14,8 +14,13 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  * - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: the Google OAuth client.
  * - ALLOWED_EMAILS: comma-separated Google accounts that may sign in. Empty
  *   means nobody can, so a missing value fails closed.
- * - ORIGIN: the public origin, for example https://coding-drills.up.railway.app.
+ * - ORIGIN: the public origin, https://facetlearning.app once its DNS resolves.
  *   Needed because the Google redirect URI and the API's origin check use it.
+ *
+ * Custom domains are listed on the app service so an apply keeps them, but this
+ * file cannot create one. Add a new domain with `railway domain <name> --port
+ * 8080` (the app listens on Railway's PORT, 8080), which prints the DNS records
+ * to set at the registrar (Namecheap), then list it here.
  *
  * Railway never reads this file during a deploy. Editing or merging it changes
  * nothing live until `railway config apply` runs, so run the read-only
@@ -60,6 +65,7 @@ export default defineRailway(() => {
 				'/.dockerignore'
 			]
 		},
+		domains: ['facetlearning.app', 'www.facetlearning.app'],
 		deploy: {
 			healthcheckPath: '/healthz',
 			healthcheckTimeout: 30,
