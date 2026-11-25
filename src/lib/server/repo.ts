@@ -7,7 +7,7 @@
  * contract so the two cannot drift.
  */
 
-import { SYNC_PAGE, type SyncRequest, type SyncResponse } from '$lib/sync/protocol';
+import { SYNC_PAGE, type SyncPage, type SyncRequest } from '$lib/sync/protocol';
 import type { Attempt, Flag } from '$lib/storage/types';
 import type { Sql } from './db';
 
@@ -30,7 +30,7 @@ export interface Repo {
 	 * newer copy wins), then returns what the device is missing.
 	 * Precondition: every record has been through `parseAttempt` or `parseFlag`.
 	 */
-	sync(userId: number, request: SyncRequest): Promise<SyncResponse>;
+	sync(userId: number, request: SyncRequest): Promise<SyncPage>;
 }
 
 interface UserRow {
@@ -134,7 +134,7 @@ export function createRepo(sql: Sql): Repo {
 					flags: flags.map((row) => row.data),
 					more
 				};
-			}) as Promise<SyncResponse>;
+			}) as Promise<SyncPage>;
 		}
 	};
 }

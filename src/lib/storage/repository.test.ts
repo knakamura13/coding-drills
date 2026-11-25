@@ -117,7 +117,7 @@ describe('sync bookkeeping', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
 		repo.recordAttempt(attempt('q2'));
-		expect(repo.syncState()).toEqual({ cursor: 0, pending: ['a000001', 'a000002'], pendingFlags: [] });
+		expect(repo.syncState()).toEqual({ account: null, cursor: 0, pending: ['a000001', 'a000002'], pendingFlags: [] });
 		expect(repo.pendingAttempts(1).map((a) => a.id)).toEqual(['a000001']);
 	});
 
@@ -125,7 +125,7 @@ describe('sync bookkeeping', () => {
 		const repo = new Repository(memoryStore(), fixedNow, counter());
 		repo.recordAttempt(attempt('q1'));
 		repo.applySync({ sentFlags: [], sent: ['a000001'], cursor: 4, attempts: [], flags: [] });
-		expect(repo.syncState()).toEqual({ cursor: 4, pending: [], pendingFlags: [] });
+		expect(repo.syncState()).toEqual({ account: null, cursor: 4, pending: [], pendingFlags: [] });
 		repo.recordAttempt(attempt('q2'));
 		expect(repo.syncState().pending).toEqual(['a000002']);
 	});
@@ -211,10 +211,55 @@ describe('sync bookkeeping', () => {
 		expect(repo.pendingFlags()).toEqual([edited]);
 	});
 
+	it('keeps a flag pending when it changed in the same millisecond after it was sent', () => {
+		const repo = new Repository(memoryStore(), fixedNow);
+		const sent = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'a' });
+		const edited = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'b' });
+		expect(edited.at).toBe(sent.at);
+		repo.applySync({ sent: [], sentFlags: [sent], cursor: 1, attempts: [], flags: [sent] });
+		expect(repo.pendingFlags()).toEqual([edited]);
+	});
+
+	it('stops sending a local flag that a newer copy from the server replaced', () => {
+		const repo = new Repository(memoryStore(), fixedNow);
+		repo.applySync({ sent: [], sentFlags: [], cursor: 1, attempts: [], flags: [] });
+		const local = repo.upsertFlag({ deckId: 'd', questionId: 'q1', stage: 'question', note: 'mine' });
+		const newer: Flag = { ...local, at: '2027-01-01T00:00:00.000Z', note: 'theirs' };
+		repo.applySync({ sent: [], sentFlags: [], cursor: 2, attempts: [], flags: [newer] });
+		expect(repo.flags()).toEqual([newer]);
+		expect(repo.pendingFlags()).toEqual([]);
+	});
+
+	it.each([-1, 1.5, 2 ** 31])('starts over from cursor 0 when the stored cursor is %s', (cursor) => {
+		const store = memoryStore({ [KEYS.sync]: JSON.stringify({ cursor, pending: [], pendingFlags: [] }) });
+		expect(new Repository(store).syncState().cursor).toBe(0);
+	});
+
+	it('keeps the largest valid stored cursor', () => {
+		const store = memoryStore({ [KEYS.sync]: JSON.stringify({ cursor: 2 ** 31 - 1, pending: [], pendingFlags: [] }) });
+		expect(new Repository(store).syncState().cursor).toBe(2 ** 31 - 1);
+	});
+
+	it('starts over for another account, and forgets the exchange on sign-out', () => {
+		const flag: Flag = { id: 'f', at: AT, deckId: 'd', questionId: 'q', stage: 'question', note: 'n' };
+		const store = memoryStore({
+			[KEYS.attempts]: JSON.stringify([remote('a1')]),
+			[KEYS.flags]: JSON.stringify([flag]),
+			[KEYS.sync]: JSON.stringify({ account: 1, cursor: 9, pending: [], pendingFlags: [] })
+		});
+		const repo = new Repository(store);
+		expect(repo.adoptAccount(1)).toBe(false);
+		expect(repo.syncState().cursor).toBe(9);
+		expect(repo.adoptAccount(2)).toBe(true);
+		expect(repo.syncState()).toEqual({ account: 2, cursor: 0, pending: ['a1'], pendingFlags: ['f'] });
+		repo.resetSync();
+		expect(repo.syncState()).toEqual({ account: null, cursor: 0, pending: ['a1'], pendingFlags: ['f'] });
+	});
+
 	it('treats every flag as pending when the saved sync state predates pending flags', () => {
 		const flag: Flag = { id: 'f', at: AT, deckId: 'd', questionId: 'q', stage: 'question', note: 'n' };
 		const store = memoryStore({ [KEYS.flags]: JSON.stringify([flag]), [KEYS.sync]: JSON.stringify({ cursor: 3, pending: [] }) });
-		expect(new Repository(store).syncState()).toEqual({ cursor: 3, pending: [], pendingFlags: ['f'] });
+		expect(new Repository(store).syncState()).toEqual({ account: null, cursor: 3, pending: [], pendingFlags: ['f'] });
 	});
 
 	it('never moves the cursor backwards', () => {

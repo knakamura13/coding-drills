@@ -1,5 +1,6 @@
 import { localDay } from '$lib/domain/days';
 import { cleanNote, compareAttempts, parseAttempt, readAttempt, readFlag } from './guards';
+import { MAX_CURSOR } from '$lib/sync/protocol';
 import type { Attempt, Flag, FlagStage } from './types';
 
 /** The slice of the Web Storage API this app uses. */
@@ -23,6 +24,8 @@ export const MAX_ATTEMPTS = 10_000;
 
 /** What a device remembers about its last exchange with the server. */
 export interface SyncState {
+	/** The server user id this state belongs to, or null before the first sync with an account. */
+	account: number | null;
 	/** The newest server position this device has received. */
 	cursor: number;
 	/** Local attempts the server has not acknowledged yet. */
@@ -173,9 +176,12 @@ export class Repository {
 			typeof (meta as SyncState).cursor === 'number' &&
 			Array.isArray((meta as SyncState).pending)
 		) {
-			const { cursor, pending, pendingFlags } = meta as Partial<SyncState> & Pick<SyncState, 'cursor' | 'pending'>;
+			const { account, cursor, pending, pendingFlags } = meta as Partial<SyncState> &
+				Pick<SyncState, 'cursor' | 'pending'>;
 			return {
-				cursor,
+				account: typeof account === 'number' ? account : null,
+				// A corrupt cursor would get a 400 on every sync; starting over only re-reads what is held.
+				cursor: Number.isInteger(cursor) && cursor >= 0 && cursor <= MAX_CURSOR ? cursor : 0,
 				pending: pending.filter((id) => typeof id === 'string'),
 				// State saved before flags had a pending list: send every flag once, as the old client did on every sync.
 				pendingFlags: Array.isArray(pendingFlags)
@@ -188,13 +194,34 @@ export class Repository {
 
 	/** Never synced means the whole local history is pending: signing in adopts it. */
 	syncState(): SyncState {
-		return (
-			this.#readSyncMeta() ?? {
-				cursor: 0,
-				pending: this.attempts().map((attempt) => attempt.id),
-				pendingFlags: this.allFlags().map((flag) => flag.id)
-			}
-		);
+		return this.#readSyncMeta() ?? this.#neverSynced(null);
+	}
+
+	#neverSynced(account: number | null): SyncState {
+		return {
+			account,
+			cursor: 0,
+			pending: this.attempts().map((attempt) => attempt.id),
+			pendingFlags: this.allFlags().map((flag) => flag.id)
+		};
+	}
+
+	/** Forgets the exchange with the server, as on sign-out: the next account adopts the whole local history. */
+	resetSync(): void {
+		this.#write(KEYS.sync, null);
+	}
+
+	/**
+	 * Ties the sync state to the account the server answered for. State saved for
+	 * another account (or before accounts were recorded) starts over from cursor 0
+	 * with everything pending, because that server never acknowledged it. Returns
+	 * true when it started over, so the caller discards this response.
+	 */
+	adoptAccount(account: number): boolean {
+		const meta = this.#readSyncMeta();
+		if (meta?.account === account) return false;
+		this.#write(KEYS.sync, this.#neverSynced(account));
+		return meta !== null;
 	}
 
 	pendingAttempts(limit: number): Attempt[] {
@@ -214,10 +241,14 @@ export class Repository {
 	 * Folds one server response into local data. `sent` are the attempt ids and
 	 * `sentFlags` the flags the server just acknowledged. Returns whether
 	 * anything the UI shows changed.
+	 *
+	 * An inbound attempt the parser drops is skipped for good once the cursor
+	 * passes it. The server only stores parsed attempts and no users exist yet,
+	 * so this is accepted (see `readAttempt`).
 	 */
 	applySync(result: {
 		sent: string[];
-		sentFlags: readonly Pick<Flag, 'id' | 'at'>[];
+		sentFlags: readonly Pick<Flag, 'id' | 'at' | 'note' | 'removed'>[];
 		cursor: number;
 		attempts: Attempt[];
 		flags: Flag[];
@@ -227,16 +258,20 @@ export class Repository {
 		const local = this.attempts();
 		const known = new Set(local.map((attempt) => attempt.id));
 		const flags = new Map(this.allFlags().map((flag) => [flag.id, flag]));
-		const sentAt = new Map(result.sentFlags.map((flag) => [flag.id, flag.at]));
+		const sentFlags = new Map(result.sentFlags.map((flag) => [flag.id, flag]));
 		this.#write(KEYS.sync, {
+			account: before.account,
 			cursor: Math.max(before.cursor, result.cursor),
 			// An id whose attempt no longer reads back (dropped as malformed) can never be sent.
 			pending: before.pending.filter((id) => !acknowledged.has(id) && known.has(id)),
-			// A flag edited again while its request was in flight is newer than what was sent, so it stays pending.
+			// Delivered means the held flag is what was sent. One edited while its request was in flight stays pending.
 			pendingFlags: before.pendingFlags.filter((id) => {
 				const held = flags.get(id);
-				const sent = sentAt.get(id);
-				return held !== undefined && (sent === undefined || held.at > sent);
+				const sent = sentFlags.get(id);
+				return (
+					held !== undefined &&
+					(sent === undefined || held.at !== sent.at || held.note !== sent.note || held.removed !== sent.removed)
+				);
 			})
 		});
 
@@ -254,17 +289,24 @@ export class Repository {
 		}
 
 		let flagsChanged = false;
+		const superseded = new Set<string>();
 		for (const remote of result.flags.map(readFlag).filter((flag) => flag !== null)) {
 			const held = flags.get(remote.id);
 			const winner = newerFlag(held, remote);
 			if (winner !== held) {
 				flags.set(remote.id, winner);
 				flagsChanged = true;
+				superseded.add(remote.id);
 			}
 		}
 		if (flagsChanged) {
 			this.#write(KEYS.flags, [...flags.values()]);
 			changed = true;
+			// A local edit that lost to a newer copy from the server has nothing left to send.
+			const meta = this.#readSyncMeta();
+			if (meta && meta.pendingFlags.some((id) => superseded.has(id))) {
+				this.#write(KEYS.sync, { ...meta, pendingFlags: meta.pendingFlags.filter((id) => !superseded.has(id)) });
+			}
 		}
 		return changed;
 	}

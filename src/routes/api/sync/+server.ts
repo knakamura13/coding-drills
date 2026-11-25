@@ -9,12 +9,9 @@
 import type { RequestHandler } from './$types';
 import { jsonResponse, readJsonBody } from '$lib/server/http';
 import { parseAttempt, parseFlag } from '$lib/storage/guards';
-import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, type SyncRequest } from '$lib/sync/protocol';
+import { MAX_CURSOR, MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, type SyncRequest } from '$lib/sync/protocol';
 
 export const prerender = false;
-
-/** `attempts.seq` is a Postgres `integer`, so a larger cursor would fail in SQL. */
-const MAX_CURSOR = 2_147_483_647;
 
 function parseRequest(body: unknown): SyncRequest | null {
 	if (typeof body !== 'object' || body === null) return null;
@@ -36,5 +33,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const parsed = parseRequest(await readJsonBody(request, MAX_SYNC_BODY_BYTES));
 	if (!parsed) return jsonResponse({ error: 'bad request' }, 400);
 
-	return jsonResponse(await locals.repo.sync(locals.user.id, parsed));
+	const page = await locals.repo.sync(locals.user.id, parsed);
+	return jsonResponse({ ...page, account: locals.user.id });
 };

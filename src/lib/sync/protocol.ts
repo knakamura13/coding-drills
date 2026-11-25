@@ -10,6 +10,8 @@ export const SYNC_PAGE = 2000;
 export const MAX_FLAGS = 1000;
 /** Ceiling on a request body, in bytes. */
 export const MAX_SYNC_BODY_BYTES = 1_000_000;
+/** The largest cursor: `attempts.seq` is a Postgres `integer`. */
+export const MAX_CURSOR = 2_147_483_647;
 
 export interface SyncRequest {
 	/** The newest server position this device has received. */
@@ -20,7 +22,8 @@ export interface SyncRequest {
 	flags: Flag[];
 }
 
-export interface SyncResponse {
+/** What the store returns for one request. */
+export interface SyncPage {
 	/** Pass back as `cursor` on the next request. */
 	cursor: number;
 	/** Attempts the server holds past the request's cursor. May include ones this device just sent. */
@@ -28,6 +31,11 @@ export interface SyncResponse {
 	flags: Flag[];
 	/** True when more attempts remain past this page. */
 	more: boolean;
+}
+
+export interface SyncResponse extends SyncPage {
+	/** The signed-in user's id. A device's sync state saved for another account starts over. */
+	account: number;
 }
 
 export interface Me {

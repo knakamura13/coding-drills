@@ -1,5 +1,5 @@
 import type { Repository } from '$lib/storage/repository';
-import type { Flag } from '$lib/storage/types';
+import type { Attempt, Flag } from '$lib/storage/types';
 import type { SyncApi } from './api';
 import { MAX_FLAGS, MAX_SYNC_BODY_BYTES, SYNC_BATCH, type SyncRequest } from './protocol';
 
@@ -7,7 +7,8 @@ export type SyncOutcome =
 	/** `changed` is true when the server brought something new for the UI to show. */
 	| { status: 'ok'; changed: boolean }
 	| { status: 'signedOut' }
-	| { status: 'failed' };
+	/** `changed` is true when an earlier round already brought something new. */
+	| { status: 'failed'; changed: boolean };
 
 /** More rounds than any real history needs; a guard against a server that never says "done". */
 const MAX_ROUNDS = 50;
@@ -16,21 +17,26 @@ const encoder = new TextEncoder();
 const jsonBytes = (value: unknown): number => encoder.encode(JSON.stringify(value)).length;
 
 /**
- * The longest prefix of `flags` that keeps the request within `MAX_FLAGS` and
- * `MAX_SYNC_BODY_BYTES`, the caps `POST /api/sync` enforces. The rest wait for
- * the next round.
+ * The request for one round: the longest prefix of `attempts` (up to
+ * `SYNC_BATCH`), then of `flags` (up to `MAX_FLAGS`), that keeps the body
+ * within `MAX_SYNC_BODY_BYTES`. These are the caps `POST /api/sync` enforces.
+ * Attempts and flags share the byte budget; the rest wait for the next round.
  */
-export function flagsThatFit(base: Omit<SyncRequest, 'flags'>, flags: readonly Flag[]): Flag[] {
-	let size = jsonBytes({ ...base, flags: [] });
-	const batch: Flag[] = [];
-	for (const flag of flags) {
-		if (batch.length === MAX_FLAGS) break;
-		const next = size + jsonBytes(flag) + (batch.length > 0 ? 1 : 0);
-		if (next > MAX_SYNC_BODY_BYTES) break;
-		batch.push(flag);
-		size = next;
-	}
-	return batch;
+export function fitRequest(cursor: number, attempts: readonly Attempt[], flags: readonly Flag[]): SyncRequest {
+	const request: SyncRequest = { cursor, attempts: [], flags: [] };
+	let size = jsonBytes(request);
+	const fill = <T>(batch: T[], items: readonly T[], max: number) => {
+		for (const item of items) {
+			if (batch.length === max) return;
+			const next = size + jsonBytes(item) + (batch.length > 0 ? 1 : 0);
+			if (next > MAX_SYNC_BODY_BYTES) return;
+			batch.push(item);
+			size = next;
+		}
+	};
+	fill(request.attempts, attempts, SYNC_BATCH);
+	fill(request.flags, flags, MAX_FLAGS);
+	return request;
 }
 
 /**
@@ -42,17 +48,24 @@ export async function runSync(repo: Repository, api: SyncApi): Promise<SyncOutco
 	let changed = false;
 	for (let round = 0; round < MAX_ROUNDS; round++) {
 		const { cursor } = repo.syncState();
-		const sending = repo.pendingAttempts(SYNC_BATCH);
-		const flags = flagsThatFit({ cursor, attempts: sending }, repo.pendingFlags());
-		const result = await api.sync({ cursor, attempts: sending, flags });
+		const pendingAttempts = repo.pendingAttempts(SYNC_BATCH);
+		const pendingFlags = repo.pendingFlags();
+		const request = fitRequest(cursor, pendingAttempts, pendingFlags);
+		// Something is waiting but nothing fits: another round would send the same nothing.
+		if (request.attempts.length + request.flags.length === 0 && pendingAttempts.length + pendingFlags.length > 0) {
+			return { status: 'failed', changed };
+		}
+		const result = await api.sync(request);
 		if (result.kind === 'unauthorized') return { status: 'signedOut' };
-		if (result.kind === 'failed') return { status: 'failed' };
+		if (result.kind === 'failed') return { status: 'failed', changed };
 
 		const { response } = result;
+		// State saved for another account: start over from cursor 0 with everything pending.
+		if (repo.adoptAccount(response.account)) continue;
 		if (
 			repo.applySync({
-				sent: sending.map((attempt) => attempt.id),
-				sentFlags: flags,
+				sent: request.attempts.map((attempt) => attempt.id),
+				sentFlags: request.flags,
 				cursor: response.cursor,
 				attempts: response.attempts,
 				flags: response.flags
@@ -64,5 +77,5 @@ export async function runSync(repo: Repository, api: SyncApi): Promise<SyncOutco
 			return { status: 'ok', changed };
 		}
 	}
-	return { status: 'failed' };
+	return { status: 'failed', changed };
 }
