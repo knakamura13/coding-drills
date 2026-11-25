@@ -40,6 +40,11 @@ const depth = z.enum(DEPTHS).optional();
 
 const shallower = (item: Depth, than: Depth): boolean => DEPTHS.indexOf(item) < DEPTHS.indexOf(than);
 
+/** A learner who chose a level must never meet an item that depends on something above it. */
+function assertNotShallower(item: string, depth: Depth, relation: string, other: string, otherDepth: Depth): void {
+	if (shallower(depth, otherDepth)) throw new ContentError(`${item} is ${depth}, shallower than ${relation} ${other} (${otherDepth})`);
+}
+
 const levelSchema = z
 	.object({
 		id,
@@ -428,11 +433,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				skillIndex.set(skill.id, skill);
 			});
 		}
-		for (const skill of skills) {
-			if (shallower(skill.depth, pathDepth)) {
-				throw new ContentError(`skill "${skill.id}" is ${skill.depth}, shallower than its path "${pathId}" (${pathDepth})`);
-			}
-		}
+		for (const skill of skills) assertNotShallower(`skill "${skill.id}"`, skill.depth, 'its path', `"${pathId}"`, pathDepth);
 		skillsByPath.set(pathId, skills);
 	}
 
@@ -447,6 +448,11 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 	const skillEdges = new Map<string, readonly string[]>([...skillIndex].map(([id, skill]) => [id, skill.after]));
 	const skillCycle = cycle(skillEdges);
 	if (skillCycle) throw new ContentError(`skills form a cycle: ${skillCycle.join(' → ')}`);
+	for (const skill of skillIndex.values()) {
+		for (const required of skill.after) {
+			assertNotShallower(`skill "${skill.id}"`, skill.depth, 'the skill it requires,', `"${required}"`, skillIndex.get(required)!.depth);
+		}
+	}
 
 	const compiledPaths = new Map<string, CurriculumPath>();
 	for (const [pathId, path] of pathFile) {
@@ -594,15 +600,18 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				}
 			}
 			const drillPath = compiledPaths.get(drill.path)!;
+			const skillDepth = (skillId: string) => drillPath.skills.find((skill) => skill.id === skillId)!.depth;
+			// Mastery pairs a drill that names no skill with one by list position, which the depth check cannot follow.
+			if (!drill.skill && (drill.disposition === 'keep' || drill.disposition === 'rewrite') && drillPath.skills.some((skill) => skill.depth !== drillPath.depth)) {
+				throw new ContentError(`drill "${drill.questionId}" must name its skill, because path "${drill.path}" has skills at another depth`);
+			}
 			const parent = drill.skill
-				? { kind: 'skill', id: drill.skill, depth: drillPath.skills.find((skill) => skill.id === drill.skill)!.depth }
+				? { kind: 'skill', id: drill.skill, depth: skillDepth(drill.skill) }
 				: { kind: 'path', id: drill.path, depth: drillPath.depth };
 			const drillDepth = drill.depth ?? parent.depth;
-			if (shallower(drillDepth, parent.depth)) {
-				throw new ContentError(
-					`drill "${drill.questionId}" is ${drillDepth}, shallower than its ${parent.kind} "${parent.id}" (${parent.depth})`
-				);
-			}
+			const item = `drill "${drill.questionId}"`;
+			assertNotShallower(item, drillDepth, `its ${parent.kind}`, `"${parent.id}"`, parent.depth);
+			for (const tested of drill.tests ?? []) assertNotShallower(item, drillDepth, 'the skill it tests,', `"${tested}"`, skillDepth(tested));
 			mapped.set(drill.questionId, branch.id);
 			drills.push({
 				questionId: drill.questionId,

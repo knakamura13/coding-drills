@@ -373,7 +373,7 @@ describe('compileCurriculum', () => {
 		shallow.forks = [{ id: 'side', title: 'Side', levels: [{ ...level('side-a'), depth: 'deep' }] }];
 		const files = [
 			branch('foundations', 1, [shallow, deepPath('deep')], [
-				{ questionId: 'plain', disposition: 'keep', path: 'shallow', note: 'Default.' },
+				{ questionId: 'plain', disposition: 'keep', path: 'shallow', skill: 'shallow-a', note: 'Default.' },
 				{ questionId: 'deep-card', disposition: 'keep', path: 'shallow', skill: 'shallow-b', note: 'Deep skill.' },
 				{ questionId: 'deep-exam', disposition: 'exam', path: 'deep', note: 'Deep path.' }
 			])
@@ -418,6 +418,33 @@ describe('compileCurriculum', () => {
 			'drill "one" is interview, shallower than its path "beta" (deep)'
 		);
 	});
+
+	it('rejects an exam drill shallower than a skill it tests', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [
+			branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'exam', path: 'alpha', tests: ['alpha-b'], note: 'Exam.' }])
+		];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" is interview, shallower than the skill it tests, "alpha-b" (deep)'
+		);
+	});
+
+	it('rejects a skill that requires a deeper skill', () => {
+		const files = [branch('foundations', 1, [deepPath('alpha'), path('beta', ['alpha'])])];
+		expect(() => compileCurriculum(files, [])).toThrow(
+			'skill "beta-a" is interview, shallower than the skill it requires, "alpha-b" (deep)'
+		);
+	});
+
+	it('makes a teaching drill name its skill when the path holds skills at another depth', () => {
+		const alpha = path('alpha');
+		alpha.levels = [alpha.levels[0]!, { ...alpha.levels[1]!, depth: 'deep' }];
+		const files = [branch('foundations', 1, [alpha], [{ questionId: 'one', disposition: 'keep', path: 'alpha', note: 'Teach it.' }])];
+		expect(() => compileCurriculum(files, questions('one'))).toThrow(
+			'drill "one" must name its skill, because path "alpha" has skills at another depth'
+		);
+	});
 });
 
 const scratch: string[] = [];
@@ -436,5 +463,16 @@ describe('loadCurriculum files', () => {
 			`id: foundations\ntitle: Foundations\nsummary: Shared.\norder: 1\npaths:\n  - id: arrays\n    title: Arrays\n    summary: Read.\n    after: []\n    levels:\n      - { id: a, title: A }\n      - { id: b, title: B }\n    checkpoints:\n      - { id: exam, title: Exam, summary: Combine. }\ndrills: []\n`
 		);
 		expect(() => loadCurriculum(dir, decks)).toThrow(/must match the file name/);
+	});
+
+	it('names the item when a depth is not one of the levels', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'curriculum-'));
+		const decks = mkdtempSync(join(tmpdir(), 'decks-'));
+		scratch.push(dir, decks);
+		writeFileSync(
+			join(dir, 'foundations.yaml'),
+			`id: foundations\ntitle: Foundations\nsummary: Shared.\norder: 1\npaths:\n  - id: arrays\n    title: Arrays\n    summary: Read.\n    after: []\n    levels:\n      - { id: a, title: A }\n      - { id: b, title: B, depth: shallow }\n    checkpoints:\n      - { id: exam, title: Exam, summary: Combine. }\ndrills: []\n`
+		);
+		expect(() => loadCurriculum(dir, decks)).toThrow(/paths\.0\.levels\.1\.depth/);
 	});
 });
