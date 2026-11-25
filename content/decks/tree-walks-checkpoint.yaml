@@ -1,11 +1,11 @@
 id: tree-walks-checkpoint
 title: 'Tree walks: checkpoint'
-description: Trace a walk on a fresh tree and predict which calls are still on the stack.
+description: Trace a walk on a fresh tree and predict which calls are still live.
 heading: Trace the walk
 
 questions:
   - id: tree-walks-exam-waiting-calls
-    heading: Which calls are still active?
+    heading: Which calls are still live?
     tags: [tree, dfs, recursion]
     prompt: |-
       ```python
@@ -28,23 +28,23 @@ questions:
       ```
 
       `walk(root, [])` runs. At the moment the call on H runs its append, which other calls on real
-      nodes are still active (started and not yet returned)?
+      nodes are still live (started and not yet returned)?
     options:
       - id: right
         text: The calls on J, K and N
         explanation: >-
-          The active calls are the path from the root down to H. J is waiting for its left call on K,
+          The live calls are the path from the root down to H. J is waiting for its left call on K,
           K for its right call on N, and N for its left call on H.
       - id: with-m
         text: The calls on J, K, M and N
         explanation: >-
-          M was recorded before H, so its call has already returned. A finished call leaves the stack
-          as soon as it records its node.
+          M was recorded before H, so its call has already returned. A call stops being live as soon
+          as it records its node and returns.
       - id: pending
         text: The calls on J, K, N, O and L
         explanation: >-
           O and L are still to be recorded, but their calls have not started. Work that is still to come
-          is not on the stack. Only calls that have started and not returned are.
+          is not live. Only calls that have started and not returned are.
       - id: parent-only
         text: Only the call on N
         explanation: >-
@@ -60,8 +60,8 @@ questions:
           - { id: m-not-started, text: "Not started yet" }
         correct: m-returned
         explanation: >-
-          K's left call must return before K runs its next line. Every call on the stack is waiting on
-          the call below it, so a sibling's finished subtree is never on it.
+          K's left call must return before K runs its next line. Every live call is waiting on
+          the call below it, so a call that has already returned, like M's, is never among them.
       pending:
         prompt: When the call on H runs its append, has the call on L started?
         options:
@@ -70,7 +70,7 @@ questions:
           - { id: l-done, text: "Yes, and it has already returned" }
         correct: l-not-started
         explanation: >-
-          A call starts only when its parent reaches that line. The stack holds the calls between the
+          A call starts only when its parent reaches that line. The live calls are the ones between the
           root and the current node, not the nodes left to record.
       parent-only:
         prompt: Can the call on K return while the call on N is still running?
@@ -80,12 +80,12 @@ questions:
           - { id: k-never, text: "K's call ended when it called M" }
         correct: k-waits
         explanation: >-
-          A call that makes a call pauses until that call returns. So every ancestor of the running call
-          is still active.
+          A call that makes a call pauses until that call returns. So every call on the path above the
+          running call is still live.
 
   - id: tree-walks-exam-inorder-depth
     format: step-trace
-    heading: Trace the walk and its depth
+    heading: Trace the walk and its live calls
     tags: [tree, dfs, recursion]
     prompt: |-
       `walk(root, out)` walks the left subtree, records the node, then walks the right subtree. The
@@ -153,7 +153,7 @@ questions:
             explanation: 6 waits until 9's right subtree, 7 and 1, is done.
         elsewhere: 9's right call starts on 7, which walks its own left subtree first.
       - line: 5
-        ask: While the call on 1 runs its append, how many real calls are active, counting it?
+        ask: While the call on 1 runs its append, how many real calls are live, counting it?
         options:
           - id: four
             text: "4"
@@ -163,13 +163,13 @@ questions:
           - id: three
             text: "3"
             explanation: >-
-              The call on 1 counts as well. The path from the root to 1 has four nodes, and each has an
-              active call.
+              The call on 1 counts as well. The path from the root to 1 has four nodes, and each has a
+              live call.
           - id: five
             text: "5"
             explanation: >-
               5 counts every call made so far, including the one on 4. That call returned before 9 was
-              recorded, so it is no longer active.
+              recorded, so it is no longer live.
         correct: four
       - line: 5
         ask: 1 and then 7 are recorded. Which node is recorded next?
@@ -337,7 +337,7 @@ questions:
         correct: five
         explanation: >-
           The argument is evaluated first, so the call receives 5. A call reaches only its node and that
-          node's descendants.
+          node's subtree.
       one-child:
         prompt: For the call on 7, what runs before its append?
         options:
@@ -348,3 +348,75 @@ questions:
         explanation: >-
           Both calls always run. A missing child makes its call return at once, but the other call still
           walks the child it has before the node is recorded.
+
+  - id: tree-walks-exam-debug-height
+    heading: Which tree gets a wrong height?
+    tags: [tree, recursion]
+    prompt: |-
+      A suggested solution should return a tree's height, the number of nodes on its longest path
+      from the root down to a leaf, with 0 for the empty tree.
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          if node.left:
+              return 1 + height(node.left)
+          return 1 + height(node.right)
+      ```
+
+      `if node.left:` is true when the left child is not `None`. On which tree does it return a
+      wrong height?
+    options:
+      - id: right-taller
+        text: '`TreeNode(1, TreeNode(2), TreeNode(3, None, TreeNode(4)))`'
+        explanation: >-
+          The root has a left child, so the code follows only 2, a leaf, and returns 2. The longest
+          path is 1, 3, 4, so the height is 3. A node's height needs both of its subtrees.
+      - id: right-chain
+        text: '`TreeNode(1, None, TreeNode(2, None, TreeNode(3)))`'
+        explanation: >-
+          No node has a left child, so every call follows the right link, which is the only path.
+          The code returns 3, the right height.
+      - id: full
+        text: '`TreeNode(1, TreeNode(2), TreeNode(3))`'
+        explanation: >-
+          The code follows only the left child, 2, and returns 2. Both children are leaves, so the
+          right side is no taller and 2 is the right height.
+      - id: left-taller
+        text: '`TreeNode(1, TreeNode(2, TreeNode(3)), TreeNode(4))`'
+        explanation: >-
+          The code follows the left side, 1, 2, 3, and returns 3. That side is the taller one, so 3
+          is the right height.
+    correct: right-taller
+    followUps:
+      right-chain:
+        prompt: When does this code skip a whole subtree?
+        options:
+          - { id: has-left, text: "At a node with a left child, whose right subtree it never visits" }
+          - { id: no-left, text: "At a node with no left child, whose right subtree it drops" }
+          - { id: never, text: "Never, since it reaches every node in the end" }
+        correct: has-left
+        explanation: >-
+          A node with a left child returns through the left side alone. On the chain no node has a
+          left child, so nothing is skipped and the height is right.
+      full:
+        prompt: In `TreeNode(1, TreeNode(2), TreeNode(3))`, is the subtree the code skips taller?
+        options:
+          - { id: same, text: "No. Both children are leaves, so both sides have height 1" }
+          - { id: taller, text: "Yes. The right side is always the taller one" }
+          - { id: none, text: "There is no right subtree to skip" }
+        correct: same
+        explanation: >-
+          Skipping the right child gives a wrong height only when the right side is taller. Here
+          both sides are single leaves, so the answer 2 is still right.
+      left-taller:
+        prompt: In `TreeNode(1, TreeNode(2, TreeNode(3)), TreeNode(4))`, which path is longest?
+        options:
+          - { id: left, text: "1, 2, 3, the path the code follows" }
+          - { id: right, text: "1, 4, the path the code skips" }
+          - { id: tie, text: "Both paths, which have the same number of nodes" }
+        correct: left
+        explanation: >-
+          The longest path goes down the left side, which is the side the code takes. It fails
+          only on a tree where the skipped right side is taller.

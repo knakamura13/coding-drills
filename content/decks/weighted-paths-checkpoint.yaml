@@ -1,9 +1,341 @@
 id: weighted-paths-checkpoint
 title: "Weighted paths: checkpoint"
-description: Pick a shortest-path method for the stated weights and time limit, and find the repeated work in a heap or a pass, on new graphs.
-heading: Which method fits, and where is the waste?
+description: Trace relaxation passes and find the cheapest route within a stop limit, on new graphs.
+heading: Find the cheapest route
 
 questions:
+  - format: step-trace
+    id: wp-exam-two-pass-trace
+    heading: Follow two passes
+    tags: [graph, python]
+    prompt: >-
+      Each pass relaxes every edge once, in list order. Predict each step. The pointer `lowered`
+      is used only in the third step.
+    code: |
+      INF = float('inf')
+      edges = [("C", "D", 2), ("S", "B", 4), ("S", "C", 7),
+               ("B", "C", 1), ("B", "D", 6)]
+      dist = {"S": 0, "B": INF, "C": INF, "D": INF}
+      for _ in range(2):  # two passes
+          for u, v, w in edges:
+              if dist[u] + w < dist[v]:
+                  dist[v] = dist[u] + w
+      print(dist)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, B, C, D]
+    start:
+      - { name: lowered, at: 0 }
+    steps:
+      - line: 7
+        ask: 'In the first pass, after `S -> B`, `S -> C` and `B -> C`, what is `dist["C"]`?'
+        options:
+          - id: five
+            text: '`5`'
+            explanation: >-
+              `S -> C` sets `C` to 7. `B -> C` then reads `B` at 4, set by `S -> B` earlier in the
+              pass, and 4 + 1 = 5 is less than 7.
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              7 is the direct edge `S -> C`. `B -> C` runs after it and offers 4 + 1 = 5, which is
+              cheaper, so `C` drops.
+          - id: one
+            text: '`1`'
+            explanation: '1 is the weight of `B -> C` alone. The route also pays 4 to reach `B`.'
+        correct: five
+      - line: 7
+        ask: 'The first pass ends with `B -> D`. What is `dist["D"]` after the first pass?'
+        options:
+          - id: ten
+            text: '`10`'
+            explanation: >-
+              `C -> D` came first, while `C` was still `inf`, so it lowered nothing. `B -> D` offers
+              4 + 6 = 10, which beats `inf`.
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              7 is `C` at 5 plus 2, but `C -> D` is first in the list. It ran before `C` had a
+              cost, and this pass does not return to it.
+          - id: inf
+            text: '`inf`'
+            explanation: '`B` is 4 by the time `B -> D` runs, so it offers 4 + 6 = 10, less than `inf`.'
+        correct: ten
+      - line: 6
+        ask: Which node's distance does the second pass lower? Move `lowered` to it.
+        pointer: lowered
+        correct: 3
+        explanation: '`C -> D` now reads `C` at 5, and 5 + 2 = 7 is less than 10, so `D` drops.'
+        misses:
+          - index: 1
+            explanation: '`B` is reached only by `S -> B`, and `S` stays at 0, so `B` stays 4.'
+          - index: 2
+            explanation: >-
+              `B -> C` offers 4 + 1 = 5 again, which equals `C`. The test needs strictly less, and
+              `S -> C` offers 7.
+        elsewhere: '`S` is the start at 0, and no edge leads into it.'
+      - line: 9
+        ask: 'What value does `print(dist)` show for `D`?'
+        options:
+          - id: seven
+            text: '`7`'
+            explanation: '`C -> D` in the second pass lowered `D` from 10 to 5 + 2 = 7.'
+          - id: nine
+            text: '`9`'
+            explanation: >-
+              9 is 7 + 2, from `C`'s first cost. `C` dropped to 5 in the first pass, so the second
+              pass reads 5.
+          - id: ten
+            text: '`10`'
+            explanation: >-
+              10 was `D` after the first pass. The second pass checks `C -> D` again, now with `C`
+              at 5, and lowers `D`.
+        correct: seven
+
+  - id: wp-exam-min-relax
+    heading: Which line relaxes the edge?
+    tags: [graph, python]
+    prompt: |-
+      A pass should relax every edge: lower `dist[v]` when the route through `u` costs less, and
+      otherwise leave it as it is. Every edge is one-way. Which line can fill the blank so the
+      pass always ends with the same `dist` as `if dist[u] + w < dist[v]: dist[v] = dist[u] + w`?
+
+      ```python
+      for u, v, w in edges:
+          ____
+      ```
+    options:
+      - id: min-route
+        text: '`dist[v] = min(dist[v], dist[u] + w)`'
+        explanation: >-
+          `min` keeps `dist[v]` unless `dist[u] + w` is smaller, and then takes the cheaper route.
+          On a tie both values are equal, so nothing changes. That is exactly what the test does.
+      - id: overwrite
+        text: '`dist[v] = dist[u] + w`'
+        explanation: >-
+          This writes the route through `u` even when it costs more. With `dist[u]` at 3,
+          `dist[v]` at 1 and `w` at 5, it raises `dist[v]` to 8.
+      - id: min-first
+        text: '`dist[v] = min(dist[u], dist[v]) + w`'
+        explanation: >-
+          This adds `w` to whichever of the two is smaller. With `dist[u]` at 3, `dist[v]` at 1
+          and `w` at 5, it gives 6, though `v` already costs 1.
+      - id: backward
+        text: '`dist[u] = min(dist[u], dist[v] + w)`'
+        explanation: >-
+          This relaxes the edge backward, as if it led from `v` to `u`. The edge is one-way, so a
+          route can use it only from `u` to `v`.
+    correct: min-route
+    followUps:
+      overwrite:
+        prompt: Can relaxing an edge raise `dist[v]`?
+        options:
+          - id: never
+            text: No. It replaces `dist[v]` only with a cheaper cost
+          - id: newest
+            text: Yes. The route found most recently replaces the old one
+          - id: once
+            text: Yes, but only the first time an edge into `v` is checked
+        correct: never
+        explanation: >-
+          `dist[v]` is the cheapest cost found so far, so a dearer route must leave it alone. Only
+          a cheaper route through `u` replaces it.
+      min-first:
+        prompt: What does a route that reaches `v` through `u` cost?
+        options:
+          - id: through-u
+            text: '`dist[u] + w`, the cost to reach `u` plus the edge'
+          - id: smaller-plus
+            text: The smaller of `dist[u]` and `dist[v]`, plus `w`
+          - id: weight
+            text: '`w` alone, since `u` is already reached'
+        correct: through-u
+        explanation: >-
+          The route goes to `u` and then along the edge, so it costs `dist[u] + w`. That candidate
+          is compared with `dist[v]`. `dist[v]` itself is never added to `w`.
+      backward:
+        prompt: Which node can a one-way edge `u -> v` lower?
+        options:
+          - id: end
+            text: '`v`, the node it leads to'
+          - id: start
+            text: '`u`, the node it leaves'
+          - id: either
+            text: Whichever of the two costs more
+        correct: end
+        explanation: >-
+          A route follows the edge from `u` to `v`, so it can only offer `v` a new cost. Lowering
+          `u` would use the edge the wrong way.
+
+  - id: wp-exam-flight-stops
+    heading: What is the cheapest trip within one stop?
+    tags: [graph]
+    prompt: |-
+      Each flight below is one-way, written as `(from, to, price)`. A stop is a city a trip
+      passes through between where it starts and where it ends. What is the cheapest price from
+      `H` to `D` with at most 1 stop?
+
+      ```python
+      flights = [("H", "D", 10), ("H", "X", 2), ("X", "D", 7),
+                 ("H", "Y", 6), ("Y", "D", 2), ("X", "Y", 1)]
+      ```
+    options:
+      - id: eight
+        text: '`8`'
+        explanation: >-
+          The trips with at most 1 stop are `H -> D` for 10, `H -> X -> D` for 9 and
+          `H -> Y -> D` for 8. The cheapest of them is 8.
+      - id: five
+        text: '`5`'
+        explanation: >-
+          5 is `H -> X -> Y -> D`, the cheapest trip overall. It stops at both `X` and `Y`, which
+          is 2 stops.
+      - id: nine
+        text: '`9`'
+        explanation: >-
+          9 is `H -> X -> D`, which starts on the cheapest flight out of `H`. `H -> Y -> D` also
+          has 1 stop and costs 6 + 2 = 8.
+      - id: ten
+        text: '`10`'
+        explanation: >-
+          10 is the direct flight, a trip with no stop. One stop is allowed, so a trip of 2
+          flights counts, and `H -> Y -> D` costs 8.
+    correct: eight
+    followUps:
+      five:
+        prompt: How many stops does the trip `H -> X -> Y -> D` make?
+        options:
+          - id: two
+            text: Two, at `X` and at `Y`
+          - id: one
+            text: One, since only `Y` has a flight to `D`
+          - id: three
+            text: Three, one for each flight
+        correct: two
+        explanation: >-
+          A stop is a city between the start and the end. `X` and `Y` both are, so this trip has
+          2 stops and 3 flights.
+      nine:
+        prompt: >-
+          `H -> X` is the cheapest flight out of `H`. Must the cheapest trip within one stop start
+          with it?
+        options:
+          - id: whole-trip
+            text: No. `H -> Y -> D` costs 6 + 2 = 8, less than 9
+          - id: cheap-start
+            text: Yes. A cheaper first flight always gives a cheaper trip
+          - id: one-stop
+            text: Yes, whenever the trip is allowed only one stop
+        correct: whole-trip
+        explanation: >-
+          A trip's price is the sum of all its flights. A dear first flight can lead to a cheap
+          second one, so compare whole trips.
+      ten:
+        prompt: How many flights can a trip with at most 1 stop take?
+        options:
+          - id: two
+            text: Up to 2, one into the stop and one out of it
+          - id: one
+            text: Exactly 1, since one stop means one flight
+          - id: three
+            text: Up to 3, one more than the cities it visits
+        correct: two
+        explanation: >-
+          Each stop splits the trip into one more flight, so at most `k` stops means at most
+          `k + 1` flights.
+
+  - id: wp-exam-debug-copy
+    heading: Which call returns a wrong price?
+    tags: [graph, python]
+    prompt: |-
+      A suggested solution should return the cheapest price from `src` to `dst` with at most `k`
+      stops, so with at most `k + 1` flights. Each flight is one-way, written as
+      `(from, to, price)`.
+
+      ```python
+      INF = float('inf')
+
+      def cheapest(cities, flights, src, dst, k):
+          dist = {c: INF for c in cities}
+          dist[src] = 0
+          for _ in range(k + 1):
+              for u, v, w in flights:
+                  if dist[u] + w < dist[v]:
+                      dist[v] = dist[u] + w
+          return dist[dst]
+
+      cities = ["S", "A", "T"]
+      fa = [("S", "A", 1), ("A", "T", 1), ("S", "T", 5)]
+      fb = [("A", "T", 1), ("S", "A", 1), ("S", "T", 5)]
+      fc = [("S", "A", 1), ("A", "T", 9), ("S", "T", 5)]
+      ```
+
+      Which call returns a wrong price?
+    options:
+      - id: fa-zero
+        text: '`cheapest(cities, fa, "S", "T", 0)`'
+        explanation: >-
+          With `k = 0` only the direct flight counts, so the right price is 5. But `A -> T` runs
+          right after `S -> A` in the same pass and reads `A` at 1, so it returns 2, the price of
+          a trip with one stop.
+      - id: fb-zero
+        text: '`cheapest(cities, fb, "S", "T", 0)`'
+        explanation: >-
+          `A -> T` runs first, while `A` is still `inf`, so it lowers nothing. Then `S -> A` sets
+          `A` to 1 and `S -> T` sets `T` to 5, the right price.
+      - id: fa-one
+        text: '`cheapest(cities, fa, "S", "T", 1)`'
+        explanation: >-
+          One stop is allowed, so `S -> A -> T` at 2 is the right price, and the code returns 2.
+          The only trip with a stop has 2 flights, which `k = 1` allows.
+      - id: fc-zero
+        text: '`cheapest(cities, fc, "S", "T", 0)`'
+        explanation: >-
+          The pass chains `S -> A -> T` and sets `T` to 10, but `S -> T` comes next and lowers it
+          to 5. The chained trip costs more than the direct flight, so 5 is right.
+    correct: fa-zero
+    followUps:
+      fb-zero:
+        prompt: 'In `fb`, when `A -> T` is checked, what is `dist["A"]`?'
+        options:
+          - id: inf
+            text: '`inf`, since `S -> A` comes later in the list'
+          - id: one
+            text: '`1`, since every pass sets `A` first'
+          - id: zero
+            text: '`0`, like the start'
+        correct: inf
+        explanation: >-
+          A pass works through the list in order. Here no flight reads a value written earlier in
+          the same pass, so the bug never shows.
+      fa-one:
+        prompt: With `k = 1`, is the trip `S -> A -> T` allowed?
+        options:
+          - id: allowed
+            text: Yes. It has one stop, at `A`
+          - id: two-flights
+            text: No. It takes two flights
+          - id: direct-only
+            text: No. Only the direct flight is allowed
+        correct: allowed
+        explanation: >-
+          One stop means up to 2 flights. The code chains `S -> A` and `A -> T`, and that trip is
+          allowed, so its answer is right.
+      fc-zero:
+        prompt: 'In `fc`, which flight sets the final value of `dist["T"]`?'
+        options:
+          - id: direct
+            text: '`S -> T`, which lowers it from 10 to 5'
+          - id: chained
+            text: '`A -> T`, which sets it to 10'
+          - id: none
+            text: Neither, so `T` stays `inf`
+        correct: direct
+        explanation: >-
+          Chaining set `T` to 10, but the direct flight is cheaper and comes later. The bug shows
+          only when the chained trip is the cheaper one.
+
   - id: wp-exam-equal-weights
     heading: Which method fits?
     tags: [graph, bfs, complexity]
@@ -326,3 +658,193 @@ questions:
           It checks all six edges and lowers nothing, because pass 1 already found `C` through `B`
           and `D` through `C`. A pass that changes nothing shows the values are final, which is when
           the loop can stop.
+
+  - id: wp-exam-negative-edge
+    tags: [graph, bfs, greedy]
+    prompt: >-
+      A delivery network is a directed, weighted graph with three nodes: `depot`, `hub`, and `shop`.
+      The edges are `depot -> shop` costing 4, `depot -> hub` costing 5, and `hub -> shop` costing
+      -3, a rebate. Negative costs are allowed, but no cycle adds up to a negative total. Which
+      algorithm returns the cheapest cost from `depot` to `shop` on every graph of this kind?
+    options:
+      - id: bfs
+        text: Breadth-first search, which finds the path with the fewest edges
+        explanation: >-
+          BFS minimizes the number of edges, which is the right goal only when every edge costs the
+          same. The direct road has one edge and costs 4, while the route through `hub` has two edges
+          and costs 5 + (-3) = 2. BFS returns 4, because it reaches `shop` first by the one-edge road.
+      - id: dijkstra
+        text: Dijkstra's algorithm, fixing each node's cost when it is first taken from the heap
+        explanation: >-
+          `shop` waits in the heap at 4 and `hub` at 5, so `shop` is taken first and fixed at 4. When
+          `hub` is processed, its edge offers 5 - 3 = 2, but `shop` is already fixed, so this version
+          returns 4. The greedy step is safe only when every cost is >= 0. The lazy `heapq` loop that
+          skips only stale entries re-expands a node that gets cheaper, and returns 2 here, but with
+          negative edges it can pop more than E + 1 entries, and it loops forever on a negative cycle
+          reachable from the start.
+      - id: shift-weights
+        text: Add 3 to every cost so none is negative, then run Dijkstra on the new costs
+        explanation: >-
+          A path with `k` edges grows by 3k, so paths with more edges look worse than they are. After
+          the shift the direct road costs 7 and the route through `hub` costs 8 + 0 = 8, so Dijkstra
+          picks the direct road, whose real cost is 4. The true cheapest cost is 2.
+      - id: bellman-ford
+        text: Bellman-Ford, which relaxes every edge up to `V - 1` times
+        explanation: >-
+          A cheapest path uses at most `V - 1` edges, so repeating a relaxation of every edge that
+          many times finds it even with negative costs. It runs in O(V * E), slower than Dijkstra's
+          O((V + E) log V), and one extra round exposes a negative cycle, where no cheapest cost
+          exists. With every cost >= 0 use Dijkstra, and with all costs equal use BFS.
+    correct: bellman-ford
+    followUps:
+      bfs:
+        prompt: What does BFS minimize when edges have different costs?
+        options:
+          - id: edge-count
+            text: The number of edges on the path, which matches cost only when all edges cost the same
+          - id: cost-positive
+            text: The total cost, provided every cost in the graph is positive and none is zero
+          - id: cost-acyclic
+            text: The total cost, provided the graph has no cycle in it, as in this three-node graph
+        correct: edge-count
+        explanation: >-
+          BFS reaches nodes in order of how many edges away they are, and never adds up costs. With
+          equal costs, fewest edges means cheapest, which is why BFS suits unweighted graphs. This
+          graph has no cycle, yet BFS is still wrong, because the cheaper route has more edges.
+      dijkstra:
+        prompt: >-
+          If every cost is >= 0, why can Dijkstra fix a node's cost when it is first taken from the
+          heap?
+        options:
+          - id: no-cheaper-detour
+            text: Any other route passes through a node at least as far, and extra edges never cut the total
+          - id: all-paths-checked
+            text: By then it has already tried every possible path to that node, so no path is left to try
+          - id: one-visit
+            text: A node's cost can be discovered only once, so nothing can change it after it is taken
+        correct: no-cheaper-detour
+        explanation: >-
+          Every node still waiting is at least as far as the one taken, so a route through them cannot
+          come back cheaper when edges add 0 or more. A negative edge breaks this: the farther node
+          `hub` (5) lowers the cost of the nearer node `shop` (4) after `shop` was fixed.
+      shift-weights:
+        prompt: Adding 3 to every edge cost changes the total cost of a path from `depot` to `shop` by how much?
+        options:
+          - id: three-per-edge
+            text: By 3 per edge on the path, so paths with different edge counts shift differently
+          - id: three-total
+            text: By 3 in total, the same for every path from `depot` to `shop`, so the winner is unchanged
+          - id: nothing
+            text: By nothing that matters, because Dijkstra ignores a constant added to every edge cost
+        correct: three-per-edge
+        explanation: >-
+          The direct road has one edge and gains 3 (4 becomes 7). The route through `hub` has two
+          edges and gains 6 (2 becomes 8). The gap is not constant, so the winner after the shift can
+          differ from the winner before it.
+
+  - id: wp-exam-stale-check
+    heading: What does the stale check do?
+    tags: [graph, heap, complexity]
+    prompt: |-
+      The function below runs Dijkstra on a directed, weighted graph with cycles allowed. Every
+      weight `w` is at least 0, and `graph[u]` holds `(v, w)` pairs.
+
+      ```python
+      import heapq
+      from math import inf
+
+      def dijkstra(graph, src):
+          dist = [inf] * len(graph)
+          dist[src] = 0
+          heap = [(0, src)]
+          while heap:
+              d, u = heapq.heappop(heap)
+              if d > dist[u]:
+                  continue
+              for v, w in graph[u]:
+                  if d + w < dist[v]:
+                      dist[v] = d + w
+                      heapq.heappush(heap, (d + w, v))
+          return dist
+      ```
+
+      What is true if the two lines `if d > dist[u]:` and `continue` are deleted?
+    options:
+      - id: wrong-distances
+        text: A stale entry overwrites `dist[u]` with its larger value and ruins the result
+        explanation: >-
+          Writes to `dist` happen only inside `if d + w < dist[v]`, so a larger value never replaces
+          a smaller one. A late entry whose distance is already worse than the stored one cannot win
+          any of those comparisons. The answers stay right.
+      - id: never-ends
+        text: A cycle in the graph keeps re-adding nodes, so the loop can run forever
+        explanation: >-
+          Every push needs a strict improvement `d + w < dist[v]`, and stale entries never cause one,
+          so only the first expansion of each node relaxes edges. That limits the pushes to one per
+          edge plus the start, and the loop ends. Cycles are harmless here because no weight is
+          negative.
+      - id: never-stale
+        text: It changes nothing, because a node is pushed only when it is first reached
+        explanation: >-
+          A node is pushed on every improvement. Take `0 -> 1` (5), `0 -> 2` (1), `2 -> 1` (1): node 1
+          is pushed with 5, then again with 2, and `(5, 1)` pops last as a stale entry. `heapq` has no
+          decrease-key, so several entries for one node are normal.
+      - id: same-answers
+        text: Answers stay correct, but stale entries re-scan edges for no gain
+        explanation: >-
+          A stale pop relaxes nothing, but the loop still scans all of that node's edges. A node
+          improved `k` times with `k` outgoing edges costs about k² scans instead of k, so the total
+          can exceed O((V + E) log V). With the check, each node is expanded once: at most E + 1
+          pushes, each O(log E) on a heap of at most E + 1 entries. That is O(log V) for a graph
+          without parallel edges, so O((V + E) log V) in total.
+    correct: same-answers
+    followUps:
+      wrong-distances:
+        prompt: >-
+          A stale entry `(d, u)` pops after `u` was already expanded with a smaller distance. Why can't
+          its edges improve any `dist[v]`?
+        options:
+          - id: already-bounded
+            text: Each `d + w` exceeds `dist[u] + w`, which already bounded `dist[v]` at the first expansion
+          - id: heap-removes
+            text: The heap discards a stale entry before it can be popped, so its edges never get scanned
+          - id: overwritten
+            text: Popping a stale entry resets `dist[u]` to the stale value, so every comparison fails
+        correct: already-bounded
+        explanation: >-
+          `heapq` pops the smallest entry first, so the cheaper entry for `u` was expanded earlier,
+          and the relaxations it made bound every neighbor. The stale entry repeats those with a
+          larger `d`, which cannot win. Entries are not deleted from the heap, and popping one does
+          not touch `dist`.
+      never-ends:
+        prompt: With every weight >= 0, what limits the number of pushes, with or without the stale check?
+        options:
+          - id: one-per-edge
+            text: A push needs a strict improvement, and an edge improves only at its tail's first pop
+          - id: heap-refuses
+            text: The heap refuses a second entry for a node that is already stored in it at all
+          - id: once-per-node
+            text: Pushes stop for good once every node has been reached one time by any route at all
+        correct: one-per-edge
+        explanation: >-
+          The first expansion of a node uses its final distance, and every later expansion is a stale
+          entry that cannot improve anything. So each edge succeeds at most once, giving at most
+          E + 1 pushes in all. Neither the heap nor the number of reached nodes stops a push; it is
+          the strict `<` test that does.
+      never-stale:
+        prompt: >-
+          In the graph `0 -> 1` (5), `0 -> 2` (1), `2 -> 1` (1), how many heap entries does node 1 get
+          over the run from node 0?
+        options:
+          - id: two-entries
+            text: Two, `(5, 1)` pushed from node 0 and later `(2, 1)` pushed from node 2
+          - id: one-replaced
+            text: One, because `heapq` replaces the old entry in place when `dist[1]` improves
+          - id: three-entries
+            text: Three, one for each node that gets expanded over the whole run from node 0
+        correct: two-entries
+        explanation: >-
+          `heapq` can only push and pop, so an improvement adds a new entry and leaves the old one
+          where it is. `(2, 1)` pops first, and `(5, 1)` pops last as a stale entry that the check
+          skips. The heap can therefore hold up to E + 1 entries, which may exceed V, but without
+          parallel edges log of that is still O(log V).

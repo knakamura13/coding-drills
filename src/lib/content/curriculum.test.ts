@@ -59,7 +59,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
-	'trees-and-graphs': { keep: 0, rewrite: 2, exam: 6, retire: 10 },
+	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 3, retire: 15 },
 	'problem-solving-patterns': { keep: 1, rewrite: 8, exam: 12, retire: 1 }
 };
 

@@ -83,26 +83,33 @@ paths:
 
   - id: weighted-paths
     title: Weighted paths
-    summary: Sum edge weights, relax one edge, and see when a distance can be finalized.
+    summary: Sum edge weights, relax every edge in a pass, and find the cheapest route within k stops.
     after: [traversal-layers, priority-order]
+    afterNote: Only the deep Dijkstra fork uses the heap from Priority order. The interview cards need only what Traversal layers teaches.
     levels:
       - id: sum-edge-weights
         title: Sum edge weights
       - id: relax-one-edge
         title: Relax one edge
-      - id: finalize-distance
-        title: Decide when a tentative distance can be finalized
+    forks:
+      - id: dijkstra
+        title: Finalize distances
+        after: relax-one-edge
+        levels:
+          - id: finalize-distance
+            title: Decide when a tentative distance can be finalized
+            depth: deep
     checkpoints:
-      - id: choose-weighted-algorithm
-        title: Choose a weighted algorithm
-        summary: Select an algorithm under the stated weight constraints or diagnose repeated work.
-        mix: [select-algorithm, repeated-work]
+      - id: cheapest-within-stops
+        title: Find the cheapest route within k stops
+        summary: Trace relaxation passes and find the cheapest route that stays within a stop limit.
+        mix: [relax-edges, limit-stops]
 
   - id: tree-walks
     title: Tree walks
     summary: Name the parts of a tree, trace a visit order, and tell height from node count.
     after: [recursive-calls]
-    afterNote: FIFO for level order is named as well and is not a separate path.
+    afterNote: 'Its level-order cards state the queue rule in their prompts: `popleft()` removes the item at the front, and `append` adds at the back. So Operation costs, which defines the queue, is not needed.'
     levels:
       - id: name-tree-parts
         title: Identify root, child, and subtree
@@ -163,17 +170,13 @@ drills:
     path: connectivity
     note: 'Not absorbed: `connectivity-later-same-trace` traces the unions and same-set queries, and its comparison rests on union by size and amortized cost, which are deep. The older deck stays as a fixture.'
   - questionId: negative-edge-shortest-path
-    disposition: exam
+    disposition: retire
     path: weighted-paths
-    tests: [sum-edge-weights, relax-one-edge, finalize-distance]
-    covers: [select-algorithm]
-    note: Use a negative edge on a fresh graph to distinguish hop count, greedy finalization and repeated relaxation.
+    note: 'Copied unchanged into the Weighted paths checkpoint as `wp-exam-negative-edge`, tagged deep: choosing Bellman-Ford for negative weights is deep. The older deck stays as a fixture.'
   - questionId: dijkstra-stale-entry
-    disposition: exam
+    disposition: retire
     path: weighted-paths
-    tests: [relax-one-edge, finalize-distance]
-    covers: [repeated-work]
-    note: Use a cheaper route discovered later to distinguish correctness from redundant heap work.
+    note: 'Copied unchanged into the Weighted paths checkpoint as `wp-exam-stale-check`, tagged deep with the Dijkstra fork. The older deck stays as a fixture.'
   - questionId: count-components-edge-list
     disposition: retire
     path: connectivity
@@ -203,10 +206,9 @@ drills:
     path: reachability
     note: 'Its wraparound half is done by `reachability-negative-wraps`, `reachability-reject-negative-row` and `reachability-checkpoint-wraparound`. Its cost half needs Big-O, which is not on the chain. The older deck stays as a fixture.'
   - questionId: postorder-output
-    disposition: rewrite
+    disposition: retire
     path: tree-walks
-    skill: trace-visit-order
-    note: Trace a three-node tree before asking for the complete traversal of an asymmetric tree.
+    note: 'Absorbed into Tree walks as `tree-walks-postorder-list`, which names the walk postorder in its prompt and drops "depth-first". The older deck stays as a fixture.'
   - questionId: bst-bounds-check
     disposition: exam
     path: bst-order
@@ -214,15 +216,13 @@ drills:
     covers: [validate]
     note: Combine inherited bounds and recursion to diagnose a deep violation.
   - questionId: level-order-queue
-    disposition: rewrite
+    disposition: retire
     path: tree-walks
-    skill: trace-visit-order
-    note: Draw one frontier and ask where the current level ends before choosing the queue loop.
+    note: 'Not absorbed: `tree-walks-level-order` shows that a queue visits depth by depth, and `tree-walks-round-boundary` finds where one depth ends. The older deck stays as a fixture.'
   - questionId: recursion-cost
-    disposition: exam
+    disposition: retire
     path: tree-walks
-    tests: [height-versus-count]
-    note: Distinguish total visited nodes from maximum active depth across two shapes.
+    note: 'Not copied: it asks for Big-O, which is not on Tree walks'' chain, and `tree-walks-review-calls-and-depth` separates total calls from the most live calls without it. The older deck stays as a fixture.'
   - questionId: bst-lowest-common-ancestor
     disposition: exam
     path: bst-order
@@ -857,22 +857,37 @@ drills:
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
-    note: List a subtree as its root plus every descendant.
+    note: List a subtree as its root plus every node below it.
+  - questionId: tree-walks-review-leaves
+    disposition: keep
+    path: tree-walks
+    skill: name-tree-parts
+    note: Tell a leaf by its links, not by where it is drawn.
   - questionId: tree-walks-three-node-orders
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
-    note: Place the append between the calls on three nodes.
+    note: Place the append between the calls on three nodes, and name the three walks by where the append sits.
   - questionId: tree-walks-preorder-trace
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
     note: Trace a preorder walk call by call.
+  - questionId: tree-walks-postorder-list
+    disposition: keep
+    path: tree-walks
+    skill: trace-visit-order
+    note: List a postorder walk on an uneven tree, against the preorder, inorder and level lists.
+  - questionId: tree-walks-level-order
+    disposition: keep
+    path: tree-walks
+    skill: trace-visit-order
+    note: A queue loop visits the tree depth by depth, not in preorder and not last-added first.
   - questionId: tree-walks-round-boundary
     disposition: keep
     path: tree-walks
     skill: trace-visit-order
-    note: Find the last pop of a queue round before choosing the level loop.
+    note: Find the last pop of a round when a node joins the queue during it.
   - questionId: tree-walks-height-two-shapes
     disposition: keep
     path: tree-walks
@@ -882,19 +897,19 @@ drills:
     disposition: keep
     path: tree-walks
     skill: height-versus-count
-    note: Count active calls as the recursion goes down and back up.
+    note: Count live calls as the recursion goes down and back up.
   - questionId: tree-walks-review-parent
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
     variant: true
     note: Find a parent one link up.
-  - questionId: tree-walks-review-leaves
+  - questionId: tree-walks-review-leaf-levels
     disposition: keep
     path: tree-walks
     skill: name-tree-parts
     variant: true
-    note: Tell a leaf by its links, not by where it is drawn.
+    note: Tell leaves on two levels from nodes with one child.
   - questionId: tree-walks-review-right-call
     disposition: keep
     path: tree-walks
@@ -936,27 +951,27 @@ drills:
     path: tree-walks
     skill: height-versus-count
     variant: true
-    note: Separate total calls from the most active at once.
+    note: Separate total calls from the most live at once.
   - questionId: tree-walks-review-live-depth-trace
     disposition: keep
     path: tree-walks
     skill: height-versus-count
     variant: true
-    note: Trace a walk and count active calls at two depths.
+    note: Trace a walk and count live calls at two points.
   - questionId: tree-walks-exam-waiting-calls
     disposition: exam
     path: tree-walks
     tests:
       - trace-visit-order
       - height-versus-count
-    note: Name the calls on the stack at one postorder append.
+    note: Name the calls still live at one postorder append.
   - questionId: tree-walks-exam-inorder-depth
     disposition: exam
     path: tree-walks
     tests:
       - trace-visit-order
       - height-versus-count
-    note: Trace an inorder walk and its live depth on a fresh tree.
+    note: Trace an inorder walk and its live calls on a fresh tree.
   - questionId: tree-walks-exam-third-group
     disposition: exam
     path: tree-walks
@@ -970,6 +985,12 @@ drills:
       - name-tree-parts
       - trace-visit-order
     note: Walk only the subtree a call on a child reaches.
+  - questionId: tree-walks-exam-debug-height
+    disposition: exam
+    path: tree-walks
+    tests:
+      - height-versus-count
+    note: 'Debugging: pick the tree a suggested height function gets wrong when it follows the left child alone whenever there is one.'
   - questionId: bst-order-rule-out-subtree
     disposition: keep
     path: bst-order
@@ -1221,127 +1242,176 @@ drills:
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
-    note: New teaching card. Add up every route from S to T; the cheapest one has the most edges.
+    note: Add up every route from S to T; the cheapest one has the most edges.
   - questionId: wp-tap-costliest
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
-    note: New tap-cell teaching card. Tap the node with the largest cheapest-route cost; the node with the most edges costs less.
+    note: Tap the node with the largest cheapest-route cost; the node with the most edges costs less.
   - questionId: wp-relax-no-gain
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
-    note: New teaching card. A relaxation whose route through u is not cheaper leaves dist[v] alone.
+    note: A relaxation whose route through u is not cheaper leaves dist[v] alone.
   - questionId: wp-bellman-pass-trace
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
-    note: New step-trace teaching card. One Bellman-Ford pass in list order, then tap the node a second pass lowers.
+    note: Trace one pass in list order, including an edge out of a node still at inf, then tap the node a second pass lowers.
+  - questionId: wp-k-stops-copy
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    note: k + 1 passes that read a copy of dist find the cheapest route with at most k stops, not the cheapest overall.
   - questionId: wp-tap-finalize-next
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New tap-cell teaching card. A stale entry sits on top of the heap; tap the node that is final next.
+    note: A stale entry sits on top of the heap; tap the node that is final next.
   - questionId: wp-dijkstra-pop-trace
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New step-trace teaching card. Follow Dijkstra's pops, including one stale entry that is skipped.
+    note: Follow Dijkstra's pops, including one stale entry that is skipped.
   - questionId: wp-negative-early-final
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
-    note: New teaching card. Of four graphs, only a negative edge into a node already done gives a wrong distance; a negative edge out of the start, a zero edge and a positive cycle do not.
+    note: Of four graphs, only a negative edge into a node already done gives a wrong distance; a negative edge out of the start, a zero edge and a positive cycle do not.
   - questionId: wp-rv-greedy-route
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant on a fresh graph. The cheapest first edge leads to an expensive one.
+    note: Pick the cheapest route when the cheapest first edge leads to an expensive one.
   - questionId: wp-rv-bfs-cost
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant on a fresh graph. Cost of the fewest-edge route BFS finds against the cheapest route.
+    note: Price the fewest-edge route BFS finds against the cheapest route.
   - questionId: wp-rv-cost-function
     disposition: keep
     path: weighted-paths
     skill: sum-edge-weights
     variant: true
-    note: Review variant. Read a function that sums edge weights along a route with zip.
+    note: Read a function that sums edge weights along a route with zip.
   - questionId: wp-rv-relax-unreached
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
     variant: true
-    note: Review variant. Relaxing an edge from a node still at inf changes nothing.
-  - questionId: wp-rv-prev-trace
-    disposition: keep
-    path: weighted-paths
-    skill: relax-one-edge
-    variant: true
-    note: Review variant on a fresh input (step-through trace). Follow prev[D] through one pass and rebuild the route.
-  - questionId: wp-rv-reverse-pass
-    disposition: keep
-    path: weighted-paths
-    skill: relax-one-edge
-    variant: true
-    note: Review variant on a fresh input. A pass over a reversed edge list reaches only one node.
+    note: Relaxing an edge from a node still at inf changes nothing.
   - questionId: wp-rv-tap-lowering-edge
     disposition: keep
     path: weighted-paths
     skill: relax-one-edge
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the one edge whose relaxation lowers a distance; equal routes do not.
+    note: Tap the one edge whose relaxation lowers a distance; equal routes do not.
+  - questionId: wp-rv-prev-trace
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    variant: true
+    depth: deep
+    note: Follow prev[D] through one pass and rebuild the route. Recording routes with prev is deep.
+  - questionId: wp-rv-reverse-pass
+    disposition: keep
+    path: weighted-paths
+    skill: relax-one-edge
+    variant: true
+    depth: deep
+    note: A pass over a reversed edge list reaches only one node. It relies on the deep count of passes a route needs.
   - questionId: wp-rv-tap-next-final
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (tap the cell). A stale entry ties the next valid one; tap the node that is final next.
+    note: A stale entry ties the next valid one; tap the node that is final next.
   - questionId: wp-rv-zero-edge-trace
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (step-through trace). A zero-weight edge, three stale entries skipped.
+    note: Follow Dijkstra's pops past a zero-weight edge, and count the three stale entries skipped.
   - questionId: wp-rv-pop-floor
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant. With weights 0 or more, no later pop is below the last one, though it can tie.
+    note: With weights 0 or more, no later pop is below the last one, though it can tie.
   - questionId: wp-rv-tap-wrong-node
     disposition: keep
     path: weighted-paths
     skill: finalize-distance
     variant: true
-    note: Review variant on a fresh input (tap the cell). Tap the node a late negative edge leaves wrong when nodes are finalized on first pop.
+    note: Tap the node a late negative edge leaves wrong when nodes are finalized on first pop.
+  - questionId: wp-exam-two-pass-trace
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [relax-edges]
+    note: Trace two passes on a fresh edge list, where an edge checked before its start was lowered waits for the second pass.
+  - questionId: wp-exam-min-relax
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [relax-edges]
+    note: Pick the min line that relaxes an edge exactly as the test does, against an overwrite, a misplaced weight and a backward edge.
+  - questionId: wp-exam-flight-stops
+    disposition: exam
+    path: weighted-paths
+    tests: [sum-edge-weights, relax-one-edge]
+    covers: [limit-stops]
+    note: Price the cheapest trip with at most one stop, which is neither the cheapest overall nor the direct flight.
+  - questionId: wp-exam-debug-copy
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge]
+    covers: [limit-stops]
+    note: 'Debugging: pick the call a k-stops solution without a copy of dist gets wrong, when one pass chains two flights into a cheaper trip.'
   - questionId: wp-exam-equal-weights
     disposition: exam
     path: weighted-paths
     tests: [sum-edge-weights]
     covers: [select-algorithm]
-    note: New checkpoint item. Equal positive weights within O(V + E) call for BFS, not a heap or Bellman-Ford.
+    depth: deep
+    note: Equal positive weights within O(V + E) call for BFS, not a heap or Bellman-Ford. Deep, and the Problem-solving patterns PR moves it to Method selection.
   - questionId: wp-exam-zero-weights
     disposition: exam
     path: weighted-paths
     tests: [finalize-distance]
     covers: [select-algorithm]
-    note: New checkpoint item. Tolls of 0 or more within O((V + E) log V) call for Dijkstra; zero weights keep finalizing safe.
+    depth: deep
+    note: Tolls of 0 or more within O((V + E) log V) call for Dijkstra; zero weights keep finalizing safe.
   - questionId: wp-exam-repeat-trace
     disposition: exam
     path: weighted-paths
     tests: [relax-one-edge, finalize-distance]
     covers: [repeated-work]
-    note: New step-trace checkpoint item. Trace Dijkstra's pops on a fresh graph and count the scans the stale check saves.
+    depth: deep
+    note: Trace Dijkstra's pops on a fresh graph and count the scans the stale check saves.
   - questionId: wp-exam-idle-passes
     disposition: exam
     path: weighted-paths
     tests: [relax-one-edge]
     covers: [repeated-work]
-    note: New checkpoint item. Edges in a helpful order finish in one Bellman-Ford pass; stop after a pass that lowers nothing.
+    depth: deep
+    note: Edges in a helpful order finish in one pass; stop after a pass that lowers nothing. It relies on the deep count of passes a route needs.
+  - questionId: wp-exam-negative-edge
+    disposition: exam
+    path: weighted-paths
+    tests: [sum-edge-weights, relax-one-edge, finalize-distance]
+    covers: [select-algorithm]
+    depth: deep
+    note: 'Copied from `negative-edge-shortest-path`: a negative edge on a fresh graph separates hop count, greedy finalization and repeated relaxation.'
+  - questionId: wp-exam-stale-check
+    disposition: exam
+    path: weighted-paths
+    tests: [relax-one-edge, finalize-distance]
+    covers: [repeated-work]
+    depth: deep
+    note: 'Copied from `dijkstra-stale-entry`: deleting the stale check keeps the answers right but repeats heap work.'
 
 followUps:
   - questionId: grid-bounds-and-cost

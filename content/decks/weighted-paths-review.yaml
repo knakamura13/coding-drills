@@ -1,6 +1,6 @@
 id: weighted-paths-review
 title: "Weighted paths: review"
-description: Fresh graphs for adding up route costs, relaxing edges in a pass, and telling a final distance from a stale heap entry.
+description: Fresh graphs for adding up route costs and relaxing edges in a pass. The last cards, on final distances and recorded routes, go deeper.
 heading: What does the weighted search do?
 
 questions:
@@ -151,7 +151,7 @@ questions:
           - id: fails
             text: It stops with an error at the first edge that has a weight
           - id: sums
-            text: It adds them up instead of counting edges, as Dijkstra does
+            text: It adds them up instead of counting edges
         correct: ignores
         explanation: >-
           BFS only looks at which nodes an edge connects. It finishes on a weighted graph, but
@@ -221,7 +221,7 @@ questions:
     tags: [graph, python]
     prompt: |-
       ```python
-      INF = float("inf")
+      INF = float('inf')
       dist = {"S": 0, "A": INF, "B": 6}
       u, v, w = "A", "B", 3
       if dist[u] + w < dist[v]:
@@ -292,6 +292,36 @@ questions:
         explanation: >-
           The candidate route goes to `A`, then along the edge, so it costs `dist["A"] + w`. That
           is compared with `dist["B"]`, not added to it.
+
+  - format: tap-cell
+    id: wp-rv-tap-lowering-edge
+    heading: Which edge lowers a distance?
+    tags: [graph]
+    prompt: >-
+      Each cell below is an edge `u->v` followed by its weight. Some edges have already been
+      relaxed, and `dist` is shown as it stands. Relaxing which one edge now would lower a
+      distance? Tap it.
+    code: |
+      dist = {"S": 0, "A": 4, "B": 5, "C": 7}
+      # relax u->v w: if dist[u] + w < dist[v],
+      #               dist[v] = dist[u] + w
+    sequence:
+      kind: array
+      name: edges
+      cells: ["S->A 4", "S->C 7", "A->B 2", "S->B 5", "B->C 1", "A->C 4"]
+    correct: 4
+    explanation: '5 + 1 = 6 is less than `dist["C"]`, 7, so `C` drops to 6.'
+    misses:
+      - index: 0
+        explanation: '0 + 4 = 4 equals `dist["A"]`. The test needs strictly less, so `A` stays 4.'
+      - index: 1
+        explanation: '0 + 7 = 7 equals `dist["C"]`. An equal route is not an improvement.'
+      - index: 2
+        explanation: '4 + 2 = 6 is more than `dist["B"]`, 5.'
+      - index: 3
+        explanation: '0 + 5 = 5 equals `dist["B"]`, so nothing changes.'
+      - index: 5
+        explanation: '4 + 4 = 8 is more than `dist["C"]`, 7.'
 
   - format: step-trace
     id: wp-rv-prev-trace
@@ -449,36 +479,6 @@ questions:
         explanation: >-
           A pass checks every edge in the list, whether or not earlier ones changed anything.
           `S -> A` is last, and it lowers `A`.
-
-  - format: tap-cell
-    id: wp-rv-tap-lowering-edge
-    heading: Which edge lowers a distance?
-    tags: [graph]
-    prompt: >-
-      Each cell below is an edge `u->v` followed by its weight. Some edges have already been
-      relaxed, and `dist` is shown as it stands. Relaxing which one edge now would lower a
-      distance? Tap it.
-    code: |
-      dist = {"S": 0, "A": 4, "B": 5, "C": 7}
-      # relax u->v w: if dist[u] + w < dist[v],
-      #               dist[v] = dist[u] + w
-    sequence:
-      kind: array
-      name: edges
-      cells: ["S->A 4", "S->C 7", "A->B 2", "S->B 5", "B->C 1", "A->C 4"]
-    correct: 4
-    explanation: '5 + 1 = 6 is less than `dist["C"]`, 7, so `C` drops to 6.'
-    misses:
-      - index: 0
-        explanation: '0 + 4 = 4 equals `dist["A"]`. The test needs strictly less, so `A` stays 4.'
-      - index: 1
-        explanation: '0 + 7 = 7 equals `dist["C"]`. An equal route is not an improvement.'
-      - index: 2
-        explanation: '4 + 2 = 6 is more than `dist["B"]`, 5.'
-      - index: 3
-        explanation: '0 + 5 = 5 equals `dist["B"]`, so nothing changes.'
-      - index: 5
-        explanation: '4 + 4 = 8 is more than `dist["C"]`, 7.'
 
   - format: tap-cell
     id: wp-rv-tap-next-final
