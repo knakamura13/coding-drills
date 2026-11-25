@@ -1,0 +1,296 @@
+id: tree-answers-review
+title: 'Tree answers: review'
+description: Fresh trees for inverting and comparing, passing a value down, and returning what a search found.
+heading: What does the call do?
+
+questions:
+  - id: tree-answers-review-invert-tap
+    format: tap-cell
+    heading: Where does the node land?
+    tags: [tree, recursion]
+    prompt: |-
+      `invert(root)` mirrors the tree below left to right, where `root` is P: every node's two
+      children trade places. Tap the node that `root.left.right` names afterward.
+
+      ```text
+            P
+           / \
+          Q   R
+         /   / \
+        S   T   U
+      ```
+    code: |
+      def invert(node):
+          if node is None:
+              return None
+          left = invert(node.left)
+          right = invert(node.right)
+          node.left = right
+          node.right = left
+          return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [P, Q, R, S, T, U]
+    correct: 4
+    explanation: >-
+      The swap at P puts R on the left, so `root.left` is R. The call on R swapped R's children too,
+      so T, once R's left child, is now its right child.
+    misses:
+      - index: 0
+        explanation: P is the root. Inverting swaps children; the root stays on top.
+      - index: 1
+        explanation: Q moves to `root.right`. The path starts with `.left`, which now leads to R.
+      - index: 2
+        explanation: R is `root.left` after the swap. The `.right` moves one more level down.
+      - index: 3
+        explanation: S moves across with Q, to the right side. It ends as `root.right.right`.
+      - index: 5
+        explanation: >-
+          U was R's right child, and it would still be if only P swapped. The call on R swapped R's
+          children as well, so U is now `root.left.left`.
+
+  - id: tree-answers-review-same-shape
+    heading: Are they the same tree?
+    tags: [tree, recursion]
+    prompt: |-
+      Both trees hold the values 1 and 2. In `p`, 2 is the left child of 1; in `q`, it is the right
+      child.
+
+      ```python
+      def same(p, q):
+          if p is None and q is None:
+              return True
+          if p is None or q is None:
+              return False
+          if p.val != q.val:
+              return False
+          return same(p.left, q.left) and same(p.right, q.right)
+
+      p = TreeNode(1, TreeNode(2))
+      q = TreeNode(1, None, TreeNode(2))
+      ```
+
+      What does `same(p, q)` return?
+    options:
+      - id: is-false
+        text: "`False`"
+        explanation: >-
+          The roots match, so `same` compares the left children, 2 in `p` and `None` in `q`. Exactly
+          one is `None`, so that call returns `False`. Same values in a different shape is not the same tree.
+      - id: is-true
+        text: "`True`"
+        explanation: >-
+          The values match, but `same` also checks shape. The left call meets 2 in `p` and `None` in
+          `q`, which returns `False`.
+      - id: raises
+        text: It raises `AttributeError`
+        explanation: >-
+          The two `None` checks come before any `.val` is read, so a call with one empty side returns
+          `False` instead of reading `None.val`.
+    correct: is-false
+    followUps:
+      is-true:
+        prompt: Which pair does the call `same(p.left, q.left)` compare?
+        options:
+          - { id: two-none, text: "2 against `None`" }
+          - { id: two-two, text: "2 against 2" }
+          - { id: none-none, text: "`None` against `None`" }
+        correct: two-none
+        explanation: >-
+          `same` always pairs left with left. In `p` the left child is 2, and in `q` the left side is
+          empty, so the shapes differ there.
+      raises:
+        prompt: What does `same(TreeNode(2), None)` do?
+        options:
+          - { id: returns-false, text: "Returns `False` at the second check" }
+          - { id: reads-val, text: "Reads `None.val` and raises" }
+          - { id: returns-true, text: "Returns `True` at the first check" }
+        correct: returns-false
+        explanation: >-
+          The first check needs both to be `None`. The second catches exactly one `None` and returns
+          `False` before the values are compared.
+
+  - id: tree-answers-review-leaf-target
+    heading: What does the leaf receive?
+    tags: [tree, recursion]
+    prompt: |-
+      `has_path_sum(root, 10)` runs on the tree below. Each call subtracts its own value and passes
+      what is left down to its children.
+
+      ```python
+      def has_path_sum(node, target):
+          if node is None:
+              return False
+          remaining = target - node.val
+          if node.left is None and node.right is None:
+              return remaining == 0
+          return has_path_sum(node.left, remaining) or has_path_sum(node.right, remaining)
+      ```
+
+      ```text
+            4
+           / \
+          7   1
+         /   / \
+        2   5   8
+      ```
+
+      What `target` does the call on the leaf 5 receive?
+    options:
+      - id: five
+        text: "`5`"
+        explanation: >-
+          The call on 4 takes off its 4 and passes 6 down. The call on 1 takes off its 1 and passes 5
+          to the leaf, which finds `5 - 5` is 0 and returns `True`.
+      - id: ten
+        text: "`10`"
+        explanation: >-
+          Each call passes down what is left after its own value, so the 4 and the 1 above 5 have
+          been taken off.
+      - id: zero
+        text: "`0`"
+        explanation: >-
+          0 is the leaf's `remaining`, after it takes off its own 5. The call receives the value
+          before that subtraction.
+      - id: six
+        text: "`6`"
+        explanation: >-
+          6 is what the call on 1 receives. The call on 1 takes off its own value before passing the
+          target on.
+    correct: five
+    followUps:
+      ten:
+        prompt: What does the call on 4 pass to its children?
+        options:
+          - { id: six, text: "`10 - 4`, which is 6" }
+          - { id: ten, text: "`10`, unchanged" }
+          - { id: four, text: "`4`, its own value" }
+        correct: six
+        explanation: >-
+          A call passes `remaining`, the target minus its own value. Each node on the way down takes
+          its value off once.
+      zero:
+        prompt: In the call on 5, which comes first?
+        options:
+          - { id: receive, text: "It receives `target`, then computes `remaining = target - 5`" }
+          - { id: compute, text: "It computes `remaining` before its `target` arrives" }
+          - { id: same, text: "`target` and `remaining` are the same name" }
+        correct: receive
+        explanation: >-
+          `target` is the parameter the parent passed in. `remaining` is computed from it inside the
+          call, so it is 5 less.
+      six:
+        prompt: What does the call on 1 compute for `remaining`?
+        options:
+          - { id: five, text: "`6 - 1`, which is 5" }
+          - { id: six, text: "`6`, unchanged, since 1 is not a leaf" }
+          - { id: nine, text: "`10 - 1`, which is 9" }
+        correct: five
+        explanation: >-
+          Every call takes off its own value, whether it is a leaf or not. The call on 1 passes 5 to
+          both of its children.
+
+  - id: tree-answers-review-lca-tap
+    format: tap-cell
+    heading: Which node is the answer?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. `lca` returns the lowest common ancestor of two nodes, the lowest node that is an
+      ancestor of both. `lca(root, 'N', 'R')` runs on the tree below. Tap the node it returns.
+
+      ```text
+              K
+            /   \
+           L     M
+          / \     \
+         N   O     P
+            / \
+           Q   R
+      ```
+    code: |
+      def lca(node, p, q):
+          if node is None:
+              return None
+          if node.val == p or node.val == q:
+              return node
+          left = lca(node.left, p, q)
+          right = lca(node.right, p, q)
+          if left is not None and right is not None:
+              return node
+          if left is not None:
+              return left
+          return right
+    sequence:
+      kind: array
+      name: nodes
+      cells: [K, L, M, N, O, P, Q, R]
+    correct: 1
+    explanation: >-
+      L's left call returns N, and its right call on O passes up R. Both sides found a target, so L
+      returns itself. K gets L from its left and `None` from M's side, and passes L up.
+    misses:
+      - index: 0
+        explanation: K's right call on M finds nothing, so K passes up the L its left call returned.
+      - index: 2
+        explanation: M's subtree holds neither target, so its call returns `None`.
+      - index: 3
+        explanation: N is a target and returns itself, but L also gets R from its other side.
+      - index: 4
+        explanation: O has only R below it. N is in L's other subtree, so O just passes R up.
+      - index: 5
+        explanation: P is not a target and has nothing below it, so its call returns `None`.
+      - index: 6
+        explanation: Q is not a target, so its call returns `None`.
+      - index: 7
+        explanation: R is a target, but N is not below R. R comes back up to L through O.
+
+  - id: tree-answers-review-ancestor-tap
+    format: tap-cell
+    heading: Which node is the answer?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `lca(root, 'C', 'F')` runs on the tree below. F is below C. Tap the node it returns.
+
+      ```text
+            A
+           / \
+          B   C
+         /   / \
+        D   E   F
+      ```
+    code: |
+      def lca(node, p, q):
+          if node is None:
+              return None
+          if node.val == p or node.val == q:
+              return node
+          left = lca(node.left, p, q)
+          right = lca(node.right, p, q)
+          if left is not None and right is not None:
+              return node
+          if left is not None:
+              return left
+          return right
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F]
+    correct: 2
+    explanation: >-
+      The call on C returns C before looking below it, and that is right: C is an ancestor of itself
+      and of F. A gets `None` from B's side and C from its right, and passes C up.
+    misses:
+      - index: 0
+        explanation: A would return itself only if both sides found a target. B's side finds nothing.
+      - index: 1
+        explanation: B's subtree holds neither target, so its call returns `None`.
+      - index: 3
+        explanation: D is not a target, so its call returns `None`.
+      - index: 4
+        explanation: The search never reaches E. The call on C returns first.
+      - index: 5
+        explanation: >-
+          F is a target, but the search never reaches it: the call on C returns first. F is not an
+          ancestor of C either.

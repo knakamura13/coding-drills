@@ -1,0 +1,699 @@
+id: tree-answers
+title: Tree answers
+description: Mirror and compare trees, pass a running value down to each child, and pass up what a search found.
+heading: What does the call do?
+
+questions:
+  - id: tree-answers-invert-lands
+    format: tap-cell
+    heading: Where does the node land?
+    tags: [tree, recursion]
+    workedExample: |-
+      Many tree answers come from one recursive call per node that passes something down to both
+      children, or builds its answer from what both children's calls return. Inverting a tree
+      mirrors it left to right: every node swaps its two children. Take
+      `TreeNode(1, TreeNode(2, TreeNode(4)), TreeNode(3))`, where 4 is the left child of 2.
+
+      1. The call on 2 swaps its children, so 4 moves from 2's left to 2's right.
+      2. The call on 1 then swaps its own children, so 3 becomes its left child and 2, with 4 on
+         its right, becomes its right child.
+      3. So 4 ends as `root.right.right`. It crossed over once for each node above it that
+         swapped.
+    prompt: |-
+      Inverting a tree mirrors it left to right. `invert` calls itself on both children first, then
+      swaps them, so every node's two children trade places. `invert(root)` runs on the tree below,
+      where `root` is A.
+
+      ```text
+              A
+             / \
+            B   C
+           / \   \
+          D   E   F
+      ```
+
+      Tap the node that `root.right.left` names afterward.
+    code: |
+      def invert(node):
+          if node is None:
+              return None
+          left = invert(node.left)
+          right = invert(node.right)
+          node.left = right
+          node.right = left
+          return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F]
+    correct: 4
+    explanation: >-
+      The swap at A puts B on the right, so `root.right` is B. The call on B swapped B's own children
+      too, so E, once B's right child, is now its left child: `root.right.left` is E.
+    misses:
+      - index: 0
+        explanation: A is the root. Inverting swaps children; the root stays on top.
+      - index: 1
+        explanation: >-
+          B is `root.right` after the swap at A. The `.left` moves one more level down, to one of B's
+          children.
+      - index: 2
+        explanation: >-
+          C moves to `root.left`. The path starts with `.right`, which now leads to B.
+      - index: 3
+        explanation: >-
+          D was B's left child, and it would still be if only A swapped. But the call on B swapped
+          B's children as well, so D is now `root.right.right`.
+      - index: 5
+        explanation: F moves across with C. It ends on the left side, as `root.left.left`.
+
+  - id: tree-answers-same-first-mismatch
+    heading: Which mismatch ends it?
+    tags: [tree, recursion]
+    workedExample: |-
+      Take `TreeNode(8, TreeNode(1), TreeNode(9))` and `TreeNode(8, TreeNode(2), TreeNode(9))`, and
+      `same` from the question.
+
+      1. Neither root is `None` and both hold 8, so the call reaches its last line and calls `same`
+         on the left children, 1 and 2.
+      2. `1 != 2`, so that call returns `False`.
+      3. `and` stops at the `False`, so the call on the right children, 9 and 9, never runs, and the
+         first call returns `False`.
+    prompt: |-
+      `same(p, q)` checks whether two trees have the same shape and the same values. `and` stops at
+      its first false test: when `same(p.left, q.left)` returns `False`, the right-side call never
+      runs.
+
+      ```python
+      def same(p, q):
+          if p is None and q is None:
+              return True
+          if p is None or q is None:
+              return False
+          if p.val != q.val:
+              return False
+          return same(p.left, q.left) and same(p.right, q.right)
+      ```
+
+      ```text
+      Tree p:     1        Tree q:     1
+                 / \                  / \
+                2   3                2   7
+               / \                  / \
+              4   5                4   6
+      ```
+
+      `same(p, q)` returns `False`. Which pair of values does it find unequal?
+    options:
+      - id: left-pair
+        text: "`5` and `6`"
+        explanation: >-
+          After the roots match, the left call on the two 2s runs first and works all the way down
+          its side: 4 matches 4, then 5 against 6 returns `False`. That `False` comes back up through
+          each `and`, so the right children 3 and 7 are never compared.
+      - id: right-pair
+        text: "`3` and `7`"
+        explanation: >-
+          Those values differ, but the right children are compared only if the left call returns
+          `True`. The left call meets 5 against 6 first and returns `False`.
+      - id: both-pairs
+        text: "Both pairs: `5` and `6`, then `3` and `7`"
+        explanation: >-
+          Once the left call returns `False`, `and` stops, so the call on 3 and 7 never runs. The
+          comparison ends at the first mismatch it meets.
+    correct: left-pair
+    followUps:
+      right-pair:
+        prompt: After 1 matches 1, which call does `same` make first?
+        options:
+          - { id: left-first, text: "`same(p.left, q.left)`, on the two 2s" }
+          - { id: right-first, text: "`same(p.right, q.right)`, on 3 and 7" }
+          - { id: both-at-once, text: "Both at once, one level at a time" }
+        correct: left-first
+        explanation: >-
+          The left call is written first, so it compares the whole left sides before the right call
+          can start. A mismatch anywhere on the left ends the comparison there.
+      both-pairs:
+        prompt: The left call returns `False`. What does `False and same(p.right, q.right)` do?
+        options:
+          - { id: skips, text: "Gives `False` without running the right call" }
+          - { id: runs-then-false, text: "Runs the right call, then gives `False`" }
+          - { id: right-result, text: "Runs the right call and gives its result" }
+        correct: skips
+        explanation: >-
+          `and` needs both sides true. Once the left side is `False`, the answer is already known, so
+          Python skips the right side.
+
+  - id: tree-answers-mirror-pairs
+    heading: Which pairs mirror each other?
+    tags: [tree, recursion]
+    prompt: |-
+      A tree is symmetric when it is its own mirror image: its left side, flipped left to right,
+      matches its right side. `mirror(a, b)` checks whether `a` and `b` are mirror images of each
+      other, and `is_symmetric` asks it about the two sides of a non-empty tree.
+
+      ```python
+      def is_symmetric(root):
+          return mirror(root.left, root.right)
+
+      def mirror(a, b):
+          if a is None and b is None:
+              return True
+          if a is None or b is None:
+              return False
+          if a.val != b.val:
+              return False
+          return ???
+      ```
+
+      ```text
+              1
+            /   \
+           2     2
+          / \   / \
+         3   4 4   3
+      ```
+
+      This tree is symmetric. Which line fills `???`?
+    options:
+      - id: outer-inner
+        text: "`mirror(a.left, b.right) and mirror(a.right, b.left)`"
+        explanation: >-
+          Flipping one side sends its outer child to the outer edge of the other side. So the left
+          side's left child pairs with the right side's right child (3 with 3), and the two inner
+          children pair up (4 with 4).
+      - id: same-sides
+        text: "`mirror(a.left, b.left) and mirror(a.right, b.right)`"
+        explanation: >-
+          That pairs the children the way `same` does, which tests for a copy, not a mirror image. On
+          this tree it compares 3 with 4 and returns `False`, though the tree is symmetric.
+      - id: each-side
+        text: "`mirror(a.left, a.right) and mirror(b.left, b.right)`"
+        explanation: >-
+          That asks whether each side is a mirror image of itself. Under the left 2 it compares 3
+          with 4 and returns `False`, though the tree is symmetric.
+    correct: outer-inner
+    followUps:
+      same-sides:
+        prompt: In a mirror image, which node on the right side matches the left side's outer child, 3?
+        options:
+          - { id: outer, text: "The right side's outer child, its right child 3" }
+          - { id: same-position, text: "The right side's left child, 4" }
+          - { id: none, text: "None; only the two 2s are compared" }
+        correct: outer
+        explanation: >-
+          A mirror flips left and right at every level, so outer pairs with outer and inner with
+          inner: `a.left` with `b.right`, and `a.right` with `b.left`.
+      each-side:
+        prompt: Does each side of a symmetric tree have to be symmetric by itself?
+        options:
+          - { id: not-needed, text: "No. The left 2 has children 3 and 4, and the tree is still symmetric" }
+          - { id: yes-both, text: "Yes. Both sides must mirror themselves" }
+          - { id: yes-left, text: "Only the left side must" }
+        correct: not-needed
+        explanation: >-
+          Symmetry compares the two sides with each other. One side can be lopsided, as long as the
+          other side is its mirror image.
+
+  - id: tree-answers-path-sum-trace
+    format: step-trace
+    heading: What does each call receive?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      A root-to-leaf path runs from the root down to a leaf. `has_path_sum(node, target)` checks
+      whether some root-to-leaf path's values add up to `target`. Each call subtracts its own value
+      and passes what is left down to its children, and a leaf checks whether nothing is left. `or`
+      stops at its first true test: when the left call returns `True`, the right call never runs.
+      `has_path_sum(root, 14)` runs. The cells list the nodes level by level. Predict each step.
+
+      ```text
+            6
+           / \
+          3   9
+         / \   \
+        2   5   1
+      ```
+    code: |-
+      def has_path_sum(node, target):
+          if node is None:
+              return False
+          remaining = target - node.val
+          if node.left is None and node.right is None:
+              return remaining == 0
+          return has_path_sum(node.left, remaining) or has_path_sum(node.right, remaining)
+    sequence:
+      kind: array
+      name: nodes
+      cells: ['6', '3', '9', '2', '5', '1']
+    start:
+      - { name: call, at: 0 }
+    steps:
+      - line: 4
+        ask: The call on 6 runs line 4. What `target` does the call on 3 receive?
+        options:
+          - id: eight
+            text: "8"
+            explanation: The call on 6 computes `remaining = 14 - 6`, which is 8, and passes it to its children.
+          - id: fourteen
+            text: "14"
+            explanation: A call passes down `remaining`, not its own `target`, so the 6 is already taken off.
+          - id: five
+            text: "5"
+            explanation: 5 is `8 - 3`, what the call on 3 computes for its own children. The call on 3 receives 8.
+        correct: eight
+      - line: 7
+        ask: The call on 3 runs line 7. Which node's call is the first to run line 6?
+        pointer: call
+        correct: 3
+        explanation: Line 6 runs only at a leaf. The call on 3 calls its left child first, and 2 is a leaf.
+        misses:
+          - index: 4
+            explanation: 5 is a leaf too, but it is 3's right child. The left call on 2 runs first.
+          - index: 5
+            explanation: 1 is in 9's subtree, which the call on 6 reaches only after the left side returns.
+          - index: 1
+            explanation: 3 has children, so its call goes on to line 7 instead of line 6.
+        elsewhere: Line 6 runs only at a leaf, and each call tries its left child first.
+      - line: 4
+        ask: What is `remaining` in the call on 2?
+        options:
+          - id: three
+            text: "3"
+            explanation: The call on 2 receives `8 - 3`, which is 5, and computes `5 - 2`, which is 3. It returns `False`.
+          - id: zero
+            text: "0"
+            explanation: The path 6, 3, 2 adds up to 11, not 14, so 3 is still left at the leaf.
+          - id: six
+            text: "6"
+            explanation: 6 is `8 - 2`, which skips the 3. The call on 3 took its value off before passing the target down.
+        correct: three
+      - line: 7
+        ask: The call on 2 returns `False`. Which node's call returns `True`?
+        pointer: call
+        correct: 4
+        explanation: >-
+          The call on 3 tries its right child next. The call on 5 receives 5, and `5 - 5` is 0, so the
+          path 6, 3, 5 adds up to 14.
+        misses:
+          - index: 5
+            explanation: The path 6, 9, 1 adds up to 16, not 14, so the call on 1 would return `False`.
+          - index: 2
+            explanation: 9 has a child, so its call never runs line 6 and cannot return `True` by itself.
+          - index: 0
+            explanation: The root passes up what a leaf found. The first `True` comes from a leaf's line 6.
+        elsewhere: A `True` starts at a leaf whose `remaining` is 0.
+      - line: 7
+        ask: Does the call on 9 ever run?
+        options:
+          - id: skipped
+            text: "No"
+            explanation: >-
+              The call on 3 returns `True`, so the root's left call is `True`, and `or` skips the right
+              call on 9.
+          - id: runs
+            text: "Yes"
+            explanation: >-
+              `or` stops at its first true test. The root's left call returned `True`, so the call on 9
+              is skipped.
+        correct: skipped
+
+  - id: tree-answers-none-test
+    heading: Which target gets a wrong answer?
+    tags: [tree, recursion]
+    workedExample: |-
+      Take `TreeNode(3, TreeNode(1, TreeNode(2)), TreeNode(4))`: 1 is the left child of 3, and 2 is
+      the left child of 1. Run the version in the question with `target = 4`.
+
+      1. The call on 3 passes `4 - 3`, which is 1, to the call on 1, and that call passes `1 - 1`,
+         which is 0, to both of its sides.
+      2. 1's right side is empty, so the call there checks `0 == 0` and returns `True`.
+      3. But 1 has a child, so the path 3, 1 does not end at a leaf. The root-to-leaf paths are
+         3, 1, 2 and 3, 4, which add up to 6 and 7, so the right answer for 4 was `False`.
+    prompt: |-
+      `has_path_sum` should return `True` only when some root-to-leaf path's values add up to
+      `target`. This version checks the target at `None` instead of at a leaf:
+
+      ```python
+      def has_path_sum(node, target):
+          if node is None:
+              return target == 0
+          rest = target - node.val
+          return has_path_sum(node.left, rest) or has_path_sum(node.right, rest)
+      ```
+
+      ```text
+        5
+         \
+          2
+         /
+        1
+      ```
+
+      For which `target` does it return the wrong answer?
+    options:
+      - id: five
+        text: "`5`"
+        explanation: >-
+          5's left side is empty, and the call there gets `5 - 5`, which is 0, so it returns `True`.
+          But 5 has a child, so it is not a leaf. The only root-to-leaf path is 5, 2, 1, which adds up
+          to 8, so the answer should be `False`.
+      - id: eight
+        text: "`8`"
+        explanation: >-
+          The empty sides below the leaf 1 get `8 - 5 - 2 - 1`, which is 0, so it returns `True`. The
+          path 5, 2, 1 does add up to 8, so that answer is right.
+      - id: six
+        text: "`6`"
+        explanation: >-
+          The three kinds of empty side get 0 only for targets 5, 7 and 8, so for 6 it returns
+          `False`. No root-to-leaf path adds up to 6, so that is right.
+      - id: two
+        text: "`2`"
+        explanation: >-
+          No empty side is reached with 0 left, so it returns `False`. The only path adds up to 8, so
+          that is right.
+    correct: five
+    followUps:
+      eight:
+        prompt: Is the node 5 a leaf?
+        options:
+          - { id: not-leaf, text: "No. It has a child, 2, so 5 alone is not a root-to-leaf path" }
+          - { id: leaf-empty, text: "Yes. Its left side is empty" }
+          - { id: leaf-root, text: "Yes. It is the root" }
+        correct: not-leaf
+        explanation: >-
+          A leaf has no children. The empty side of a node with one child does not end a root-to-leaf
+          path, so the target test belongs at a leaf, where both sides are empty.
+      six:
+        prompt: With `target = 5`, what does the call on 5's empty left side return?
+        options:
+          - { id: true-zero, text: "`True`, because it gets `5 - 5`, and `0 == 0`" }
+          - { id: false-not-leaf, text: "`False`, because 5 is not a leaf" }
+          - { id: never, text: "Nothing; that call never runs" }
+        correct: true-zero
+        explanation: >-
+          A call on `None` cannot tell the empty side of a one-child node from the empty side of a
+          leaf. It sees only the number passed to it.
+      two:
+        prompt: For which targets does some call on `None` get 0 here?
+        options:
+          - { id: sums, text: "5, 7 and 8, the sums down to each empty side" }
+          - { id: leaf-only, text: "Only 8, the sum of the root-to-leaf path" }
+          - { id: small, text: "Only 1 and 2, the values below the root" }
+        correct: sums
+        explanation: >-
+          The empty side under 5 gets 0 for target 5, the one under 2 for 7, and the two under 1 for
+          8. Only 8 is a real root-to-leaf sum.
+
+  - id: tree-answers-good-nodes
+    heading: How many nodes are good?
+    tags: [tree, dfs, recursion]
+    workedExample: |-
+      Take the chain `TreeNode(4, TreeNode(2, TreeNode(3)))`: 4 has the left child 2, and 2 has the
+      left child 3. The first call is `count_good(root, 4)`.
+
+      1. `4 >= 4`, so the root is good, and it passes down `high = max(4, 4)`, which is 4.
+      2. `2 >= 4` is false, so 2 is not good, and it passes down `high = max(4, 2)`, which is still 4.
+      3. `3 >= 4` is false too, so 3 is not good, though it is larger than its parent. The count is 1.
+    prompt: |-
+      A node is good when no node on the path from the root down to it holds a larger value, so the
+      root is always good. `count_good` passes `high`, the largest value seen so far, down to both
+      children, and the first call is `count_good(root, root.val)`.
+
+      ```python
+      def count_good(node, high):
+          if node is None:
+              return 0
+          count = 0
+          if node.val >= high:
+              count = 1
+          high = max(high, node.val)
+          return count + count_good(node.left, high) + count_good(node.right, high)
+      ```
+
+      ```text
+            4
+           / \
+          1   6
+         / \   \
+        2   3   5
+      ```
+
+      What does `count_good(root, root.val)` return?
+    options:
+      - id: two
+        text: "`2`"
+        explanation: >-
+          4 is good, and so is 6, since `6 >= 4`. The call on 6 passes down `high = 6`, so 5 is not
+          good. Below 1 the calls receive `high = max(4, 1)`, which is 4, so 2 and 3 are not good
+          either.
+      - id: four
+        text: "`4`"
+        explanation: >-
+          That compares each node with its parent only, so 2 and 3 count because they beat 1. But the
+          call on 1 passes down `max(4, 1)`, which is 4, and 2 and 3 are smaller than that.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          That compares each node with the root only, so 5 counts. But the call on 6 passes down
+          `max(4, 6)`, which is 6, and 5 is smaller than that.
+      - id: six
+        text: "`6`"
+        explanation: >-
+          Not every node is good: 1, 2, 3 and 5 each have a larger value somewhere above them.
+    correct: two
+    followUps:
+      four:
+        prompt: The call on 1 runs `high = max(high, node.val)`. What `high` does it pass to 2 and 3?
+        options:
+          - { id: keeps-four, text: "4, because `max(4, 1)` is 4" }
+          - { id: own-value, text: "1, its own value" }
+          - { id: child-value, text: "2, its left child's value" }
+        correct: keeps-four
+        explanation: >-
+          `high` only ever grows on the way down. A smaller node passes on the larger value it
+          received, so its children are still measured against 4.
+      three:
+        prompt: What `high` does the call on 6 pass to 5?
+        options:
+          - { id: six-down, text: "6, the larger of 4 and 6" }
+          - { id: root-value, text: "4, the root's value" }
+          - { id: five-down, text: "5, the child's own value" }
+        correct: six-down
+        explanation: >-
+          Each call passes down the largest value on the path so far. Once 6 is on the path, every
+          node below it is measured against 6, not the root's 4.
+      six:
+        prompt: Is the node 1 good?
+        options:
+          - { id: not-good, text: "No. The root above it holds 4, which is larger" }
+          - { id: good-parent, text: "Yes. Every node with children is good" }
+          - { id: good-smaller, text: "Yes. It is smaller than both of its children" }
+        correct: not-good
+        explanation: >-
+          A node is good only when nothing above it on its path is larger. The root's 4 is above 1,
+          so 1 is not good.
+
+  - id: tree-answers-lca-trace
+    format: step-trace
+    heading: What does each call return?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two nodes is the lowest node that is an ancestor of
+      both. Values are distinct and both targets are in the tree. `lca(root, 'H', 'E')` runs on the
+      tree below. The cells list the nodes level by level. Predict each step.
+
+      ```text
+              A
+            /   \
+           B     C
+          / \   / \
+         D   E F   G
+        /
+       H
+      ```
+    code: |-
+      def lca(node, p, q):
+          if node is None:
+              return None
+          if node.val == p or node.val == q:
+              return node
+          left = lca(node.left, p, q)
+          right = lca(node.right, p, q)
+          if left is not None and right is not None:
+              return node
+          if left is not None:
+              return left
+          return right
+    sequence:
+      kind: array
+      name: nodes
+      cells: [A, B, C, D, E, F, G, H]
+    start:
+      - { name: found, at: 0 }
+    steps:
+      - line: 6
+        ask: The call on D runs line 6. Which node does the call on D return?
+        pointer: found
+        correct: 7
+        explanation: >-
+          D's left call reaches H, a target, which returns itself at line 5. D's right side is empty,
+          so only `left` is set, and D returns it at line 11: H.
+        misses:
+          - index: 3
+            explanation: >-
+              D is not a target, and only one side found anything. D returns itself only when both
+              sides found a target; here it passes H up.
+          - index: 1
+            explanation: B is D's parent. A call returns something from its own subtree, never a node above it.
+        elsewhere: The call on D returns what its children's calls found below it.
+      - line: 7
+        ask: The call on B runs line 7. Which node does the call on B return?
+        pointer: found
+        correct: 1
+        explanation: >-
+          B's left call returned H, and its right call reaches E, a target. Both sides found one, so
+          line 8 is true and B returns itself: B is the lowest node with both targets below it.
+        misses:
+          - index: 7
+            explanation: H came up from the left, but E came up from the right as well, so both sides are set.
+          - index: 4
+            explanation: E came up from the right, but H came up from the left too, so B returns itself.
+          - index: 0
+            explanation: A is above B. B's call returns before A gets its result.
+        elsewhere: When both of a call's sides found a target, the call returns its own node.
+      - line: 7
+        ask: The call on A runs line 7. What does the call on C return?
+        options:
+          - id: none
+            text: "`None`"
+            explanation: >-
+              Neither target is in C's subtree. F and G each get `None` from both sides, and so does
+              C, so C returns `None`.
+          - id: c
+            text: C
+            explanation: >-
+              C returns itself only if it is a target or both of its sides found one. Neither is true,
+              so it returns `None`.
+          - id: g
+            text: G
+            explanation: G is not a target, so its call never returns G. Nothing below C is a target.
+        correct: none
+      - line: 8
+        ask: What does `lca(root, 'H', 'E')` return?
+        options:
+          - id: b
+            text: B
+            explanation: >-
+              A's left call returned B and its right call returned `None`, so A passes B up at line
+              11. B is the lowest common ancestor of H and E.
+          - id: a
+            text: A
+            explanation: >-
+              A returns itself only when both sides found something. Its right call on C returned
+              `None`, so it passes up B.
+          - id: e
+            text: E
+            explanation: E is a target, but E is not an ancestor of H. B found both and returned itself.
+        correct: b
+
+  - id: tree-answers-ancestor-target
+    heading: What does the search return?
+    tags: [tree, dfs, recursion]
+    workedExample: |-
+      Take `TreeNode('X', TreeNode('Y', TreeNode('Z')))`, a chain where Y is X's left child and Z is
+      Y's left child, and run `lca(root, 'X', 'Z')`.
+
+      1. The first call is on X, and X is a target, so it returns X before looking at any child.
+      2. The search never reaches Z. It does not need to: both targets are in the tree, and Z is
+         below X.
+      3. X is an ancestor of itself and of Z, and no node lower than X is an ancestor of X. So X is
+         the lowest common ancestor, and the search returned it.
+    prompt: |-
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included, and the lowest common ancestor of two nodes is the lowest node that is an ancestor
+      of both. Values are distinct and both targets are in the tree. `lca(root, 'R', 'V')` runs on
+      the tree below, where V is below R.
+
+      ```python
+      def lca(node, p, q):
+          if node is None:
+              return None
+          if node.val == p or node.val == q:
+              return node
+          left = lca(node.left, p, q)
+          right = lca(node.right, p, q)
+          if left is not None and right is not None:
+              return node
+          if left is not None:
+              return left
+          return right
+      ```
+
+      ```text
+            P
+           / \
+          Q   R
+         /   / \
+        S   T   U
+             \
+              V
+      ```
+
+      What does `lca(root, 'R', 'V')` return?
+    options:
+      - id: r
+        text: R
+        explanation: >-
+          The call on R returns R as soon as it sees a target, without looking below it. That is
+          right: R is an ancestor
+          of itself and of V, and no lower node is an ancestor of R. P gets `None` from Q's side and R
+          from its right side, and passes R up.
+      - id: p
+        text: P
+        explanation: >-
+          P returns itself only when both of its sides found something. Q's side holds neither
+          target, so P passes up the R from its right call.
+      - id: t
+        text: T
+        explanation: >-
+          T is V's parent, but it is below R, so it is not an ancestor of R. The search never reaches
+          T: the call on R returns first.
+      - id: none
+        text: "`None`"
+        explanation: >-
+          The search never reaches V, but it does not need to. Both targets are in the tree, and the
+          lowest common ancestor of R and a node below it is R itself.
+    correct: r
+    followUps:
+      p:
+        prompt: What does the call on Q return?
+        options:
+          - { id: q-none, text: "`None`, since neither target is in Q's subtree" }
+          - { id: q-self, text: "Q, since it is P's left child" }
+          - { id: q-s, text: "S, the leaf below it" }
+        correct: q-none
+        explanation: >-
+          With nothing found on the left, P has a target on one side only. It passes that one up
+          instead of returning itself.
+      t:
+        prompt: Is T an ancestor of R?
+        options:
+          - { id: t-no, text: "No. T is below R, and R's ancestors are on the path from the root down to R" }
+          - { id: t-between, text: "Yes. It sits between R and V" }
+          - { id: t-parent, text: "Yes. It is V's parent" }
+        correct: t-no
+        explanation: >-
+          A common ancestor has to be above or at both targets. T is below R, so it cannot be an
+          ancestor of R.
+      none:
+        prompt: Which node is the lowest ancestor of both R and V?
+        options:
+          - { id: r-self, text: "R, since a node counts as its own ancestor" }
+          - { id: p-root, text: "P, the root" }
+          - { id: t-middle, text: "T, the node between them" }
+        correct: r-self
+        explanation: >-
+          When one target is below the other, the upper target is their lowest common ancestor. So
+          the call that finds R can return it without searching below.

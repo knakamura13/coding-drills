@@ -42,6 +42,7 @@ const PATH_TITLES = [
 	'Tree walks',
 	'BST order',
 	'Tree summaries',
+	'Tree answers',
 	'Recursion',
 	'Search state',
 	'Enumerating choices',
@@ -59,7 +60,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
-	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 3, retire: 15 },
+	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
 	'problem-solving-patterns': { keep: 1, rewrite: 8, exam: 12, retire: 1 }
 };
 
@@ -126,7 +127,7 @@ describe('shipped curriculum', () => {
 	const paths = curriculum.branches.flatMap((item) => item.paths);
 	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
-	it('lists the 46 skill paths in plan order', () => {
+	it('lists the 47 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
@@ -170,7 +171,7 @@ describe('shipped curriculum', () => {
 
 	it('gives every checkpoint the skills that lead into it, including a converging path', () => {
 		const byId = new Map(paths.map((item) => [item.id, item]));
-		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(47);
+		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(48);
 		for (const item of paths) {
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			for (const skill of item.skills) expect(skillIds.has(skill.id)).toBe(true);
