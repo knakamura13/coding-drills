@@ -1,5 +1,5 @@
 id: search-state-checkpoint
-title: "Search state: checkpoint"
+title: "Backtracking: checkpoint"
 description: Diagnose a sibling-state leak in a search you have not seen. Each item combines making a choice, undoing it, and saving a finished path.
 heading: What does the search do?
 
@@ -176,8 +176,8 @@ questions:
   - id: checkpoint-running-total-leak
     tags: [backtracking, recursion]
     prompt: |-
-      This lists the selections from `nums` that add up to `target`. It undoes `path`, but not
-      `total`:
+      This lists the selections from `nums` that add up to `target`. `nonlocal total` lets
+      `explore` change the `total` defined outside it. The search undoes `path`, but not `total`:
 
       ```python
       def sums_to(nums, target):
@@ -313,3 +313,92 @@ questions:
         explanation: >-
           `[4]` is missing too, but it comes after `[2]`. Once the 4 is left behind, the search
           never gets back to an empty `path` to record either one.
+
+  - id: checkpoint-debug-repeat-pick
+    heading: Which call does it fail on?
+    tags: [backtracking, recursion]
+    prompt: |-
+      A suggested `combos(items, k)` should return every way to choose `k` items from `items`,
+      each list in index order and no item used twice. One detail is slightly off:
+
+      ```python
+      def combos(items, k):
+          out, path = [], []
+          def pick(start):
+              if len(path) == k:
+                  out.append(path[:])
+                  return
+              for j in range(start, len(items)):
+                  path.append(items[j])
+                  pick(start + 1)
+                  path.pop()
+          pick(0)
+          return out
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: choose-two
+        text: "`combos([6, 2], 2)`"
+        explanation: >-
+          The second pass of `pick(0)` takes the 2 at index 1 and calls `pick(start + 1)`, which
+          is `pick(1)`. That loop starts at index 1 again, so it takes the same 2 and records
+          `[2, 2]`. The call returns `[[6, 2], [2, 2]]` instead of `[[6, 2]]`. The next level has
+          to start one past the item just taken, at `j + 1`.
+      - id: choose-one
+        text: "`combos([6, 2, 8], 1)`"
+        explanation: >-
+          Every call that `pick(0)` makes already holds one item, so it records at once and never
+          runs its loop. Where that loop would start makes no difference, and the call returns
+          `[[6], [2], [8]]`, which is right.
+      - id: too-many
+        text: "`combos([6, 2], 3)`"
+        explanation: >-
+          The slip does let `[2, 2]` be built, but no list ever reaches 3 items, so nothing is
+          recorded. The call returns `[]`, and that is right: 2 items cannot give a choice of 3.
+      - id: single-item
+        text: "`combos([6], 1)`"
+        explanation: >-
+          `pick(0)` takes the 6, and `pick(1)` holds one item, so it records `[6]` at once. No loop
+          runs past its first pass, so the answer `[[6]]` is right.
+    correct: choose-two
+    followUps:
+      choose-one:
+        prompt: In `combos([6, 2, 8], 1)`, does any call run its loop after `pick(0)`?
+        options:
+          - id: no-loop
+            text: No, every call below `pick(0)` holds 1 item and records at once
+          - id: every-loop
+            text: Yes, every call runs its loop from `start + 1`
+          - id: last-loop
+            text: Yes, but only the call made on the last pass
+        correct: no-loop
+        explanation: >-
+          With `k = 1`, one choice fills `path`, so each call one level down is a leaf. The
+          argument `start + 1` is passed, but no loop ever reads it.
+      too-many:
+        prompt: In `combos([6, 2], 3)`, how long does `path` get?
+        options:
+          - id: two
+            text: 2 items, such as `[2, 2]`, which is short of 3
+          - id: three
+            text: 3 items, such as `[2, 2, 2]`, which gets recorded
+          - id: one
+            text: 1 item, since the slip stops the search early
+        correct: two
+        explanation: >-
+          Each level starts its loop at its own `start`, one past its caller's. Once `start`
+          reaches 2, the loop is empty, so no list grows past 2 items and nothing is recorded.
+      single-item:
+        prompt: How many passes does the loop of `pick(0)` make in `combos([6], 1)`?
+        options:
+          - id: one-pass
+            text: One, for the 6, and its call records `[6]`
+          - id: two-passes
+            text: Two, since `start + 1` makes the loop run again
+          - id: none
+            text: None, since `pick(0)` records before its loop
+        correct: one-pass
+        explanation: >-
+          `items` holds one item, so `j` takes only the value 0. The slip changes where a later
+          pass's call starts, and this loop has no later pass.

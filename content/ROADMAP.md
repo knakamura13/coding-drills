@@ -177,9 +177,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Recursion: teaching levels | `recursive-calls` | done |
 | Problem-solving patterns #14 | Recursion: review variants | `recursive-calls-review` | done |
 | Problem-solving patterns #14 | Recursion: checkpoint | `recursive-calls-checkpoint` | done |
-| Problem-solving patterns #14 | Search state: teaching levels | `search-state` | done |
-| Problem-solving patterns #14 | Search state: review variants | `search-state-review` | done |
-| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | done |
+| Problem-solving patterns #14 | Backtracking: teaching levels | `search-state` | done |
+| Problem-solving patterns #14 | Backtracking: review variants | `search-state-review` | done |
+| Problem-solving patterns #14 | Backtracking: checkpoint | `search-state-checkpoint` | done |
 | Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | done |
 | Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | done |
 | Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | done |

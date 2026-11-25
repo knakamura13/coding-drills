@@ -1,5 +1,5 @@
 id: search-state
-title: Search state
+title: Backtracking
 description: Follow one shared list through a search. Make a choice before the call, undo it before the next sibling, and copy a finished path. Each card asks for one decision, with a worked example on hand.
 heading: What does the search hold?
 
@@ -8,23 +8,22 @@ questions:
     heading: What does path hold?
     tags: [backtracking, recursion]
     workedExample: |-
-      Consider `items = [4]` and `explore(i)`, which records `path` when `i == len(items)`.
-      Otherwise it appends `items[i]`, calls `explore(i + 1)`, pops, and calls `explore(i + 1)`
-      again.
+      A search builds each answer one choice at a time in one shared list, `path`. Here
+      `explore(i)` decides item `i`: it takes it (append, then call deeper), undoes that (pop), and
+      skips it (call deeper again). A call past the last item makes no further calls. A call like
+      that is a leaf, and here it records `path`. Take `items = [7]`.
 
-      1. `explore(0)` runs its take line first: it appends 4 and calls `explore(1)`. So the first
-         `explore(1)` starts with `path == [4]`, and it records `[4]`.
-      2. That call returns, and `explore(0)` pops the 4, so `path` is `[]` again.
-      3. Then the skip call starts the second `explore(1)` with `path == []`, and it records `[]`.
-         So the search has two leaves, `[4]` and `[]`.
+      1. `explore(0)` takes the 7 and calls `explore(1)`, which starts with `path == [7]`. Index 1
+         is past the last item, so that leaf records `[7]`.
+      2. The leaf returns, and `explore(0)` pops the 7, so `path` is `[]` again. Undoing a choice
+         before trying the next one is called backtracking.
+      3. The skip call starts the second `explore(1)` with `path == []`, and it records `[]`. Two
+         calls made by the same parent, like these, are siblings.
     prompt: |-
-      ```text
-      explore(0)  path []
-      ├─ take 4 → explore(1)  path [4]
-      └─ skip 4 → explore(1)  path []
-      ```
-
-      Now `items` is `[4, 9, 6]`:
+      A search builds each answer one choice at a time in one shared list, `path`. The choices
+      made so far, here `path`, are the search's state. `explore(i)` decides item `i`: it takes it,
+      pops it, then skips it. A leaf is a call that makes no further calls. Here that is a call past
+      the last item, and it records `path`.
 
       ```python
       def explore(i):
@@ -35,6 +34,14 @@ questions:
           explore(i + 1)
           path.pop()
           explore(i + 1)          # skip item i
+      ```
+
+      With `items = [4, 9, 6]`, the first call branches like this:
+
+      ```text
+      explore(0)  path []
+      ├─ take 4 → explore(1)  path [4]
+      └─ skip 4 → explore(1)  path []
       ```
 
       What does `path` hold when `explore(2)` starts for the first time?
@@ -116,9 +123,10 @@ questions:
       3. The 2 at index 0 lies before that `start`, so the next level can never take it a second
          time.
     prompt: >-
-      Now `pick(1)` has `path == [7]`, and its loop is at
-      `j = 2`. It appends `items[2]`, so `path == [7, 5]`, and calls the next level. Drag `start`
-      to where that call's loop begins.
+      `pick` lists every way to choose 3 items from `items`, each list in index order. Each level
+      picks one item, from a loop that runs `j` from `start` to the end. `pick(1)` has
+      `path == [7]`, and its loop is at `j = 2`. It appends `items[2]`, so `path == [7, 5]`, and
+      calls the next level. Drag `start` to where that call's loop begins.
     code: |
       def pick(start):
           if len(path) == 3:
@@ -231,8 +239,8 @@ questions:
             text: The check on the length of `path`
           - id: loop-end
             text: The loop running out of letters
-          - id: depth-limit
-            text: Reaching a depth of two calls
+          - id: level-limit
+            text: Reaching two levels of calls
         correct: stop-case
         explanation: >-
           The first line of the loop is the `codes()` call, so a call cannot reach the end of its
@@ -256,46 +264,48 @@ questions:
     heading: What does this record?
     tags: [backtracking, recursion]
     workedExample: |-
-      Consider `spell(0)` over the letters `"ab"`, with `path` empty, the pop in place, and the leaf
-      at depth 2 recording `"".join(path)`. Each call below depth 2 appends a letter, calls
-      `spell(depth + 1)`, then runs `path.pop()`.
+      Consider `spell(0)` over the letters `"mn"`, with `path` empty and the pop in place. Each
+      call below level 2 appends a letter, calls `spell(level + 1)`, then runs `path.pop()`. A call
+      at level 2 is a leaf, and it records `"".join(path)`.
 
-      1. The depth-0 call appends `'a'`, and the depth-1 call appends `'a'` too. The leaf sees
-         `['a', 'a']` and records `'aa'`.
-      2. Back in the depth-1 call, `path.pop()` removes that call's own `'a'`. So `path` is `['a']`
-         again, holding only the depth-0 choice.
-      3. The depth-1 call then appends `'b'`, so the next leaf sees `['a', 'b']` and records `'ab'`.
+      1. `spell(0)` appends `'m'`, and `spell(1)` appends `'m'` too. The leaf sees `['m', 'm']`
+         and records `'mm'`.
+      2. Back in `spell(1)`, `path.pop()` removes that call's own `'m'`. So `path` is `['m']`
+         again, holding only the choice of `spell(0)`.
+      3. `spell(1)` then appends `'n'`, so the next leaf sees `['m', 'n']` and records `'mn'`.
     prompt: |-
-      Here the pop was forgotten:
+      Two calls made by the same parent are siblings. Undoing a choice before the next sibling
+      starts is called backtracking. Here the pop was forgotten:
 
       ```python
-      def spell(depth):
-          if depth == 2:
+      def spell(level):
+          if level == 2:
               out.append("".join(path))
               return
           for ch in "ab":
               path.append(ch)
-              spell(depth + 1)
+              spell(level + 1)
       ```
 
-      `spell(0)` runs with `path` empty. The first leaf records `'aa'`. The depth-1 call then moves
-      on to `'b'`. What does the second leaf record?
+      `spell(0)` runs with `path` empty. The first leaf records `'aa'`. Then `spell(1)`, the call
+      one level down, moves on to `'b'` and calls its second leaf, a sibling of the first. What
+      does that leaf record?
     options:
       - id: aab
         text: "`'aab'`"
         explanation: >-
-          Nothing removed the `'a'` the depth-1 call appended for its first letter. So `path` is
+          Nothing removed the `'a'` that `spell(1)` appended for its first letter. So `path` is
           `['a', 'a']` when that call appends `'b'`, and the leaf joins `['a', 'a', 'b']`. A
           choice has to be undone before the next sibling starts.
       - id: ab
         text: "`'ab'`"
         explanation: >-
-          That is what the leaf records with the pop in place. Without it, the first letter of the
-          depth-1 call is still in `path` when the second one goes in.
+          That is what the leaf records with the pop in place. Without it, the first letter of
+          `spell(1)` is still in `path` when the second one goes in.
       - id: b
         text: "`'b'`"
         explanation: >-
-          The depth-0 choice, `'a'`, is meant to stay while the depth-1 call works through its
+          The choice of `spell(0)`, `'a'`, is meant to stay while `spell(1)` works through its
           letters. Even with the pop, the leaf would start from `['a']`.
       - id: aa-again
         text: "`'aa'`"
@@ -305,7 +315,7 @@ questions:
     correct: aab
     followUps:
       ab:
-        prompt: Without the pop, what removes the depth-1 call's first `'a'` once its leaf returns?
+        prompt: Without the pop, what removes the first `'a'` of `spell(1)` once its leaf returns?
         options:
           - id: nothing
             text: Nothing, so it is still in `path` when `'b'` is appended
@@ -318,20 +328,20 @@ questions:
           A shared list changes only when a line changes it. Returning from a call and moving a
           loop on both leave `path` as it was.
       b:
-        prompt: When the depth-1 call tries `'b'`, which earlier choice should still be in `path`?
+        prompt: When `spell(1)` tries `'b'`, which earlier choice should still be in `path`?
         options:
           - id: parent
-            text: "The depth-0 call's `'a'`, because that call has not finished"
+            text: "The `'a'` of `spell(0)`, because that call has not returned"
           - id: none
             text: None, because every call starts from an empty list
           - id: sibling
-            text: "The depth-1 call's first `'a'`, because it was chosen first"
+            text: "The first `'a'` of `spell(1)`, because it was chosen first"
         correct: parent
         explanation: >-
-          `path` holds the choices of the calls that are still running. The depth-0 call is still
-          waiting on the depth-1 call, so its `'a'` belongs there.
+          `path` holds the choices of the live calls, the ones that have started and not
+          returned. `spell(0)` is still waiting on `spell(1)`, so its `'a'` belongs there.
       aa-again:
-        prompt: What does the depth-1 call do before its second `spell(2)`?
+        prompt: What does `spell(1)` do before its second `spell(2)`?
         options:
           - id: append-b
             text: "It appends `'b'`, so the leaf sees a `'b'` at the end"
@@ -568,8 +578,7 @@ questions:
       3. The skip call reaches the leaf with `path == []` and saves a copy of that. The search ends
          with `out == [[9], []]`, each entry as it was when it was recorded.
     prompt: >-
-      This
-      search saves `path` itself. With `items = [6, 1]` the first leaf is about to record. The
+      This search saves `path` itself. With `items = [6, 1]` the first leaf is about to record. The
       arrow `i` marks the running call (the slot past the end is the leaf), and it moves when a
       step is revealed. Predict each step before it is shown.
     code: |
