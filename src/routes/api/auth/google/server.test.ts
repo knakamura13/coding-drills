@@ -19,11 +19,15 @@ describe('GET /api/auth/google', () => {
 			.catch((error: unknown) => error);
 
 		expect(isRedirect(thrown)).toBe(true);
+		expect((thrown as { status: number }).status).toBe(302);
 		const location = new URL((thrown as { location: string }).location);
 		expect(location.origin).toBe('https://accounts.google.com');
 		expect(location.searchParams.get('redirect_uri')).toBe(
 			'https://facetlearning.app/api/auth/google/callback'
 		);
 		expect(cookies.set.mock.calls.map(([name]) => name)).toEqual(['oauth_state', 'oauth_verifier']);
+		for (const [, , options] of cookies.set.mock.calls) {
+			expect(options).toMatchObject({ httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+		}
 	});
 });
