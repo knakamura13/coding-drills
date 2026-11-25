@@ -157,6 +157,9 @@ questions:
 
       print(complete('[(){[]'))
       ```
+
+      `reversed(stack)` reads `stack` from its last item to its first, and `''.join(...)` glues
+      the strings it is given into one.
     options:
       - id: reversed
         text: "`}]`"
@@ -231,8 +234,9 @@ questions:
           return not stack
       ```
 
-      `lenient` pops only when the closer matches the top, and otherwise moves on. For which
-      string does it give a different answer from a correct balance check?
+      `lenient` reads the top with `stack[-1]`, which leaves it in place, and pops only when the
+      closer matches it. Otherwise it moves on. For which string does it give a different answer
+      from a correct balance check?
     options:
       - id: stray
         text: "`{}())`"
@@ -290,3 +294,170 @@ questions:
         explanation: >-
           On a balanced string every closer matches the top, so `lenient` pops exactly as a correct
           check does and returns `True`. The two differ only when a closer is skipped.
+
+  - id: bracket-balance
+    heading: Which structure is needed?
+    tags: [stack, python]
+    prompt: >-
+      A string contains only the characters `(`, `)`, `[`, `]`, `{`, and `}`. It is balanced when
+      every closing bracket matches the most recent unmatched opener, that opener is of the same
+      kind, and nothing is left open.
+      For example, `({}[()])` is balanced, while `{[}]`, `[}`, `}`, and `[[` are not. In Python,
+      which approach decides this correctly for every string?
+    options:
+      - id: one-counter
+        text: "One counter: +1 per opener, -1 per closer, never below 0 and ending at 0"
+        explanation: >-
+          A counter sees only how many brackets are open, not which kind. It accepts `[}`, whose
+          counter goes 1 then 0. With a single kind of bracket a counter is enough, but with three
+          the kinds must match.
+      - id: three-counters
+        text: Three counters, one per bracket kind, each never below 0 and each ending at 0
+        explanation: >-
+          This catches `[}`, but it accepts `{[}]`: every counter rises and falls without going
+          negative and ends at 0. Counts track how many of each kind are open, and that is not enough
+          to reject a crossed pair.
+      - id: stack-unguarded
+        text: A stack of openers; pop on each closer with no empty check, and end with an empty stack
+        explanation: >-
+          This works until a closer arrives with nothing on the stack. For `}` there is no opener to
+          match, and in Python a pop on an empty list raises `IndexError` rather than giving False.
+          The stack must be checked for emptiness before every pop.
+      - id: stack-guarded
+        text: A stack of openers; a closer needs a non-empty stack and a matching top; end empty
+        explanation: >-
+          Push each opener. On a closer, answer False if the stack is empty (as for `}`), then pop and
+          compare with the matching opener. After the loop, answer True only if the stack is empty,
+          since `[[` leaves two openers.
+    correct: stack-guarded
+    followUps:
+      one-counter:
+        prompt: For `[}` the counter goes 1, then 0, and the string is accepted. What does the counter not know?
+        options:
+          - id: which-kind
+            text: Which kind of opener is still open, so it cannot check that the closer matches it
+          - id: opener-vs-closer
+            text: Whether a bracket is an opener or a closer, so it treats `}` like an opener
+          - id: went-negative
+            text: Whether the count ever dropped below 0, which is what would reject this string
+        correct: which-kind
+        explanation: >-
+          The counter does add for openers and subtract for closers, and here it never goes below 0.
+          What it cannot say is that the open one is a `[` and the closer is a `}`. A stack stores
+          the kinds, so the top is the opener that the next closer must match.
+      three-counters:
+        prompt: >-
+          In `{[}]` every counter rises and falls without going negative and ends at 0, yet the string
+          is not balanced. What do the counters ignore?
+        options:
+          - id: nesting-order
+            text: Which opener is the most recent one, so `}` is accepted while `[` is still open and unmatched
+          - id: per-kind
+            text: Whether each kind is balanced on its own, since they only compare the grand totals
+          - id: went-negative
+            text: Whether a counter ever went negative, which is how this string should be rejected
+        correct: nesting-order
+        explanation: >-
+          Counters track how many of each kind are open, but a closer must match the latest unmatched
+          opener, not just any opener of its kind. That last-in, first-out rule is what a stack holds
+          in its top entry.
+      stack-unguarded:
+        prompt: In Python, what does `stack.pop()` do on the string `}`, where no opener has been pushed?
+        options:
+          - id: raises
+            text: "It raises `IndexError: pop from empty list`, so the function crashes instead of returning False"
+          - id: returns-none
+            text: It returns `None`, so the comparison fails and the function returns False
+          - id: skips
+            text: It does nothing, so the closer is skipped and the string can still be accepted
+        correct: raises
+        explanation: >-
+          Popping an empty Python list raises `IndexError`, so a closer with an empty stack has to be
+          handled before the pop and treated as unbalanced. The end-of-loop check for an empty stack
+          is a separate rule: it rejects strings such as `((`.
+
+  - id: checkpoint-debug-pop-front
+    heading: Which call does it fail on?
+    tags: [stack, python]
+    prompt: |-
+      A suggested balance check should return `True` exactly when every closer matches the most
+      recent unclosed opener of its own type and nothing is left open. `stack.pop(0)` removes and
+      returns the item at index 0. One detail is slightly off:
+
+      ```python
+      PAIRS = {')': '(', ']': '[', '}': '{'}
+
+      def balanced(s):
+          stack = []
+          for ch in s:
+              if ch in '([{':
+                  stack.append(ch)
+              elif not stack or stack.pop(0) != PAIRS[ch]:
+                  return False
+          return not stack
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: nested
+        text: "`balanced('[()]')`"
+        explanation: >-
+          The `)` arrives with `[` and `(` on the stack. `pop(0)` takes the `[` at index 0, the
+          oldest opener, instead of the `(` on top, so the call returns `False` for a balanced
+          string. Popping the top with `stack.pop()` fixes it.
+      - id: sequential
+        text: "`balanced('{}()[]')`"
+        explanation: >-
+          Each closer arrives with one opener on the stack, so index 0 is also the top, and
+          `pop(0)` takes the right opener. The call returns `True`, which is right.
+      - id: wrong-type
+        text: "`balanced('(]')`"
+        explanation: >-
+          The `]` takes the only opener, a `(`, which is the wrong type. The call returns `False`,
+          which is right.
+      - id: leftover
+        text: "`balanced('[[]')`"
+        explanation: >-
+          The `]` takes the `[` at index 0 instead of the one on top, but both are `[`, so it
+          matches. One `[` is left, and the call returns `False`, which is right.
+    correct: nested
+    followUps:
+      sequential:
+        prompt: In `{}()[]`, how many openers are on the stack when each closer arrives?
+        options:
+          - id: one
+            text: One, so the oldest opener is also the newest
+          - id: two
+            text: Two, so `pop(0)` takes the wrong one
+          - id: none
+            text: None, so the call returns `False`
+        correct: one
+        explanation: >-
+          With one item, the first item and the last are the same, so `pop(0)` and `pop()` agree.
+          They differ only when two or more openers are open at once.
+      wrong-type:
+        prompt: In `(]`, what does `pop(0)` return when the `]` arrives?
+        options:
+          - id: paren
+            text: The `(`, which does not match, so `False` is right
+          - id: nothing
+            text: Nothing, since the stack is empty
+          - id: closer
+            text: The `]` itself, since it was just read
+        correct: paren
+        explanation: >-
+          The `(` is the only item, so it sits at index 0 and on top at once. It is the wrong type
+          for `]`, and any correct check also returns `False`.
+      leftover:
+        prompt: In `[[]`, the `]` takes the `[` at index 0 instead of the one on top. Does that change the answer?
+        options:
+          - id: same
+            text: No, both are `[`, and one is left either way
+          - id: accepts
+            text: Yes, the call returns `True`
+          - id: crashes
+            text: Yes, the call raises `IndexError`
+        correct: same
+        explanation: >-
+          Taking the wrong one of two equal openers still matches the `]`, and one `[` stays open.
+          The last line returns `False`, as a correct check does.

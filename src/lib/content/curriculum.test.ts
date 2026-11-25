@@ -57,7 +57,7 @@ const PATH_TITLES = [
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 3, rewrite: 7, exam: 8, retire: 0 },
+	'data-structures': { keep: 10, rewrite: 6, exam: 5, retire: 0 },
 	'trees-and-graphs': { keep: 1, rewrite: 7, exam: 10, retire: 0 },
 	'problem-solving-patterns': { keep: 1, rewrite: 9, exam: 12, retire: 0 }
 };
@@ -129,15 +129,15 @@ describe('shipped curriculum', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
-	it('maps each of the 94 primary drills once, onto a real question', () => {
-		expect(audited).toHaveLength(94);
-		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(94);
+	it('maps each of the 97 primary drills once, onto a real question', () => {
+		expect(audited).toHaveLength(97);
+		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(97);
 		const known = new Map(
 			decks
 				.filter((deck) => AUDITED_DECKS.has(deck.id))
 				.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id]))
 		);
-		expect(known.size).toBe(94);
+		expect(known.size).toBe(97);
 		for (const drill of audited) {
 			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
 		}
@@ -240,7 +240,16 @@ describe('shipped curriculum', () => {
 	});
 
 	it('names the skills each drafted exam item checks, on its own path', () => {
-		for (const pathId of ['arrays-and-strings', 'exact-search', 'pointer-scans', 'palindromes', 'sort-order', 'interval-merging']) {
+		for (const pathId of [
+			'arrays-and-strings',
+			'exact-search',
+			'pointer-scans',
+			'palindromes',
+			'sort-order',
+			'interval-merging',
+			'stack-matching',
+			'monotonic-stack'
+		]) {
 			const item = paths.find((candidate) => candidate.id === pathId)!;
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			const exams = curriculum.drills.filter((drill) => drill.pathId === pathId && drill.disposition === 'exam');

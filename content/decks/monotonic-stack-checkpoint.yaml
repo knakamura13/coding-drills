@@ -88,7 +88,7 @@ questions:
       `n`?
     options:
       - id: linear
-        text: 6; each index is pushed once and popped at most once, so O(n) on any input
+        text: 6; no index is ever popped twice, so the whole loop is O(n) on any input
         explanation: >-
           The 6 pops index 1, the 5 pops indices 4 and 3, and the 7 pops indices 6, 5 and 2. Indices
           0 and 7 stay. Across any run there are `n` pushes and fewer than `n` pops, so the `while`
@@ -250,3 +250,168 @@ questions:
         explanation: >-
           A positive number claims a higher reading exists that many steps away. Positions left on
           the stack at the end never met one, so they keep the 0 they started with.
+
+  - id: next-taller-stall
+    heading: Which approach is slow?
+    tags: [stack, complexity]
+    prompt: >-
+      A line of `n` market stalls is described by their heights, left to right. For each stall, find
+      how many steps to the right the first strictly taller stall is, or 0 if there is none. For
+      `[14, 9, 11, 7, 7, 20, 12, 15]` the answer is `[5, 1, 3, 2, 1, 0, 1, 0]`. Which approach gives
+      the right answer on every input but takes O(n²) time in the worst case?
+    options:
+      - id: nested-scan
+        text: For each stall, scan to the right until a taller one appears
+        explanation: >-
+          Each scan stops at the first taller stall, so every answer is right. When heights never
+          increase, no scan stops early: the scans read (n - 1) + (n - 2) + ... + 1 stalls, which is
+          n(n - 1) / 2 in all, so O(n²). Equal heights do not stop a scan either.
+      - id: sort-neighbor
+        text: Sort the stalls by height and pair each one with the next taller stall in sorted order
+        explanation: >-
+          Sorting throws away the left-to-right positions, and the answer depends on them. In
+          `[40, 30, 50]` the stall of height 30 is followed in sorted order by the 40, which stands
+          to its left, so the distance comes out as -1. The first taller stall to its right is the
+          50, one step away.
+      - id: suffix-max
+        text: Precompute the tallest stall to the right of each position and measure the distance to it
+        explanation: >-
+          The tallest stall to the right is not the first taller one. On `[30, 20, 25, 50]` this
+          gives `[3, 2, 1, 0]`, because the 20 is matched to the 50 two steps away. The correct
+          answer is `[3, 1, 1, 0]`, since the 25 is one step away and already taller than the 20.
+      - id: waiting-stack
+        text: One left-to-right pass with a stack of stalls that are still waiting for a taller one
+        explanation: >-
+          This gives the right answer on every input, but it is not slow. Each stall is pushed once
+          and leaves the stack at most once, so the whole pass is O(n) in the worst case.
+    correct: nested-scan
+    followUps:
+      sort-neighbor:
+        prompt: What does sorting by height throw away that this problem needs?
+        options:
+          - id: positions
+            text: The positions of the stalls
+          - id: heights
+            text: The heights of the stalls
+          - id: comparability
+            text: A way to compare two stalls
+        correct: positions
+        explanation: >-
+          The taller stall must stand to the right, and sorting replaces order along the line with
+          order by height, so the next taller stall in sorted order may stand to the left. Heights
+          are unchanged by sorting and still comparable. What is lost is where each stall stood.
+      suffix-max:
+        prompt: >-
+          On `[30, 20, 25, 50]` the tallest stall to the right of the 20 is the 50, two steps away.
+          Why is 2 the wrong answer?
+        options:
+          - id: nearest-taller
+            text: The 25 is nearer and already taller than 20
+          - id: ties-only
+            text: It is not wrong; only tied heights break it
+          - id: wrong-direction
+            text: The idea is right but must run right to left
+        correct: nearest-taller
+        explanation: >-
+          The task asks for the first taller stall, and the 25 beats the 20 one step away. "First
+          taller" and "tallest" agree only when the first taller stall also happens to be the
+          tallest one. Running the same tallest-stall rule from the other side still finds the
+          tallest stall, not the nearest.
+      waiting-stack:
+        prompt: One arrival in the stack pass can pop many waiting stalls. How many pops can a whole pass over `n` stalls make?
+        options:
+          - id: below-n
+            text: Fewer than `n`, because no stall is popped twice
+          - id: quadratic
+            text: About n²/2, since each arrival can pop every waiting stall
+          - id: one-each
+            text: Exactly `n`, one per arrival
+        correct: below-n
+        explanation: >-
+          A popped stall never comes back. Only `n` stalls ever enter, and the last one is never
+          popped, so all the pops together stay below `n`, however they are spread over the
+          arrivals.
+
+  - id: checkpoint-debug-one-pop
+    heading: Which call does it fail on?
+    tags: [stack, python]
+    prompt: |-
+      A suggested `next_greater` should give each position the first value to its right that is
+      strictly larger, or -1 when there is none. One detail is slightly off:
+
+      ```python
+      def next_greater(nums):
+          out = [-1] * len(nums)
+          stack = []
+          for i, x in enumerate(nums):
+              if stack and nums[stack[-1]] < x:
+                  j = stack.pop()
+                  out[j] = x
+              stack.append(i)
+          return out
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: needs-two
+        text: "`next_greater([4, 2, 3, 5])`"
+        explanation: >-
+          When the 5 arrives, the stack holds index 0 (the 4) under index 2 (the 3). The `if` pops
+          index 2 and stops, so index 0 keeps -1, and the call returns `[-1, 3, 5, -1]` instead of
+          `[5, 3, 5, -1]`. A `while` would test the new top again and pop index 0 too.
+      - id: increasing
+        text: "`next_greater([1, 3, 5, 7])`"
+        explanation: >-
+          Each arrival finds one index waiting, the one just before it, so one pop per arrival is
+          enough. The call returns `[3, 5, 7, -1]`, which is right.
+      - id: one-larger
+        text: "`next_greater([8, 3, 5, 2])`"
+        explanation: >-
+          The 5 pops the 3 and then meets the 8, which is larger, so a `while` would stop there
+          too. The call returns `[-1, 5, -1, -1]`, which is right.
+      - id: repeats
+        text: "`next_greater([3, 1, 2, 1, 2])`"
+        explanation: >-
+          Each 2 pops the 1 just before it and then meets a value that is not smaller, the 3 or the
+          first 2. The call returns `[-1, 2, -1, 2, -1]`, which is right.
+    correct: needs-two
+    followUps:
+      increasing:
+        prompt: On `[1, 3, 5, 7]`, how many indices are on the stack when each new value arrives?
+        options:
+          - id: one
+            text: One, the index just before it
+          - id: all
+            text: Every earlier index
+          - id: none
+            text: None at all
+        correct: one
+        explanation: >-
+          Each value answers the one before it right away, so the stack never holds more than one
+          index. One pop per arrival is all a `while` would do here too.
+      one-larger:
+        prompt: When the 5 in `[8, 3, 5, 2]` arrives, what would a `while` loop do after popping the 3?
+        options:
+          - id: stop
+            text: Stop, since the 8 on top is not smaller than 5
+          - id: pop-eight
+            text: Pop the 8 as well
+          - id: pop-two
+            text: Pop the 2 next
+        correct: stop
+        explanation: >-
+          A `while` stops at the first top that is not smaller. Here that happens after one pop, so
+          the `if` and the `while` do the same work.
+      repeats:
+        prompt: In `[3, 1, 2, 1, 2]`, does any arrival find two smaller values waiting on top?
+        options:
+          - id: no
+            text: No, each 2 has only one smaller value waiting on top
+          - id: both-ones
+            text: Yes, the last 2 finds both 1s on top
+          - id: equal-two
+            text: Yes, the last 2 finds the second 1 and the first 2
+        correct: no
+        explanation: >-
+          The first 2 pops index 1 and stops at the 3. The last 2 pops index 3 and stops at the
+          first 2, since `2 < 2` is false. One pop per arrival is all this input needs.
