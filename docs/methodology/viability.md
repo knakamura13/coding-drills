@@ -14,7 +14,7 @@ A subject must pass all six for its core. A gate failed by only part of the subj
 
 | Gate | Pass when | Fails when |
 | --- | --- | --- |
-| **G1. Skill tree** | The subject splits into branches that can be started independently after a small shared hub, and each branch is an ordered ladder where every skill uses only what earlier skills taught | Topics are a flat list, or every topic needs every other topic |
+| **G1. Skill tree** | The subject splits into branches off a small shared hub, and each branch is an ordered ladder where every skill uses only what earlier skills taught. A path may need a skill from another branch when the edge is named and the graph has no cycle | Topics are a flat list with no order, every topic needs every other topic, or the cross-branch edges form a cycle |
 | **G2. Oracle** | The core facts can be checked by something other than a writer's memory: a runtime, a script, a standard, or one authoritative reference | Correctness is a matter of taste, interpretation or contested sources |
 | **G3. One decision per card** | A card can ask one decision, the learner produces the answer, and each wrong answer shows a nameable misconception | Questions are only "do you remember this fact", or good answers are open-ended |
 | **G4. Stable** | A card stays correct for years, or its shelf life is known and a trigger re-checks it | Facts change faster than content can be reviewed |
@@ -29,7 +29,7 @@ Score each signal 0 (bad), 1 (mixed) or 2 (good). These do not rule a subject ou
 | --- | --- | --- |
 | **Reasoning, not recall** | Most skills are "apply a rule to a new case" | Most skills are "remember this item" |
 | **Representation** | A built format shows the subject's objects (a sequence, a grid, a staff, a state) | The objects need a format that does not exist |
-| **Branch independence** | Branches share only the hub | Branches interleave, so the tree is mostly a chain |
+| **Branch independence** | Few cross-branch prerequisites, each named, so branches can be written and reviewed separately | Branches need each other so often that the tree is mostly a chain |
 | **Explanation depth** | Every wrong answer has a distinct cause | Wrong answers are just "not the one" |
 | **Reviewer availability** | An agent can review everything the oracle covers | Core claims need a named human expert |
 | **Scope size** | One to six branches of six to ten cards per path | Hundreds of items or a few dozen cards |
@@ -67,7 +67,7 @@ Open questions: <only what would change the verdict>
 
 These show the method. They are screens, not plans, and none is scheduled.
 
-**Coding interviews (the built subject). Likely viable.** G1 pass: five branches off a foundations hub. G2 pass: a Python runtime checks every value. G3 pass: each wrong option maps to a bug or misconception. G4 pass. G5 pass: arrays and graphs draw as text and cells. G6 pass. Signals strong except the missing typed-entry format.
+**Coding interviews (the built subject). Likely viable.** G1 pass: five branches off a foundations hub, with a few named cross-branch prerequisites (for example a search path that needs greedy choices from the patterns branch) and no cycle. G2 pass: a Python runtime checks every value. G3 pass: each wrong option maps to a bug or misconception. G4 pass. G5 pass: arrays and graphs draw as text and cells. G6 pass. Signals strong except the missing typed-entry format.
 
 **A spoken language's script and grammar rules (Korean as the example). Viable, scoped.**
 - Core: writing system, sound-change rules, particles, verb conjugation, numbers and counters. A script can check all of it (G2), and each is a rule applied to a new case (G3).

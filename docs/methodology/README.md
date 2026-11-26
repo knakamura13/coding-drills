@@ -17,7 +17,7 @@ Status: draft for the owner's review. This page, [`pipeline.md`](pipeline.md) an
 These parts do not depend on the subject.
 
 - **Attempt log is the truth.** Every answer is an attempt with a stored local `day`. Schedules, skill mastery, exam passing, locking, weak spots and progress are derived by replaying the log. Nothing derived is stored, so a rule change re-derives on every device.
-- **Hub and spokes.** A subject has a small shared hub and independent branches off it. Inside a branch the content is a ladder: each skill uses only what earlier skills in the branch, or the hub, taught. Branches share nothing except the hub, so each can be written, reviewed and merged on its own.
+- **Hub and spokes.** A subject has a small shared hub and branches off it. Inside a branch the content is a ladder: each skill uses only what earlier skills in the branch, the hub, or a named prerequisite path in another branch taught. Cross-branch prerequisites are explicit `after` edges and the graph has no cycle. Keep them few, so each branch can be written, reviewed and merged on its own.
 - **Tree.** A branch holds paths. A path holds an ordered run of skills (two to four on its main line) and ends in a checkpoint. A path lists the paths it comes `after`. A skill is mastered only while its latest answer on each of at least three drills was right.
 - **Three decks per path.** A teaching deck, a review deck (fresh values, no scaffolding) and a checkpoint deck (combines the path's skills, sat as an exam). Every question is mapped to one skill path or the build fails.
 - **Question.** One decision per card. The learner produces the answer (pick, tap, place, trace). Every wrong answer is explained in place, and a wrong multiple-choice pick leads to one follow-up aimed at the misconception it shows.
@@ -36,7 +36,7 @@ These parts do not depend on the subject.
 8. **Checkpoint pools do not print each other's answers.** When the pool is no larger than the exam size, every item appears in every sitting, so no item's answer may be printed in another item. A checkpoint item must not be answerable by recalling a teaching card.
 9. **A checkpoint has one debugging item** where it fits the subject: a near-miss of the path's own material, asking which part is wrong. The failure must be real, the marked cause the true one, and no other option causes it.
 10. **Wording is original.** Nothing is copied from books, courses, other apps or exam dumps. The repo is public.
-11. **A question never stays in a deck after it is retired.** It moves with its id to the deck it belongs in, or is deleted with its mapping.
+11. **A retired question never keeps playing from a path deck.** A deck plays whole, so a retired question left in a path's teaching, review or checkpoint deck still reaches learners. It moves with its id to the deck it belongs in, or is deleted with its mapping. **Exception, test fixtures:** a question or deck that a test loads (for example an older deck used by an end-to-end spec) is never deleted or edited. Copy what the path absorbs under a new id and set the original's mapping to `retire`. Check `rg -n "<deck-id>" e2e src` before removing anything.
 12. **No users means no compatibility work yet.** Ids, history and exam passes need no protection until the app ships. This rule ends at launch and must be revisited then.
 
 ## 3. What is subject-specific

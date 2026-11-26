@@ -4,7 +4,7 @@ The first filled [subject profile](subject-profile.md), written from the curricu
 
 ## 0. Viability
 
-Likely viable. Gates G1 to G6 pass: five branches off a Foundations hub, a Python runtime as the oracle, each wrong option tied to a misconception, arrays and graphs drawn as text and cells. See the worked example in [`viability.md`](viability.md).
+Likely viable. Gates G1 to G6 pass: five branches off a Foundations hub with a few named cross-branch prerequisites and no cycle, a Python runtime as the oracle, each wrong option tied to a misconception, arrays and graphs drawn as text and cells. See the worked example in [`viability.md`](viability.md).
 
 ## 1. Audience and baseline
 
