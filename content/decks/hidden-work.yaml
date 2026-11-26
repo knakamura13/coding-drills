@@ -256,16 +256,16 @@ questions:
           it.
           Over the loop that is 0 + 1 + ... + (n - 1) letters, about n² / 2, so `rev_a` is O(n²).
           `rev_b` does a fixed amount of work per letter on average, so it is O(n).
+      - id: header
+        text: '`for ch in word:` in `rev_a`'
+        explanation: >-
+          The header hands `ch` the next letter of `word` on each pass. That is one letter, the
+          same small cost on every pass, so it copies nothing that grows.
       - id: append
         text: '`parts.append(ch)` in `rev_b`'
         explanation: >-
           `append` writes one item into the next free slot of the same list. Now and then the list
           grows its storage, but on average each append costs a fixed amount.
-      - id: reverse
-        text: '`parts.reverse()` in `rev_b`'
-        explanation: >-
-          `reverse` moves each item of the list once, in place. It sits after the loop, so it runs
-          one time, not on every pass.
       - id: join
         text: '`"".join(parts)` in `rev_b`'
         explanation: >-
@@ -273,6 +273,19 @@ questions:
           once, so it copies `n` letters in all.
     correct: prepend
     followUps:
+      header:
+        prompt: What does `for ch in word:` give `ch` on each pass?
+        options:
+          - id: one-letter
+            text: The next letter of `word`, and nothing more
+          - id: so-far
+            text: A new string holding every letter read so far
+          - id: whole-word
+            text: A fresh copy of `word`
+        correct: one-letter
+        explanation: >-
+          A `for` loop over a string hands out one letter per pass. The copying in `rev_a` comes
+          from `ch + s`, which builds a new string on every pass.
       append:
         prompt: '`parts` holds 500 letters and has a spare slot. What does `parts.append(ch)` copy?'
         options:
@@ -286,19 +299,6 @@ questions:
         explanation: >-
           A list keeps spare room at its end, so most appends write one slot. The rare append that
           runs out of room copies everything, which averages to a fixed cost per append.
-      reverse:
-        prompt: How many times does `parts.reverse()` run in `rev_b`?
-        options:
-          - id: once
-            text: Once, after the loop ends
-          - id: per-pass
-            text: Once per pass of the loop
-          - id: per-letter
-            text: Once for each letter it moves
-        correct: once
-        explanation: >-
-          A line below the loop runs after the last pass, one time. Moving `n` items once adds `n`
-          steps to the total instead of multiplying it.
       join:
         prompt: For a word of 1,000 letters, how many letters does `"".join(parts)` copy?
         options:
@@ -844,24 +844,26 @@ questions:
           - id: n-log-n
             text: O(n log n)
             explanation: >-
-              Every level covers each cell once, so its merges copy about `n` cells. The ranges
-              halve from one level to the next, so about log n levels merge: 3 for 8 cells, 10 for
-              1,024. That is about n log n copies.
+              A level's ranges share no cell, so its merges copy at most `n` cells, and each level
+              above the deepest one that merges copies all `n`. The ranges halve from one level to
+              the next, so about log n levels merge: 3 for 8 cells, 10 for 1,024. That is about
+              n log n copies.
           - id: n-squared
             text: O(n²)
             explanation: >-
               That needs about `n` levels, or every merge copying all `n` cells. The ranges halve
-              at each level, so only about log n levels merge, and each copies about `n` cells.
+              at each level, so only about log n levels merge, and each copies at most `n` cells.
           - id: linear
             text: O(n)
             explanation: >-
-              That counts one merge per level, `n` + `n` / 2 + ..., which stays under 2n. Each
-              level has twice as many merges as the one above it, so every level copies about `n`.
+              That counts one merge per level, `n` + `n` / 2 + ..., which stays under 2n. Each level
+              above the deepest one that merges shares all `n` cells among its merges, so it copies
+              all `n`.
           - id: log-n
             text: O(log n)
             explanation: >-
-              That counts the levels and gives each one step. Each level copies about `n` cells, so
-              the cost is `n` times the number of levels.
+              That counts the levels and gives each one step. Each level above the deepest one that
+              merges copies all `n` cells, so the cost is about `n` times the number of levels.
         correct: n-log-n
 
   - id: dominant-hidden-line
