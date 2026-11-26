@@ -446,104 +446,6 @@ questions:
           The skip needs `nums[2] == nums[1]`, and 5 is not 3. Every loop that reaches index 2
           takes it.
 
-  - id: ordering-skip-trace-review
-    format: step-trace
-    heading: Trace the skips
-    tags: [backtracking, sorting]
-    prompt: >-
-      This search records each distinct ordering of sorted `nums = [3, 3, 7]` once. The top call
-      has taken index 0, so `path == [3]` and `used == [True, False, False]`. `i` marks the item
-      each step takes. Predict each step before it is shown.
-    code: |
-      def explore():
-          if len(path) == len(nums):
-              out.append(path[:])
-              return
-          for i in range(len(nums)):
-              if used[i]:
-                  continue
-              if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
-                  continue
-              used[i] = True
-              path.append(nums[i])
-              explore()
-              path.pop()
-              used[i] = False
-    sequence:
-      kind: array
-      name: nums
-      cells: [3, 3, 7]
-    start:
-      - { name: i, at: 0 }
-    steps:
-      - line: 5
-        ask: The call one level down runs its loop. Tap the first item it takes.
-        pointer: i
-        correct: 1
-        explanation: >-
-          Index 0 is used, so it is skipped. Index 1 equals index 0, but `used[0]` is True, so the
-          first 3 is in `path` and this 3 is the next position, not a repeat. `path` becomes
-          `[3, 3]`.
-        misses:
-          - index: 0
-            explanation: >-
-              `used[0]` is True, since that 3 is already in `path`. The first `continue` skips it.
-          - index: 2
-            explanation: >-
-              The second 3 is not skipped here. Its left neighbour is in `path`, so `not used[0]`
-              is False and the test lets it through.
-        elsewhere: The first unused item that passes the skip test is index 1.
-      - line: 14
-        ask: >-
-          That branch records `[3, 3, 7]`, then `[3, 7, 3]`. Back in the top call, `used[0]` is
-          False again. Tap the next item the top loop takes.
-        pointer: i
-        correct: 2
-        explanation: >-
-          Index 1 equals index 0 and `used[0]` is now False, so it is skipped: starting with that 3
-          would repeat both orderings just recorded. The loop takes the 7.
-        misses:
-          - index: 1
-            explanation: >-
-              This 3 is a sibling of the 3 the top loop just finished. `not used[0]` is True, so
-              the test skips it to avoid recording `[3, 3, 7]` and `[3, 7, 3]` again.
-          - index: 0
-            explanation: >-
-              The top loop has finished index 0 and moves forward. It never goes back.
-        elsewhere: The top loop skips index 1 and takes index 2.
-      - line: 5
-        ask: "`path == [7]`. Tap the first item the next level takes."
-        pointer: i
-        correct: 0
-        explanation: >-
-          Index 0 is unused and has no left neighbour, so it is taken. `path` becomes `[7, 3]`.
-        misses:
-          - index: 1
-            explanation: >-
-              Index 1 is skipped while index 0 is unused, since `not used[0]` is True. The loop
-              takes index 0 first.
-          - index: 2
-            explanation: >-
-              `used[2]` is True, since the 7 is already in `path`.
-        elsewhere: The first item tried is index 0, and nothing skips it.
-      - line: 3
-        ask: How many orderings does the search record in all?
-        options:
-          - id: three
-            text: "3"
-            explanation: >-
-              `[3, 3, 7]`, `[3, 7, 3]` and `[7, 3, 3]`: one for each place the 7 can go.
-          - id: six
-            text: "6"
-            explanation: >-
-              6 treats the two 3s as different items. The skip test drops the 3 orderings that
-              only swap them.
-          - id: two
-            text: "2"
-            explanation: >-
-              The 7 can go first, second or last, and each gives a different ordering, so 3.
-        correct: three
-
   - id: ones-and-twos-review
     heading: How many lists?
     tags: [backtracking, sorting]
@@ -818,3 +720,101 @@ questions:
               4 fits with 2 to spare. The loop takes it, and the call below breaks on 6 > 2, which
               ends only the call below's loop.
         elsewhere: The break runs at the first weight greater than `left`, which is 6.
+
+  - id: ordering-skip-trace-review
+    format: step-trace
+    heading: Trace the skips
+    tags: [backtracking, sorting]
+    prompt: >-
+      This search records each distinct ordering of sorted `nums = [3, 3, 7]` once. The top call
+      has taken index 0, so `path == [3]` and `used == [True, False, False]`. `i` marks the item
+      each step takes. Predict each step before it is shown.
+    code: |
+      def explore():
+          if len(path) == len(nums):
+              out.append(path[:])
+              return
+          for i in range(len(nums)):
+              if used[i]:
+                  continue
+              if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
+                  continue
+              used[i] = True
+              path.append(nums[i])
+              explore()
+              path.pop()
+              used[i] = False
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 3, 7]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: The call one level down runs its loop. Tap the first item it takes.
+        pointer: i
+        correct: 1
+        explanation: >-
+          Index 0 is used, so it is skipped. Index 1 equals index 0, but `used[0]` is True, so the
+          first 3 is in `path` and this 3 is the next position, not a repeat. `path` becomes
+          `[3, 3]`.
+        misses:
+          - index: 0
+            explanation: >-
+              `used[0]` is True, since that 3 is already in `path`. The first `continue` skips it.
+          - index: 2
+            explanation: >-
+              The second 3 is not skipped here. Its left neighbour is in `path`, so `not used[0]`
+              is False and the test lets it through.
+        elsewhere: The first unused item that passes the skip test is index 1.
+      - line: 14
+        ask: >-
+          That branch records `[3, 3, 7]`, then `[3, 7, 3]`. Back in the top call, `used[0]` is
+          False again. Tap the next item the top loop takes.
+        pointer: i
+        correct: 2
+        explanation: >-
+          Index 1 equals index 0 and `used[0]` is now False, so it is skipped: starting with that 3
+          would repeat both orderings just recorded. The loop takes the 7.
+        misses:
+          - index: 1
+            explanation: >-
+              This 3 is a sibling of the 3 the top loop just finished. `not used[0]` is True, so
+              the test skips it to avoid recording `[3, 3, 7]` and `[3, 7, 3]` again.
+          - index: 0
+            explanation: >-
+              The top loop has finished index 0 and moves forward. It never goes back.
+        elsewhere: The top loop skips index 1 and takes index 2.
+      - line: 5
+        ask: "`path == [7]`. Tap the first item the next level takes."
+        pointer: i
+        correct: 0
+        explanation: >-
+          Index 0 is unused and has no left neighbour, so it is taken. `path` becomes `[7, 3]`.
+        misses:
+          - index: 1
+            explanation: >-
+              Index 1 is skipped while index 0 is unused, since `not used[0]` is True. The loop
+              takes index 0 first.
+          - index: 2
+            explanation: >-
+              `used[2]` is True, since the 7 is already in `path`.
+        elsewhere: The first item tried is index 0, and nothing skips it.
+      - line: 3
+        ask: How many orderings does the search record in all?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              `[3, 3, 7]`, `[3, 7, 3]` and `[7, 3, 3]`: one for each place the 7 can go.
+          - id: six
+            text: "6"
+            explanation: >-
+              6 treats the two 3s as different items. The skip test drops the 3 orderings that
+              only swap them.
+          - id: two
+            text: "2"
+            explanation: >-
+              The 7 can go first, second or last, and each gives a different ordering, so 3.
+        correct: three
