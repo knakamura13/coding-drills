@@ -268,6 +268,98 @@ questions:
           Each search marks its whole component. Later nodes in that component fail the
           `start not in seen` test, so the count grows once per component.
 
+  - id: connectivity-clone-graph
+    heading: How many copies does the clone make?
+    tags: [graph, dfs, hash-map]
+    workedExample: |-
+      Consider `adj = {5: [6], 6: [5, 7], 7: [6]}` and the clone from 6. `copies` starts as
+      `{6: new_node(6)}`, and the `if` makes a copy only for a node with no entry in `copies` yet.
+
+      1. Popping 6 meets 5 and 7. Neither is in `copies`, so each gets a copy and joins the
+         frontier, and an edge runs from the copy of 6 to each new copy.
+      2. Popping 7 meets 6, which has been in `copies` since the start. So no copy is made and
+         nothing is pushed. Only the edge from the copy of 7 to the copy of 6 is added.
+      3. Popping 5 does the same with 6. So `new_node` ran 3 times, once per node, and each edge
+         was added from both of its ends.
+    prompt: |-
+      A graph clone starts from one node and builds copies of the nodes it meets, joined by the same edges. This one starts from node 2. `new_node(v)` makes the copy of `v`, and `add_edge(x, y)` adds an edge from copy `x` to copy `y`. The dict `copies` maps each node to its copy, and this clone keeps no `seen` set. How many times does `new_node` run?
+
+      ```python
+      adj = {0: [1, 4], 1: [0, 2], 2: [1, 3], 3: [2, 4], 4: [3, 0], 5: [6], 6: [5]}
+      copies = {2: new_node(2)}
+      frontier = [2]
+      while frontier:
+          node = frontier.pop()
+          for nb in adj[node]:
+              if nb not in copies:
+                  copies[nb] = new_node(nb)
+                  frontier.append(nb)
+              add_edge(copies[node], copies[nb])
+      ```
+    options:
+      - id: five
+        text: 5, one for each node 2 can reach
+        explanation: >-
+          A node gets its entry in `copies` when it is first found, and the `if` skips it after
+          that, so `copies` also does the work of `seen`. The search from 2 copies 2, then 1 and
+          3, then 4, then 0. Nodes 5 and 6 share no edge with them, so they are never reached.
+      - id: four
+        text: 4, one for each copy made inside the loop
+        explanation: >-
+          The loop copies 1, 3, 4 and 0, but the line before it already ran `new_node(2)` for the
+          start. That makes 5 copies.
+      - id: seven
+        text: 7, one for each key in `adj`
+        explanation: >-
+          The search from 2 follows edges, and no edge joins 5 or 6 to any of 0 to 4. They are a
+          separate component, so this clone never reaches them.
+      - id: endless
+        text: It never stops, since the cycle leads back to 2
+        explanation: >-
+          When 1 meets 2 again, 2 has been in `copies` since the start, so the `if` fails. A node
+          met again gets only an edge, never a second copy or a second push.
+    correct: five
+    followUps:
+      four:
+        prompt: Which node does `new_node` copy before the loop starts?
+        options:
+          - id: start
+            text: Node 2, the start
+          - id: none
+            text: None, every copy is made inside the loop
+          - id: neighbors
+            text: The nodes in `adj[2]`, 1 and 3
+        correct: start
+        explanation: >-
+          `copies = {2: new_node(2)}` copies the start first. The loop then copies each other node
+          it finds, so the total is every node the search reaches.
+      seven:
+        prompt: Can the search from 2 reach node 5?
+        options:
+          - id: no-edge
+            text: No, nothing leads from the cycle to 5 or 6
+          - id: every-key
+            text: Yes, the loop visits every key of `adj`
+          - id: after-cycle
+            text: Yes, once the cycle has been copied
+        correct: no-edge
+        explanation: >-
+          A search reaches only the component of its start. Cloning from 2 copies 0 to 4, and
+          the other component would need a start of its own.
+      endless:
+        prompt: When popping 1 meets 2, what does `nb not in copies` give?
+        options:
+          - id: false-copied
+            text: False, since 2 has had a copy from the start
+          - id: true-no-seen
+            text: True, since the code keeps no `seen` set
+          - id: true-unlinked
+            text: True, since no edge from 1 to 2 has been added yet
+        correct: false-copied
+        explanation: >-
+          A node is put in `copies` when it is first found, so the dict also answers "found yet?".
+          A node met again gets an edge but no new copy, so the frontier runs out.
+
   - id: connectivity-find-root
     format: drag-pointers
     tags:

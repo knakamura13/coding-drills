@@ -810,3 +810,92 @@ questions:
             explanation: >-
               3 was the count at D. Since then D and B have returned, so only A and C are live.
         correct: two
+
+  - id: tree-walks-chain-recursion-limit
+    heading: Which runs stop with RecursionError?
+    tags: [tree, recursion]
+    workedExample: |-
+      Consider `height` on a chain of 800 nodes, each the right child of the one before. A call
+      stays live until it returns, and it returns only after its own child calls have returned.
+
+      1. The call on the top node waits on the call on its child, and that call waits on the one
+         below it. So when the call on the bottom node runs, all 800 calls are live.
+      2. Python stops a run with RecursionError when about 1,000 calls are live at once. 800 is
+         below that, so this run finishes and returns 800.
+      3. So on a chain, every node is on the one path down, and the most calls live at once is the
+         number of nodes.
+    prompt: |-
+      This `height` is correct: it counts the nodes on the longest path from a node down to a
+      leaf, with 0 for `None`. Python stops a run with RecursionError when about 1,000 calls are
+      live at once.
+
+      ```python
+      def height(node):
+          if node is None:
+              return 0
+          left = height(node.left)
+          right = height(node.right)
+          return 1 + max(left, right)
+      ```
+
+      Tree P is a chain of 5,000 nodes: each node has only a right child. Tree Q also holds 5,000
+      nodes, with every level full except the last, so its height is 13. `p` and `q` are their
+      roots. Count only calls on real nodes, not calls on `None`. Which runs stop with
+      RecursionError?
+    options:
+      - id: only-p
+        text: Only `height(p)`
+        explanation: >-
+          The live calls at any moment are the calls on one path down from the root, so a run
+          needs as many live calls at once as the tree's height. P needs 5,000, far past about
+          1,000. Q needs 13, so its run finishes, though the tree is just as large.
+      - id: both
+        text: Both runs
+        explanation: >-
+          Q's run makes one call per node, 5,000 in all, but not all at once. A call returns before
+          the next call on its level starts, so on Q no more than 13 calls are live at once.
+      - id: neither
+        text: Neither run
+        explanation: >-
+          Correct code can still run out of room. On P each call waits on the call below it, so
+          the live calls grow by one for each node down the chain and reach about 1,000 long
+          before the bottom, where Python stops the run.
+      - id: only-q
+        text: Only `height(q)`
+        explanation: >-
+          Q is wide, and its twelfth level holds 2,048 nodes, which a level-order queue would hold
+          at once. The calls on one level are never live together: each returns before the next
+          one starts, so at most 13 are live.
+    correct: only-p
+    followUps:
+      both:
+        prompt: On Q, while the call on the lowest node of its longest path runs, which calls are live?
+        options:
+          - { id: path, text: "The calls on the 13 nodes of that path" }
+          - { id: so-far, text: "Every call made so far" }
+          - { id: all, text: "All 5,000, one per node" }
+        correct: path
+        explanation: >-
+          Every call that has finished its subtree has returned. Only the chain of calls from the
+          root down to the running call is live, one per node on that path.
+      neither:
+        prompt: The run on P has gone 900 nodes down the chain. How many calls on real nodes are live?
+        options:
+          - { id: nine-hundred, text: "900, the running call and every call above it" }
+          - { id: one, text: "1, the call that is running" }
+          - { id: two, text: "2, the running call and its parent's" }
+        correct: nine-hundred
+        explanation: >-
+          A call on a chain waits on its only child, so nothing has returned yet. Each node further
+          down adds one more live call, so the count reaches about 1,000, where Python stops the
+          run, long before the 5,000th node, whether or not the code is correct.
+      only-q:
+        prompt: Are the calls on two nodes at the same level ever live at the same time?
+        options:
+          - { id: never, text: "No, only the calls on one path from the root are live" }
+          - { id: together, text: "Yes, all calls on one level run together" }
+          - { id: last-level, text: "Only on the last level, which is not full" }
+        correct: never
+        explanation: >-
+          Two nodes on one level lie on different paths. The call on the first one returns before
+          the walk reaches the second, so the live calls never span a level.

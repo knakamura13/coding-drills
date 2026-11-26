@@ -1,0 +1,322 @@
+id: tries-checkpoint
+title: "Tries: checkpoint"
+description: Follow letter links, read end marks, count the nodes a word adds, and find the input that breaks a suggested solution, on new word lists.
+heading: What does the trie do?
+
+questions:
+  - id: tries-exam-shared-end
+    format: tap-cell
+    heading: Where does the walk stop?
+    tags: [tree, hash-map]
+    prompt: |-
+      The trie holds `"baker"`, `"bake"` and `"bakery"`, built with `insert`. The cells list its
+      nodes level by level, root first, each labeled by the prefix it spells. Tap the node
+      `walk_down(root)` returns.
+    code: |
+      def walk_down(root):
+          node = root
+          while len(node.children) == 1 and not node.is_word:
+              node = list(node.children.values())[0]
+          return node
+    sequence:
+      kind: array
+      name: nodes
+      cells: [root, b, ba, bak, bake, baker, bakery]
+    correct: 4
+    explanation: >-
+      The root, `b`, `ba` and `bak` each have one child and no word ending there, so the walk moves
+      down through them. `bake` also has one child, but `"bake"` ends there, so `not node.is_word`
+      is false and the loop stops. So `walk_down` returns the end of the longest prefix every
+      stored word shares. That prefix cannot run past `"bake"`, since `"bake"` is itself a stored
+      word.
+    misses:
+      - index: 0
+        explanation: >-
+          The root has one child, `'b'`, and no word ends there, so the loop moves down at least
+          once.
+      - index: 1
+        explanation: "`b` has one child and is not a word, so the loop moves on to `ba`."
+      - index: 2
+        explanation: "`ba` has one child and is not a word, so the loop moves on to `bak`."
+      - index: 3
+        explanation: "`bak` has one child and is not a word, so the loop moves on to `bake`."
+      - index: 5
+        explanation: >-
+          The loop never gets this far. `"bake"` is a word, so the test fails one level up, at
+          `bake`, though that node has one child.
+      - index: 6
+        explanation: >-
+          That is where the walk would end if it checked only the number of children. `bake` is
+          marked as a word, so `not node.is_word` stops the loop there.
+
+  - id: tries-exam-most-nodes
+    heading: Which word adds the most?
+    tags: [tree, hash-map]
+    prompt: |-
+      The trie holds `"carpet"`, `"car"` and `"dog"`. `insert` makes a new node only for a letter
+      that is not yet a key of the node it is on. Which word, inserted next, makes the most new
+      nodes?
+    options:
+      - id: ant
+        text: "`\"ant\"`"
+        explanation: >-
+          `'a'` is not a key of `root.children`, which holds only `'c'` and `'d'`. So every letter
+          is new: 3 nodes, more than any other choice.
+      - id: carpeted
+        text: "`\"carpeted\"`"
+        explanation: >-
+          It is the longest word, but its first six letters follow the `"carpet"` path. Only `'e'`
+          and `'d'` are new: 2 nodes.
+      - id: cub
+        text: "`\"cub\"`"
+        explanation: >-
+          `'c'` follows the existing `"c"` node, which holds only `'a'`. So `'u'` and `'b'` are new:
+          2 nodes, fewer than `"ant"` makes.
+      - id: ca
+        text: "`\"ca\"`"
+        explanation: >-
+          Both letters are already on the `"carpet"` path, so it makes no nodes. It just marks the
+          `"ca"` node as a word.
+    correct: ant
+    followUps:
+      carpeted:
+        prompt: "How many letters of `\"carpeted\"` does `insert` find already in place?"
+        options:
+          - { id: six, text: "Six, the letters of `\"carpet\"`" }
+          - { id: three, text: "Three, the letters of `\"car\"`" }
+          - { id: zero, text: "None, since it is a new word" }
+        correct: six
+        explanation: >-
+          A long word makes few nodes when most of it follows an existing path. The count is the
+          letters left over after the shared start.
+      cub:
+        prompt: "Which letters of `\"ant\"` are already keys along its path?"
+        options:
+          - { id: none, text: "None, since the root has no `'a'` key" }
+          - { id: a-t, text: "`'a'` and `'t'`, which appear in `\"carpet\"`" }
+          - { id: all, text: "All three" }
+        correct: none
+        explanation: >-
+          A letter is shared only along the same path from the root. The `'a'` and `'t'` of
+          `"carpet"` sit under `'c'`, so `"ant"` makes all 3 of its nodes.
+      ca:
+        prompt: "How many new nodes does `insert(root, \"ca\")` make here?"
+        options:
+          - { id: zero, text: "None; it only sets `is_word` on the `\"ca\"` node" }
+          - { id: two, text: "Two, one per letter" }
+          - { id: one, text: "One, for its end" }
+        correct: zero
+        explanation: >-
+          A word that is a prefix of a stored word finds all its letters in place. It adds a mark,
+          not a node, so it makes the fewest.
+
+  - id: tries-exam-count-words
+    heading: What does it return?
+    tags: [tree, hash-map, recursion]
+    prompt: |-
+      The trie holds `"bead"`, `"beam"`, `"bet"`, `"be"`, `"beta"`, `"bat"` and `"cab"`.
+
+      ```python
+      def tally(node):
+          total = 0
+          if node.is_word:
+              total = 1
+          for child in node.children.values():
+              total += tally(child)
+          return total
+      ```
+
+      What does `tally(root.children['b'].children['e'])` return?
+    options:
+      - id: five
+        text: "5"
+        explanation: >-
+          The call starts at the `"be"` node, which is itself a word, and adds what each child's
+          call returns. Below it, `"bead"`, `"beam"`, `"bet"` and `"beta"` end, so the total is 5.
+          `"bet"` counts though it has a child.
+      - id: three
+        text: "3"
+        explanation: >-
+          That counts only the leaves, `"bead"`, `"beam"` and `"beta"`. Each call adds 1 when its
+          own `is_word` is `True`, so `"be"` and `"bet"` count too, though both have children.
+      - id: six
+        text: "6"
+        explanation: >-
+          That counts every node from `"be"` down, `"bea"` included. A call adds 1 only when
+          `is_word` is `True`, and no word ends at `"bea"`.
+      - id: seven
+        text: "7"
+        explanation: >-
+          That counts every word in the trie. The first call starts at the `"be"` node, so `"bat"`
+          and `"cab"` are never reached.
+    correct: five
+    followUps:
+      three:
+        prompt: Does the call on the `"bet"` node add 1, though `"bet"` has a child?
+        options:
+          - { id: adds, text: "Yes, since its `is_word` is `True`" }
+          - { id: skips, text: "No, only leaves count" }
+          - { id: child-only, text: "No, only its child `\"beta\"` counts" }
+        correct: adds
+        explanation: >-
+          The test is `if node.is_word`, not whether the node has children. A word that is a prefix
+          of a longer word still ends at its own node.
+      six:
+        prompt: What does the call on the `"bea"` node add for itself?
+        options:
+          - { id: zero-self, text: "0, since no word ends there" }
+          - { id: one-self, text: "1, since it is a node" }
+          - { id: two-self, text: "2, one per child" }
+        correct: zero-self
+        explanation: >-
+          `total` starts at 0 and becomes 1 only on a marked node. `"bea"` passes up what its
+          children found, 2, and adds nothing of its own.
+      seven:
+        prompt: Which nodes can the first call reach?
+        options:
+          - { id: below-be, text: "Only `\"be\"` and the nodes below it" }
+          - { id: whole-trie, text: "Every node in the trie" }
+          - { id: b-side, text: "Every node below `\"b\"`" }
+        correct: below-be
+        explanation: >-
+          Each call moves only to its own children, so the count covers one subtree. `"bat"` hangs
+          under `"ba"` and `"cab"` under `"c"`, outside it.
+
+  - id: tries-exam-wildcard
+    heading: How far does the wildcard reach?
+    tags: [tree, recursion, hash-map]
+    prompt: |-
+      In `match`, a `"."` stands for any one letter, so it tries every child. The trie holds
+      `"bat"`, `"bad"` and `"cab"`.
+
+      ```python
+      def match(node, word, i):
+          if i == len(word):
+              return node.is_word
+          ch = word[i]
+          if ch == ".":
+              for child in node.children.values():
+                  if match(child, word, i + 1):
+                      return True
+              return False
+          if ch not in node.children:
+              return False
+          return match(node.children[ch], word, i + 1)
+      ```
+
+      `match(root, ".a", 0)` runs. Not counting the root, on how many nodes is `match` called?
+    options:
+      - id: four-calls
+        text: "4"
+        explanation: >-
+          The `"."` tries both children of the root, `"b"` and `"c"`. Each holds `'a'`, so the calls
+          go on to `"ba"` and `"ca"`. There `i` is 2, the length of `".a"`, so each returns its
+          `is_word`, which is `False`, without trying any children. That is 4 calls below the
+          root.
+      - id: two-calls
+        text: "2"
+        explanation: >-
+          That stops at `"ba"` as if reaching it were a match. `"ba"` is only a prefix, so its
+          `is_word` is `False`, and the `"."` at the root goes on to try `"c"` and `"ca"`.
+      - id: seven-calls
+        text: "7"
+        explanation: >-
+          That calls `match` on every node below the root. A call whose `i` equals `len(word)`
+          returns at once, so `"bat"`, `"bad"` and `"cab"`, one level past the end of `".a"`, are
+          never reached.
+    correct: four-calls
+    followUps:
+      two-calls:
+        prompt: "What is `is_word` on the `\"ba\"` node?"
+        options:
+          - { id: false-ba, text: "`False`, since no stored word is `\"ba\"`" }
+          - { id: true-ba, text: "`True`, since `\"bat\"` and `\"bad\"` pass through it" }
+          - { id: none-ba, text: "`None`, since it has two children" }
+        correct: false-ba
+        explanation: >-
+          Reaching a node proves a prefix, and the mark decides whether a word ends there. The
+          call on `"ba"` returns `False`, so the loop at the root goes on to `'c'`.
+      seven-calls:
+        prompt: "What does the call on the `\"ba\"` node do, where `i` is 2?"
+        options:
+          - { id: returns-mark, text: "Returns its `is_word` without trying any children" }
+          - { id: tries-both, text: "Calls `match` on its children `\"bat\"` and `\"bad\"`" }
+          - { id: tries-first, text: "Calls `match` on its first child, `\"bat\"`" }
+        correct: returns-mark
+        explanation: >-
+          The first line checks `i == len(word)` and returns. A pattern of two letters goes two
+          levels down and no further.
+
+  - id: tries-exam-debug-insert
+    heading: Which input breaks it?
+    tags: [tree, hash-map]
+    prompt: |-
+      A suggested solution should insert a word into a trie, so that `search(root, w)`, which
+      follows one link per letter and returns `node.is_word`, is `True` exactly for the words
+      inserted.
+
+      ```python
+      def insert(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  node.children[ch] = TrieNode()
+                  node = node.children[ch]
+          node.is_word = True
+      ```
+
+      Each choice starts from an empty trie. For which one does `search` give the wrong answer?
+    options:
+      - id: pin-pit-pit
+        text: "Insert `\"pin\"` and `\"pit\"`, then `search(root, \"pit\")`"
+        explanation: >-
+          `node` moves only when a node is made. On `"pit"`, `'p'` exists, so `node` stays at the
+          root, and `'i'` and `'t'` go in as a new branch from the root. The `"pit"` path never gets
+          a `'t'`, so `search` returns `False`.
+      - id: pin-pit-pin
+        text: "Insert `\"pin\"` and `\"pit\"`, then `search(root, \"pin\")`"
+        explanation: >-
+          Every letter of `"pin"` is new when it goes in first, so `node` moves each time and the
+          `"pin"` node is marked. `search` returns `True`, which is right.
+      - id: pin-tap-tap
+        text: "Insert `\"pin\"` and `\"tap\"`, then `search(root, \"tap\")`"
+        explanation: >-
+          `"tap"` shares no first letter with `"pin"`, so all its letters are new and `node` moves
+          each time. `search` returns `True`, which is right.
+      - id: pin-tap-pi
+        text: "Insert `\"pin\"` and `\"tap\"`, then `search(root, \"pi\")`"
+        explanation: >-
+          Both words were built along their own new letters, and no word ends at `"pi"`. `search`
+          returns `False`, which is right.
+    correct: pin-pit-pit
+    followUps:
+      pin-pit-pin:
+        prompt: "On `insert(root, \"pit\")`, where is `node` after the `'p'` pass?"
+        options:
+          - { id: still-root, text: "Still at the root, since no node was made" }
+          - { id: at-p, text: "At the `\"p\"` node" }
+          - { id: at-pi, text: "At the `\"pi\"` node" }
+        correct: still-root
+        explanation: >-
+          The move is inside the `if`, so a letter that is already a key is not followed. Only a
+          word that shares its start with an earlier word exposes that.
+      pin-tap-tap:
+        prompt: When does this `insert` build the same trie as the correct one?
+        options:
+          - { id: no-shared, text: "When no letter of the word is already a key on its path" }
+          - { id: short, text: "When the word has three letters or fewer" }
+          - { id: always, text: "Always, since the same nodes get made" }
+        correct: no-shared
+        explanation: >-
+          With every letter new, the `if` runs each pass and the move happens anyway. The bug shows
+          only when the word meets a letter that is already there.
+      pin-tap-pi:
+        prompt: "Which input shares letters with an earlier word?"
+        options:
+          - { id: pit-shares, text: "`\"pit\"` after `\"pin\"`, sharing `'p'` and `'i'`" }
+          - { id: tap-shares, text: "`\"tap\"` after `\"pin\"`, sharing `'p'`" }
+          - { id: none-share, text: "None of them" }
+        correct: pit-shares
+        explanation: >-
+          `"tap"` has a `'p'`, but not at the start, so it is not on the `"pin"` path. Only `"pit"`
+          has to follow existing keys, which this `insert` fails to do.

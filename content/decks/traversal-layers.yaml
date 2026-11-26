@@ -440,6 +440,86 @@ questions:
         correct: all
         explanation: A stack and a queue find the same cells. A queue makes each first label the fewest moves, and a stack does not always.
 
+  - id: traversal-lock-wheels
+    heading: What label does the code get?
+    tags: [bfs, graph]
+    workedExample: |-
+      Consider `turns("40")`, which builds the codes one move from `"40"`. `%` gives the remainder
+      after dividing, so `(d + 1) % 10` turns a wheel up and `(d + 9) % 10` turns it down.
+
+      1. The first wheel shows 4. `(4 + 1) % 10` is 5 and `(4 + 9) % 10` is 3, so it gives `"50"`
+         and `"30"`.
+      2. The second wheel shows 0. `(0 + 1) % 10` is 1, and `(0 + 9) % 10` is 9, since 9 is less
+         than 10. So it gives `"41"` and `"49"`.
+      3. So `"49"` is one move from `"40"`, not nine. When BFS pops `"40"`, each of these four codes
+         that is not blocked and has no label yet gets the label of `"40"` plus 1.
+    prompt: |-
+      A lock has two wheels of digits and starts at `"00"`. One move turns one wheel up or down by one, and 9 and 0 are next to each other. No dict lists the neighbors: `turns(code)` builds them. `%` gives the remainder after dividing. BFS labels each code with its fewest moves and never enters a code in `blocked`.
+
+      ```python
+      def turns(code):
+          a, b = int(code[0]), int(code[1])
+          return [str((a + 1) % 10) + code[1], str((a + 9) % 10) + code[1],
+                  code[0] + str((b + 1) % 10), code[0] + str((b + 9) % 10)]
+
+      blocked = {"90"}
+      dist = {"00": 0}
+      queue = deque(["00"])
+      while queue:
+          code = queue.popleft()
+          for nb in turns(code):
+              if nb not in blocked and nb not in dist:
+                  dist[nb] = dist[code] + 1
+                  queue.append(nb)
+      ```
+
+      What label does `"98"` get?
+    options:
+      - id: three
+        text: '3'
+        explanation: >-
+          `(0 + 9) % 10` is 9, so each wheel turns down from 0 to 9 in one move. The first wheel
+          needs one move and the second needs two, 0 to 9 to 8. `"90"` is blocked, but the route
+          `"00"`, `"09"`, `"99"`, `"98"` avoids it.
+      - id: seventeen
+        text: '17'
+        explanation: >-
+          That turns each wheel up only, 9 moves to reach 9 and 8 to reach 8. `turns` also gives
+          `(0 + 9) % 10`, which is 9, so a wheel can go the short way past 0.
+      - id: two
+        text: 2, one move for each wheel
+        explanation: >-
+          A move changes a digit by one, so it cannot take the second wheel from 0 straight to 8.
+          That wheel needs two moves, 0 to 9 to 8.
+    correct: three
+    followUps:
+      seventeen:
+        prompt: What is `(0 + 9) % 10`?
+        options:
+          - id: nine
+            text: 9, the digit just below 0 on the wheel
+          - id: zero
+            text: 0, since a wheel cannot turn below 0
+          - id: negative
+            text: '-1, which is not a digit'
+        correct: nine
+        explanation: >-
+          `9 % 10` is 9, so `turns("00")` includes `"90"` and `"09"`. Each wheel can reach 9 or 8
+          by turning down past 0.
+      two:
+        prompt: How many moves turn one wheel from 0 to 8?
+        options:
+          - id: two-down
+            text: Two, down through 9
+          - id: one
+            text: One, straight to 8
+          - id: eight-up
+            text: Eight, up through 1 to 7
+        correct: two-down
+        explanation: >-
+          Each move changes one digit by one. Going down, 0 to 9 to 8 takes two moves, fewer than
+          the eight going up.
+
   - id: traversal-source-zero
     heading: How should the queue start?
     tags: [bfs]

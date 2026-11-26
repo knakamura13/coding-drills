@@ -1,0 +1,529 @@
+id: tries
+title: Tries
+description: Follow one link per letter, tell a word from a prefix by its end mark, and count the nodes words share.
+heading: What does the trie do?
+
+questions:
+  - id: tries-children-keys
+    heading: What does the dict hold?
+    tags: [tree, hash-map]
+    workedExample: |-
+      A trie stores words letter by letter, one node per letter, so words with the same first
+      letters share nodes. Each node starts with `children = {}`, a dict from a letter to the
+      node below, and `is_word = False`, set to `True` where a word ends. Insert `"on"`, then
+      `"ox"`, into an empty trie.
+
+      1. `'o'` is not a key of `root.children`, so `insert` adds a node there and moves to it.
+         It adds a node for `'n'` below that and marks it as a word.
+      2. On `"ox"`, `'o'` is already a key of `root.children`, so `insert` moves to that node
+         without making one. It adds `'x'` below it and marks that node.
+      3. So `root.children` holds one key, `'o'`, and the `'o'` node's `children` holds `'n'`
+         and `'x'`, each mapped to a node.
+    prompt: |-
+      A trie stores words letter by letter. Each node's `children` dict maps a letter to the
+      child node for that letter, and `is_word` marks a node where an inserted word ends. Tries in
+      this path use this class and are built with this `insert`:
+
+      ```python
+      class TrieNode:
+          def __init__(self):
+              self.children = {}
+              self.is_word = False
+
+      def insert(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  node.children[ch] = TrieNode()
+              node = node.children[ch]
+          node.is_word = True
+      ```
+
+      `root = TrieNode()`, then `insert` runs for `"sun"`, `"sum"`, `"sip"` and `"tan"`. What
+      does `root.children['s'].children` hold?
+    options:
+      - id: two-keys
+        text: "Keys `'u'` and `'i'`, each mapped to a `TrieNode`"
+        explanation: >-
+          The three words under `'s'` go on with `'u'`, `'u'` and `'i'`. `"sum"` finds the `'u'`
+          key that `"sun"` added and moves into that node, so the dict gets one key per distinct
+          next letter: `'u'` and `'i'`.
+      - id: word-rests
+        text: "Keys `'un'`, `'um'` and `'ip'`, each mapped to a `TrieNode`"
+        explanation: >-
+          `insert` adds keys one `ch` at a time, so every key is a single letter. The rest of
+          `"sun"` is spread over two levels: `'u'` here, and `'n'` in the `'u'` node's dict.
+      - id: all-below
+        text: "Keys `'u'`, `'n'`, `'m'`, `'i'` and `'p'`, each mapped to a `TrieNode`"
+        explanation: >-
+          Those are all the letters below `'s'`, but a node's dict holds only the next level.
+          After adding `'u'`, `insert` moves into the `'u'` node, so `'n'` and `'m'` go in that
+          node's dict.
+    correct: two-keys
+    followUps:
+      word-rests:
+        prompt: "`insert(root, 'sun')` runs. How many letters is each key it adds?"
+        options:
+          - { id: one, text: "One, since each pass adds the key `ch`" }
+          - { id: rest, text: "The rest of the word after the first letter" }
+          - { id: whole, text: "The whole word, `'sun'`" }
+        correct: one
+        explanation: >-
+          The loop runs once per letter, and each pass can add only `node.children[ch]`. A word of
+          three letters fills three levels, one letter per level.
+      all-below:
+        prompt: In which dict is the key `'n'` of `"sun"` stored?
+        options:
+          - { id: in-u, text: "The `children` of the node reached by `'s'` and then `'u'`" }
+          - { id: in-s, text: "The `children` of the node reached by `'s'`" }
+          - { id: in-root, text: "`root.children`" }
+        correct: in-u
+        explanation: >-
+          Each pass ends with `node = node.children[ch]`, so the next letter is added one level
+          further down. `'n'` comes after `'u'`, so it sits in the `'u'` node's dict.
+
+  - id: tries-search-stops-tap
+    format: tap-cell
+    heading: Where does the search stop?
+    tags: [tree, hash-map]
+    workedExample: |-
+      Take a trie holding `"sea"` and `"set"`, and `search(root, "sip")`. The loop follows one
+      link per letter and returns `False` at the first letter that is not a key.
+
+      1. `'s'` is a key of `root.children`, so `node` moves to the `"s"` node.
+      2. The `"s"` node's `children` holds only `'e'`, so `'i'` is not a key, and `search`
+         returns `False` there.
+      3. So `node` is the `"s"` node when the search stops, and the letter `'p'` is never read.
+    prompt: |-
+      `search` follows `children` from the root, one letter at a time. The trie holds `"bat"`,
+      `"cat"`, `"car"` and `"cub"`. The cells list its nodes level by level, root first, each
+      labeled by the prefix it spells: the letters on the path from the root to it. Tap the node
+      `node` refers to when `search(root, "cab")` returns.
+    code: |
+      def search(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return node.is_word
+    sequence:
+      kind: array
+      name: nodes
+      cells: [root, b, c, ba, ca, cu, bat, cat, car, cub]
+    correct: 4
+    explanation: >-
+      `'c'` leads from the root to `c`, and `'a'` leads on to `ca`. The `ca` node's dict holds `'t'`
+      and `'r'` but no `'b'`, so `search` returns `False` while `node` is `ca`.
+    misses:
+      - index: 0
+        explanation: >-
+          `'c'` is a key of `root.children`, so the first pass moves `node` down to `c` before
+          anything fails.
+      - index: 1
+        explanation: >-
+          `b` is the root's child for `'b'`. The search starts with `'c'`, and it never jumps to a
+          `'b'` elsewhere in the trie: the `'b'` it tests must be a key of the node it is on.
+      - index: 2
+        explanation: >-
+          `c` has the key `'a'`, so the second pass moves on to `ca`. The search stops one level
+          lower.
+      - index: 3
+        explanation: >-
+          `ba` hangs under `b`, and the search went down through `c`. Each link is taken from the
+          node `node` is on.
+      - index: 5
+        explanation: >-
+          `cu` is reached by `'u'`, but the second letter of `"cab"` is `'a'`, which leads to `ca`.
+      - index: 6
+        explanation: >-
+          `bat` is on the `b` side. From the root, `'c'` leads away from it, and nothing links back.
+      - index: 7
+        explanation: >-
+          `cat` is reached by `'t'`. The third letter is `'b'`, which `ca` has no key for, so the
+          search never moves below `ca`.
+      - index: 8
+        explanation: >-
+          `car` is reached by `'r'`. The third letter is `'b'`, which `ca` has no key for, so the
+          search never moves below `ca`.
+      - index: 9
+        explanation: >-
+          `cub` ends in `'b'`, but it sits under `cu`. After `'c'`, the letter `'a'` takes the search
+          to `ca`, and the `'b'` key would have to be there.
+
+  - id: tries-prefix-not-word
+    heading: What does the search return?
+    tags: [tree, hash-map]
+    workedExample: |-
+      Take a trie built by inserting `"to"` and then `"top"`, and call the question's `search` as
+      `search(root, "to")`.
+
+      1. `'t'` and then `'o'` are keys along the way, so the loop ends with `node` on the `"to"`
+         node.
+      2. `insert(root, "to")` set that node's `is_word` to `True`. Inserting `"top"` later only
+         added a child below it, which leaves the mark alone.
+      3. So `search` returns `node.is_word`, which is `True`.
+    prompt: |-
+      A prefix of a word is its first few letters: `"app"` is a prefix of `"apple"`. The trie holds
+      `"apple"` and `"apply"`, built with `insert`, which sets `is_word` only on the node where a
+      word ends.
+
+      ```python
+      def search(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return node.is_word
+      ```
+
+      What does `search(root, "app")` return?
+    options:
+      - id: is-false
+        text: "`False`"
+        explanation: >-
+          `'a'`, `'p'` and `'p'` are all keys along the way, so the loop finishes on the `"app"`
+          node. No inserted word ends there, so its `is_word` is still `False`: `"app"` is a
+          prefix, not a word.
+      - id: is-true
+        text: "`True`"
+        explanation: >-
+          Every letter was found, but `search` returns `node.is_word`, not `True`. `insert` marked
+          only the two nodes where `"apple"` and `"apply"` end.
+      - id: key-error
+        text: It raises `KeyError`
+        explanation: >-
+          `search` reads `node.children[ch]` only after `ch not in node.children` was false, and
+          every letter of `"app"` is a key along the way here, so no read fails.
+    correct: is-false
+    followUps:
+      is-true:
+        prompt: When the loop ends, which node is `node`, and what is its `is_word`?
+        options:
+          - { id: app-false, text: "The `\"app\"` node, whose `is_word` is `False`" }
+          - { id: apple-true, text: "The `\"apple\"` node, whose `is_word` is `True`" }
+          - { id: root-false, text: "The root, whose `is_word` is `False`" }
+        correct: app-false
+        explanation: >-
+          The loop takes one link per letter of the word searched for, so three letters end three
+          levels down, on `"app"`. `insert` set the mark two levels lower, on the nodes for
+          `"apple"` and `"apply"`.
+      key-error:
+        prompt: "`search(root, \"apt\")` runs on the same trie. What happens at `'t'`?"
+        options:
+          - { id: returns, text: "`'t'` is not a key, so `search` returns `False`" }
+          - { id: raises, text: "`node.children['t']` raises `KeyError`" }
+          - { id: skips, text: "The loop skips `'t'` and returns `is_word`" }
+        correct: returns
+        explanation: >-
+          The `if` tests the key before the read, so a missing letter ends the search with
+          `False`. The read on the last line of the loop runs only for a key that exists.
+
+  - id: tries-leaf-not-end
+    heading: Which search gets it wrong?
+    tags: [tree, hash-map]
+    workedExample: |-
+      A leaf is a node with no children: its `children` dict is empty. Take a trie holding `"dig"`
+      and `"dog"`, and the suggested `search` from the question, which ends with
+      `return not node.children`.
+
+      1. `search(root, "dog")` ends on the `"dog"` node, whose `children` is empty, so it returns
+         `True`. `"dog"` was inserted, so that is right.
+      2. `search(root, "do")` ends on the `"do"` node, which has the child `'g'`, so it returns
+         `False`. `"do"` was not inserted, so that is right too.
+      3. So on this trie the leaf test gives the same answers as `is_word` for both calls.
+    prompt: |-
+      A leaf is a node with no children. A suggested solution drops `is_word` and treats a word as
+      found when its last node is a leaf:
+
+      ```python
+      def search(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return not node.children
+      ```
+
+      The trie holds exactly the words `"art"`, `"arts"` and `"arm"`. Which call returns the wrong
+      answer?
+    options:
+      - id: art
+        text: "`search(root, \"art\")`"
+        explanation: >-
+          The `"art"` node has the child `'s'`, added by `"arts"`, so it is not a leaf and this
+          returns `False`. But `"art"` was inserted. A word can end at a node that has children,
+          and only an end mark can record that.
+      - id: arts
+        text: "`search(root, \"arts\")`"
+        explanation: >-
+          The `"arts"` node has no children, so this returns `True`, and `"arts"` was inserted.
+          That answer is right.
+      - id: arm
+        text: "`search(root, \"arm\")`"
+        explanation: >-
+          The `"arm"` node has no children, so this returns `True`, and `"arm"` was inserted. That
+          answer is right.
+      - id: ar
+        text: "`search(root, \"ar\")`"
+        explanation: >-
+          The `"ar"` node has the children `'t'` and `'m'`, so this returns `False`. `"ar"` was never
+          inserted, so that answer is right.
+    correct: art
+    followUps:
+      arts:
+        prompt: "Which node does `search(root, \"art\")` end on, and does it have a child?"
+        options:
+          - { id: has-child, text: "The `\"art\"` node, which has the child `'s'`" }
+          - { id: no-child, text: "The `\"art\"` node, which has no children" }
+          - { id: never-reached, text: "None; the search fails before `'t'`" }
+        correct: has-child
+        explanation: >-
+          Inserting `"arts"` added `'s'` below the `"art"` node, so it is not a leaf, and the leaf
+          test returns `False` for a word that was inserted.
+      arm:
+        prompt: Can an inserted word end at a node that has children?
+        options:
+          - { id: yes-longer, text: "Yes, when a longer inserted word starts with it" }
+          - { id: no-leaf, text: "No, every inserted word ends at a leaf" }
+          - { id: only-root, text: "Only the empty word, at the root" }
+        correct: yes-longer
+        explanation: >-
+          `"art"` is the first three letters of `"arts"`, so its last node gains a child. The leaf
+          test cannot see that a word also ends there.
+      ar:
+        prompt: Which inserted word ends at a node that has a child?
+        options:
+          - { id: art-word, text: "`\"art\"`, whose node has the child `'s'`" }
+          - { id: arm-word, text: "`\"arm\"`, whose node has the child `'s'`" }
+          - { id: none-word, text: "None of them; each word ends at a leaf" }
+        correct: art-word
+        explanation: >-
+          `"arts"` goes one letter past `"art"`, so the `"art"` node is not a leaf. The leaf test
+          says `False` there, though `"art"` was inserted.
+
+  - id: tries-insert-new-nodes
+    heading: How many nodes does it add?
+    tags: [tree, hash-map]
+    workedExample: |-
+      Take an empty trie, `insert(root, "dot")`, and then `insert(root, "dream")`. `insert` makes
+      a node only for a letter that is not yet a key of the node it is on.
+
+      1. On `"dream"`, `'d'` is already a key of `root.children`, added by `"dot"`, so `insert`
+         moves to that node and makes nothing.
+      2. The `"d"` node holds only `'o'`, so `'r'` is new. That new node is empty, so `'e'`,
+         `'a'` and `'m'` are each new as well.
+      3. So inserting `"dream"` after `"dot"` makes 4 new nodes, one per letter after the shared
+         `'d'`.
+    prompt: |-
+      `insert` makes a new node only when `ch not in node.children` is true.
+
+      ```python
+      def insert(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  node.children[ch] = TrieNode()
+              node = node.children[ch]
+          node.is_word = True
+      ```
+
+      `root = TrieNode()`, then `insert(root, "cat")` runs, then `insert(root, "car")`. How many
+      new nodes does the second call make?
+    options:
+      - id: one
+        text: "1"
+        explanation: >-
+          `'c'` and then `'a'` are keys that `"cat"` already added, so `insert` moves through them.
+          The `"ca"` node holds only `'t'`, so `'r'` is the one new node.
+      - id: two
+        text: "2"
+        explanation: >-
+          That shares only the first letter. `"cat"` also added `'a'` below `'c'`, so `"car"` moves
+          through both and makes a node only for `'r'`.
+      - id: three
+        text: "3"
+        explanation: >-
+          That gives each word its own nodes. `insert` reuses any letter that is already a key of
+          the node it is on, and `"car"` starts with the same two letters as `"cat"`.
+    correct: one
+    followUps:
+      two:
+        prompt: "On the second call, after moving to the `'c'` node, is `'a'` already one of its keys?"
+        options:
+          - { id: yes-a, text: "Yes, `\"cat\"` added it" }
+          - { id: no-a, text: "No, each word adds its own second letter" }
+          - { id: only-t, text: "No, the `'c'` node holds only `'t'`" }
+        correct: yes-a
+        explanation: >-
+          `"cat"` put `'a'` in the `'c'` node's dict, and `'t'` one level below that. So `"car"`
+          finds `'a'` and moves on.
+      three:
+        prompt: When `insert(root, "car")` starts, is `'c'` a key of `root.children`?
+        options:
+          - { id: yes-c, text: "Yes, so `insert` moves to that node without making one" }
+          - { id: no-c, text: "No, each call starts a fresh branch from the root" }
+          - { id: yes-but-new, text: "Yes, but `insert` still makes a new node for it" }
+        correct: yes-c
+        explanation: >-
+          The `if` makes a node only for a missing key. A letter that is already there is
+          followed, so words with the same first letters share those nodes.
+
+  - id: tries-total-nodes
+    heading: How many nodes in all?
+    tags: [tree, hash-map]
+    workedExample: |-
+      Take an empty trie and insert `"no"`, `"not"` and `"nap"`, in that order. `insert` makes a
+      node only for a letter that is not yet a key of the node it is on.
+
+      1. `"no"` makes 2 nodes, `n` and `no`.
+      2. `"not"` follows `n` and `no`, which exist, and makes 1 node for `'t'`. `"nap"` follows
+         `n` and makes 2 nodes, for `'a'` and `'p'`.
+      3. So the trie holds 2 + 1 + 2, which is 5 nodes below the root: one for each distinct
+         start of a word, `n`, `no`, `not`, `na` and `nap`.
+    prompt: |-
+      `insert` makes a new node only for a letter that is not yet a key of the node it is on, and
+      sets `is_word = True` on the node where the word ends. `root = TrieNode()`, then `insert`
+      runs for `"tea"`, `"ten"`, `"to"`, `"inn"` and `"in"`, in that order. Not counting the root,
+      how many nodes does the trie hold?
+    options:
+      - id: eight
+        text: "8"
+        explanation: >-
+          The calls make 3, 1, 1, 3 and 0 nodes. `"in"` comes after `"inn"`, so both its letters are
+          already there, and it only sets `is_word` on the `"in"` node. That is one node per
+          distinct start of a word: `t`, `te`, `tea`, `ten`, `to`, `i`, `in` and `inn`.
+      - id: nine
+        text: "9"
+        explanation: >-
+          That gives `"in"` a node of its own for its end. Both of its letters are already keys
+          along the way, so `insert` makes nothing and only sets `is_word` on the `"in"` node.
+      - id: ten
+        text: "10"
+        explanation: >-
+          That shares only the first letter of each word. `"ten"` also reuses the `'e'` that `"tea"`
+          added, and `"in"` reuses both letters of `"inn"`.
+      - id: thirteen
+        text: "13"
+        explanation: >-
+          That is one node per letter of every word, 3 + 3 + 2 + 3 + 2. `insert` follows a letter
+          that is already a key instead of making a new node, so shared starts are stored once.
+    correct: eight
+    followUps:
+      nine:
+        prompt: "`insert(root, \"in\")` runs after `\"inn\"` is in the trie. How many nodes does it make?"
+        options:
+          - { id: zero, text: "None; both letters are already keys, so it only sets `is_word`" }
+          - { id: one-end, text: "One, to mark where the word ends" }
+          - { id: two-own, text: "Two, one for each letter" }
+        correct: zero
+        explanation: >-
+          The end mark is a field on an existing node, not a node of its own. A word whose letters
+          all exist along the path adds no nodes.
+      ten:
+        prompt: "When `insert(root, \"ten\")` runs after `\"tea\"`, is `'e'` a key of the `\"t\"` node?"
+        options:
+          - { id: e-shared, text: "Yes, `\"tea\"` added it, so only `'n'` is new" }
+          - { id: e-not, text: "No, only the first letter is shared" }
+          - { id: e-root, text: "No, `'e'` is a key of `root.children`" }
+        correct: e-shared
+        explanation: >-
+          Sharing goes as far as two words agree from the start. `"tea"` and `"ten"` agree on
+          `'t'` and `'e'`, so they share two nodes.
+      thirteen:
+        prompt: "What does `insert(root, \"ten\")` do at `'t'`, which `\"tea\"` already added?"
+        options:
+          - { id: follows, text: "Moves to the existing node without making one" }
+          - { id: makes, text: "Makes a second `'t'` node for the new word" }
+          - { id: replaces, text: "Replaces the old `'t'` node with a new one" }
+        correct: follows
+        explanation: >-
+          The `if` makes a node only when the key is missing. A key that exists is followed, so
+          each distinct start of a word gets exactly one node.
+
+  - id: tries-prefix-cost
+    heading: Which line answers it without a scan?
+    tags: [tree, hash-map, complexity]
+    workedExample: |-
+      Take a trie holding `n` words, and `insert(root, "dog")`. A key test on a dict looks in
+      about one place, on average, whatever the dict's size.
+
+      1. The loop runs once per letter of `"dog"`: 3 passes, each with one key test and at most
+         one new node.
+      2. The words already stored never change the number of passes, so a trie of 10 words or 10
+         million words makes the same 3.
+      3. So inserting a word of length `L` costs O(`L`), however large `n` is.
+    prompt: |-
+      `words` is a set of `n` words, and a trie built with `insert` holds the same words.
+      `w.startswith(p)` is `True` when the string `w` begins with `p`. `search` is the walk below
+      with `return node.is_word` in place of `return True`.
+
+      ```python
+      def starts_with(root, prefix):
+          node = root
+          for ch in prefix:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return True
+      ```
+
+      Which line returns `True` exactly when some stored word starts with `"ca"`, at a cost set
+      by the length of `"ca"`, not by `n`?
+    options:
+      - id: walk
+        text: "`starts_with(root, \"ca\")`"
+        explanation: >-
+          It makes one key test per letter of `"ca"`, two in all, and each looks in about one
+          place, on average. If both keys exist, some word goes through the `"ca"` node, so it
+          returns `True`. A prefix of length `L` costs O(`L`), whether the trie holds ten words or
+          ten million.
+      - id: set-member
+        text: "`\"ca\" in words`"
+        explanation: >-
+          A set test is quick, but it asks whether `"ca"` itself is one of the words. With
+          `"cat"` stored and no `"ca"`, it returns `False`.
+      - id: scan
+        text: "`any(w.startswith(\"ca\") for w in words)`"
+        explanation: >-
+          That gives the right answer, but it checks the words one at a time. When no word starts
+          with `"ca"`, it checks all `n` of them, so its cost grows with `n`.
+      - id: search-word
+        text: "`search(root, \"ca\")`"
+        explanation: >-
+          It walks the same two links, but it returns `is_word` on the `"ca"` node. With `"cat"`
+          stored and no `"ca"`, the walk succeeds and it still returns `False`.
+    correct: walk
+    followUps:
+      set-member:
+        prompt: "`words = {\"cat\", \"cow\"}`. What does `\"ca\" in words` return?"
+        options:
+          - { id: false-member, text: "`False`, since `\"ca\"` is not one of the words" }
+          - { id: true-start, text: "`True`, since `\"cat\"` starts with it" }
+          - { id: error, text: "It raises `TypeError`" }
+        correct: false-member
+        explanation: >-
+          `in` on a set tests whole members. Finding a member that only starts with `"ca"` needs a
+          walk down the trie, or a check of every word.
+      scan:
+        prompt: "No stored word starts with `\"ca\"`. How many words does `any(w.startswith(\"ca\") for w in words)` check?"
+        options:
+          - { id: all-n, text: "All `n`, since any unchecked word might match" }
+          - { id: two-checks, text: "Two, one per letter of `\"ca\"`" }
+          - { id: halves, text: "About log `n`, by halving the set" }
+        correct: all-n
+        explanation: >-
+          `any` stops at the first `True`, so with no match it reads every word. The trie skips
+          that by following only the letters of the prefix.
+      search-word:
+        prompt: "The trie holds `\"cat\"` only. What does `search(root, \"ca\")` return?"
+        options:
+          - { id: false-mark, text: "`False`, since no word ends at the `\"ca\"` node" }
+          - { id: true-found, text: "`True`, since both letters are keys" }
+          - { id: none-value, text: "`None`, since the walk stops early" }
+        correct: false-mark
+        explanation: >-
+          `search` asks whether a whole word ends there. "Does any word start with this" is
+          answered by reaching the node at all, which is what `starts_with` returns.
