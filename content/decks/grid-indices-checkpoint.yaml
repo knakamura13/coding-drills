@@ -52,8 +52,9 @@ questions:
         explanation: '`flat[8]` is row 2, column 2, so it lands in `t[2][2]`.'
       - index: 9
         explanation: >-
-          Index 9 is `2 * 4 + 1`: it skips the swap and uses the width of `t`. `flat[9]` is row 3,
-          column 0, so it lands in `t[0][3]`.
+          Index 9 is `2 * 4 + 1`. The swap to row 2, column 1 is right, but it uses 4, the width
+          of `t`, as the row length. `flat` stores the grid, whose rows hold 3 cells, so
+          `flat[9]` is row 3, column 0, and lands in `t[0][3]`.
       - index: 10
         explanation: '`flat[10]` is row 3, column 1, so it lands in `t[1][3]`.'
       - index: 11
@@ -239,6 +240,8 @@ questions:
       transpose(m)
       print(m)
       ```
+
+      What does this print?
     options:
       - id: clockwise
         text: "`[[5, 8, 2], [9, 3, 7], [4, 6, 1]]`"
@@ -285,7 +288,7 @@ questions:
           `reverse()` changes the list it is called on and returns `None`. On `m` it reverses the
           order of the rows and leaves each row as it was.
 
-  - id: checkpoint-debug-one-column
+  - id: checkpoint-debug-inner-column
     heading: Which grid fails?
     tags: [grid, arrays-strings]
     prompt: |-
@@ -316,67 +319,68 @@ questions:
 
       Which grid does it get wrong?
     options:
-      - id: one-column
-        text: '`["a", "b", "c"]`'
+      - id: five-by-three
+        text: '`["abc", "def", "ghi", "jkl", "mno"]`'
         explanation: >-
-          The top row reads `a`, and the right column reads `b` and `c`, so `right` drops to -1.
-          The bottom-row loop finds `range(-1, -1, -1)` empty, and `bottom` becomes 1. With no
-          check, the left-column loop then reads row 1 again, so the result is
-          `['a', 'b', 'c', 'b']`.
-      - id: one-row
-        text: '`["abc"]`'
+          The first pass reads the outer ring and leaves column 1 of rows 1 to 3. On the second
+          pass the top row reads `e`, the right column reads `h` and `k`, and `right` drops to 0.
+          The bottom-row range is empty, `bottom` becomes 2, and with no check the left-column
+          loop runs `range(2, 1, -1)` and reads `h` a second time.
+      - id: three-by-five
+        text: '`["abcde", "fghij", "klmno"]`'
         explanation: >-
-          After the top row, `top` is past `bottom`, so `if top <= bottom` skips the bottom row,
-          and the left-column loop runs `range(0, 0, -1)`, which is empty. The result is
-          `['a', 'b', 'c']`, which is right.
-      - id: two-by-two
-        text: '`["ab", "cd"]`'
+          The first pass reads the ring and leaves `g`, `h`, `i` in row 1. The second pass reads
+          them as its top row and moves `top` to 2, past `bottom`, so the left-column loop runs
+          `range(1, 1, -1)`, which is empty. Every letter is read once.
+      - id: four-by-four
+        text: '`["abcd", "efgh", "ijkl", "mnop"]`'
         explanation: >-
-          The ring reads `a`, `b`, `d` and `c`, and then the left-column loop runs
-          `range(0, 0, -1)`, which is empty. The result, `['a', 'b', 'd', 'c']`, is right.
-      - id: three-by-three
-        text: '`["abc", "def", "ghi"]`'
+          The first pass reads the ring and leaves the 2 by 2 middle. On the second pass the
+          left-column loop runs `range(1, 1, -1)`, which is empty, so every letter is read once.
+      - id: two-by-four
+        text: '`["abcd", "efgh"]`'
         explanation: >-
-          The first pass reads the ring, and the second reads `e`. On that pass the left-column
-          loop runs `range(1, 1, -1)`, which is empty, so every letter is read once.
-    correct: one-column
+          One pass reads all 8 letters. The left-column loop then runs `range(0, 0, -1)`, which
+          is empty, so the result is right.
+    correct: five-by-three
     followUps:
-      one-row:
-        prompt: On `["abc"]`, which test skips the bottom-row loop, and what does the left-column loop then read?
+      three-by-five:
+        prompt: On the second pass over `["abcde", "fghij", "klmno"]`, what are `top` and `bottom` when the left-column loop runs?
         options:
-          - id: line-twelve
-            text: "`if top <= bottom` skips it, and the left-column loop reads nothing"
-          - id: nothing-skips
-            text: Nothing skips it, so `c`, `b`, `a` are read again
-          - id: left-reads
-            text: "`if top <= bottom` skips it, and the left-column loop reads `a` again"
-        correct: line-twelve
+          - id: past
+            text: "`top` is 2 and `bottom` is 1, so its range is empty"
+          - id: equal
+            text: "`top` and `bottom` are both 1, so it reads row 1 again"
+          - id: start
+            text: "`top` is 0 and `bottom` is 2, so it reads the whole column"
+        correct: past
         explanation: >-
-          `top` is 1 and `bottom` is 0, so `top <= bottom` is false. The left-column loop counts down
-          from 0 and stops before 0, so it reads nothing.
-      two-by-two:
-        prompt: After the bottom row of `["ab", "cd"]`, what are `bottom` and `top`?
+          The second pass reads row 1 as its top row, so `top` moves to 2. The left-column loop
+          counts down from `bottom`, 1, and stops before `top - 1`, 1, so it reads nothing.
+      four-by-four:
+        prompt: After the first pass over a 4 by 4 grid, what is left to read?
         options:
-          - id: zero-one
-            text: "`bottom` is 0 and `top` is 1, so `range(0, 0, -1)` is empty"
-          - id: one-one
-            text: "`bottom` is 1 and `top` is 1, so the loop reads `c` again"
-          - id: one-zero
-            text: "`bottom` is 1 and `top` is 0, so the loop reads `c` and `a`"
-        correct: zero-one
+          - id: square
+            text: A 2 by 2 square, rows 1 and 2 of columns 1 and 2
+          - id: column
+            text: One column of 2 cells
+          - id: nothing
+            text: Nothing, since the ring holds every cell
+        correct: square
         explanation: >-
-          Both rows have been read, and each bound moved past its row. The left-column loop
-          stops before `top - 1`, which is 0, so it starts at its stop and reads nothing.
-      three-by-three:
-        prompt: On the second pass over `["abc", "def", "ghi"]`, why does the missing check not matter?
+          The first pass reads rows 0 and 3 and columns 0 and 3. The 2 by 2 middle still has two
+          rows and two columns, so the second pass ends with `top` past `bottom` and the
+          left-column range is empty.
+      two-by-four:
+        prompt: On `["abcd", "efgh"]`, where does the left-column loop start and stop?
         options:
           - id: empty
-            text: "`bottom` is 1 and `top` is 2, so the left-column range is empty"
-          - id: skipped
-            text: The `while` test stops the walk before the left-column loop
-          - id: not-reached
-            text: The second pass never starts, since the ring holds every cell
+            text: "It starts at row 0 and stops before row 0, so it reads nothing"
+          - id: one
+            text: It reads row 1 of column 0, `e`, again
+          - id: both
+            text: It reads `e` and `a` again
         correct: empty
         explanation: >-
-          After `e` is read, `top` is 2 and `bottom` is 1. `range(1, 1, -1)` is empty, so the
+          After the bottom row, `bottom` is 0 and `top` is 1. `range(0, 0, -1)` is empty, so the
           unchecked loop reads nothing.
