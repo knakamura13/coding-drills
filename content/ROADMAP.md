@@ -192,15 +192,15 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | done |
 | Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | done |
 | Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | done |
-| Problem-solving patterns #14 | Grid tables: teaching levels | `grid-tables` | done |
-| Problem-solving patterns #14 | Grid tables: review variants | `grid-tables-review` | done |
-| Problem-solving patterns #14 | Grid tables: checkpoint | `grid-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (teaching levels) | `grid-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (review variants) | `grid-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (checkpoint) | `grid-tables-checkpoint` | done |
 | Problem-solving patterns #14 | Greedy scheduling: teaching levels | `greedy-scheduling` | done |
 | Problem-solving patterns #14 | Greedy scheduling: review variants | `greedy-scheduling-review` | done |
 | Problem-solving patterns #14 | Greedy scheduling: checkpoint | `greedy-scheduling-checkpoint` | done |
-| Problem-solving patterns #14 | One-dimensional tables: teaching levels | `one-dimensional-tables` | done |
-| Problem-solving patterns #14 | One-dimensional tables: review variants | `one-dimensional-tables-review` | done |
-| Problem-solving patterns #14 | One-dimensional tables: checkpoint | `one-dimensional-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (teaching levels) | `one-dimensional-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (review variants) | `one-dimensional-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (checkpoint) | `one-dimensional-tables-checkpoint` | done |
 | Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | done |
 | Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | done |
 | Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | done |

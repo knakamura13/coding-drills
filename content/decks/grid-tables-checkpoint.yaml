@@ -1,6 +1,6 @@
 id: grid-tables-checkpoint
-title: "Grid tables: checkpoint"
-description: Count paths on new blocked grids, from the cells each entry reads to the edges and blocks. Each item combines the Grid tables skills.
+title: "Dynamic programming: grids (checkpoint)"
+description: Count paths on new blocked grids, from the cells each entry reads to the edges and blocks. Each item combines the grid table skills.
 heading: Which one is right?
 
 questions:
@@ -180,80 +180,94 @@ questions:
           Undo the move: up one row and left one column. `(r-1, c+1)` would need a move down and to the
           left.
 
-  - id: grid-exam-fix-edges
-    heading: Which change fixes it?
+  - id: grid-exam-debug-column-skip
+    heading: Which call does it fail on?
     tags: [dp, grid, python]
     prompt: |-
-      The walker moves right or down. On this grid the code returns 14, but only 12 paths exist.
+      A suggested `count_paths(grid)` should count the paths from `(0, 0)` to the bottom-right
+      cell, moving right or down, where `#` is blocked and the start is open. One detail is
+      slightly off:
 
       ```python
       def count_paths(grid):
           rows, cols = len(grid), len(grid[0])
           ways = [[0] * cols for _ in range(rows)]
-          for r in range(rows):
-              for c in range(cols):
-                  if grid[r][c] == '#':
-                      ways[r][c] = 0
-                  elif r == 0 or c == 0:
-                      ways[r][c] = 1
-                  else:
+          for c in range(cols):            # row 0
+              if grid[0][c] == '#':
+                  break
+              ways[0][c] = 1
+          for r in range(1, rows):         # column 0
+              if grid[r][0] == '#':
+                  continue
+              ways[r][0] = 1
+          for r in range(1, rows):
+              for c in range(1, cols):
+                  if grid[r][c] == '.':
                       ways[r][c] = ways[r - 1][c] + ways[r][c - 1]
           return ways[-1][-1]
-
-      count_paths(["..#.", "....", "#...", "...."])
       ```
 
-      Which change makes it return 12?
+      Which call returns a wrong answer?
     options:
-      - id: seed-start
-        text: Seed only `(0, 0)`, and let edge cells add their one real neighbor
+      - id: column-block
+        text: "`count_paths(['....', '#...', '....'])`"
         explanation: >-
-          The edge rule gave 1 to `(0, 3)` and `(3, 0)`, which sit past blocks. With only the start
-          seeded and off-grid reads as 0, they hold 0, and the goal comes out as 12.
-      - id: block-after
-        text: Set blocked cells to 0 after the loop instead of during it
+          `continue` skips only the block at `(1, 0)`, so `(2, 0)` below it still gets 1. A
+          column 0 cell is entered only from above, so no path reaches `(2, 0)`. The call returns
+          7, but only 6 paths exist. Using `break`, as the row 0 loop does, fixes it.
+      - id: row-block
+        text: "`count_paths(['..#.', '....', '....'])`"
         explanation: >-
-          The interior would then build on the blocks as if they were open, and zeroing them later
-          does not undo that. The goal comes out as 20.
-      - id: add-diagonal
-        text: Add `ways[r - 1][c - 1]` to every cell inside the edges
+          The row 0 loop stops at the block with `break`, so `(0, 3)` past it keeps 0, which is
+          right. The call returns 7, the true count.
+      - id: inner-block
+        text: "`count_paths(['....', '.#..', '....'])`"
         explanation: >-
-          The walker never moves diagonally, so this counts routes it cannot take. The goal comes out
-          as 51.
-      - id: swap-loops
-        text: Loop over columns on the outside and rows on the inside
+          The block at `(1, 1)` is inside the edges, where the last loop leaves it at 0. The edges
+          are open, and the call returns 4, the true count.
+      - id: last-row-block
+        text: "`count_paths(['....', '....', '#...'])`"
         explanation: >-
-          Each cell still reads cells filled before it, so the order is fine and changes nothing. The
-          edge 1s are still wrong, and the goal stays 14.
-    correct: seed-start
+          The block is in column 0, but in the last row, so no cell lies below it. `continue`
+          leaves it at 0, and the call returns 9, the true count.
+    correct: column-block
     followUps:
-      block-after:
-        prompt: When `(1, 2)` is filled, what does it read from the block at `(0, 2)` if blocks are zeroed after the loop?
+      row-block:
+        prompt: In the row 0 loop, what happens once `c` reaches the block at `(0, 2)`?
         options:
-          - { id: one, text: "1, the edge value, so routes through the block are counted" }
-          - { id: zero, text: "0, since the block will be zeroed later anyway" }
-          - { id: skip, text: "Nothing, since blocked cells are skipped when they are read" }
-        correct: one
+          - id: stops
+            text: The loop stops, so `(0, 3)` keeps 0
+          - id: skips
+            text: The loop skips the block and sets `(0, 3)` to 1
+          - id: zeroes
+            text: The loop sets the block to 1, then the last loop resets it
+        correct: stops
         explanation: >-
-          A table entry is final once it is written, and later cells copy it. Blocks have to hold 0
-          before anything reads them.
-      add-diagonal:
-        prompt: Can a right-or-down walker reach `(r, c)` straight from `(r-1, c-1)`?
+          `break` ends the loop, so no cell past the block is set to 1. That is right for row 0,
+          where each cell is entered only from its left.
+      inner-block:
+        prompt: Which loop handles a block at `(1, 1)`?
         options:
-          - { id: no, text: "No, it has to pass through `(r-1, c)` or `(r, c-1)` first" }
-          - { id: yes, text: "Yes, a right move and a down move together count as one" }
-          - { id: edges, text: "Only on the edges, where one neighbor is missing" }
-        correct: no
+          - id: last-loop
+            text: The last loop, which skips it and leaves its 0
+          - id: column-loop
+            text: The column 0 loop, which sets it to 1
+          - id: none
+            text: No loop, so it reads as an open cell
+        correct: last-loop
         explanation: >-
-          With moves right and down, a path through `(r-1, c-1)` reaches `(r, c)` by way of one of the
-          two neighbors, and is already counted there.
-      swap-loops:
-        prompt: What do `(0, 3)` and `(3, 0)` hold after the loops are swapped?
+          The edge loops touch only row 0 and column 0. Inside the edges, a blocked cell keeps the
+          0 it started with, and the cells after it add that 0.
+      last-row-block:
+        prompt: The block is at `(2, 0)` in the last row. Which column 0 cell could the `continue` set wrongly?
         options:
-          - { id: still-one, text: "Still 1, since the edge rule does not depend on loop order" }
-          - { id: zero, text: "0, since the block is now filled before them" }
-          - { id: two, text: "2, since columns are now added up first" }
-        correct: still-one
+          - id: none-below
+            text: None, since no cell of column 0 lies below it
+          - id: the-block
+            text: The block itself, which gets 1
+          - id: above
+            text: "`(1, 0)` above it, which gets 0"
+        correct: none-below
         explanation: >-
-          The bug is the rule, not the order. `r == 0 or c == 0` sets an edge cell to 1 whatever comes
-          before it, even past a block.
+          `continue` skips the block and moves on to the next row. Only a cell below a block in
+          column 0 can be wrongly set to 1, and here there is none.

@@ -1,6 +1,6 @@
 id: one-dimensional-tables-checkpoint
-title: "One-dimensional tables: checkpoint"
-description: Build a table for a fresh counting or optimization task. Each item combines the One-dimensional tables skills.
+title: "Dynamic programming: 1D tables (checkpoint)"
+description: Build a table for a fresh counting or optimization task. Each item combines the 1D table skills.
 heading: Which plan is right?
 
 questions:
@@ -188,3 +188,169 @@ questions:
         explanation: >-
           A `min` table can only move down from where it starts. A start of 0 means "free", and no
           real price beats it, so `least(7)` returns 0. Entries that `min` must fill start at `inf`.
+
+  - id: tables-exam-booked-slots
+    heading: Which plan is right?
+    tags: [dp]
+    prompt: >-
+      A room has `n` time slots in a row. Slot `i` has a value `v[i]` that is never negative. Two
+      neighboring slots cannot both be booked, because the room needs a reset between them. Book
+      slots so the total value is as large as possible. Let `best[i]` be the best total using only
+      slots 0 to `i`, and read any index below 0 as 0. Which plan is right?
+    options:
+      - id: largest-first
+        text: Repeatedly book the highest-value free slot and block its two neighbors
+        explanation: >-
+          A large value can block two neighbors whose combined worth is larger. On
+          `[11, 14, 11, 5]` this books the 14, which blocks slots 0 and 2, then the 5, for a total
+          of 19. Booking slots 0 and 2 gives 22.
+      - id: always-take
+        text: "`best[i] = best[i-2] + v[i]`, and return `best[n-1]`"
+        explanation: >-
+          This forces slot `i` to be booked. A prefix may do better by skipping its last slot: on
+          `[2, 13, 3]` the recurrence gives `best[2] = 2 + 3 = 5`, while the best total is 13.
+      - id: max-then-add
+        text: "`best[i] = max(best[i-1], best[i-2]) + v[i]`, and return `best[n-1]`"
+        explanation: >-
+          When `best[i-1]` is the larger term, it may include slot `i-1`, and adding `v[i]` then
+          books two neighbors. On `[6, 8, 6]` it returns 20, but the best total is 12 (slots 0
+          and 2).
+      - id: take-or-skip
+        text: "`best[i] = max(best[i-1], best[i-2] + v[i])`, and return `best[n-1]`"
+        explanation: >-
+          For slot `i` there are two cases. Skip it, and the best total is `best[i-1]`. Book it,
+          and its neighbor is off limits, so it adds `v[i]` to the best total over slots 0 to
+          `i-2`. Take the larger. On `[11, 14, 11, 5]` the entries are 11, 14, 22, 22, so the
+          answer is 22.
+    correct: take-or-skip
+    followUps:
+      largest-first:
+        prompt: >-
+          On `[11, 14, 11, 5]` the largest-first plan books the 14 first. What total does it end
+          with, and what is the best total?
+        options:
+          - id: nineteen
+            text: 19 (the 14, then the 5), while slots 0 and 2 give 22
+          - id: twenty-two
+            text: 22, so the largest-first plan happens to match the best total
+          - id: fourteen
+            text: 14, because booking the 14 blocks every other slot
+        correct: nineteen
+        explanation: >-
+          Booking the 14 blocks slots 0 and 2, but slot 3 stays free, so the plan ends at 19. The
+          recurrence does not commit to the biggest value. It compares skipping and booking at
+          each slot, and keeps the better total.
+      always-take:
+        prompt: >-
+          On `[2, 13, 3]`, `best[1]` is 13 but `best[2] = best[0] + v[2]` is 5. What does that
+          recurrence leave out?
+        options:
+          - id: skip-option
+            text: Skipping slot `i`, which would let `best[i]` be at least `best[i-1]`
+          - id: base-cases
+            text: The base cases, because `best[0]` should be 0
+          - id: add-previous
+            text: Adding `best[i-1] + v[i]`, since the previous slot is free to use
+        correct: skip-option
+        explanation: >-
+          `best[i]` means the best total using slots 0 to `i`, and that includes plans that never
+          book slot `i`. Without the `best[i-1]` term the total can fall below a shorter prefix's
+          total. Adding `best[i-1] + v[i]` would break the neighbor rule.
+      max-then-add:
+        prompt: >-
+          On `[6, 8, 6]`, `max(best[i-1], best[i-2]) + v[i]` returns 20. Why is that total
+          invalid?
+        options:
+          - id: may-include-neighbor
+            text: "`best[i-1]` may already book slot `i-1`, so adding `v[i]` books two neighbors"
+          - id: use-min
+            text: "`max` should be `min`, to avoid choosing a neighbor"
+          - id: forgot-previous-value
+            text: It forgets to add `v[i-1]` to the total
+        correct: may-include-neighbor
+        explanation: >-
+          `v[i]` may be added only to a total that leaves slot `i-1` free, which is `best[i-2]`.
+          The right recurrence puts `+ v[i]` inside the second term only, so the first term,
+          `best[i-1]`, stays a plain "skip slot `i`" case.
+
+  - id: tables-exam-debug-empty-seed
+    heading: Which call does it fail on?
+    tags: [dp, python]
+    prompt: |-
+      A suggested `best_sum(nums)` should return the largest total of a subarray, a slice of
+      neighboring values with at least one value in it. Its `end[i + 1]` is the largest total of a
+      subarray that ends exactly at index `i`, and `end[0]` is an extra entry set to 0. One detail
+      is slightly off:
+
+      ```python
+      def best_sum(nums):
+          end = [0] * (len(nums) + 1)
+          for i in range(len(nums)):
+              end[i + 1] = max(nums[i], end[i] + nums[i])
+          return max(end)
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: all-negative
+        text: "`best_sum([-4, -1, -6])`"
+        explanation: >-
+          `end` is `[0, -4, -1, -6]`. The extra `end[0]` stands for no subarray at all, and
+          `max(end)` returns its 0, though every subarray here has a negative total. The right
+          answer is -1, the -1 alone. Returning `max(end[1:])` fixes it.
+      - id: zero-first
+        text: "`best_sum([0, -5, -1])`"
+        explanation: >-
+          `max(end)` returns 0, and that is right: the subarray `0` alone totals 0. The extra
+          `end[0]` matches a real answer here, so no harm is done.
+      - id: middle-positive
+        text: "`best_sum([-5, 2, -8])`"
+        explanation: >-
+          `end` is `[0, -5, 2, -6]`, so the call returns 2, the 2 alone, which is right. The extra
+          0 is smaller than 2 and never wins.
+      - id: restart-last
+        text: "`best_sum([3, -9, 4])`"
+        explanation: >-
+          `end` is `[0, 3, -6, 4]`. At index 2, `max(4, -6 + 4)` starts fresh with the 4, and the
+          call returns 4, which is right.
+    correct: all-negative
+    followUps:
+      zero-first:
+        prompt: What is the largest total of a subarray of `[0, -5, -1]`?
+        options:
+          - id: zero
+            text: 0, from the subarray `0` alone
+          - id: minus-one
+            text: -1, from the subarray `-1` alone
+          - id: minus-six
+            text: -6, from the whole list
+        correct: zero
+        explanation: >-
+          The 0 at index 0 is a subarray of one value, and its total, 0, beats every other one. The
+          extra 0 in `end[0]` only goes wrong when no real subarray reaches 0.
+      middle-positive:
+        prompt: When can the 0 in `end[0]` change what `max(end)` returns?
+        options:
+          - id: below-zero
+            text: Only when every real subarray totals less than 0
+          - id: any-negative
+            text: Whenever the list holds a negative value
+          - id: first-negative
+            text: Whenever the first value is negative
+        correct: below-zero
+        explanation: >-
+          `max` returns the 0 only when no real entry is 0 or more. A list with any value that is
+          0 or more has a subarray that reaches it, so the extra 0 does no harm there.
+      restart-last:
+        prompt: "In `best_sum([3, -9, 4])`, does starting fresh at the 4 lose a better subarray?"
+        options:
+          - id: no-lower
+            text: No. Extending to `3, -9, 4` totals -2, less than the 4 alone
+          - id: yes-whole
+            text: Yes. It loses `3, -9, 4`, which totals 7
+          - id: yes-three
+            text: Yes. It loses the 3, which the answer needs
+        correct: no-lower
+        explanation: >-
+          `end[2]` is -6, so adding it only lowers the total. A fresh start is right whenever the
+          entry before is negative, so this fill is right, and so is `max(end)`, which is 4.

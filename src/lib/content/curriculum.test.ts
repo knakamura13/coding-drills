@@ -49,8 +49,8 @@ const PATH_TITLES = [
 	'Backtracking',
 	'Backtracking: subsets and orderings',
 	'Memoization',
-	'One-dimensional tables',
-	'Grid tables',
+	'Dynamic programming: 1D tables',
+	'Dynamic programming: grids',
 	'Subsequence tables',
 	'DP storage',
 	'Method selection'
@@ -61,7 +61,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
-	'problem-solving-patterns': { keep: 1, rewrite: 5, exam: 7, retire: 9 }
+	'problem-solving-patterns': { keep: 1, rewrite: 3, exam: 5, retire: 13 }
 };
 
 /** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */
@@ -217,7 +217,7 @@ describe('shipped curriculum', () => {
 			'grid-bounds-and-cost/quadratic retire reachability',
 			'count-components-edge-list/one-search retire reachability',
 			'shortest-path-grid/dijkstra retire weighted-paths',
-			'tiling-recurrence/empty-is-zero rewrite one-dimensional-tables'
+			'tiling-recurrence/empty-is-zero retire one-dimensional-tables'
 		]);
 	});
 
