@@ -1,6 +1,6 @@
 id: monotonic-stack-checkpoint
 title: "Monotonic stack: checkpoint"
-description: Solve next-greater on new inputs and justify the cost of a whole run. Each item combines waiting positions, popping smaller tops, and reading what is left.
+description: Solve next-greater or a window maximum on new inputs, and justify the cost of a whole run. Most items combine two or more of the path's skills.
 heading: Solve the next-greater task
 
 questions:
@@ -331,6 +331,200 @@ questions:
           A popped stall never comes back. Only `n` stalls ever enter, and the last one is never
           popped, so all the pops together stay below `n`, however they are spread over the
           arrivals.
+
+  - id: checkpoint-largest-rectangle
+    heading: What is the largest area?
+    tags: [stack]
+    prompt: >-
+      Bars of width 1 stand side by side with heights `h`. A rectangle drawn inside them covers
+      neighboring bars and is as tall as the shortest bar it covers. The widest one at bar `j`'s
+      full height runs from just after the previous strictly shorter bar to just before the next
+      strictly shorter bar, or to the edge where there is none. A pass like `next_greater` that pops
+      taller tops instead of smaller ones gives every next strictly shorter bar, and the same pass
+      run from the right gives every previous one. For `h = [4, 3, 7, 9, 6, 9, 3]`, what is the
+      area of the largest rectangle?
+    options:
+      - id: twenty-four
+        text: "24"
+        explanation: >-
+          The 6 at index 4 has its previous shorter bar at index 1 and its next at index 6, so its
+          rectangle spans indices 2 to 5: `6 * 4 = 24`. Each 3 has no strictly shorter bar on
+          either side, so it spans all 7 bars for 21, and every other bar gives less.
+      - id: eighteen
+        text: "18"
+        explanation: Check whether the rectangle at a bar can also reach to its left.
+      - id: thirty-six
+        text: "36"
+        explanation: Check whether the shorter bars that stop a rectangle belong to it.
+      - id: nine
+        text: "9"
+        explanation: Check whether a rectangle can cover more than one bar.
+    correct: twenty-four
+    followUps:
+      eighteen:
+        prompt: >-
+          The 6 at index 4 has a 9 and a 7 to its left, then the 3 at index 1. How far left does a
+          rectangle of height 6 that covers index 4 reach?
+        options:
+          - id: index-two
+            text: To index 2, just after the shorter 3
+          - id: own-bar
+            text: It starts at index 4 and reaches only right
+          - id: left-edge
+            text: To index 0, the left edge
+        correct: index-two
+        explanation: >-
+          The 7 and the 9 are both at least 6, so the rectangle reaches back over them and stops
+          before the 3. With both sides counted, it is 4 bars wide, so its area is 24.
+      thirty-six:
+        prompt: >-
+          A rectangle of height 6 over index 4 stops at the 3 at index 1 and the 3 at index 6. Do
+          those two 3s belong to it?
+        options:
+          - id: inside-only
+            text: No, they are shorter than 6, so it covers indices 2 to 5
+          - id: both-ends
+            text: Yes, the bars that stop it are part of it
+          - id: left-end
+            text: Only the 3 on the left belongs to it
+        correct: inside-only
+        explanation: >-
+          A rectangle is as tall as the shortest bar it covers. Covering a 3 would cut its height
+          to 3, so a rectangle of height 6 stops just inside the shorter bars, 4 bars wide.
+      nine:
+        prompt: Can a rectangle cover more than one bar?
+        options:
+          - id: several
+            text: Yes, any neighboring bars, at the height of the shortest one
+          - id: single
+            text: No, each rectangle is a single bar
+          - id: equal-only
+            text: Only bars of equal height
+        correct: several
+        explanation: >-
+          Covering more bars trades height for width. The 9 alone gives 9, while height 6 across
+          the 4 bars from index 2 to index 5 gives 24.
+
+  - id: checkpoint-window-max-output
+    heading: What is the answer?
+    tags: [sliding-window]
+    prompt: >-
+      A window is `k` neighboring values. For each window, from the one that ends at index `k - 1`
+      to the one that ends at the last index, find its largest value. For
+      `nums = [9, 4, 8, 3, 5, 7, 3, 5]` and `k = 4`, what is the answer?
+    options:
+      - id: maxima
+        text: "`[9, 8, 8, 7, 7]`"
+        explanation: >-
+          The windows end at indices 3 to 7. The 9 at index 0 is in the first window only, the 8 at
+          index 2 is the largest in the next two, and once it has gone, the 7 at index 5 is the
+          largest in the last two.
+      - id: running
+        text: "`[9, 9, 9, 9, 9]`"
+        explanation: Check whether the 9 at index 0 is still in the later windows.
+      - id: five-wide
+        text: "`[9, 9, 8, 8, 7]`"
+        explanation: Check whether each window holds `k` values or one more.
+      - id: three-wide
+        text: "`[8, 8, 7, 7, 7]`"
+        explanation: Check whether each window holds `k` values or one fewer.
+    correct: maxima
+    followUps:
+      running:
+        prompt: Is the 9 at index 0 in the window that ends at index 4?
+        options:
+          - id: not-in
+            text: No, that window runs from index 1 to index 4
+          - id: so-far
+            text: Yes, every window keeps the largest value read so far
+          - id: until-larger
+            text: Yes, the 9 stays until a larger value arrives
+        correct: not-in
+        explanation: >-
+          A window is the last `k` values, so a value leaves however large it is. The window of 4
+          that ends at index 4 starts at index 1, and its largest value is the 8 at index 2.
+      five-wide:
+        prompt: How many values does the window that ends at index 4 hold?
+        options:
+          - id: four
+            text: 4, from index 1 to index 4
+          - id: five
+            text: 5, from index 0 to index 4
+          - id: three
+            text: 3, from index 2 to index 4
+        correct: four
+        explanation: >-
+          Each window holds `k = 4` values, so the one that ends at index 4 starts at
+          `4 - 4 + 1 = 1`. Index 0 and its 9 are outside it.
+      three-wide:
+        prompt: Which indices does the first window cover?
+        options:
+          - id: zero-to-three
+            text: Indices 0 to 3
+          - id: one-to-three
+            text: Indices 1 to 3
+          - id: zero-to-four
+            text: Indices 0 to 4
+        correct: zero-to-three
+        explanation: >-
+          The first window ends at index `k - 1 = 3` and holds 4 values, so it starts at index 0.
+          Its largest value is the 9.
+
+  - format: tap-cell
+    id: checkpoint-window-front-tap
+    heading: Which index is at the front?
+    tags: [sliding-window, queue, python]
+    prompt: >-
+      `window_max` finds the largest value in each window, the `k` neighboring values that end at
+      index `i`. `dq` is a deque of indices: `dq[0]` reads its front and `dq[-1]` its back,
+      `popleft()` removes the item at the front, `pop()` removes the item at the back, and `append`
+      adds at the back. Once index 6 is appended, which index is at the front of `dq`? Tap it.
+    code: |
+      from collections import deque
+
+      def window_max(nums, k):
+          dq = deque()  # indices
+          out = []
+          for i, x in enumerate(nums):
+              if dq and dq[0] <= i - k:
+                  dq.popleft()
+              while dq and nums[dq[-1]] <= x:
+                  dq.pop()
+              dq.append(i)
+              if i >= k - 1:
+                  out.append(nums[dq[0]])
+          return out
+
+      window_max([3, 9, 2, 6, 1, 6, 5, 4], 4)
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 9, 2, 6, 1, 6, 5, 4]
+    correct: 5
+    explanation: >-
+      When index 5 is read, index 1 is at most `5 - 4`, so its 9 leaves the front. The 6 at index 5
+      then pops the 1 and the equal 6 at index 3, since the loop pops every value at most `x`. The 5
+      at index 6 is appended behind it, so index 5 is at the front.
+    misses:
+      - index: 0
+        explanation: The 9 at index 1 popped index 0, since `3 <= 9`.
+      - index: 1
+        explanation: >-
+          Index 1 left the window when index 5 was read: `1 <= 5 - 4` is true, so `popleft()`
+          removed it.
+      - index: 2
+        explanation: The 6 at index 3 popped index 2, since `2 <= 6`.
+      - index: 3
+        explanation: >-
+          The 6 at index 5 popped this equal 6, since `6 <= 6` is true. The loop pops values at most
+          `x`, not only smaller ones.
+      - index: 4
+        explanation: The 6 at index 5 popped index 4, since `1 <= 6`.
+      - index: 6
+        explanation: >-
+          The 5 at index 6 is smaller than the 6 at index 5, so it is appended at the back.
+      - index: 7
+        explanation: Index 7 has not been read when index 6 is appended.
 
   - id: checkpoint-debug-one-pop
     heading: Which call does it fail on?

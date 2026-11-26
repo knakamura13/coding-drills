@@ -23,7 +23,7 @@ paths:
 
   - id: monotonic-stack
     title: Monotonic stack
-    summary: Keep waiting positions, resolve smaller tops, and account for the whole run.
+    summary: Keep waiting positions, resolve smaller tops, and account for the whole run. Window maximum is a separate fork.
     after: [stack-matching, growth-rates]
     afterNote: Reading an index is the Arrays and strings skill for telling an index from its value. Growth rates gives the big-O for the cost of a whole run.
     needs: [read-index]
@@ -34,10 +34,18 @@ paths:
         title: Resolve strictly smaller tops
       - id: interpret-leftovers
         title: Interpret leftovers and count total operations
+    forks:
+      - id: window-maximum
+        title: Window maximum
+        after: resolve-smaller-tops
+        levels:
+          - id: drop-expired-front
+            title: Drop an expired front
     checkpoints:
       - id: next-greater-and-cost
-        title: Next greater and its cost
-        summary: Solve next-greater and justify the full-run cost.
+        title: Next greater, a window maximum, and the cost
+        summary: Solve next-greater or a window maximum on new inputs, and justify the full-run cost.
+        mix: [next-greater, window-max]
 
   - id: priority-order
     title: Priority order
@@ -411,6 +419,21 @@ drills:
     path: monotonic-stack
     skill: interpret-leftovers
     note: Count the pops of one run as the pushes minus the indices left. The prompt states that each index is popped at most once.
+  - questionId: expired-front-index
+    disposition: keep
+    path: monotonic-stack
+    skill: drop-expired-front
+    note: 'Pick the index the front check removes when the window moves past it, against keeping it one step long, the back and removing two. The worked example introduces the fork: a deque of indices whose values fall from front to back.'
+  - questionId: back-pops-equal-value
+    disposition: keep
+    path: monotonic-stack
+    skill: drop-expired-front
+    note: 'Tap the last index the back pops before an arrival is appended, where `<=` pops an equal value too. The prompt states the deque and the pop rule.'
+  - questionId: trace-window-maxima
+    disposition: keep
+    path: monotonic-stack
+    skill: drop-expired-front
+    note: Step through a window maximum with k = 3, predicting the front after two expiries, one arrival's pops and the maxima.
   - questionId: waiting-indices-review
     disposition: keep
     path: monotonic-stack
@@ -493,27 +516,50 @@ drills:
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops, interpret-leftovers]
+    covers: [next-greater]
     note: Solve next-greater with an equal pair and a four-pop arrival.
   - questionId: checkpoint-run-cost
     disposition: exam
     path: monotonic-stack
     tests: [resolve-smaller-tops, interpret-leftovers]
+    covers: [next-greater]
     note: Count the pops of one run and justify the linear bound for every input.
   - questionId: checkpoint-tap-next-greater
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops]
+    covers: [next-greater]
     note: Tap the first strictly larger value past an equal one.
   - questionId: checkpoint-distance-output
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, resolve-smaller-tops, interpret-leftovers]
+    covers: [next-greater]
     note: Solve the steps-until-higher variant with an equal pair and leftover zeros.
   - questionId: next-taller-stall
     disposition: exam
     path: monotonic-stack
     tests: [identify-waiting-position, interpret-leftovers]
+    covers: [next-greater]
     note: On an unfamiliar stall task, pick the approach that is right on every input but O(n²), against a wrong sort, a wrong suffix maximum and the O(n) stack.
+  - questionId: checkpoint-largest-rectangle
+    disposition: exam
+    path: monotonic-stack
+    tests: [identify-waiting-position, resolve-smaller-tops]
+    covers: [next-greater]
+    note: Largest rectangle in a histogram, with the previous and next strictly shorter bar rule stated, against one side only, counting the shorter bars and the tallest bar alone.
+  - questionId: checkpoint-window-max-output
+    disposition: exam
+    path: monotonic-stack
+    tests: [drop-expired-front, resolve-smaller-tops]
+    covers: [window-max]
+    note: Find every window maximum with k = 4, against never dropping a value and windows one value too wide or too narrow.
+  - questionId: checkpoint-window-front-tap
+    disposition: exam
+    path: monotonic-stack
+    tests: [drop-expired-front, resolve-smaller-tops]
+    covers: [window-max]
+    note: Tap the front of the deque once an expired 9 has left and the newer of two equal values has popped the older one.
   - questionId: checkpoint-debug-one-pop
     disposition: exam
     path: monotonic-stack

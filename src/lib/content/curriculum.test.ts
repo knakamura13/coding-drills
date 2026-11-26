@@ -60,7 +60,7 @@ const PATH_TITLES = [
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
+	'data-structures': { keep: 12, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
 	'problem-solving-patterns': { keep: 0, rewrite: 0, exam: 0, retire: 22 }
 };
@@ -132,15 +132,15 @@ describe('shipped curriculum', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
-	it('maps each of the 97 primary drills once, onto a real question', () => {
-		expect(audited).toHaveLength(97);
-		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(97);
+	it('maps each of the 100 primary drills once, onto a real question', () => {
+		expect(audited).toHaveLength(100);
+		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(100);
 		const known = new Map(
 			decks
 				.filter((deck) => AUDITED_DECKS.has(deck.id))
 				.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id]))
 		);
-		expect(known.size).toBe(97);
+		expect(known.size).toBe(100);
 		for (const drill of audited) {
 			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
 		}
