@@ -9,11 +9,11 @@ questions:
     heading: Where does the walk stop?
     tags: [tree, hash-map]
     prompt: |-
-      `shared_end` returns the node where the longest prefix shared by every stored word ends. The trie holds `"baker"`, `"bake"` and `"bakery"`. The cells list its nodes level by
-      level, root first, each labeled by the prefix it spells. Tap the node `shared_end(root)`
-      returns.
+      The trie holds `"baker"`, `"bake"` and `"bakery"`, built with `insert`. The cells list its
+      nodes level by level, root first, each labeled by the prefix it spells. Tap the node
+      `walk_down(root)` returns.
     code: |
-      def shared_end(root):
+      def walk_down(root):
           node = root
           while len(node.children) == 1 and not node.is_word:
               node = list(node.children.values())[0]
@@ -26,7 +26,9 @@ questions:
     explanation: >-
       The root, `b`, `ba` and `bak` each have one child and no word ending there, so the walk moves
       down through them. `bake` also has one child, but `"bake"` ends there, so `not node.is_word`
-      is false and the loop stops. No word can share letters past the end of `"bake"`.
+      is false and the loop stops. So `walk_down` returns the end of the longest prefix every
+      stored word shares. That prefix cannot run past `"bake"`, since `"bake"` is itself a stored
+      word.
     misses:
       - index: 0
         explanation: >-
@@ -65,10 +67,11 @@ questions:
         explanation: >-
           It is the longest word, but its first six letters follow the `"carpet"` path. Only `'e'`
           and `'d'` are new: 2 nodes.
-      - id: dogs
-        text: "`\"dogs\"`"
+      - id: cub
+        text: "`\"cub\"`"
         explanation: >-
-          `'d'`, `'o'` and `'g'` follow the `"dog"` path, so only `'s'` is new: 1 node.
+          `'c'` follows the existing `"c"` node, which holds only `'a'`. So `'u'` and `'b'` are new:
+          2 nodes, fewer than `"ant"` makes.
       - id: ca
         text: "`\"ca\"`"
         explanation: >-
@@ -86,7 +89,7 @@ questions:
         explanation: >-
           A long word makes few nodes when most of it follows an existing path. The count is the
           letters left over after the shared start.
-      dogs:
+      cub:
         prompt: "Which letters of `\"ant\"` are already keys along its path?"
         options:
           - { id: none, text: "None, since the root has no `'a'` key" }
@@ -111,20 +114,19 @@ questions:
     heading: What does it return?
     tags: [tree, hash-map, recursion]
     prompt: |-
-      `count_words` counts the words that end at `node` or below it. The trie holds `"bead"`,
-      `"beam"`, `"bet"`, `"be"`, `"beta"`, `"bat"` and `"cab"`.
+      The trie holds `"bead"`, `"beam"`, `"bet"`, `"be"`, `"beta"`, `"bat"` and `"cab"`.
 
       ```python
-      def count_words(node):
+      def tally(node):
           total = 0
           if node.is_word:
               total = 1
           for child in node.children.values():
-              total += count_words(child)
+              total += tally(child)
           return total
       ```
 
-      What does `count_words(root.children['b'].children['e'])` return?
+      What does `tally(root.children['b'].children['e'])` return?
     options:
       - id: five
         text: "5"
@@ -181,7 +183,7 @@ questions:
           under `"ba"` and `"cab"` under `"c"`, outside it.
 
   - id: tries-exam-wildcard
-    heading: Which call returns True?
+    heading: How far does the wildcard reach?
     tags: [tree, recursion, hash-map]
     prompt: |-
       In `match`, a `"."` stands for any one letter, so it tries every child. The trie holds
@@ -202,32 +204,29 @@ questions:
           return match(node.children[ch], word, i + 1)
       ```
 
-      Which call returns `True`?
+      `match(root, ".a", 0)` runs. Not counting the root, on how many nodes is `match` called?
     options:
-      - id: dot-dot-b
-        text: "`match(root, \"..b\", 0)`"
+      - id: four-calls
+        text: "4"
         explanation: >-
-          The first `"."` tries `'b'` and then `'c'`. Under `'b'`, the second `"."` reaches `"ba"`,
-          which has no `'b'` key. Under `'c'` it reaches `"ca"`, which does, and the `"cab"` node is
-          a word.
-      - id: dot-a
-        text: "`match(root, \".a\", 0)`"
+          The `"."` tries both children of the root, `"b"` and `"c"`. Each holds `'a'`, so the calls
+          go on to `"ba"` and `"ca"`. There `i` is 2, the length of `".a"`, so each returns its
+          `is_word`, which is `False`, without trying any children. That is 4 calls below the
+          root.
+      - id: two-calls
+        text: "2"
         explanation: >-
-          The walk reaches `"ba"` and `"ca"`, but neither is a word: both are prefixes. When `i`
-          reaches the end, `match` returns `is_word`, which is `False` on both.
-      - id: b-dot-t-dot
-        text: "`match(root, \"b.t.\", 0)`"
+          That stops at `"ba"` as if reaching it were a match. `"ba"` is only a prefix, so its
+          `is_word` is `False`, and the `"."` at the root goes on to try `"c"` and `"ca"`.
+      - id: seven-calls
+        text: "7"
         explanation: >-
-          `"b.t"` reaches the `"bat"` node, but the last `"."` needs a child there, and `"bat"` has
-          none. The loop runs zero times and returns `False`.
-      - id: c-dot-t
-        text: "`match(root, \"c.t\", 0)`"
-        explanation: >-
-          The `"."` takes `'a'`, the only child of `'c'`. The `"ca"` node holds only `'b'`, so `'t'`
-          is not a key and the call returns `False`.
-    correct: dot-dot-b
+          That calls `match` on every node below the root. A call whose `i` equals `len(word)`
+          returns at once, so `"bat"`, `"bad"` and `"cab"`, one level past the end of `".a"`, are
+          never reached.
+    correct: four-calls
     followUps:
-      dot-a:
+      two-calls:
         prompt: "What is `is_word` on the `\"ba\"` node?"
         options:
           - { id: false-ba, text: "`False`, since no stored word is `\"ba\"`" }
@@ -235,28 +234,18 @@ questions:
           - { id: none-ba, text: "`None`, since it has two children" }
         correct: false-ba
         explanation: >-
-          A pattern matches only a whole stored word. Reaching a node proves a prefix, and the
-          mark decides whether a word ends there.
-      b-dot-t-dot:
-        prompt: "What does the `\".\"` branch return at a node with no children?"
+          Reaching a node proves a prefix, and the mark decides whether a word ends there. The
+          call on `"ba"` returns `False`, so the loop at the root goes on to `'c'`.
+      seven-calls:
+        prompt: "What does the call on the `\"ba\"` node do, where `i` is 2?"
         options:
-          - { id: false-empty, text: "`False`, since the loop has nothing to try" }
-          - { id: true-empty, text: "`True`, since nothing failed" }
-          - { id: word-empty, text: "The node's `is_word`" }
-        correct: false-empty
+          - { id: returns-mark, text: "Returns its `is_word` without trying any children" }
+          - { id: tries-both, text: "Calls `match` on its children `\"bat\"` and `\"bad\"`" }
+          - { id: tries-first, text: "Calls `match` on its first child, `\"bat\"`" }
+        correct: returns-mark
         explanation: >-
-          A `"."` needs one more letter. With no children, no letter can follow, so the pattern
-          is longer than every word on that path.
-      c-dot-t:
-        prompt: "After `'c'` and the `\".\"`, which node is the call on, and which keys does it hold?"
-        options:
-          - { id: ca-b, text: "`\"ca\"`, which holds only `'b'`" }
-          - { id: ca-bt, text: "`\"ca\"`, which holds `'b'` and `'t'`" }
-          - { id: ba-td, text: "`\"ba\"`, which holds `'t'` and `'d'`" }
-        correct: ca-b
-        explanation: >-
-          The `"."` can only take the children that exist. Under `'c'` that is `'a'`, and `"cab"` is
-          the only word below it.
+          The first line checks `i == len(word)` and returns. A pattern of two letters goes two
+          levels down and no further.
 
   - id: tries-exam-debug-insert
     heading: Which input breaks it?
