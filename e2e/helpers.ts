@@ -92,8 +92,17 @@ export async function currentQuestionAny(page: Page): Promise<{ question: Questi
 	if (candidates.length === 1) return candidates[0];
 	const page_text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
 	// Code blocks sit between a prompt's prose parts on the page, so each part is matched on its own.
-	const match = candidates.find(({ question }) =>
-		markdownParts(question.prompt ?? '').every((part) => page_text.includes(part.replace(/\s+/g, ' ').slice(0, 40)))
+	// Questions can share their prose and differ only in the code (a review variant replays other
+	// calls), so every line of each code block must be on screen too.
+	const codeLines = (markdown: string) =>
+		markdownBlocks(markdown)
+			.flatMap((block) => (block.kind === 'code' ? block.code.split('\n') : []))
+			.map((line) => line.replace(/\s+/g, ' ').trim())
+			.filter(Boolean);
+	const match = candidates.find(
+		({ question }) =>
+			markdownParts(question.prompt ?? '').every((part) => page_text.includes(part.replace(/\s+/g, ' ').slice(0, 40))) &&
+			codeLines(question.prompt ?? '').every((line) => page_text.includes(line))
 	);
 	return match ?? candidates[0];
 }

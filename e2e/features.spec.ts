@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { allDecks, answerCorrectly, continueButton, currentQuestionAny, deck, openMenu, playDeck } from './helpers';
+import { reach, seenEveryDeck } from './learn-helpers';
 import { failedHistory, history, seed } from './seed';
 
 async function expectNoViolations(page: Page) {
@@ -124,6 +125,16 @@ test.describe('mixed practice', () => {
 			await continueButton(page).click();
 		}
 		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+	});
+
+	test('questions with the same options and prose are told apart by their code', async ({ page }) => {
+		// `min-after-pops-review` and `pop-restores-min` share every option and every prose line;
+		// only the calls in their code differ. A mixed session can draw either one, and the review
+		// deck loads first, so matching on prose alone names the review card for both.
+		await seenEveryDeck(page);
+		await reach(page, 'design-structures', 'pop-restores-min');
+		const { question, deckId } = await currentQuestionAny(page);
+		expect(`${deckId}/${question.id}`).toBe('design-structures/pop-restores-min');
 	});
 
 	test('an unknown topic goes back to the home screen', async ({ page }) => {
