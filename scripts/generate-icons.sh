@@ -1,23 +1,28 @@
 #!/usr/bin/env sh
-# Renders the app icons from assets/*.svg into static/. Needs ImageMagick (`magick`).
-# Run from the repo root: sh scripts/generate-icons.sh
+# Run from the repository root with ImageMagick installed.
 set -eu
-
 mkdir -p static/icons
+mark=src/lib/assets/facet-80.png
 
-render() {
-	# $1 source svg, $2 output png, $3 size
-	magick -background none -density 600 "$1" -resize "${3}x${3}" -strip "PNG24:$2"
+# Launchers choose the displayed size. Target a 36px mark on a 60px tile.
+tile() {
+	height=$(( ($1 * 3 + 2) / 5 ))
+	magick "$mark" -resize "x$height" -background '#08080a' -gravity center \
+		-extent "${1}x${1}" -alpha remove -strip "PNG24:$2"
 }
 
-render assets/icon.svg static/icons/icon-192.png 192
-render assets/icon.svg static/icons/icon-512.png 512
-render assets/icon-maskable.svg static/icons/icon-maskable-512.png 512
-# iOS fills transparency with black, so this one is opaque and full-bleed.
-render assets/icon.svg static/apple-touch-icon.png 180
+tile 180 static/apple-touch-icon.png
+tile 192 static/icons/icon-192.png
+tile 512 static/icons/icon-512.png
+cp static/icons/icon-512.png static/icons/icon-maskable-512.png
 
-# The favicon is the same artwork with rounded corners for browser tabs.
-sed 's|<rect width="512" height="512" fill="#1c1c25"/>|<rect width="512" height="512" rx="112" fill="#1c1c25"/>|' \
-	assets/icon.svg > static/favicon.svg
-
-echo "Icons written to static/"
+# Keep the public SVG URL and the conventional multi-resolution ICO fallback.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+magick "$mark" -resize x64 -background none -gravity center -extent 64x64 -strip "$tmp/tab.png"
+magick "$tmp/tab.png" -define icon:auto-resize=64,32,16 static/favicon.ico
+{
+	printf '%s' '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><image width="64" height="64" href="data:image/png;base64,'
+	base64 < "$tmp/tab.png" | tr -d '\n'
+	printf '%s\n' '"/></svg>'
+} > static/favicon.svg

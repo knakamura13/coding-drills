@@ -5,6 +5,7 @@
 	import AuthNotice from '$lib/components/AuthNotice.svelte';
 	import PracticeCard from '$lib/components/PracticeCard.svelte';
 	import ReviewCard from '$lib/components/ReviewCard.svelte';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { status } from '$lib/nav/status.svelte';
 	import { REVIEW_SIZE } from '$lib/review/queue';
@@ -34,7 +35,7 @@
 
 <main class="page wide home">
 	<header class="intro">
-		<h1>{APP_NAME}</h1>
+		<h1><BrandMark height={40} />{APP_NAME}</h1>
 		<p>Every wrong answer gets a follow-up that checks why it was wrong.</p>
 		<!-- The line is always there, so the cards below do not move when a streak appears. -->
 		<p class="streak-line">
@@ -108,6 +109,10 @@
 	}
 
 	h1 {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
 		font-size: 30px;
 		font-weight: 800;
 		line-height: 1.15;
