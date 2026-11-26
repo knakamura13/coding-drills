@@ -199,6 +199,71 @@ questions:
             explanation: 96 is 80's right child. 70 is smaller than 80, so the loop goes left.
         elsewhere: Each pass moves `node` one level down, toward the side that can hold 70.
 
+  - id: bst-order-review-kth-smallest
+    format: tap-cell
+    heading: Which value comes back?
+    tags: [tree, dfs, recursion]
+    prompt: |-
+      `kth(root, 6)` runs on the BST below. `walk` is the inorder walk: it walks the left subtree,
+      records the node, then walks the right subtree. The cells list the nodes level by level.
+      Tap the node `kth(root, 6)` returns.
+
+      ```text
+                58
+              /    \
+            41      79
+           /  \    /  \
+         36   45  65   87
+         /   /  \
+       19   43   53
+      ```
+    code: |
+      def kth(root, k):
+          out = []
+          walk(root, out)
+          return out[k - 1]
+
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          out.append(node.val)
+          walk(node.right, out)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [58, 41, 79, 36, 45, 65, 87, 19, 43, 53]
+    correct: 9
+    explanation: >-
+      The inorder walk records a BST's values from smallest to largest: 19, 36, 41, 43, 45, 53, 58,
+      65, 79, 87. `out[5]` is the 6th value recorded, 53, the 6th smallest.
+    misses:
+      - index: 0
+        explanation: >-
+          58 is the root, but its whole left subtree, six values, is recorded first. 58 is the 7th
+          value recorded, one past `out[5]`.
+      - index: 1
+        explanation: 41 is the 3rd value recorded, after 19 and 36 from its left subtree.
+      - index: 2
+        explanation: 79 is the 9th value recorded. Only 87 is larger.
+      - index: 3
+        explanation: 36 is the 2nd value recorded, right after its left child 19.
+      - index: 4
+        explanation: >-
+          45 is the 5th value recorded, at index 4. `out[k - 1]` reads index 5, one further along.
+      - index: 5
+        explanation: >-
+          65 is the 6th cell of the strip, but the strip lists nodes level by level. The walk records
+          65 8th, after 58.
+      - index: 6
+        explanation: 87 is the largest value, so the walk records it last, 10th.
+      - index: 7
+        explanation: 19 is the smallest value, so it is the 1st one recorded.
+      - index: 8
+        explanation: >-
+          43 would be 6th in preorder, which records each node before its subtrees. Inorder records it
+          4th, after 19, 36 and 41.
+
   - id: bst-order-review-deep-range
     heading: What range is allowed here?
     tags: [tree]
@@ -397,26 +462,10 @@ questions:
           - index: 1
             explanation: 26 fits its range (-inf, 52). It returns `False` only after its right call does.
           - index: 2
-            explanation: 78 is checked after 52's left call, and only if that call returns `True`.
+            explanation: The call on 78 cannot start until the call on 26 has returned, and 61 is checked inside the call on 26.
           - index: 3
             explanation: 13 fits its range (-inf, 26), and its call already returned `True`.
         elsewhere: Look for the node outside the range its call receives.
-      - line: 6
-        ask: The call on 61 returns `False`. Back in the call on 52, does `valid` ever run on 78?
-        options:
-          - id: skipped
-            text: No; the left half already returned `False`
-            explanation: >-
-              The call on 26 returns `False`, so the root's `and` stops before its right call. The whole
-              check returns `False` without visiting 78.
-          - id: visited
-            text: Yes; every node is checked before the result
-            explanation: >-
-              `and` only evaluates its right side when the left side is true. The left side returned
-              `False`, so the call on 78 never starts.
-        correct: skipped
-        also:
-          - { name: call, at: 0 }
 
   - id: bst-order-review-replace-value
     heading: Which value fits here?
@@ -490,8 +539,9 @@ questions:
     heading: Which node is the lowest common ancestor?
     tags: [tree, binary-search]
     prompt: |-
-      The lowest common ancestor of two values is the lowest node with both of them in its subtree, and a
-      node counts as being in its own subtree.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two values is the lowest node that is an ancestor of
+      both.
 
       ```text
                 41
@@ -555,9 +605,10 @@ questions:
             23   35
       ```
 
-      Finding the lowest common ancestor of 23 and 35, the walk goes left at 41, right at 17, and stops
-      at 29 because 23 is smaller than 29 and 35 is larger. Why can no node below 29 be a common
-      ancestor of both?
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two values is the lowest node that is an ancestor of
+      both. Finding it for 23 and 35, the walk goes left at 41, right at 17, and stops at 29 because
+      23 is smaller than 29 and 35 is larger. Why can no node below 29 be a common ancestor of both?
     options:
       - id: separate-sides
         text: Below 29, 23 and 35 are in separate subtrees, so no lower node holds both
