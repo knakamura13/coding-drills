@@ -1,6 +1,6 @@
 id: weighted-paths-review
 title: "Weighted paths: review"
-description: Fresh graphs for adding up route costs and relaxing edges in a pass. The last cards, on final distances and recorded routes, go deeper.
+description: Fresh graphs for adding up route costs and relaxing edges in a pass. The last cards, on recorded routes, pass counts, negative cycles and final distances, go deeper.
 heading: What does the weighted search do?
 
 questions:
@@ -579,6 +579,85 @@ questions:
         explanation: >-
           A pass checks every edge in the list, whether or not earlier ones changed anything.
           `S -> A` is last, and it lowers `A`.
+
+  - id: wp-rv-negative-cycle-reach
+    heading: Does pass V lower a distance?
+    tags: [graph, python]
+    prompt: |-
+      A negative cycle is a cycle whose weights add up to less than 0. Bellman-Ford runs V - 1
+      passes from `S`, where V is the number of nodes, and then checks pass V: does any edge still
+      lower a distance? Every edge below is one-way.
+
+      ```python
+      nodes = ["S", "A", "B", "C", "D"]
+      edges = [("S", "A", 2), ("A", "B", 3), ("B", "A", -3),
+               ("C", "D", 1), ("D", "C", -4), ("D", "B", 1)]
+      ```
+
+      Does pass V lower a distance?
+    options:
+      - id: unreachable
+        text: No. The only negative cycle cannot be reached from `S`
+        explanation: >-
+          `A -> B -> A` adds up to 3 - 3 = 0, so a trip round it lowers nothing. `C -> D -> C` adds
+          up to 1 - 4 = -3, but no edge from `S`, `A` or `B` leads into `C` or `D`, so they stay
+          `inf`. After 4 passes `A` is 2 and `B` is 5, and pass V changes nothing.
+      - id: yes-cd
+        text: Yes. `C -> D -> C` adds up to -3, so it keeps lowering `C` and `D`
+        explanation: >-
+          The cycle is negative, but `S` cannot reach it. `C` and `D` stay `inf`, and `inf + w` is
+          still `inf`, so its edges lower nothing.
+      - id: yes-ab
+        text: Yes. `B -> A` weighs -3, so going round `A -> B -> A` keeps lowering `A`
+        explanation: >-
+          The trip round `A -> B -> A` adds 3 + (-3) = 0. It brings a route back to `A` at the same
+          cost, and the test needs strictly less.
+      - id: yes-db
+        text: Yes. `D -> B` carries the cycle's savings into `B`, which `S` reaches
+        explanation: >-
+          `D -> B` leads out of the cycle, not into it. `D` stays `inf`, since nothing from `S`
+          reaches it, so `D -> B` offers `inf + 1`, which lowers nothing.
+    correct: unreachable
+    followUps:
+      yes-cd:
+        prompt: Can a negative cycle lower a distance when the start cannot reach it?
+        options:
+          - id: stays-inf
+            text: No. Its nodes never get a cost, so their edges offer nothing
+          - id: anywhere
+            text: Yes. A negative cycle lowers distances wherever it is
+          - id: after-passes
+            text: Yes, once all V - 1 passes have run
+        correct: stays-inf
+        explanation: >-
+          A pass can lower a node only from a node that already has a cost. Nothing from `S` leads
+          into `C` or `D`, so they never get one, and pass V ignores the cycle.
+      yes-ab:
+        prompt: How much does one trip round `A -> B -> A` add to a route's cost?
+        options:
+          - id: zero
+            text: 0, since 3 + (-3) is 0
+          - id: minus-three
+            text: -3, the weight of `B -> A`
+          - id: three
+            text: 3, the weight of `A -> B`
+        correct: zero
+        explanation: >-
+          A cycle lowers a route only when its weights add up to less than 0. This one adds up to
+          exactly 0, so the route comes back at the same cost.
+      yes-db:
+        prompt: For a negative cycle to keep lowering distances, what must hold?
+        options:
+          - id: start-reaches
+            text: The start can reach the cycle by following edges
+          - id: cycle-reaches
+            text: The cycle has an edge to some node the start can reach
+          - id: any-link
+            text: Some edge joins the cycle to the rest, in either direction
+        correct: start-reaches
+        explanation: >-
+          A route from `S` must get to the cycle to go round it. `D -> B` lets the cycle reach `B`,
+          but no edge lets `S` reach the cycle.
 
   - format: tap-cell
     id: wp-rv-tap-next-final
