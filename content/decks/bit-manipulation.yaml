@@ -44,7 +44,9 @@ questions:
           Counting from 1 makes this bit 5, but the numbering starts at 0 with the rightmost bit. This
           is bit 4, worth 16.
       - index: 4
-        explanation: This is bit 3, worth 8. 32 sits two places further left.
+        explanation: >-
+          Counting from the left and starting at 1 makes this bit 5, but bits are numbered from the
+          right, starting at 0. This is bit 3, worth 8.
       - index: 5
         explanation: >-
           Counting from the left makes this bit 5, but bits are numbered from the right. This is bit
@@ -145,8 +147,10 @@ questions:
       3. Each bit is decided on its own, so nothing carries from one place to the next. That is why
          `6 | 3` is 7 here while `6 + 3` is 9.
     prompt: |-
-      A bit that is 1 is called a set bit. `&` and `|` compare two ints one bit at a time: `a & b`
-      has a set bit where both `a` and `b` have one, and `a | b` where at least one of them does.
+      A bit that is 1 is called a set bit. To write an int in binary, set the bit with the largest
+      worth that fits and repeat on what is left: 21 is 16 + 4 + 1, which is `0b10101`. `&` and `|`
+      compare two ints one bit at a time: `a & b` has a set bit where both `a` and `b` have one, and
+      `a | b` where at least one of them does.
 
       ```python
       print(12 & 10, 12 | 10)
@@ -498,7 +502,7 @@ questions:
       - { name: low, at: 4 }
     steps:
       - line: 4
-        ask: After the first pass, which digit is the lowest 1 of `n`?
+        ask: After the first pass, which digit is the lowest set bit of `n`?
         pointer: low
         correct: 2
         explanation: >-
@@ -519,7 +523,7 @@ questions:
               index 1.
         elsewhere: Each pass clears only the lowest 1, so the next 1 up becomes the lowest.
       - line: 4
-        ask: After the second pass, which digit is the lowest 1 of `n`?
+        ask: After the second pass, which digit is the lowest set bit of `n`?
         pointer: low
         correct: 1
         explanation: >-
@@ -718,11 +722,11 @@ questions:
          subsets, each exactly once.
     prompt: |-
       A subset of `n` items is any choice of them, from none to all. Each item is in or out, so `n`
-      items have `2 ** n` subsets. A mask with bit `j` set when item `j` is in stands for one
-      subset, and `1 << n` moves a 1 up to bit `n`, which is worth `2 ** n`.
+      items have `2 ** n` subsets. A subset's mask has bit `j` set when item `j` is in, and every
+      other bit 0.
 
-      Which loop visits each subset of `n` items exactly once, the empty set and the full set
-      included?
+      Which loop visits the mask of each subset of `n` items exactly once, the empty set and the
+      full set included?
     options:
       - id: full-range
         text: "`for mask in range(1 << n):`"
@@ -730,11 +734,12 @@ questions:
           `1 << n` is `2 ** n`, so the masks run from 0 up to `2 ** n - 1`. Each item has its own
           bit, so every pattern of picks is one mask, and there are `2 ** n` of them. For three
           items that is 8 masks, from 0 (nothing) to 7 (`111`, everything).
-      - id: skip-empty
-        text: "`for mask in range(1, 1 << n):`"
+      - id: from-one
+        text: "`for mask in range(1, (1 << n) + 1):`"
         explanation: >-
-          Starting at 1 skips mask 0, the mask that picks nothing. For three items this loop
-          visits 7 of the 8 subsets.
+          This visits `2 ** n` masks too, but they run from 1 to `2 ** n`. It skips mask 0, the
+          empty set's mask, and its last mask, `1 << n`, sets bit `n`, which belongs to no item.
+          For three items it visits 1 to 8, and 8 is `0b1000`.
       - id: skip-full
         text: "`for mask in range((1 << n) - 1):`"
         explanation: >-
@@ -748,16 +753,16 @@ questions:
           reached.
     correct: full-range
     followUps:
-      skip-empty:
-        prompt: Which subset does mask 0 stand for?
+      from-one:
+        prompt: Which mask belongs to the empty set?
         options:
-          - { id: empty, text: "The empty set, which is one of the subsets too" }
-          - { id: none, text: "No subset, since a mask of 0 selects nothing to visit" }
-          - { id: full, text: "The full set, since every bit is the same" }
-        correct: empty
+          - { id: zero, text: "0, since no item is in and every bit is 0" }
+          - { id: one, text: "1, since the masks are counted from 1" }
+          - { id: stop, text: "`1 << n`, the first value past the full set" }
+        correct: zero
         explanation: >-
-          With no bit set, no item is picked, and that empty pick is one of the `2 ** n` subsets.
-          A loop that must include it starts at 0.
+          The empty set has no item in, so its mask has no bit set, which is 0. `1 << n` sets bit
+          `n`, and no item has that bit. A loop that visits the empty set starts at 0.
       skip-full:
         prompt: For three items, which mask stands for the full set?
         options:

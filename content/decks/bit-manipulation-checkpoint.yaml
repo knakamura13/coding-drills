@@ -132,7 +132,7 @@ questions:
 
   - id: bits-exam-tap-isolate
     format: tap-cell
-    heading: Tap the only 1
+    heading: Tap the only set bit
     tags: [bit-manipulation, python]
     prompt: >-
       The cells show `n` from line 1, highest bit first. Tap the only digit that is 1 in `m` after
@@ -175,14 +175,14 @@ questions:
         explanation: >-
           `n - 1` sets this digit, but `n` has a 0 here, so line 2 gives 0. Line 3 XORs two 0s.
 
-  - id: bits-exam-shift-mask-clear
+  - id: bits-exam-shift-mask-xor
     heading: What does this print?
     tags: [bit-manipulation, python]
     prompt: |-
       ```python
       n = 0b11010110
       m = (n >> 3) & 0b1111
-      m &= m - 1
+      m ^= m >> 2
       print(m)
       ```
 
@@ -192,26 +192,37 @@ questions:
         text: "`8`"
         explanation: >-
           `n >> 3` drops the three lowest bits and gives `0b11010`. `& 0b1111` keeps its low four
-          bits, so `m` is 10. `m &= m - 1` then clears the lowest set bit of `0b1010`, which
-          leaves `0b1000`, or 8.
-      - id: twenty-four
-        text: "`24`"
+          bits, so `m` is 10. Shifting that down two places gives 2, and bit 1 is set in both 10
+          and 2, so `^` turns it off and leaves `0b1000`, or 8.
+      - id: ten
+        text: "`10`"
         explanation: >-
-          24 is `0b11010 & 0b11001`, which clears the lowest set bit of `n >> 3` but skips the mask.
-          `& 0b1111` first drops bit 4, so `m` is 10 before line 3.
-      - id: two
-        text: "`2`"
+          10 is `m | (m >> 2)`. Bit 1 is set in both `0b1010` and `0b10`, and `|` keeps it, so
+          nothing changes. `^` drops a bit set in both, so line 3 turns bit 1 off.
+      - id: twenty-eight
+        text: "`28`"
         explanation: >-
-          2 clears the highest set bit of 10, bit 3. `m & (m - 1)` clears the lowest set bit, since
-          subtracting 1 only changes the lowest set bit and the 0s below it.
-      - id: nine
-        text: "`9`"
+          28 skips the mask: `n >> 3` is `0b11010`, and `0b11010 ^ 0b110` is 28. `& 0b1111` first
+          drops bit 4, so `m` is 10 before line 3.
+      - id: thirty-four
+        text: "`34`"
         explanation: >-
-          9 is `m - 1`. Line 3 also runs `&` with the old `m`, which drops the bit 0 that the
-          subtraction turned on.
+          34 is `m ^ (m << 2)`, which is `0b1010 ^ 0b101000`. `>>` moves bits toward the low end,
+          so `m >> 2` is 2, not 40.
     correct: eight
     followUps:
-      twenty-four:
+      ten:
+        prompt: What is `0b1010 ^ 0b0010`?
+        options:
+          - { id: eight, text: "`0b1000`, which is 8" }
+          - { id: ten, text: "`0b1010`, which is 10" }
+          - { id: twelve, text: "`0b1100`, which is 12" }
+        correct: eight
+        explanation: >-
+          Bit 3 is set only in the first number and bit 1 in both. `^` keeps a bit set in exactly
+          one, so only bit 3 is left, which is 8. `|` would keep bit 1 and give 10, and 12 is the
+          sum.
+      twenty-eight:
         prompt: What is `0b11010 & 0b1111`?
         options:
           - { id: ten, text: "`0b1010`, which is 10" }
@@ -221,95 +232,90 @@ questions:
         explanation: >-
           `0b1111` sets bits 0 to 3, so the `&` keeps those four bits of `0b11010` and drops bit 4.
           That leaves `0b1010`, which is 10.
-      two:
-        prompt: "`m` is `0b1010`. Which set bit does `m & (m - 1)` clear?"
+      thirty-four:
+        prompt: What is `0b1010 >> 2`?
         options:
-          - { id: bit-one, text: "Bit 1, the lowest set bit" }
-          - { id: bit-three, text: "Bit 3, the highest set bit" }
-          - { id: bit-zero, text: "Bit 0, the rightmost bit" }
-        correct: bit-one
+          - { id: two, text: "`0b10`, which is 2" }
+          - { id: forty, text: "`0b101000`, which is 40" }
+          - { id: five, text: "`0b101`, which is 5" }
+        correct: two
         explanation: >-
-          `m - 1` is `0b1001`: the lowest set bit, bit 1, turned to 0 and bit 0 below it turned to
-          1. The `&` keeps only bit 3, which both share, so `m` becomes 8.
-      nine:
-        prompt: "`m` is 10 and `m - 1` is 9. What is `10 & 9`?"
-        options:
-          - { id: eight, text: "`8`, since only bit 3 is set in both" }
-          - { id: nine, text: "`9`, since `&` keeps the smaller number" }
-          - { id: ten, text: "`10`, since `&` keeps the first number" }
-        correct: eight
-        explanation: >-
-          10 is `0b1010` and 9 is `0b1001`. Bit 3 is set in both and bits 1 and 0 each in only one,
-          so `10 & 9` is `0b1000`, which is 8.
+          `>> 2` moves every bit two places toward the low end and drops the two that pass bit 0,
+          so `0b1010` becomes `0b10`. 40 is `0b1010 << 2`, and 5 is a shift by one place.
 
-  - id: bits-exam-debug-flips
-    heading: Which call fails?
-    tags: [bit-manipulation, python]
+  - id: bits-exam-debug-subset-sums
+    heading: Which change fixes it?
+    tags: [bit-manipulation, backtracking, python]
     prompt: |-
-      Lights 0 to `n - 1` start off. Each number `j` in `flips` flips light `j`: off becomes on, and
-      on becomes off. A suggested solution keeps the lights in one int `m`, with bit `j` set while
-      light `j` is on, and should return the lights left on, in increasing order.
+      A suggested solution should return the sum of each subset of `nums`, in mask order, where
+      bit `j` of `mask` is set when `nums[j]` is in the subset.
 
       ```python
-      def lights_on(flips, n):
-          m = 0
-          for j in flips:
-              m |= 1 << j
-          return [j for j in range(n) if (m >> j) & 1]
+      def subset_sums(nums):
+          sums = []
+          for mask in range(1 << len(nums)):
+              total = 0
+              for j in range(len(nums)):
+                  if (mask & (1 << j)) == 1:
+                      total += nums[j]
+              sums.append(total)
+          return sums
       ```
 
-      Which call returns the wrong list?
+      `subset_sums([4, 7])` should return `[0, 4, 7, 11]`, but it does not. Which change makes the
+      function right for every list?
     options:
-      - id: twice
-        text: "`lights_on([1, 3, 1], 4)`"
+      - id: nonzero
+        text: "Change line 6 to `if mask & (1 << j):`"
         explanation: >-
-          Light 1 is flipped twice, so it ends off, and the right list is `[3]`. `m |= 1 << j` sets
-          bit 1 again instead of clearing it, so the call returns `[1, 3]`. Flipping needs
-          `m ^= 1 << j`.
-      - id: three-times
-        text: "`lights_on([2, 0, 2, 2], 3)`"
+          `1 << j` has only bit `j` set, so `mask & (1 << j)` is `2 ** j` when bit `j` of `mask`
+          is set and 0 when it is not. It equals 1 only for `j = 0`, so `nums[1]` is never added
+          and the call returns `[0, 4, 0, 4]`. Testing for any value but 0 adds each item whose
+          bit is set.
+      - id: shift
+        text: "Change line 6 to `if (mask >> j) == 1:`"
         explanation: >-
-          Light 2 is flipped three times, so it ends on, and `|=` also leaves bit 2 set. The call
-          returns `[0, 2]`, which is right.
-      - id: distinct
-        text: "`lights_on([0, 1, 2], 3)`"
+          `mask >> j` keeps every bit from bit `j` up, so it is 1 only when bit `j` is the highest
+          set bit. For mask 3 it skips `nums[0]`, and the call returns `[0, 4, 7, 7]`.
+      - id: bit-number
+        text: "Change line 6 to `if (mask & j) == 1:`"
         explanation: >-
-          Each light is flipped once, from off to on. Setting a bit that is 0 gives the same result
-          as flipping it, so the call returns `[0, 1, 2]`, which is right.
-      - id: out-of-order
-        text: "`lights_on([3, 0], 4)`"
+          `j` is the bit number, not a mask for bit `j`. For `j = 1` it tests bit 0, and for
+          `j = 0` it tests no bit at all, so the call returns `[0, 7, 0, 7]`.
+      - id: one-more
+        text: "Change line 3 to `for mask in range((1 << len(nums)) + 1):`"
         explanation: >-
-          Lights 3 and 0 are each flipped once, so both are on. The list walks `j` up from 0, so the
-          call returns `[0, 3]`, which is right.
-    correct: twice
+          The loop already reaches mask 3, the full set's mask. Line 6 still never adds `nums[1]`,
+          so the call returns `[0, 4, 0, 4, 0]`, with one extra entry.
+    correct: nonzero
     followUps:
-      three-times:
-        prompt: Light 2 is flipped three times. Where does it end, and what does the code leave?
+      shift:
+        prompt: For `mask = 3` and `j = 0`, what is `mask >> j`?
         options:
-          - { id: on-on, text: "On, and the code leaves bit 2 set, which agrees" }
-          - { id: off-on, text: "Off, but the code leaves bit 2 set" }
-          - { id: on-off, text: "On, but the code leaves bit 2 clear" }
-        correct: on-on
+          - { id: three, text: "`3`, since a shift by 0 moves nothing" }
+          - { id: one, text: "`1`, since only bit 0 is read" }
+          - { id: zero, text: "`0`, since bit 0 is dropped" }
+        correct: three
         explanation: >-
-          Off, on, off, on: three flips end on. `|=` sets bit 2 the first time and keeps it set, so
-          the bug hides when a light is flipped an odd number of times.
-      distinct:
-        prompt: When does `m |= 1 << j` give the same result as `m ^= 1 << j`?
+          `>> j` moves bits down but keeps every bit above bit `j`, so `3 >> 0` is 3 and `3 == 1`
+          fails, though bit 0 is set. `& 1` after the shift would keep bit 0 alone.
+      bit-number:
+        prompt: Which value has only bit `j` set?
         options:
-          - { id: clear, text: "When bit `j` of `m` is 0" }
-          - { id: always, text: "Always, since both use the mask `1 << j`" }
-          - { id: set, text: "When bit `j` of `m` is already 1" }
-        correct: clear
+          - { id: shift, text: "`1 << j`, which is `2 ** j`" }
+          - { id: number, text: "`j`, the bit number" }
+          - { id: next, text: "`j + 1`, one past the bit number" }
+        correct: shift
         explanation: >-
-          On a bit that is 0, setting it and flipping it both give 1. They differ only on a bit
-          that is already 1, which `^=` turns off and `|=` leaves on.
-      out-of-order:
-        prompt: In what order does `lights_on` list the lights?
+          Bit `j` is worth `2 ** j`, and `1 << j` moves a 1 up to it. The number `j` is a different
+          mask: 1 has only bit 0 set, and 0 has no bit set.
+      one-more:
+        prompt: Which mask stands for the full set of two items?
         options:
-          - { id: increasing, text: "In increasing order, since it walks `j` up from 0" }
-          - { id: flip-order, text: "In the order they were first flipped" }
-          - { id: last-first, text: "The most recently flipped light first" }
-        correct: increasing
+          - { id: three, text: "3, `0b11`, which `range(4)` visits" }
+          - { id: four, text: "4, `0b100`, which `range(4)` stops before" }
+          - { id: two, text: "2, `0b10`, since there are two items" }
+        correct: three
         explanation: >-
-          The comprehension tests `j` for each value in `range(n)`, so the lights come out from 0
-          up, whatever order the flips came in. `lights_on([3, 0], 4)` returns `[0, 3]`.
+          Both bits set is `0b11`, which is 3, and `range(1 << 2)` runs from 0 to 3. 4 sets bit 2,
+          which belongs to no item, so the stop value on line 3 is already right.
