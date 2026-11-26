@@ -204,9 +204,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Dynamic programming: two strings (teaching levels) | `subsequence-tables` | done |
 | Problem-solving patterns #14 | Dynamic programming: two strings (review variants) | `subsequence-tables-review` | done |
 | Problem-solving patterns #14 | Dynamic programming: two strings (checkpoint) | `subsequence-tables-checkpoint` | done |
-| Problem-solving patterns #14 | Backtracking: subsets and orderings: teaching levels | `enumerating-choices` | done |
-| Problem-solving patterns #14 | Backtracking: subsets and orderings: review variants | `enumerating-choices-review` | done |
-| Problem-solving patterns #14 | Backtracking: subsets and orderings: checkpoint | `enumerating-choices-checkpoint` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (teaching levels) | `enumerating-choices` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (review variants) | `enumerating-choices-review` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (checkpoint) | `enumerating-choices-checkpoint` | done |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | done |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | done |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | done |

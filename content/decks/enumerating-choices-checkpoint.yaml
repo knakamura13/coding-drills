@@ -1,5 +1,5 @@
 id: enumerating-choices-checkpoint
-title: "Backtracking: subsets and orderings: checkpoint"
+title: "Backtracking: subsets and orderings (checkpoint)"
 description: Keep every valid output of a search you have not seen, and count what the output costs. Each item combines listing leaves, telling repeated siblings apart, and justifying a prune.
 heading: What does the search return?
 
@@ -47,9 +47,11 @@ questions:
         explanation: >-
           The top loop does not start a second branch with the other 2.
       - id: lost-pair
-        text: "`[[1, 2, 2], [2, 3]]`"
+        text: "`[[1, 2, 2]]`"
         explanation: >-
-          A `break` in a deeper call does not end the loop of the call above it.
+          A `break` in a deeper call does not end the loop of the call above it. If it did, the
+          call holding `[1, 3]` would cut off `[1, 4]`, and the call holding `[2, 2]` would cut
+          off `[2, 3]`.
     correct: all-three
     followUps:
       no-repeat-path:
@@ -92,19 +94,17 @@ questions:
           `break` leaves the innermost loop, which belongs to the call that runs it. The call
           holding `[1]` still has `left == 4`, so the 4 fits there exactly.
 
-  - id: checkpoint-ordering-cost
-    heading: What is the complexity?
-    tags: [backtracking, complexity]
+  - id: checkpoint-ordering-prefixes
+    heading: How many lists?
+    tags: [backtracking, recursion]
     prompt: |-
-      This search records every ordering of `n` distinct items. Each call loops over all `n`
-      indices and skips the used ones, and each leaf records a copy of `path`. A copy writes each
-      item of the list it copies, so it costs one step per item.
+      This search records a list at every call. It starts from `explore()` with
+      `items = [6, 1, 8, 3]`, `used = [False] * 4` and `path = []`, and `used[i]` is `True` while
+      `items[i]` is in `path`.
 
       ```python
       def explore():
-          if len(path) == len(items):
-              out.append(path[:])
-              return
+          out.append(path[:])
           for i in range(len(items)):
               if used[i]:
                   continue
@@ -115,68 +115,72 @@ questions:
               used[i] = False
       ```
 
-      Counting the loops and the copies, what is the tightest bound on the total running time?
+      How many lists does `out` hold at the end?
     options:
-      - id: n-n-factorial
-        text: O(n × n!)
+      - id: sixty-five
+        text: "65"
         explanation: >-
-          There are n! leaves and each copy writes n items, so the output alone is n × n! items
-          (96 for n = 4). The tree has about e × n! calls (65 for n = 4), and each call above the
-          leaves loops n times (164 passes in all), which is the same order.
-      - id: n-factorial
-        text: O(n!)
+          Count the calls by how many items `path` holds. The top call holds none, and each call
+          makes one call per unused item, so the levels below it hold 4, 4 × 3 = 12, 12 × 2 = 24
+          and 24 × 1 = 24 calls. Every call records once: 1 + 4 + 12 + 24 + 24 = 65.
+      - id: twenty-four
+        text: "24"
         explanation: >-
-          n! counts the leaves, but a copy is not one step. Each one writes n items.
-      - id: n-to-n
-        text: O(n^n)
+          24 counts only the full orderings. The record line comes first in every call, with no
+          length test, so the empty list and every partial ordering are recorded too.
+      - id: sixteen
+        text: "16"
         explanation: >-
-          O(n^n) is a valid but loose upper bound, as if each of n levels could try every item.
-          `used` leaves fewer choices at each level.
-      - id: n-squared
-        text: O(n²)
+          16 is the number of subsets of 4 items, what this search would record if each loop
+          started after the index just taken. This loop runs over every index, so each subset
+          comes out once per order of its items: each pair twice, each three 6 times and all four
+          24 times.
+      - id: eleven
+        text: "11"
         explanation: >-
-          n² would be n levels of n passes each, one call per level. Each level holds many calls:
-          the second level alone has n of them, and the leaves number n!.
-    correct: n-n-factorial
+          1 + 4 + 3 + 2 + 1 adds the choices each level offers, as if each level held one call.
+          Every call at a level makes its own calls, so the level with 2 items holds 4 × 3 = 12.
+    correct: sixty-five
     followUps:
-      n-factorial:
-        prompt: For n = 4, how many items do the `path[:]` copies write in total?
+      twenty-four:
+        prompt: What does the top call add to `out` before its loop runs?
         options:
-          - id: ninety-six
-            text: 96, from 24 leaves of 4 items each
-          - id: twenty-four
-            text: 24, one per leaf
-          - id: four
-            text: 4, one per item
-        correct: ninety-six
+          - id: empty
+            text: "`[]`, since the record line has no length test"
+          - id: nothing
+            text: Nothing, since `path` does not hold every item yet
+          - id: all
+            text: All 24 orderings, once its loop is done
+        correct: empty
         explanation: >-
-          Each leaf holds all n items, so recording n! leaves costs n × n! by itself.
-      n-to-n:
-        prompt: With `path` holding `d` items, how many indices can the next level take?
+          `out.append(path[:])` is the first line of every call. Each call adds one list, whatever
+          `path` holds.
+      sixteen:
+        prompt: Does this search record both `[6, 1]` and `[1, 6]`?
         options:
-          - id: n-minus-d
-            text: n − d, the unused ones
-          - id: n
-            text: n, every index
-          - id: d
-            text: d, the ones already placed
-        correct: n-minus-d
+          - id: both
+            text: Yes, each call can take any unused item next
+          - id: once
+            text: No, each set of items is recorded once
+          - id: index-order
+            text: Only `[6, 1]`, since lists keep index order
+        correct: both
         explanation: >-
-          The levels offer n, n − 1, ..., 1 choices, so there are n! leaves, not n^n. For n = 8
-          that is 40,320 leaves against 16,777,216.
-      n-squared:
-        prompt: For n = 4, how many calls does the level below the top call hold?
+          The loop runs over every index and skips only the used ones, so the 1 can come before
+          the 6. Lists that hold the same items in another order are recorded separately.
+      eleven:
+        prompt: How many calls hold exactly 2 items?
         options:
-          - id: four
-            text: 4, one for each item the top call can place first
-          - id: one
-            text: 1, since each level is one call
+          - id: twelve
+            text: 12, since each of the 4 one-item calls makes 3 calls
           - id: three
-            text: 3, since one item is already used
-        correct: four
+            text: 3, one for each choice at that level
+          - id: six
+            text: 6, one for each pair of items
+        correct: twelve
         explanation: >-
-          The top call's loop places each of the 4 items first, and each choice makes its own call.
-          The levels below hold 12, 24 and 24 calls, so the work grows with n!, not n².
+          Each call makes one call per unused item. The 4 calls holding one item each make 3, so
+          12 calls hold two items, and each of those makes 2 more.
 
   - id: checkpoint-unsorted-lost-set
     format: tap-cell
@@ -315,25 +319,25 @@ questions:
       what is the tightest bound on the total running time?
     options:
       - id: two-to-n
-        text: O(2^n), because there are 2^n subsets and each one is recorded in constant time
+        text: O(2^n)
         explanation: >-
           There are 2^n subsets, but recording one is not constant. Copying a subset costs time in
           proportion to its length, and the lengths add up to n × 2^(n − 1) items. For n = 4 that is 32
           items across 16 subsets, so the total is more than O(2^n).
       - id: n-two-to-n
-        text: O(n × 2^n), because the 2^n finished subsets are copied at up to n items each
+        text: O(n × 2^n)
         explanation: >-
           The tree has 2^(n+1) - 1 calls (31 for n = 4), and those cost O(2^n) in total. The copies
           cost more: each item is in exactly half the subsets, so about n × 2^(n − 1) items are copied
           (32 for n = 4). The output alone already holds that many items, so the bound is tight.
       - id: n-squared
-        text: O(n²), because the recursion is n levels deep and each level does O(n) work
+        text: O(n²)
         explanation: >-
           There are n levels below the top call, but each level holds twice as many calls as the
-          one above, so the bottom level alone has 2^n of them. The output has 2^n lists, which no O(n²) routine
-          could write once n passes 4.
+          one above, so the bottom level alone has 2^n of them. The output has 2^n lists, and 2^n
+          outgrows every multiple of n², so no O(n²) routine can write them all.
       - id: n-factorial
-        text: O(n!), because each branch chooses among the items that remain, as in orderings
+        text: O(n!)
         explanation: >-
           Each item has two options, include or leave out, which gives 2^n leaves. The n! count comes
           from ordering items, a different search. n! is a valid but loose upper bound here: at n = 10
@@ -429,7 +433,7 @@ questions:
       - id: distinct
         text: "`subsets_once([6, 9])`"
         explanation: >-
-          No value equals its left neighbour, so the `break` never runs. The call returns `[]`,
+          No value equals its left neighbor, so the `break` never runs. The call returns `[]`,
           `[6]`, `[6, 9]` and `[9]`, which is right.
     correct: pair-first
     followUps:
@@ -464,13 +468,13 @@ questions:
       distinct:
         prompt: When does the `break` line run?
         options:
-          - id: equal-neighbour
-            text: Only on a pass after the first whose value equals its left neighbour
+          - id: equal-neighbor
+            text: Only on a pass after the first whose value equals its left neighbor
           - id: every-later
             text: On every pass after the loop's first
           - id: larger
             text: Whenever a value is larger than the one before it
-        correct: equal-neighbour
+        correct: equal-neighbor
         explanation: >-
           Both parts of the `if` must hold. With no equal values side by side, the slipped line
           never runs, and the search records every subset once.
