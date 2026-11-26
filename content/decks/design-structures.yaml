@@ -1,6 +1,6 @@
 id: design-structures
 title: Design structures
-description: Meet stated costs by keeping two structures in step, from a min stack to an LRU cache. The last four cards, which replay calls on a store, go deeper. Each card has a worked example on hand.
+description: 'Meet stated costs by keeping two structures in step: a min stack, a queue from two stacks, an LRU cache. The last four cards, which replay calls on a store, go deeper.'
 heading: What happens next?
 
 questions:
@@ -780,8 +780,9 @@ questions:
       appends `t` to `times[key]` and `value` to `vals[key]`, and each `put` has a larger `t` than
       the one before, so every `times[key]` stays sorted. `get(key, t)` reads back one of the key's
       values, chosen by `t`. `bisect_right(a, x)`, from the `bisect` module, returns how many
-      items of the sorted list `a` are at most `x`, in O(log n). The calls `put('k', 'red', 2)`, `put('k', 'blue', 5)`,
-      `put('k', 'green', 9)` and `put('k', 'gold', 14)` have run, and the cells are `times['k']`.
+      items of the sorted list `a` are at most `x`, in O(log n) for a list of `n` items. The calls
+      `put('k', 'red', 2)`, `put('k', 'blue', 5)`, `put('k', 'green', 9)` and `put('k', 'gold', 14)`
+      have run. The cells are `times['k']`, and `i` is drawn at index 0 until line 13 sets it.
       Predict each step.
     code: |
       from bisect import bisect_right
@@ -901,9 +902,10 @@ questions:
       3. The new front is 40, and `40 <= 30` is false, so the loop stops: every hit behind the 40 is
          at least as new. `count(130)` returns 4.
     prompt: >-
-      A hit counter reports how many hits came in the last 100 seconds. `hits` is a deque of hit
-      times: `hits[0]` reads its front, `popleft()` removes the front, and `append` adds at the
-      back. Times never decrease, so the oldest hit is at the front. The calls are `hit(4)`,
+      A hit counter keeps recent hit times in `hits`, a deque: `hits[0]` reads its front,
+      `popleft()` removes the front, and `append` adds at the back. Times never decrease, so the
+      oldest hit is at the front. `count(t)` first drops the hits that are too old, then counts
+      the rest. The calls are `hit(4)`,
       `hit(30)`, `hit(30)`, `hit(95)`, `count(110)`, `hit(130)`, `hit(160)`, `count(195)`,
       `hit(210)` and `count(260)`. The cells are every hit time in the order they arrive, and
       `front` marks `hits[0]`. Predict each step.
@@ -1007,9 +1009,8 @@ questions:
     heading: Which requests are refused?
     tags: [queue, python]
     workedExample: |-
-      Consider a limiter of the same shape that accepts at most 2 requests in any 5 seconds: its
-      loop drops times at most `t - 5`, and it accepts while `len(accepted) < 2`. Requests arrive
-      at 6, 8 and 9.
+      Consider a limiter of the same shape with a limit of 2: its loop drops times at most `t - 5`,
+      and it accepts while `len(accepted) < 2`. Requests arrive at 6, 8 and 9.
 
       1. At 6 and at 8, nothing is old enough to drop, and the deque holds fewer than 2 times, so
          both are accepted, and `accepted` is `[6, 8]`.
@@ -1018,8 +1019,9 @@ questions:
       3. `len(accepted) < 2` is false, so `allow(9)` returns `False` without reaching `append`.
          `accepted` is still `[6, 8]`.
     prompt: |-
-      A rate limiter accepts at most 3 requests in any 10 seconds. `accepted` is a deque of the
-      times of accepted requests, oldest at the front.
+      A rate limiter refuses a request when it already holds 3 recent accepted times. `accepted`
+      is a deque of the times of accepted requests, oldest at the front, and the loop drops the
+      times too old to count.
 
       ```python
       from collections import deque
@@ -1104,14 +1106,16 @@ questions:
     heading: What does the store hold?
     tags: [hash-map, stack, python]
     workedExample: |-
-      Consider `put('n', 5)`, `begin()`, `put('n', 6)`, `put('m', 1)` and `rollback()` on the store
-      below. The top dict of `undo` maps each key written since the last `begin()` to the value it
-      held before.
+      Consider `put('n', 5)`, `begin()`, `put('n', 6)`, `put('n', 7)`, `put('m', 1)` and
+      `rollback()` on the store below. The top dict of `undo` belongs to the newest open
+      transaction and holds the values it saved.
 
       1. `put('n', 5)` runs with `undo` empty, so it only sets `data['n']` to 5.
-      2. `begin()` pushes `{}`. `put('n', 6)` saves the old 5, and `put('m', 1)` saves `None`,
-         since `m` was missing, so the top dict is `{'n': 5, 'm': None}`.
-      3. `rollback()` pops that dict, writes 5 back to `n` and deletes `m`, so `data` is
+      2. `begin()` pushes `{}`. `put('n', 6)` saves the old 5. `put('n', 7)` finds `n` already in
+         the top dict, so it saves nothing and only sets `data['n']` to 7.
+      3. `put('m', 1)` saves `None`, since `m` was missing, so the top dict is
+         `{'n': 5, 'm': None}`.
+      4. `rollback()` pops that dict, writes 5 back to `n` and deletes `m`, so `data` is
          `{'n': 5}` again.
     prompt: |-
       A store supports transactions. `undo` is a stack with one dict per open transaction.

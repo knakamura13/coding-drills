@@ -1,6 +1,6 @@
 id: design-structures-checkpoint
 title: "Design structures: checkpoint"
-description: Pick the design that meets a stated set of costs, or find the call a near-miss design gets wrong. The last two items, which replay calls on a store, go deeper.
+description: Pick the design that meets a stated set of costs, or find the call a near-miss design gets wrong. The last item, which replays calls on a store, goes deeper.
 heading: Which design meets the costs?
 
 questions:
@@ -305,85 +305,6 @@ questions:
           Both items crossed on the first pop, and nothing was pushed after it. With `inbox` empty,
           the `while` loop moves nothing and the order stays right.
 
-  - id: checkpoint-browser-replay
-    heading: Which page is current?
-    tags: [stack]
-    prompt: |-
-      A browser keeps its current page and two stacks, `back` and `forward`, each a Python list
-      used with `append` and `pop()`. It starts on `'home'` with both stacks empty.
-
-      - `visit(url)` pushes the current page onto `back`, makes `url` current, and empties
-        `forward`.
-      - `go_back()` pushes the current page onto `forward`, then makes `back.pop()` current.
-      - `go_forward()` pushes the current page onto `back`, then makes `forward.pop()` current.
-
-      `go_back()` and `go_forward()` do nothing when the stack they pop is empty. The calls are
-      `visit('a')`, `visit('b')`, `go_back()`, `go_back()`, `go_forward()`, `visit('c')`,
-      `go_forward()` and `go_back()`. Which page is current at the end?
-    options:
-      - id: page-a
-        text: "`'a'`"
-        explanation: >-
-          After two `go_back()` calls the page is `'home'` and `forward` is `['b', 'a']`, so
-          `go_forward()` moves to `'a'`. `visit('c')` empties `forward`, the next `go_forward()`
-          does nothing, and `go_back()` pops `'a'` from `back`.
-      - id: page-c
-        text: "`'c'`"
-        explanation: >-
-          `visit('c')` empties `forward`, so the `'b'` waiting there is gone. The `go_forward()`
-          after it does nothing, and the last `go_back()` leaves `'c'` for `'a'`.
-      - id: page-b
-        text: "`'b'`"
-        explanation: >-
-          After the two `go_back()` calls, `forward` is `['b', 'a']`, and `pop()` takes its end,
-          `'a'`. `'b'` waits below it, until `visit('c')` empties `forward`.
-      - id: page-home
-        text: "`'home'`"
-        explanation: >-
-          That holds only if `go_back()` saved nothing. It saves each page it leaves in `forward`,
-          so `go_forward()` returns to `'a'`, and the last `go_back()` lands on `'a'` as well.
-    correct: page-a
-    followUps:
-      page-c:
-        prompt: When `visit('c')` runs, `forward` holds `'b'`. What does the visit do to it?
-        options:
-          - id: empties
-            text: Empties it, so `'b'` can no longer be reached
-          - id: keeps
-            text: Leaves it, so `go_forward()` can still reach `'b'`
-          - id: pushes-c
-            text: Pushes `'c'` onto it
-        correct: empties
-        explanation: >-
-          A visit starts a new line of pages, so the old forward pages no longer follow the current
-          one. That is why the next `go_forward()` does nothing.
-      page-b:
-        prompt: "`forward` is `['b', 'a']`. Which page does `forward.pop()` return?"
-        options:
-          - id: last-in
-            text: "`'a'`, at the end of the list"
-          - id: first-in
-            text: "`'b'`, at the start of the list"
-          - id: home
-            text: "`'home'`"
-        correct: last-in
-        explanation: >-
-          `pop()` with no index takes the end of the list, the top of the stack. The page left last
-          is the first one reached going forward.
-      page-home:
-        prompt: What does `go_back()` do with the page it leaves?
-        options:
-          - id: saves-forward
-            text: Pushes it onto `forward`
-          - id: drops
-            text: Drops it
-          - id: saves-back
-            text: Pushes it onto `back`
-        correct: saves-forward
-        explanation: >-
-          Saving the page it leaves is what lets `go_forward()` return to it. Without that, `forward`
-          would always be empty.
-
   - id: checkpoint-token-expiry
     heading: Which tokens are live?
     tags: [hash-map]
@@ -392,46 +313,47 @@ questions:
       live at time `t` while `expires[tok] > t`. `issue(tok, t)` sets `expires[tok]` to `t + 5`.
       `renew(tok, t)` sets `expires[tok]` to `t + 5` only if `tok` is live at `t`, and does nothing
       otherwise. `live(t)` returns the tokens live at `t`. The calls are `issue('a', 1)`,
-      `issue('b', 3)`, `renew('a', 6)`, `issue('c', 7)` and `live(8)`. Which tokens does `live(8)`
-      return?
+      `issue('d', 2)`, `issue('b', 3)`, `renew('a', 6)`, `issue('c', 7)` and `live(8)`. Which
+      tokens does `live(8)` return?
     options:
       - id: only-c
         text: Only `c`
         explanation: >-
           `expires['a']` is 6, so at time 6 the token `a` has run out and the renew does nothing.
-          `expires['b']` is 8, which is not greater than 8. Only `c`, which expires at 12, is live
-          at 8.
+          `expires['d']` is 7 and `expires['b']` is 8, and neither is greater than 8. Only `c`, which
+          expires at 12, is live at 8.
       - id: a-and-c
         text: "`a` and `c`"
         explanation: >-
-          `renew('a', 6)` needs `a` to be live at 6, and `expires['a']` is 6. A token is live only
-          while its expiry is greater than `t`, so the renew does nothing.
-      - id: b-and-c
-        text: "`b` and `c`"
-        explanation: >-
-          `expires['b']` is 8, and a token is live only while its expiry is greater than `t`. At
-          time 8, `b` has just run out.
-      - id: all-three
+          That holds only if a renew always works. `renew('a', 6)` first checks that `a` is live at
+          6, and `expires['a']` is 6, which is not greater than 6, so the renew does nothing.
+      - id: a-b-and-c
         text: "`a`, `b` and `c`"
         explanation: >-
+          That counts a token as live at the moment its expiry arrives. The rule is
+          `expires[tok] > t`, so `a` is not live at 6 and is never renewed, and `b`, whose expiry is
+          8, is not live at 8.
+      - id: all-four
+        text: "`a`, `b`, `c` and `d`"
+        explanation: >-
           Every token is still a key in `expires`, but `live(8)` returns only those whose expiry is
-          greater than 8. `a` ran out at 6 and `b` at 8.
+          greater than 8. `a` ran out at 6, `d` at 7 and `b` at 8.
     correct: only-c
     followUps:
       a-and-c:
-        prompt: When `renew('a', 6)` runs, `expires['a']` is 6. Is `a` live at time 6?
+        prompt: When `renew('a', 6)` runs, `expires['a']` is 6. Does the renew change `expires['a']`?
         options:
           - id: not-live
-            text: No, since `6 > 6` is false
-          - id: live-through
-            text: Yes, it lasts to the end of time 6
-          - id: always-renews
-            text: Yes, any issued token can be renewed
+            text: No, since `6 > 6` is false, so `a` is not live at 6
+          - id: renews-anyway
+            text: Yes, a renew works on any token that was issued
+          - id: still-a-key
+            text: Yes, since `a` is still a key in `expires`
         correct: not-live
         explanation: >-
-          A token stops being live at the moment its expiry time arrives. A renew at that time comes
-          too late, so `a` stays expired.
-      b-and-c:
+          `renew` checks `expires['a'] > 6` first. `6 > 6` is false, so the renew does nothing and
+          `a` stays expired.
+      a-b-and-c:
         prompt: "`expires['b']` is 8. Is `b` live at time 8?"
         options:
           - id: expired
@@ -444,7 +366,7 @@ questions:
         explanation: >-
           The rule compares with `>`, so a token whose expiry equals `t` is no longer live. `b`
           would need an expiry greater than 8.
-      all-three:
+      all-four:
         prompt: Does a token stay in `expires` after it runs out?
         options:
           - id: stays-skipped
