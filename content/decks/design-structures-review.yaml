@@ -1,6 +1,6 @@
 id: design-structures-review
 title: "Design structures: review"
-description: Fresh inputs for the Design structures skills, for recall on later days. No worked examples this time.
+description: Fresh inputs for the Design structures skills, for recall on later days. No worked examples this time. The last item, a rollback replay, goes deeper.
 heading: What does this give?
 
 questions:
@@ -300,3 +300,97 @@ questions:
         explanation: >-
           A middle node has a node on each side, so both reads land on real nodes. The danger is at
           the ends of a list, which is why designs often add dummy nodes there.
+
+  - id: nested-rollback-review
+    heading: What is left in the store?
+    tags: [hash-map, stack, python]
+    prompt: |-
+      `undo` is a stack with one dict per open transaction. `data.get(key)` returns `None` for a
+      missing key, and no stored value is `None`.
+
+      ```python
+      data = {}
+      undo = []
+
+      def begin():
+          undo.append({})
+
+      def put(key, value):
+          if undo and key not in undo[-1]:
+              undo[-1][key] = data.get(key)
+          data[key] = value
+
+      def rollback():
+          saved = undo.pop()
+          for key in saved:
+              if saved[key] is None:
+                  del data[key]
+              else:
+                  data[key] = saved[key]
+      ```
+
+      After `put('a', 7)`, `begin()`, `put('b', 1)`, `put('a', 8)`, `begin()`, `put('b', 2)`,
+      `rollback()` and `rollback()`, what is `data`?
+    options:
+      - id: only-a
+        text: "`{'a': 7}`"
+        explanation: >-
+          The inner `rollback()` pops `{'b': 1}` and sets `b` back to 1. The outer one pops
+          `{'b': None, 'a': 7}`: `b` was missing before that transaction, so it is deleted, and `a`
+          goes back to 7.
+      - id: b-none
+        text: "`{'a': 7, 'b': None}`"
+        explanation: >-
+          A saved `None` marks a key that was missing, so `rollback()` runs `del data[key]` for it
+          rather than storing `None`.
+      - id: b-one
+        text: "`{'a': 7, 'b': 1}`"
+        explanation: >-
+          The 1 was saved only in the inner dict, by `put('b', 2)`. The outer dict saved `b` at
+          `put('b', 1)`, when `b` was still missing.
+      - id: inner-only
+        text: "`{'a': 8, 'b': 1}`"
+        explanation: >-
+          That is `data` after the first `rollback()` alone. The second pops the outer dict and
+          undoes `put('b', 1)` and `put('a', 8)` as well.
+    correct: only-a
+    followUps:
+      b-none:
+        prompt: "The outer dict holds `'b': None`. What does `rollback()` do with that entry?"
+        options:
+          - id: deletes
+            text: Deletes `b` from `data`
+          - id: stores-none
+            text: Sets `data['b']` to `None`
+          - id: skips
+            text: Skips it, since there is no value to restore
+        correct: deletes
+        explanation: >-
+          No stored value is ever `None`, so a saved `None` can only mean the key was missing. Deleting
+          it puts `data` back the way it was.
+      b-one:
+        prompt: Which value does the outer dict save for `b`?
+        options:
+          - id: none-saved
+            text: "`None`, since `b` was missing at its first write"
+          - id: one-saved
+            text: "1, the value before the inner transaction"
+          - id: two-saved
+            text: 2, the last value written
+        correct: none-saved
+        explanation: >-
+          A put saves a key only in the top dict, and only at the key's first write in that
+          transaction. Later writes inside an inner transaction never reach the outer dict.
+      inner-only:
+        prompt: How many transactions are still open when the second `rollback()` runs?
+        options:
+          - id: one-open
+            text: One, the outer transaction
+          - id: zero-open
+            text: Zero, the first rollback closed both
+          - id: two-open
+            text: Two
+        correct: one-open
+        explanation: >-
+          Each `rollback()` pops one dict. The second pops the dict the first `begin()` pushed and
+          restores what it saved.
