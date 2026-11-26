@@ -215,6 +215,104 @@ questions:
           `in` searches the object on its right. On a set that is a hash lookup, about one step on
           average. The same test on a list would be a scan.
 
+  - id: prepend-copies-string
+    heading: Which line copies?
+    tags: [complexity, python, arrays-strings]
+    workedExample: |-
+      Consider `parts = ['o', 'k', '!']` and one call, `"".join(parts)`. A string can't be
+      changed once it is made, and `join` glues the strings in a list into one string.
+
+      1. Since a string can't be changed, `join` builds one new string, `"ok!"`, to hold the
+         result.
+      2. It copies each of the 3 letters into that new string once, so it copies 3 letters in
+         all.
+      3. It runs one time, so joining a list of `n` letters copies `n` letters: building a string
+         with one `join` at the end is O(n).
+    prompt: |-
+      A string can't be changed once it is made. Both functions return `word` reversed, and
+      `word` has `n` letters.
+
+      ```python
+      def rev_a(word):
+          s = ""
+          for ch in word:
+              s = ch + s
+          return s
+
+      def rev_b(word):
+          parts = []
+          for ch in word:
+              parts.append(ch)
+          parts.reverse()
+          return "".join(parts)
+      ```
+
+      Which line copies every letter built so far, on every pass?
+    options:
+      - id: prepend
+        text: '`s = ch + s` in `rev_a`'
+        explanation: >-
+          `s` can't be changed, so `ch + s` builds a new string and copies every letter of `s` into
+          it.
+          Over the loop that is 0 + 1 + ... + (n - 1) letters, about n² / 2, so `rev_a` is O(n²).
+          `rev_b` does a fixed amount of work per letter on average, so it is O(n).
+      - id: append
+        text: '`parts.append(ch)` in `rev_b`'
+        explanation: >-
+          `append` writes one item into the next free slot of the same list. Now and then the list
+          grows its storage, but on average each append costs a fixed amount.
+      - id: reverse
+        text: '`parts.reverse()` in `rev_b`'
+        explanation: >-
+          `reverse` moves each item of the list once, in place. It sits after the loop, so it runs
+          one time, not on every pass.
+      - id: join
+        text: '`"".join(parts)` in `rev_b`'
+        explanation: >-
+          `join` runs once, after the loop. It builds one string and copies each letter into it
+          once, so it copies `n` letters in all.
+    correct: prepend
+    followUps:
+      append:
+        prompt: '`parts` holds 500 letters and has a spare slot. What does `parts.append(ch)` copy?'
+        options:
+          - id: one
+            text: Only `ch`, into the spare slot
+          - id: all
+            text: All 500 letters, into a list one slot larger
+          - id: half
+            text: About 250 of them, to make room
+        correct: one
+        explanation: >-
+          A list keeps spare room at its end, so most appends write one slot. The rare append that
+          runs out of room copies everything, which averages to a fixed cost per append.
+      reverse:
+        prompt: How many times does `parts.reverse()` run in `rev_b`?
+        options:
+          - id: once
+            text: Once, after the loop ends
+          - id: per-pass
+            text: Once per pass of the loop
+          - id: per-letter
+            text: Once for each letter it moves
+        correct: once
+        explanation: >-
+          A line below the loop runs after the last pass, one time. Moving `n` items once adds `n`
+          steps to the total instead of multiplying it.
+      join:
+        prompt: For a word of 1,000 letters, how many letters does `"".join(parts)` copy?
+        options:
+          - id: thousand
+            text: 1,000, each one once
+          - id: half-million
+            text: About 500,000, the same as building `s` one letter at a time
+          - id: none
+            text: None, since the string reuses the list's letters
+        correct: thousand
+        explanation: >-
+          `join` runs once and builds one string, copying each letter into it once. Building `s` by
+          prepending copies 0 + 1 + ... + 999 letters, about 500,000.
+
   - id: header-runs-once
     heading: How many times does it run?
     tags: [complexity, python, sorting]
@@ -644,6 +742,127 @@ questions:
             text: '100'
             explanation: That makes every slice 10 long. They shrink by one cell per call.
         correct: forty-five
+
+  - id: merge-sort-levels
+    format: step-trace
+    heading: Count the copies by level
+    tags: [complexity, sorting, recursion]
+    workedExample: |-
+      Consider `sort_range` on 4 cells, 0 to 3. The first call is level 1, and the two calls it
+      makes, on 0 to 1 and on 2 to 3, are level 2. Each merge copies the cells of its own range
+      once.
+
+      1. The ranges 0 to 1 and 2 to 3 share no cell, and together they cover 0 to 3. So every
+         cell sits in exactly one call at level 2.
+      2. Each of those two calls merges its 2 cells, so by step 1 the merges at level 2 copy
+         2 + 2 = 4 cells: one copy of every cell.
+    prompt: >-
+      Merge sort sorts the cells from index `lo` to index `hi`. It splits the range at `mid`,
+      sorts each half with the same call, and then `merge` (not shown) builds one sorted list from
+      the two halves, copying each of their cells once. A call on one cell does not merge. The
+      first call is level 1, the calls it makes are level 2, and so on. The pointers show the
+      first call at level 3. Predict each step before it is shown.
+    code: |
+      def sort_range(nums, lo, hi):
+          if lo == hi:
+              return [nums[lo]]
+          mid = (lo + hi) // 2
+          left = sort_range(nums, lo, mid)
+          right = sort_range(nums, mid + 1, hi)
+          return merge(left, right)
+
+      sort_range([5, 2, 7, 1, 8, 3, 6, 4], 0, 7)
+    sequence:
+      kind: array
+      name: nums
+      cells: [5, 2, 7, 1, 8, 3, 6, 4]
+    start:
+      - { name: lo, at: 0 }
+      - { name: hi, at: 1 }
+    steps:
+      - line: 4
+        ask: Where does the last call at level 3 start?
+        pointer: lo
+        correct: 6
+        explanation: >-
+          Level 2 is the calls on 0 to 3 and 4 to 7, and each splits once more. So level 3 is 0 to
+          1, 2 to 3, 4 to 5 and 6 to 7, and the last of them starts at 6.
+        misses:
+          - index: 2
+            explanation: That is the second call at level 3. Two more follow, on 4 to 5 and 6 to 7.
+          - index: 4
+            explanation: >-
+              Index 4 starts the second call at level 2, on 4 to 7. That call splits into 4 to 5
+              and 6 to 7, which are both at level 3.
+          - index: 7
+            explanation: >-
+              A call on cell 7 alone is at level 4. The last call at level 3 covers 2 cells, 6 to
+              7.
+        elsewhere: The calls at level 3 cover 0 to 1, 2 to 3, 4 to 5 and 6 to 7.
+        also:
+          - { name: hi, at: 7 }
+      - line: 7
+        ask: Each call at level 3 merges two one-cell lists. How many cells do the merges at level 3 copy in all?
+        options:
+          - id: eight
+            text: '8'
+            explanation: >-
+              The four calls cover every cell once, and each merge copies its 2 cells. So level 3
+              copies 4 × 2 = 8 cells, one copy of the whole input.
+          - id: two
+            text: '2'
+            explanation: That is one call's merge. Level 3 has four calls, and each copies 2 cells.
+          - id: four
+            text: '4'
+            explanation: That counts one cell per call. Each merge copies both cells of its range.
+        correct: eight
+      - ask: How many cells do all the merges copy, across every level?
+        options:
+          - id: twenty-four
+            text: '24'
+            explanation: >-
+              Levels 1, 2 and 3 each cover all 8 cells once, so each copies 8: 3 × 8 = 24. Level 4
+              holds the calls on one cell, which return at line 3 without a merge.
+          - id: fourteen
+            text: '14'
+            explanation: >-
+              That counts one merge per level, 8 + 4 + 2. Level 2 has two merges of 4 cells and
+              level 3 has four merges of 2, so every level copies 8.
+          - id: thirty-two
+            text: '32'
+            explanation: >-
+              That counts level 4 as a level of merges. The calls on one cell return at line 3 and
+              never reach `merge`.
+          - id: fifty-six
+            text: '56'
+            explanation: >-
+              That has each of the 7 merges copy all 8 cells. A merge copies only its own range,
+              so the merges copy 8, 4, 4, 2, 2, 2 and 2 cells.
+        correct: twenty-four
+      - ask: The input grows to `n` cells. What is the Big-O of the sort?
+        options:
+          - id: n-log-n
+            text: O(n log n)
+            explanation: >-
+              Every level covers each cell once, so its merges copy about `n` cells. The ranges
+              halve from one level to the next, so about log n levels merge: 3 for 8 cells, 10 for
+              1,024. That is about n log n copies.
+          - id: n-squared
+            text: O(n²)
+            explanation: >-
+              That needs about `n` levels, or every merge copying all `n` cells. The ranges halve
+              at each level, so only about log n levels merge, and each copies about `n` cells.
+          - id: linear
+            text: O(n)
+            explanation: >-
+              That counts one merge per level, `n` + `n` / 2 + ..., which stays under 2n. Each
+              level has twice as many merges as the one above it, so every level copies about `n`.
+          - id: log-n
+            text: O(log n)
+            explanation: >-
+              That counts the levels and gives each one step. Each level copies about `n` cells, so
+              the cost is `n` times the number of levels.
+        correct: n-log-n
 
   - id: dominant-hidden-line
     heading: Which line dominates?

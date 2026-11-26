@@ -626,6 +626,80 @@ questions:
           Passing an argument binds the parameter to the same object. `tags.append` therefore
           changes the caller's list.
 
+  - id: default-list-shared
+    heading: What does this print?
+    tags: [python]
+    workedExample: |-
+      Consider `def tally(n, seen=[])`, whose body runs `seen.append(n)` and then
+      `return len(seen)`. Python works out a default value once, when the `def` line runs, and
+      keeps that one object for every call that leaves the argument out.
+
+      1. The `def` line runs once, so it builds one empty list for `seen`.
+      2. `tally(4)` leaves `seen` out, so `seen` refers to that list. The append makes it `[4]`,
+         and the call returns 1.
+      3. `tally(9)` leaves `seen` out too, so it gets the same list, which already holds the 4.
+         The append makes it `[4, 9]`, and the call returns 2, not 1.
+    prompt: |-
+      A default value, such as `bag=[]`, is built once, when the `def` line runs, not on each
+      call. What does this print?
+
+      ```python
+      def add_item(item, bag=[]):
+          bag.append(item)
+          return bag
+
+      a = add_item('pen')
+      b = add_item('ink', [])
+      c = add_item('cup')
+      print(a, b, c)
+      ```
+    options:
+      - id: one-default
+        text: "`['pen', 'cup'] ['ink'] ['pen', 'cup']`"
+        explanation: >-
+          The `def` line built one list for `bag`. The first and third calls leave `bag` out, so
+          both append to that list and return it: `a` and `c` name one list, which ends as
+          `['pen', 'cup']`. The second call passes its own `[]`, so `'ink'` lands there. The usual
+          fix is `bag=None`, with `if bag is None: bag = []` in the body.
+      - id: fresh-each-call
+        text: "`['pen'] ['ink'] ['cup']`"
+        explanation: >-
+          That builds a new list on every call. The default was built once, when `def` ran, so the
+          calls that leave `bag` out share it, and the third call's `'cup'` joins the `'pen'`.
+      - id: snapshot
+        text: "`['pen'] ['ink'] ['pen', 'cup']`"
+        explanation: >-
+          That treats `a` as a record of the list when the first call returned. `a` refers to the
+          default list itself, which the third call changes, so `a` shows the `'cup'` too.
+    correct: one-default
+    followUps:
+      fresh-each-call:
+        prompt: How many times does the `[]` in `bag=[]` build a list?
+        options:
+          - id: once
+            text: Once, when the `def` line runs
+          - id: per-default-call
+            text: Once for each call that leaves `bag` out
+          - id: per-call
+            text: Once for each call, the second one included
+        correct: once
+        explanation: >-
+          A default is worked out with the `def` line and kept with the function. Every call that
+          leaves `bag` out gets that same list, holding whatever earlier calls appended.
+      snapshot:
+        prompt: After the third call, is `a is c` true?
+        options:
+          - id: same
+            text: Yes, both name the default list
+          - id: record
+            text: No, `a` holds the list as it was after the first call
+          - id: own-list
+            text: No, each call returns a list of its own
+        correct: same
+        explanation: >-
+          Both calls returned the default list itself, never a copy. A later append to it shows
+          through `a`, `c` and every other name on it.
+
   - id: repeated-row-grid
     heading: What does this print?
     tags: [python]
@@ -807,7 +881,8 @@ questions:
     explanation: >-
       The slice copied the references, so `saved[0]` and `grid[0]` are one row. Writing into it
       shows through both, and `saved` prints `[[7, 2], [3, 4], [5, 6]]`. A copy like this shares
-      its rows.
+      its rows. `copy.deepcopy(grid)`, from the `copy` module, copies every row as well, so it
+      shares no list with `grid`.
     misses:
       - index: 1
         explanation: Nothing writes into the row at index 1, so it still prints `[3, 4]`.
