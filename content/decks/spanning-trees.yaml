@@ -1,0 +1,545 @@
+id: spanning-trees
+title: Minimum spanning trees
+description: Read a spanning tree, take the cheapest edge that joins two parts with Kruskal's algorithm, and grow one tree from a start node with Prim's.
+heading: Which edges make the tree?
+
+questions:
+  - id: spanning-tree-pick
+    heading: Which edges form a spanning tree?
+    tags: [graph]
+    workedExample: |-
+      This path finds the cheapest set of edges that still joins every node of a graph, the way a
+      network links every site with the least cable. It starts with the shape of that set.
+      Consider nodes `A`, `B`, `C` and `D` and the candidate `A-B`, `A-C`, `C-D`.
+
+      1. The candidate has 3 edges, and 4 nodes need exactly 4 - 1 = 3, so the count fits.
+      2. From `A`, the edges reach `B` and `C`, and `C-D` reaches `D`, so every node is joined.
+      3. No route leaves a node and comes back to it without reusing an edge, so there is no
+         cycle. The candidate is a spanning tree.
+    prompt: >-
+      Edges in this path are undirected: `A-B` can be walked from `A` to `B` or back. A cycle is a
+      route that leaves a node and comes back to it without reusing an edge. A spanning tree of a
+      connected graph is a set of its edges that joins every node with no cycle, and for V nodes
+      it always has V - 1 edges. The graph has nodes `A` to `E` and the edges `A-B`, `A-C`,
+      `B-C`, `B-D`, `C-D` and `D-E`. Which edge list is a spanning tree?
+    options:
+      - id: tree
+        text: '`A-C`, `B-C`, `B-D`, `D-E`'
+        explanation: >-
+          Its 4 edges are V - 1 for 5 nodes. `A-C` and `B-C` join `A`, `B` and `C`, `B-D` adds
+          `D`, and `D-E` adds `E`. Every node is joined, and no route comes back to where it
+          started.
+      - id: has-cycle
+        text: '`A-B`, `A-C`, `B-C`, `D-E`'
+        explanation: >-
+          It has 4 edges and touches all 5 nodes, but `A-B`, `B-C` and `A-C` close the cycle
+          `A`, `B`, `C`, `A`. One edge is spent inside that part, so nothing joins `A`, `B` and
+          `C` to `D` and `E`.
+      - id: misses-node
+        text: '`A-B`, `B-D`, `C-D`'
+        explanation: >-
+          It has no cycle, but `E` is in none of its edges, so it does not join every node. Five
+          nodes need 4 edges, and it has 3.
+      - id: extra-edge
+        text: '`A-B`, `B-C`, `B-D`, `C-D`, `D-E`'
+        explanation: >-
+          It joins every node, but with 5 edges, one more than V - 1. The extra edge closes a
+          cycle: `B-C`, `C-D` and `B-D` lead from `B` back to `B`.
+    correct: tree
+    followUps:
+      has-cycle:
+        prompt: A set of V - 1 edges touches every node. Can it still fail to be a spanning tree?
+        options:
+          - { id: yes-cycle, text: 'Yes, when a cycle spends an edge and some part is left unjoined' }
+          - { id: no-count, text: 'No, V - 1 edges that touch every node always join them' }
+          - { id: no-touch, text: 'No, touching every node is all a spanning tree needs' }
+        correct: yes-cycle
+        explanation: >-
+          An edge that closes a cycle joins two nodes that were already joined, so it adds nothing.
+          With one edge used up that way, V - 1 edges cannot join V nodes.
+      misses-node:
+        prompt: What must a spanning tree do with each node of the graph?
+        options:
+          - { id: join-all, text: Include it and join it to all the others }
+          - { id: two-edges, text: Include it only if it has two or more edges in the graph }
+          - { id: some, text: 'Nothing, since a tree may use only some of the nodes' }
+        correct: join-all
+        explanation: >-
+          A spanning tree spans the graph: every node is in it, joined to every other. `E` has a
+          single edge, `D-E`, so every spanning tree of this graph uses that edge.
+      extra-edge:
+        prompt: All 5 nodes are already joined, and one more edge is added between two of them. What does that edge do?
+        options:
+          - { id: closes, text: 'It closes a cycle, since its ends already had a route between them' }
+          - { id: new-part, text: It joins a part of the graph that was not reached yet }
+          - { id: harmless, text: 'Nothing, as long as the same edge is not listed twice' }
+        correct: closes
+        explanation: >-
+          Once every node is joined, any two of them have a route between them. A new edge gives
+          a second route, which makes a cycle, so a spanning tree stops at V - 1 edges.
+
+  - id: minimum-not-shortest
+    heading: Which edges does the minimum tree keep?
+    tags: [graph, greedy]
+    workedExample: |-
+      Consider the triangle `P-Q 1`, `Q-R 4` and `P-R 3`. The minimum spanning tree is the
+      spanning tree whose weights add up to the least.
+
+      1. Three nodes need two edges, and any two of the three edges join all three nodes with no
+         cycle. So the graph has three spanning trees.
+      2. Their totals are 1 + 4 = 5 for `P-Q` and `Q-R`, 1 + 3 = 4 for `P-Q` and `P-R`, and
+         4 + 3 = 7 for `Q-R` and `P-R`.
+      3. The least total is 4, so the minimum spanning tree keeps `P-Q` and `P-R`.
+    prompt: >-
+      Each edge has a weight, and edges can be walked both ways. A minimum spanning tree is a
+      spanning tree whose weights add up to the least total. The graph has the edges `A-B 2`,
+      `B-C 3`, `A-C 4`, `S-A 5` and `S-C 6`. Which edges does its minimum spanning tree keep?
+    options:
+      - id: least-total
+        text: '`A-B`, `B-C`, `S-A`'
+        explanation: >-
+          They join all four nodes with no cycle, for 2 + 3 + 5 = 10. Every spanning tree needs an
+          edge at `S`, which costs at least 5, plus two more edges, which cost at least 2 + 3. This
+          one reaches that floor.
+      - id: routes-from-s
+        text: '`S-A`, `S-C`, `A-B`'
+        explanation: >-
+          These are the edges the cheapest routes from `S` arrive by: `S-A` for `A` at 5, `S-C`
+          for `C` at 6, and `A-B` for `B` at 7. That tree is a spanning tree, but its weights add
+          up to 5 + 6 + 2 = 13, and another spanning tree costs 10.
+      - id: three-cheapest
+        text: '`A-B`, `B-C`, `A-C`'
+        explanation: >-
+          These are the three cheapest edges, for 9, but they close a cycle among `A`, `B` and `C`
+          and leave `S` out. They are not a spanning tree at all.
+    correct: least-total
+    followUps:
+      routes-from-s:
+        prompt: What does a minimum spanning tree make as small as it can?
+        options:
+          - { id: total, text: The sum of the weights of the edges it keeps }
+          - { id: routes, text: 'The cost of the route from `S` to each node' }
+          - { id: hops, text: 'The number of edges between `S` and each node' }
+        correct: total
+        explanation: >-
+          It has no start node. It keeps the spanning tree with the least total weight, even if a
+          route gets longer: inside the minimum tree here, `S` reaches `C` for 5 + 2 + 3 = 10,
+          against 6 by the edge `S-C`.
+      three-cheapest:
+        prompt: Why can `A-B`, `B-C` and `A-C` not be a spanning tree here?
+        options:
+          - { id: cycle, text: 'They form a cycle, and no edge among them reaches `S`' }
+          - { id: too-cheap, text: 'Their total, 9, is below what a tree can cost' }
+          - { id: too-few, text: Three edges are too few for four nodes }
+        correct: cycle
+        explanation: >-
+          Four nodes need three edges, so the count is right. But the three edges go round `A`,
+          `B`, `C` and back, so one of them is wasted, and none of them touches `S`.
+
+  - format: tap-cell
+    id: kruskal-skip-tap
+    heading: Which edge is skipped first?
+    tags: [graph, greedy, sorting]
+    workedExample: |-
+      Consider the sorted edges `0-1 1`, `1-2 2` and `0-2 3`, with each node its own root at the
+      start. Kruskal takes an edge only when its ends `find` to different roots.
+
+      1. `0-1 1`: the roots 0 and 1 differ, so it is taken, and the union joins {0, 1}.
+      2. `1-2 2`: node 1 is in {0, 1} and node 2 is alone, so the roots differ. It is taken, and
+         all three nodes share a root.
+      3. `0-2 3`: both ends now share a root, so taking it would close the cycle 0, 1, 2, 0.
+         Kruskal skips it.
+    prompt: >-
+      Kruskal's algorithm builds a minimum spanning tree from an edge list. It takes edges cheapest
+      first: `sorted(edges, key=lambda e: e[2])` orders the `(u, v, w)` tuples by their third
+      item, the weight. An edge whose ends already `find` the same root would close a cycle, so it
+      is skipped; any other edge joins two sets. `find(x)` follows `parent` links from `x` to the
+      root of its set. Edges can be walked both ways. The cells list the edges in sorted order.
+      Tap the first edge the loop skips.
+    code: |
+      edges = [(1, 2, 3), (4, 5, 6), (0, 1, 1), (2, 3, 4),
+               (1, 3, 7), (3, 4, 2), (0, 4, 5)]
+      parent = list(range(6))
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              print("skip", u, v, w)
+              continue
+          parent[find(u)] = find(v)
+    sequence:
+      kind: array
+      name: sorted
+      cells: ['0-1 1', '3-4 2', '1-2 3', '2-3 4', '0-4 5', '4-5 6', '1-3 7']
+    correct: 4
+    explanation: >-
+      By then `0-1`, `3-4`, `1-2` and `2-3` have joined 0 to 4 into one set, so `find(0)` and
+      `find(4)` return the same root. Taking `0-4` would close the cycle 0, 1, 2, 3, 4, 0, so the
+      loop skips it.
+    misses:
+      - index: 0
+        explanation: Every node starts as its own root, so the cheapest edge always joins two sets and is taken.
+      - index: 1
+        explanation: >-
+          Nodes 3 and 4 are each still in a set of their own, so their roots differ and `3-4` is
+          taken.
+      - index: 2
+        explanation: >-
+          `1-2` joins {0, 1} with node 2, which no earlier edge has touched. The roots differ, so
+          it is taken.
+      - index: 3
+        explanation: >-
+          Both ends have appeared in earlier edges, but 2 is in {0, 1, 2} and 3 is in {3, 4}. Their
+          roots differ, so `2-3` joins two parts without a cycle and is taken.
+      - index: 5
+        explanation: >-
+          Node 5 is still alone, so `4-5` joins it and is taken. `0-4` comes earlier and is
+          skipped first.
+      - index: 6
+        explanation: >-
+          `1-3` is skipped as well, since every node shares one root by then. But `0-4` comes
+          earlier and is skipped first.
+
+  - format: step-trace
+    id: kruskal-trace
+    heading: Follow Kruskal's loop
+    tags: [graph, greedy, python]
+    workedExample: |-
+      Consider the sorted edges `1-2 1`, `0-1 5`, `0-2 9` and `2-3 11` on nodes 0 to 3, with
+      `total` starting at 0. A taken edge adds its weight to `total`.
+
+      1. `1-2 1` joins two nodes that are each alone, so it is taken, and `total` is 1.
+      2. `0-1 5` joins node 0 to {1, 2}, so it is taken, and `total` is 1 + 5 = 6.
+      3. `0-2 9` has both ends in {0, 1, 2}, so it is skipped. A skipped edge adds nothing, and
+         `total` stays 6.
+    prompt: >-
+      This is Kruskal's loop: it takes edges cheapest first and skips an edge whose ends already
+      share a root. A spanning tree of `n` nodes has `n - 1` edges, so the loop breaks once
+      `taken` reaches that. Here `n` is 5. `1-3 1` and `0-1 2` are already taken, so `total` is 3
+      and `taken` is 2. `e` marks the edge the loop read most recently. Predict each step.
+    code: |
+      n = 5
+      edges = [(0, 2, 6), (1, 3, 1), (2, 4, 4), (3, 4, 7),
+               (0, 1, 2), (1, 4, 5), (2, 3, 8), (0, 3, 3)]
+      parent = list(range(n))
+      total = taken = 0
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              continue
+          parent[find(u)] = find(v)
+          total += w
+          taken += 1
+          if taken == n - 1:
+              break
+    sequence:
+      kind: array
+      name: sorted
+      cells: ['1-3 1', '0-1 2', '0-3 3', '2-4 4', '1-4 5', '0-2 6', '3-4 7', '2-3 8']
+    start:
+      - { name: e, at: 1 }
+    steps:
+      - line: 7
+        ask: Which edge is the next one taken? Move `e` to it.
+        pointer: e
+        correct: 3
+        explanation: >-
+          `0-3 3` comes next, but `1-3` and `0-1` put 0, 1 and 3 in one set, so it is skipped.
+          Then `2-4 4` joins two nodes that are each alone, and it is taken.
+        misses:
+          - index: 2
+            explanation: >-
+              `find(0)` and `find(3)` return the same root, since `1-3` and `0-1` joined 0, 1 and
+              3. Taking `0-3` would close a cycle, so the loop skips it.
+        elsewhere: >-
+          The loop reads the cells in order. After the skipped `0-3 3`, the next edge is `2-4 4`,
+          and 2 and 4 are each alone.
+      - line: 10
+        ask: What is `total` after that edge is taken?
+        options:
+          - id: seven
+            text: '7'
+            explanation: '`total` was 3, and `2-4` adds 4. The skipped `0-3` added nothing.'
+          - id: ten
+            text: '10'
+            explanation: >-
+              That adds the 3 of `0-3` as well. The loop reached `continue` on that edge, before
+              `total += w`, so its weight was never added.
+          - id: four
+            text: '4'
+            explanation: >-
+              4 is the weight of `2-4` alone. `total` keeps a running sum, so it adds 4 to the 3
+              it already held.
+        correct: seven
+      - line: 7
+        ask: Which edge is the next one taken?
+        pointer: e
+        correct: 4
+        explanation: >-
+          `1-4 5` is next in order. Node 1 is in {0, 1, 3} and node 4 is in {2, 4}, so the roots
+          differ, and it is taken.
+        misses:
+          - index: 5
+            explanation: >-
+              `1-4 5` comes before `0-2 6` in sorted order, and its roots differ, so the loop takes
+              it first.
+          - index: 6
+            explanation: '`1-4 5` comes earlier, and it joins {0, 1, 3} with {2, 4}.'
+        elsewhere: >-
+          The next cell is `1-4 5`. Its ends are in {0, 1, 3} and {2, 4}, two different sets.
+      - line: 12
+        ask: '`taken` is now 4. How many more edges does the loop read?'
+        options:
+          - id: zero
+            text: '0'
+            explanation: >-
+              `taken == n - 1` holds, since 4 is 5 - 1, so the loop breaks. The tree has all the
+              edges it needs, and `total` is 12.
+          - id: one
+            text: '1'
+            explanation: >-
+              The test `taken == n - 1` runs right after `taken += 1`, in the same pass. It holds
+              now, so the loop breaks before it reads `0-2 6`.
+          - id: three
+            text: '3'
+            explanation: >-
+              Reading `0-2`, `3-4` and `2-3` is what a loop with no `break` would do, and it would
+              skip all three. This loop breaks as soon as `taken` reaches `n - 1`.
+        correct: zero
+
+  - id: kruskal-cost
+    heading: What sets the cost?
+    tags: [graph, complexity, sorting]
+    workedExample: |-
+      Consider a function that sorts `n` numbers and then makes one pass over them, with `n` at
+      1,024. Sorting costs about n log2 n steps, and the pass costs about n steps.
+
+      1. Since `2 ** 10` is 1,024, sorting takes about 1,024 × 10 = 10,240 steps.
+      2. The pass takes about 1,024 steps, a tenth of that.
+      3. As `n` grows, log2 n grows too, so the sort's share keeps growing. The function is
+         O(n log n): the part that grows faster sets the Big-O.
+    prompt: >-
+      A connected graph has V nodes and E edges. Kruskal's algorithm sorts the E edges once, then
+      reads them in order, calls `find` twice for each edge it reads, and stops once it has taken
+      V - 1 edges. Its union-find uses union by size and path compression, so the cost of each
+      operation, averaged over a long run of operations, is near constant. Which Big-O names the
+      growth of the whole run?
+    options:
+      - id: e-log-e
+        text: O(E log E)
+        explanation: >-
+          Sorting E edges is O(E log E). The `find` calls are near constant each when averaged over
+          the run, so the 2E of them grow about as fast as E. E log E grows faster than that, so
+          the sort sets the Big-O.
+      - id: e-times-v
+        text: O(E × V)
+        explanation: >-
+          That is the cost if each `find` could walk about V links, as on a long chain of plain
+          unions. Union by size keeps every walk to at most log2 V links, and path compression
+          brings the average near constant, so the calls grow about as fast as E.
+      - id: linear
+        text: O(E)
+        explanation: >-
+          The `find` calls do grow about as fast as E, since each is near constant. But the sort
+          runs first, and sorting E edges grows faster than E.
+      - id: v-only
+        text: O(V)
+        explanation: >-
+          The loop stops after V - 1 edges are taken, but it also reads every edge it skips, and
+          the sort has put every edge in order before the loop reads the first one.
+    correct: e-log-e
+    followUps:
+      e-times-v:
+        prompt: Under union by size, how many links can a `find` on V nodes walk?
+        options:
+          - { id: log, text: 'At most log2 V, rounded down' }
+          - { id: chain, text: 'Up to V - 1, the length of a whole chain' }
+          - { id: one, text: 'Exactly 1, since each node points straight at its root' }
+        correct: log
+        explanation: >-
+          A node gets one link further from its root only when its set at least doubles, and a set
+          can double at most log2 V times. Path compression shortens the walks further.
+      linear:
+        prompt: What does sorting E items cost?
+        options:
+          - { id: e-log-e, text: About E log E steps }
+          - { id: e, text: 'About E steps, one per item' }
+          - { id: log-e, text: About log E steps }
+        correct: e-log-e
+        explanation: >-
+          `sorted` takes about E log E steps on E items. That outgrows the near-constant `find`
+          calls, so the sort sets the Big-O.
+      v-only:
+        prompt: When the loop reads its first edge, how many edges has `sorted` already put in order?
+        options:
+          - { id: every, text: Every one of the E edges }
+          - { id: kept, text: 'Only V - 1, the ones the tree keeps' }
+          - { id: none, text: 'None, since each edge is sorted as the loop reads it' }
+        correct: every
+        explanation: >-
+          `sorted(edges, ...)` builds the whole sorted list before the loop starts, so its cost
+          does not shrink when the loop breaks early.
+
+  - format: tap-cell
+    id: prim-next-node-tap
+    heading: Which node joins next?
+    tags: [graph, greedy]
+    workedExample: |-
+      Consider a tree that holds `S` and `P`, and the edges `S-P 1`, `S-Q 4`, `P-Q 2` and
+      `P-R 3`. Prim's algorithm looks only at edges with exactly one end in the tree.
+
+      1. `S-P` has both ends in the tree, so it is not a choice.
+      2. `S-Q 4`, `P-Q 2` and `P-R 3` each have one end in the tree, and the cheapest of them is
+         `P-Q 2`.
+      3. So `Q` joins next, by `P-Q`, and the tree holds `S`, `P` and `Q`.
+    prompt: >-
+      Prim's algorithm also builds a minimum spanning tree, but it grows one tree from a start
+      node. At each step it adds the cheapest edge with exactly one end in the tree, and the node
+      at the other end joins. Edges can be walked both ways. Starting from `S`, the tree holds
+      `S`, `A` and `B`, joined by `S-A` and `A-B`. Which node joins next? Tap it.
+    code: |
+      edges = [("S", "A", 2), ("A", "B", 3), ("S", "B", 4),
+               ("S", "C", 6), ("A", "D", 5), ("B", "E", 7),
+               ("B", "C", 8), ("C", "D", 10)]
+      in_tree = {"S", "A", "B"}
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, A, B, C, D, E]
+    correct: 4
+    explanation: >-
+      The edges with one end in the tree are `S-C 6`, `A-D 5`, `B-E 7` and `B-C 8`. The cheapest
+      is `A-D 5`, so `D` joins.
+    misses:
+      - index: 0
+        explanation: '`S` is the start, so it is already in the tree. Prim adds a node from outside it.'
+      - index: 1
+        explanation: '`A` is already in the tree, joined by `S-A`. Prim adds a node from outside it.'
+      - index: 2
+        explanation: >-
+          `B` is already in the tree. `S-B 4` is cheaper than `A-D 5`, but both its ends are in the
+          tree, so it would close a cycle.
+      - index: 3
+        explanation: >-
+          The cheapest route from `S` to `C` is the edge `S-C`, 6, less than the 2 + 5 = 7 to
+          `D`. But Prim compares single edges, not routes from `S`, and `A-D 5` is cheaper than
+          `S-C 6`.
+      - index: 5
+        explanation: >-
+          `B-E 7` is the cheapest edge out of `B`, the node that joined last. Prim compares the
+          edges out of every node in the tree, and `A-D 5` is cheaper.
+
+  - format: step-trace
+    id: prim-heap-trace
+    heading: Follow Prim's pops
+    tags: [graph, heap, python]
+    workedExample: |-
+      Consider `S-X 6`, `S-Y 1` and `Y-X 3`, and Prim's loop from `S`, which pushes the edge
+      weight. `heap` starts as `[(0, "S")]`.
+
+      1. `(0, "S")` pops and `S` joins. It pushes `(6, "X")` and `(1, "Y")`.
+      2. `(1, "Y")` is smaller, so `Y` joins at 1. It pushes `(3, "X")`, the weight of `Y-X`.
+      3. `(3, "X")` pops before `(6, "X")`, so `X` joins at 3, and `total` is 0 + 1 + 3 = 4.
+         When `(6, "X")` pops later, `X` is in the tree, so it is skipped.
+    prompt: >-
+      Prim's loop has the shape of Dijkstra's loop: pop the smallest pair, skip an entry that is
+      out of date, and push entries for the neighbors. The key change is what it pushes: `(w, v)`,
+      the weight of the edge alone, not `(d + w, v)`. An entry is out of date when its node is
+      already in the tree, and `total` adds the weight each node joins at. The heap pops the
+      smallest pair (Python compares tuples item by item from the left, and moves to the next item
+      only on a tie). `u` marks the node that joined most recently. Predict each step.
+    code: |
+      import heapq
+      graph = {"S": [("A", 4), ("B", 1)], "A": [("S", 4), ("B", 2), ("C", 3)],
+               "B": [("S", 1), ("A", 2), ("C", 6), ("D", 7)],
+               "C": [("A", 3), ("B", 6), ("D", 2)], "D": [("B", 7), ("C", 2)]}
+      in_tree, total = set(), 0
+      heap = [(0, "S")]
+      while heap:
+          cost, u = heapq.heappop(heap)
+          if u in in_tree:
+              continue
+          in_tree.add(u)
+          total += cost
+          for v, w in graph[u]:
+              if v not in in_tree:
+                  heapq.heappush(heap, (w, v))
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, A, B, C, D]
+    start:
+      - { name: u, at: 0 }
+    steps:
+      - line: 8
+        ask: '`S` has joined. Which node joins next? Move `u` to it.'
+        pointer: u
+        correct: 2
+        explanation: '`S` pushed `(4, "A")` and `(1, "B")`. The smaller entry pops first, so `B` joins at 1.'
+        misses:
+          - index: 1
+            explanation: '`A`''s entry is `(4, "A")`, larger than `(1, "B")`.'
+        elsewhere: '`S` pushed only `(4, "A")` and `(1, "B")`, and `B`''s entry is smaller.'
+      - line: 8
+        ask: Which node joins next?
+        pointer: u
+        correct: 1
+        explanation: >-
+          `B` pushed `(2, "A")`, `(6, "C")` and `(7, "D")`. The heap holds 2, 4, 6 and 7, so `A`
+          joins at 2, the weight of `B-A`.
+        misses:
+          - index: 3
+            explanation: '`C`''s entry is `(6, "C")`, larger than the `(2, "A")` that `B` pushed.'
+          - index: 4
+            explanation: '`(7, "D")` is the largest entry in the heap.'
+        elsewhere: 'The smallest entry is `(2, "A")`, which `B` pushed for the edge `B-A`.'
+      - line: 8
+        ask: Which node joins next?
+        pointer: u
+        correct: 3
+        explanation: >-
+          `A` pushed `(3, "C")` and nothing for `S` or `B`, which are in the tree. The heap holds 3,
+          4, 6 and 7, so `C` joins at 3.
+        misses:
+          - index: 4
+            explanation: '`D`''s only entry is `(7, "D")`, larger than `(3, "C")`.'
+          - index: 1
+            explanation: >-
+              `A` has joined. Its old entry `(4, "A")` is still in the heap, but `(3, "C")` is
+              smaller and pops first.
+        elsewhere: 'The smallest entry is `(3, "C")`, which `A` pushed for the edge `A-C`.'
+      - line: 8
+        ask: '`C` pushes `(2, "D")`. With which weight does `D` join?'
+        options:
+          - id: two
+            text: '`2`'
+            explanation: >-
+              `(2, "D")` is the smallest entry, smaller than `(4, "A")`, so it pops next and `D`
+              joins by `C-D`, at 2.
+          - id: eight
+            text: '`8`'
+            explanation: >-
+              8 is `d + w`, the cost of the cheapest route from `S` to `D`, which Dijkstra would
+              push. Prim pushes the weight of `C-D` alone, which is 2.
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              `B` pushed `(7, "D")` earlier, but `C` then pushed `(2, "D")`, which is smaller and
+              pops first.
+        correct: two
+      - line: 12
+        ask: What is `total` when the heap is empty?
+        options:
+          - id: eight
+            text: '`8`'
+            explanation: >-
+              `S`, `B`, `A`, `C` and `D` joined at 0, 1, 2, 3 and 2, which add up to 8. The
+              entries `(4, "A")`, `(6, "C")` and `(7, "D")` pop later and are skipped.
+          - id: thirteen
+            text: '`13`'
+            explanation: >-
+              That counts `D` at 7, from the entry `B` pushed. `D` joined at 2, from the entry `C`
+              pushed.
+          - id: twenty-five
+            text: '`25`'
+            explanation: >-
+              That adds the skipped entries 4, 6 and 7 as well. The skip happens before
+              `total += cost`, so a skipped entry adds nothing.
+        correct: eight

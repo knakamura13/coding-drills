@@ -1,0 +1,348 @@
+id: substring-search-checkpoint
+title: "Substring search: checkpoint"
+description: Build a failure table, trace a search to its match, fall back twice in a row, count comparisons, and find the pattern that breaks a suggested solution.
+heading: Where does the pattern match?
+
+questions:
+  - id: substring-search-exam-full-table
+    heading: Which failure table is right?
+    tags: [arrays-strings]
+    prompt: >-
+      `fail[j]` is the length of the longest proper prefix of `p[:j + 1]` that is also a suffix of
+      it. What is `fail` for `p = "abbaabbab"`?
+    options:
+      - id: right
+        text: '`[0, 0, 0, 1, 1, 2, 3, 4, 2]`'
+        explanation: >-
+          Each entry is the longest match for its prefix: `abba` gives 1, `abbaabba` gives 4, and
+          all of `p` gives 2, since `abbaabbab` ends with `ab` and no longer proper prefix is also a
+          suffix.
+      - id: restart
+        text: '`[0, 0, 0, 1, 1, 2, 3, 4, 0]`'
+        explanation: >-
+          That ends with 0, as if a mismatch started over from nothing. `abbaabbab` ends with `ab`,
+          which is also its first two letters, so the last entry is 2.
+      - id: no-retest
+        text: '`[0, 0, 0, 1, 0, 0, 0, 1, 2]`'
+        explanation: >-
+          That resets to 0 at every mismatch without testing the letter again. At index 4, `abbaa`
+          ends with `a`, which is also `p[:1]`, so `fail[4]` is 1, not 0.
+      - id: shifted
+        text: '`[0, 0, 0, 0, 1, 1, 2, 3, 4]`'
+        explanation: >-
+          Each entry there describes `p[:j]`, one letter short. `fail[j]` covers `p[:j + 1]`, so
+          `fail[3]` is 1 for `abba`, not 0.
+    correct: right
+    followUps:
+      restart:
+        prompt: 'Is `ab` both a prefix and a suffix of `abbaabbab`?'
+        options:
+          - { id: yes-two, text: 'Yes, so the last entry is at least 2' }
+          - { id: no-ba, text: 'No, the suffix of length 2 is `ba`' }
+          - { id: yes-reset, text: 'Yes, but a mismatch at the last letter resets it to 0' }
+        correct: yes-two
+        explanation: >-
+          The table stores the longest proper prefix that is also a suffix, whatever happened on
+          the way. `p[:2]` and `p[-2:]` are both `ab`.
+      no-retest:
+        prompt: 'What is the longest proper prefix of `abbaa` that is also a suffix of it?'
+        options:
+          - { id: a, text: '`a`, length 1' }
+          - { id: none, text: 'None, length 0' }
+          - { id: abba, text: '`abba`, length 4' }
+        correct: a
+        explanation: >-
+          `abbaa` ends with `a`, its first letter. A mismatch ends the longer match, but a shorter
+          one can still hold, so `fail[4]` is 1.
+      shifted:
+        prompt: 'Which part of `p` does `fail[3]` describe?'
+        options:
+          - { id: four, text: '`p[:4]`, which is `abba`' }
+          - { id: three, text: '`p[:3]`, which is `abb`' }
+          - { id: rest, text: '`p[3:]`, the rest of the pattern' }
+        correct: four
+        explanation: >-
+          `fail[j]` covers `p[:j + 1]`, so `fail[3]` describes `abba`, whose first and last letters
+          match: 1.
+
+  - format: step-trace
+    id: substring-search-exam-search-trace
+    heading: Follow the search to its match
+    tags: [arrays-strings, python]
+    prompt: >-
+      The KMP search below runs with `p = "ababc"` and `fail = [0, 0, 1, 2, 0]` on
+      `text = "abababc"`. `i` marks the text letter being read, and `j` starts at 0. Predict each
+      step.
+    code: |
+      def search(text, p, fail):
+          j = 0
+          for i in range(len(text)):
+              while j > 0 and text[i] != p[j]:
+                  j = fail[j - 1]
+              if text[i] == p[j]:
+                  j += 1
+              if j == len(p):
+                  return i - len(p) + 1
+          return -1
+    sequence: { kind: string, name: text, cells: [a, b, a, b, a, b, c] }
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 4
+        ask: At which `i` does the search first fall back? Move `i` to it.
+        pointer: i
+        correct: 4
+        explanation: >-
+          From `i = 0` to 3, `abab` matches `p[:4]` letter by letter, so `j` is 4. At `i = 4`, `a`
+          meets `p[4]`, `c`, and the `while` falls back.
+        misses:
+          - index: 3
+            explanation: '`text[3]` is `b`, which matches `p[3]`, so `j` becomes 4 and nothing falls back.'
+          - index: 0
+            explanation: >-
+              At `i = 0`, `j` is 0, so `j > 0` is false and the `while` cannot run. `a` matches
+              `p[0]`.
+        elsewhere: '`abab` matches `p[:4]` from `i = 0` to 3. The first mismatch is `a` against `p[4]`, `c`, at `i = 4`.'
+      - line: 5
+        ask: What is `j` after that fallback?
+        options:
+          - id: two
+            text: '`2`'
+            explanation: >-
+              `j = fail[3]`, which is 2: the matched `abab` ends with `ab`, the first two letters of
+              `p`.
+          - id: zero
+            text: '`0`'
+            explanation: '0 drops the `ab` that still matches. `fail[3]` is 2.'
+          - id: three
+            text: '`3`'
+            explanation: '3 is `j - 1`. The code reads `fail[j - 1]`, which is `fail[3]`, 2.'
+        correct: two
+      - line: 3
+        ask: Where is `i` when `j` reaches 5?
+        pointer: i
+        correct: 6
+        explanation: >-
+          After the fallback, `a` matches `p[2]` and `j` is 3. At `i = 5`, `b` matches `p[3]`, and at
+          `i = 6`, `c` matches `p[4]`, so `j` reaches 5.
+        misses:
+          - index: 5
+            explanation: '`b` matches `p[3]`, so `j` becomes 4, one short of `len(p)`.'
+          - index: 4
+            explanation: >-
+              At `i = 4`, after the fallback, `a` matches `p[2]`, so `j` is 3, two short of
+              `len(p)`.
+        elsewhere: '`i` only moves forward. `j` reaches 5 when `text[6]`, `c`, matches `p[4]`.'
+      - line: 9
+        ask: What does the search return?
+        options:
+          - id: two
+            text: '`2`'
+            explanation: '`i - len(p) + 1` is 6 - 5 + 1 = 2, and `text[2:7]` is `ababc`.'
+          - id: zero
+            text: '`0`'
+            explanation: >-
+              Index 0 is where the first try began. It failed at `text[4]`, and the match that ends
+              at index 6 starts at 2, inside that try.
+          - id: one
+            text: '`1`'
+            explanation: >-
+              1 is `i - len(p)`, without the `+ 1`. Five letters that end at index 6 start at index
+              2.
+          - id: six
+            text: '`6`'
+            explanation: '6 is `i`, where the match ends. The search returns where it starts.'
+        correct: two
+
+  - format: tap-cell
+    id: substring-search-exam-two-fallbacks
+    heading: Where does the fallback stop?
+    tags: [arrays-strings]
+    prompt: >-
+      The KMP search runs with the `p` and `fail` below on `text = "aababaaab"`. At `i = 7`, `j` is
+      7, and `text[7]`, `a`, does not match `p[7]`, `c`. When the `while` loop stops, which letter
+      of `p` does the `if` test against `text[7]`? Tap it.
+    code: |
+      p = "aababaac"
+      fail = [0, 1, 0, 1, 0, 1, 2, 0]
+      def search(text, p, fail):
+          j = 0
+          for i in range(len(text)):
+              while j > 0 and text[i] != p[j]:
+                  j = fail[j - 1]
+              if text[i] == p[j]:
+                  j += 1
+              if j == len(p):
+                  return i - len(p) + 1
+          return -1
+    sequence: { kind: string, name: p, cells: [a, a, b, a, b, a, a, c] }
+    markers:
+      - { name: j, at: 7 }
+    correct: 1
+    explanation: >-
+      `j = fail[6]` gives 2, but `p[2]`, `b`, does not match `a`, so the loop falls back again:
+      `j = fail[1]`, which is 1. `p[1]` is `a`, so the loop stops and the `if` tests `p[1]`.
+    misses:
+      - index: 0
+        explanation: >-
+          `j` reaches 0 only if `p[1]` fails too. After the second fallback `j` is 1, and `p[1]` is
+          `a`, which matches, so the loop stops there.
+      - index: 2
+        explanation: >-
+          That is where the first fallback lands, `fail[6]`. `p[2]` is `b`, which does not match
+          `a`, so the `while` runs again and `j` becomes `fail[1]`, 1.
+      - index: 3
+        explanation: '`j` only moves down through `fail`: from 7 to `fail[6]`, 2, and then to `fail[1]`, 1. It never sits at 3.'
+      - index: 4
+        explanation: '`j` only moves down through `fail`: from 7 to `fail[6]`, 2, and then to `fail[1]`, 1. It never sits at 4.'
+      - index: 5
+        explanation: >-
+          Index 5 starts the copy of `aa` that ends the matched `aababaa`. The first fallback keeps
+          that copy, so `j` becomes its length, 2, and then falls again to 1.
+      - index: 6
+        explanation: >-
+          That steps `j` back by one. The code sets `j = fail[j - 1]`, which is `fail[6]`, 2, and
+          then falls again to 1.
+      - index: 7
+        explanation: '`p[7]`, `c`, has just failed against `a`. The `while` falls back before the `if` runs.'
+
+  - id: substring-search-exam-comparisons
+    heading: How many comparisons?
+    tags: [arrays-strings, complexity]
+    prompt: >-
+      Both searches run on `text = "aacaacaacb"` with `p = "aacaacb"`, and both stop at the match.
+      The plain search tries each start `s` and compares letters from the left until a mismatch or
+      a full match, and each test is one comparison. The KMP search uses
+      `fail = [0, 1, 0, 1, 2, 3, 0]`: count one comparison for each fallback, and one for the `if`
+      on each text letter it reads. A `while` test that finds a match checks the same pair as the
+      `if`, so it is not counted again. How many comparisons does each search make?
+    options:
+      - id: right
+        text: plain 17, KMP 11
+        explanation: >-
+          The plain search makes 7 at start 0, which fails on its last letter, 2 at start 1, 1 at
+          start 2, and 7 at start 3, where it matches: 17. KMP reads all 10 letters once and falls
+          back once, at `i = 6`, from `j = 6` to `fail[5]`, 3: 11.
+      - id: kmp-no-fallback
+        text: plain 17, KMP 10
+        explanation: >-
+          10 counts KMP's `if` on each letter but not its fallback. At `i = 6`, `a` fails against
+          `p[6]` first, and that test counts too.
+      - id: plain-no-mismatch
+        text: plain 14, KMP 11
+        explanation: >-
+          14 leaves out the plain search's failing tests, one at each of starts 0, 1 and 2. A test
+          that finds a mismatch is still a comparison.
+      - id: plain-full
+        text: plain 28, KMP 11
+        explanation: >-
+          28 is 4 starts × 7 letters, as if every start compared the whole pattern. Starts 1 and 2
+          stop at their first mismatch.
+    correct: right
+    followUps:
+      kmp-no-fallback:
+        prompt: 'At `i = 6`, `j` is 6 and `text[6]` is `a`. How many comparisons does KMP make on that letter?'
+        options:
+          - { id: two, text: '2: the failing test against `p[6]`, then the `if` against `p[3]`' }
+          - { id: one, text: '1: only the `if`' }
+          - { id: seven, text: '7: one for each matched letter' }
+        correct: two
+        explanation: >-
+          The fallback follows a test that found a mismatch, and the `if` then tests the same text
+          letter against `p[3]`. Both count.
+      plain-no-mismatch:
+        prompt: 'At start 1, `a` matches `p[0]` and then `c` is tested against `p[1]`, `a`. How many comparisons is that?'
+        options:
+          - { id: two, text: '2, since the failing test counts too' }
+          - { id: one, text: '1, one for the match' }
+          - { id: zero, text: '0, since the start fails' }
+        correct: two
+        explanation: >-
+          Each test is a comparison, whether it holds or not, so a start that matches 1 letter and
+          then fails costs 2.
+      plain-full:
+        prompt: How many comparisons does start 2 make?
+        options:
+          - { id: one, text: '1, since `c` fails against `p[0]`' }
+          - { id: seven, text: '7, one for each pattern letter' }
+          - { id: zero, text: '0, since start 2 is skipped' }
+        correct: one
+        explanation: >-
+          `text[2]` is `c` and `p[0]` is `a`, so the first test fails and the search moves on to
+          start 3.
+
+  - id: substring-search-exam-debug-if
+    heading: Which call breaks the suggested solution?
+    tags: [arrays-strings, python]
+    prompt: |-
+      A suggested solution builds the failure table, where `fail[j]` is the length of the longest proper prefix of `p[:j + 1]` that is also a suffix of it. Which call returns a wrong table?
+
+      ```python
+      def build(p):
+          fail = [0] * len(p)
+          k = 0
+          for j in range(1, len(p)):
+              if k > 0 and p[j] != p[k]:
+                  k = fail[k - 1]
+              if p[j] == p[k]:
+                  k += 1
+              fail[j] = k
+          return fail
+      ```
+    options:
+      - id: aaab
+        text: '`build("aaab")`'
+        explanation: >-
+          At `j = 3`, `k` is 2, and `b` fails against `p[2]`, so `k = fail[1]`, 1. The next line,
+          `if p[j] == p[k]:`, tests `b` against `p[1]`, `a`, which fails, so 1 is stored, where a
+          `while` would fall back again to 0. `aaab` has no proper prefix that is also a suffix, so
+          it returns `[0, 1, 2, 1]`, not `[0, 1, 2, 0]`.
+      - id: ababaa
+        text: '`build("ababaa")`'
+        explanation: >-
+          At `j = 5`, `a` fails against `p[3]`, and the one fallback sets `k` to 1. `a` fails
+          against `p[1]`, so 1 is stored. Falling back on to 0 and matching `p[0]` also gives 1, so
+          `[0, 0, 1, 2, 3, 1]` is right.
+      - id: aabaab
+        text: '`build("aabaab")`'
+        explanation: >-
+          Its only mismatch with `k > 0` is at `j = 2`, where `k` falls from 1 to `fail[0]`, 0, and
+          no fallback can go below 0. `[0, 1, 0, 1, 2, 3]` is right.
+      - id: abcaba
+        text: '`build("abcaba")`'
+        explanation: >-
+          At `j = 5`, `a` fails against `p[2]`, and the one fallback sets `k` to `fail[1]`, 0. No
+          fallback can go below 0, so the `if` matches `p[0]` and stores 1, which is right:
+          `[0, 0, 0, 1, 2, 1]`.
+    correct: aaab
+    followUps:
+      ababaa:
+        prompt: 'In `build("ababaa")` at `j = 5`, what do one fallback and a full `while` each store?'
+        options:
+          - { id: both-one, text: 'Both 1: one fallback stops at 1, and the full loop matches at 0 and adds 1' }
+          - { id: one-two, text: 'One fallback stores 2, and the full loop stores 1' }
+          - { id: one-zero, text: 'One fallback stores 1, and the full loop stores 0' }
+        correct: both-one
+        explanation: >-
+          One fallback leaves `k` at 1, and `a` fails against `p[1]`, so 1 is stored. Falling back to
+          0 and matching `p[0]` also gives 1, so this pattern hides the bug.
+      aabaab:
+        prompt: 'In `build("aabaab")`, when does the code fall back with `k > 0`?'
+        options:
+          - { id: once, text: 'Once, at `j = 2`, from 1 to 0' }
+          - { id: twice, text: 'Twice in a row, at `j = 5`' }
+          - { id: never, text: 'Never' }
+        correct: once
+        explanation: >-
+          A fallback to 0 is the last one possible, so one `if` does the same as a `while`. The bug
+          shows only when a second fallback should follow the first.
+      abcaba:
+        prompt: When the one fallback lands on `k = 0`, can a second one be needed?
+        options:
+          - { id: no-stop, text: 'No, `k > 0` is false, so a `while` would stop there too' }
+          - { id: yes-minus, text: 'Yes, it falls back again to `fail[-1]`' }
+          - { id: yes-differ, text: 'Yes, whenever the letters still differ' }
+        correct: no-stop
+        explanation: >-
+          At `k = 0` the `while` stops as well, so the one fallback does what the right build does.
+          Here the `if` then matches `p[0]` and stores 1.

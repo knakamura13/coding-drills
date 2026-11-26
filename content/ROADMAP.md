@@ -139,6 +139,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Sequences and search #11 | Grid indices: teaching levels | `grid-indices` | done |
 | Sequences and search #11 | Grid indices: review variants | `grid-indices-review` | done |
 | Sequences and search #11 | Grid indices: checkpoint | `grid-indices-checkpoint` | done |
+| Sequences and search #11 | Substring search: teaching levels | `substring-search` | done |
+| Sequences and search #11 | Substring search: review variants | `substring-search-review` | done |
+| Sequences and search #11 | Substring search: checkpoint | `substring-search-checkpoint` | done |
 | Sequences and search #11 | Pointer scans: dragging the pointers through one step | `drag-the-pointers` | in review |
 | Sequences and search #11 | Exact search: teaching levels | `exact-search` | done |
 | Sequences and search #11 | Exact search: review variants | `exact-search-review` | done |
@@ -259,3 +262,6 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | Weighted paths | `weighted-paths` | done |
 | Trees and graphs #13 | Weighted paths: review | `weighted-paths-review` | done |
 | Trees and graphs #13 | Weighted paths: checkpoint | `weighted-paths-checkpoint` | done |
+| Trees and graphs #13 | Minimum spanning trees | `spanning-trees` | done |
+| Trees and graphs #13 | Minimum spanning trees: review | `spanning-trees-review` | done |
+| Trees and graphs #13 | Minimum spanning trees: checkpoint | `spanning-trees-checkpoint` | done |
