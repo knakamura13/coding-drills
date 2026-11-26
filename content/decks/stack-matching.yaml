@@ -471,6 +471,220 @@ questions:
           The stack is empty, so `'(' in stack` is `False` and the `else` branch returns `False`.
           `loose` never calls `pop()`, so it cannot hit an empty pop.
 
+  - id: decode-nested-string
+    heading: What does it decode to?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `decode('x2[yz]')`. At a `[`, the code pushes the text built so far onto `texts` and
+      starts a new piece. At the matching `]`, it pops that saved text and the count, and puts the
+      saved text in front of the repeated piece.
+
+      1. The `x` builds `cur = 'x'`, and the `2` is pushed onto `counts`.
+      2. The `[` pushes `'x'` onto `texts` and resets `cur` to `''`, so the `y` and the `z` build
+         `cur = 'yz'`.
+      3. The `]` pops `'x'` and 2, so `cur` becomes `'x' + 'yz' * 2`, which is `'xyzyz'`, and
+         `decode` returns it.
+    prompt: |-
+      In a nested string, `3[ab]` stands for its piece repeated, `ababab`, and a group can sit
+      inside another group. Every count here is one digit. `counts` and `texts` are lists used as
+      stacks: `append` pushes onto the end, and `pop()` removes and returns the end item.
+      `ch.isdigit()` is true for a digit, and `'ab' * 2` is `'abab'`.
+
+      ```python
+      def decode(s):
+          counts, texts = [], []
+          cur = ''
+          for ch in s:
+              if ch.isdigit():
+                  counts.append(int(ch))
+              elif ch == '[':
+                  texts.append(cur)
+                  cur = ''
+              elif ch == ']':
+                  cur = texts.pop() + cur * counts.pop()
+              else:
+                  cur += ch
+          return cur
+      ```
+
+      What does `decode('a2[b3[c]]')` return?
+    options:
+      - id: inner-first
+        text: "`'abcccbccc'`"
+        explanation: >-
+          The inner `]` pops `'b'` and 3, so `cur` becomes `'b' + 'ccc'`. The outer `]` pops `'a'`
+          and 2, so `cur` becomes `'a'` followed by two copies of `'bccc'`. Each `]` pops what its
+          own `[` saved, the most recent group still open, as a closer pops the most recent opener.
+      - id: drops-saved
+        text: "`'cccccc'`"
+        explanation: >-
+          This repeats each piece but never puts back the text saved at its `[`. The `]` line
+          starts with `texts.pop()`, so the `b` and the `a` written before each count return.
+      - id: repeats-saved
+        text: "`'abcbcbcabcbcbc'`"
+        explanation: >-
+          This repeats the saved text together with the piece. Python does `*` before `+`, so in
+          `texts.pop() + cur * counts.pop()` the count reaches `cur` alone.
+      - id: oldest-first
+        text: "`'baccaccacc'`"
+        explanation: >-
+          This pairs the first `]` with the first `[`, taking `'a'` and 2, the oldest saved text
+          and count. `pop()` takes the end of each list, the item pushed last, so the first `]`
+          closes the group opened last.
+    correct: inner-first
+    followUps:
+      drops-saved:
+        prompt: "At the inner `]`, the top of `texts` is `'b'`, saved at the inner `[`. Where does it go?"
+        options:
+          - id: in-front
+            text: In front of the repeated piece
+          - id: thrown-away
+            text: Nowhere, it is thrown away
+          - id: repeated
+            text: Into the piece, and it is repeated too
+        correct: in-front
+        explanation: >-
+          `texts.pop()` hands back the saved text, and `+` joins it before `cur * counts.pop()`.
+          Saving it at the `[` is what keeps the text written before a group.
+      repeats-saved:
+        prompt: "In `texts.pop() + cur * counts.pop()`, which part does the count repeat?"
+        options:
+          - id: cur-only
+            text: Only `cur`, because `*` runs before `+`
+          - id: both
+            text: The saved text and `cur` together
+          - id: saved-only
+            text: Only the saved text
+        correct: cur-only
+        explanation: >-
+          As in arithmetic, `*` binds tighter than `+`. The count repeats the piece built inside
+          the brackets, and the saved text is added once, in front.
+      oldest-first:
+        prompt: Two groups are open when the first `]` arrives. Which saved text and count does it pop?
+        options:
+          - id: inner
+            text: The inner group's, `'b'` and 3, pushed last
+          - id: outer
+            text: The outer group's, `'a'` and 2, pushed first
+          - id: both
+            text: Both groups' at once
+        correct: inner
+        explanation: >-
+          `pop()` removes the end item of a list, the newest one. The first `]` closes the group
+          that opened most recently, just as a closer pops the most recent opener.
+
+  - format: step-trace
+    id: calculator-signed-terms
+    heading: Predict each step
+    tags: [stack, python]
+    workedExample: |-
+      Consider `s = '8/4-1+'`, the string `8/4-1` with the extra `+`. Each time the loop reads an
+      operator, it stores `num` by `op`, the operator before `num`, and then sets `op` to the
+      operator it just read.
+
+      1. The `/` at index 1 is read while `op` is still `'+'`, so 8 is pushed, and `op` becomes
+         `'/'`.
+      2. The `-` at index 3 is read while `op` is `'/'`, so the 8 is popped and `8 // 4`, which is
+         2, is pushed. `op` becomes `'-'`.
+      3. The extra `+` is read while `op` is `'-'`, so the 1 is pushed as -1. `stack` is
+         `[2, -1]`, and `sum(stack)` prints 1.
+    prompt: >-
+      This calculator reads one-digit numbers and the operators `+ - * /`, with no brackets, and
+      `*` and `/` go before `+` and `-`. Every division here comes out exact, and `//` divides and
+      rounds down. `stack` holds signed terms that `sum` adds at the end. When the loop reads an
+      operator, it stores `num` by `op`, the operator before `num`: `+` pushes it, `-` pushes it
+      negated, and `*` or `/` pops the top term and pushes it combined with `num`. `s` is
+      `'3+2*2'` with an extra `+` at the end, so the last number is stored too. `ch` marks the
+      character read, and after index 2, `stack` is `[3]`. Predict each step.
+    code: |
+      stack = []
+      op = '+'
+      for ch in s:
+          if ch.isdigit():
+              num = int(ch)
+          else:
+              if op == '+':
+                  stack.append(num)
+              elif op == '-':
+                  stack.append(-num)
+              elif op == '*':
+                  stack.append(stack.pop() * num)
+              else:
+                  stack.append(stack.pop() // num)
+              op = ch
+      print(sum(stack))
+    sequence:
+      kind: string
+      name: s
+      cells: ['3', '+', '2', '*', '2', '+']
+    start:
+      - { name: ch, at: 3 }
+    steps:
+      - line: 3
+        ask: The pass that reads the `*` at index 3 stores `num`, which is 2. What is `stack` after it?
+        options:
+          - id: pushed
+            text: '`[3, 2]`'
+            explanation: >-
+              `op` is still `'+'`, the operator before this 2, so the 2 is pushed as its own term.
+              `op` then becomes `'*'`, which waits for the next number.
+          - id: applies-ch
+            text: '`[6]`'
+            explanation: >-
+              This applies the `*` just read. The pass stores `num` by `op`, the operator before
+              it, which is `'+'`. The `*` is applied when the next number is stored.
+          - id: adds-in
+            text: '`[5]`'
+            explanation: >-
+              A `+` pushes a new term instead of adding into the top. Terms are added only at the
+              end, by `sum`, so a later `*` can still change this 2.
+        correct: pushed
+        also:
+          - { name: ch, at: 5 }
+      - line: 3
+        ask: The pass that reads the extra `+` at index 5 stores the last 2, with `op` set to `'*'`. What is `stack` after it?
+        options:
+          - id: combines
+            text: '`[3, 4]`'
+            explanation: >-
+              `op` is `'*'`, so the pass pops the top term, 2, and pushes `2 * 2`, which is 4. The
+              3 below is a separate term and is not touched, which is how `*` goes before `+`.
+          - id: pushes
+            text: '`[3, 2, 2]`'
+            explanation: >-
+              This pushes the 2 as if `op` were `'+'`. `op` is `'*'`, set by the `*` at index 3,
+              so the 2 is combined with the top term.
+          - id: everything
+            text: '`[10]`'
+            explanation: >-
+              This multiplies everything so far, `(3 + 2) * 2`. The `*` reaches only the top term,
+              the 2, so the 3 stays a term of its own.
+          - id: keeps-top
+            text: '`[3, 2, 4]`'
+            explanation: >-
+              `stack.pop()` takes the 2 off before the product is pushed. Reading the top without
+              removing it would leave the 2 behind, and `sum` would count it twice.
+        correct: combines
+      - line: 16
+        ask: What does the last line print?
+        options:
+          - id: seven
+            text: '`7`'
+            explanation: >-
+              `sum` adds the terms 3 and 4. The `*` was done first, inside the 4, so the answer
+              follows the usual order of operations.
+          - id: four
+            text: '`4`'
+            explanation: >-
+              4 is only the top term. `sum(stack)` adds every term on the stack, and the 3 is
+              still there.
+          - id: twelve
+            text: '`12`'
+            explanation: >-
+              `sum` adds the terms; it does not multiply them. The multiplying already happened
+              when the 2 was combined with the top term.
+        correct: seven
+
   - id: pop-empty-guard
     heading: What happens?
     tags: [stack, python]
@@ -617,6 +831,137 @@ questions:
         explanation: The `}` at index 6 pops this `{`.
       - index: 6
         explanation: This is a closer. Closers are never pushed, so one cannot be left on the stack.
+
+  - format: step-trace
+    id: asteroid-survivors
+    heading: Which rocks remain?
+    tags: [stack, python]
+    workedExample: |-
+      Consider `rocks = [1, 4, -2, -9]`. A left-moving rock meets the top of `stack` while that top
+      moves right: a smaller top is popped and the rock moves on, and a larger top destroys the
+      rock.
+
+      1. The 1 and the 4 move right, so both are pushed, and `stack` is `[1, 4]`.
+      2. The -2 meets the 4. The 4 is larger than 2, so the -2 is destroyed, and `stack` stays
+         `[1, 4]`.
+      3. The -9 meets the 4 and then the 1. Both are smaller than 9, so both are popped, and with
+         `stack` empty the -9 is pushed. `stack` ends as `[-9]`.
+    prompt: >-
+      Each value in `rocks` is a rock: a positive value moves right, a negative one moves left, and
+      `abs(rock)` is its size. `stack` holds the rocks still flying, left to right. Only a
+      left-moving rock with a right-moving rock on top of `stack` collides. A smaller top is
+      popped, and the rock goes on to the next top. An equal top is popped, and the rock is
+      destroyed too. A larger top destroys the rock. A rock that is not destroyed is pushed.
+      `stack[-1]` reads the top without removing it, and `and` stops at its first false test, so
+      `stack[-1]` is read only when `stack` is not empty. `rock`
+      marks the rock arriving, and `top` the rock on top of `stack`. Predict each step.
+    code: |
+      stack = []
+      for rock in rocks:
+          alive = True
+          while alive and rock < 0 and stack and stack[-1] > 0:
+              if stack[-1] < abs(rock):
+                  stack.pop()
+              elif stack[-1] == abs(rock):
+                  stack.pop()
+                  alive = False
+              else:
+                  alive = False
+          if alive:
+              stack.append(rock)
+      print(stack)
+    sequence:
+      kind: array
+      name: rocks
+      cells: [4, 2, -3, 5, -5, -6, 1]
+    start:
+      - { name: rock, at: 2 }
+      - { name: top, at: 1 }
+    steps:
+      - line: 4
+        ask: The -3 at index 2 arrives with `stack` at `[4, 2]`. Which rock is on top once it is handled? Tap it.
+        pointer: top
+        correct: 0
+        explanation: >-
+          The 2 is smaller than 3, so it is popped, and the -3 goes on to the 4. The 4 is larger,
+          so the -3 is destroyed and never pushed, and the 4 is left on top.
+        misses:
+          - index: 1
+            explanation: >-
+              The 2 is smaller than the -3's size, 3, so it is popped. A smaller top never stops a
+              rock.
+          - index: 2
+            explanation: >-
+              The -3 reaches the 4, which is larger than 3, so the -3 is destroyed. Only a rock
+              that survives every top is pushed.
+        elsewhere: The -3 pops the 2 and is destroyed by the 4, so the 4 is on top.
+        also:
+          - { name: rock, at: 4 }
+      - line: 4
+        ask: The 5 at index 3 is pushed. The -5 at index 4 arrives. What is `stack` once the -5 is handled?
+        options:
+          - id: both-gone
+            text: '`[4]`'
+            explanation: >-
+              The top, 5, equals the -5's size, so the 5 is popped and the -5 is destroyed too.
+              That leaves `[4]`, and the 4 is never compared, since the loop stops once the rock
+              is gone.
+          - id: rock-lives
+            text: '`[4, -5]`'
+            explanation: >-
+              An equal top is popped, but the rock is destroyed with it, so it is never pushed.
+              Only a smaller top lets the rock go on.
+          - id: top-stays
+            text: '`[4, 5]`'
+            explanation: >-
+              That is what a larger top does. The 5 is equal in size to the -5, and an equal top is
+              popped as well.
+        correct: both-gone
+        also:
+          - { name: rock, at: 5 }
+      - line: 4
+        ask: The -6 at index 5 arrives with `stack` at `[4]`. What is `stack` once it is handled?
+        options:
+          - id: pushed
+            text: '`[-6]`'
+            explanation: >-
+              The 4 is smaller than 6, so it is popped. `stack` is then empty, so the loop stops
+              with the -6 still alive, and it is pushed.
+          - id: empty
+            text: '`[]`'
+            explanation: >-
+              The -6 is destroyed only by an equal or larger top. Popping every top leaves it
+              alive, so the last `if` pushes it.
+          - id: signed
+            text: '`[4]`'
+            explanation: >-
+              This compares the 4 with -6 itself. The code compares it with `abs(rock)`, the size
+              6, and 4 is smaller, so the 4 is popped.
+        correct: pushed
+        also:
+          - { name: rock, at: 6 }
+          - { name: top, at: 5 }
+      - line: 14
+        ask: The 1 at index 6 is handled last. What does the last line print?
+        options:
+          - id: apart
+            text: '`[-6, 1]`'
+            explanation: >-
+              The 1 moves right, so `rock < 0` is false and the loop never runs. The -6 moves left,
+              away from it, and both stay, listed left to right.
+          - id: collide
+            text: '`[-6]`'
+            explanation: >-
+              Only a left-moving rock with a right-moving top collides. Here the newcomer moves
+              right and the -6 moves left, away from it, so neither is destroyed.
+          - id: top-first
+            text: '`[1, -6]`'
+            explanation: >-
+              Both rocks stay, but `print` lists `stack` from index 0, the bottom, so the -6 pushed
+              earlier comes first.
+        correct: apart
+        also:
+          - { name: top, at: 6 }
 
   - id: leftover-opener
     heading: Which string slips through?

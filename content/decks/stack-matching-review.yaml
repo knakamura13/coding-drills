@@ -370,6 +370,166 @@ questions:
             explanation: The `)` at index 2 already popped this `(`.
         elsewhere: '`top` names an opener. The `)` at index 4 pops the latest unmatched one, the `[` at index 3.'
 
+  - id: rpn-operand-order-review
+    heading: What does this return?
+    tags: [stack, python]
+    prompt: |-
+      In reverse Polish notation each operator comes after its two numbers, so `7 3 -` means
+      `7 - 3`. `rpn` uses a list as a stack, and `//` divides and rounds down. Every division in
+      this call comes out exact.
+
+      ```python
+      def rpn(tokens):
+          stack = []
+          for t in tokens:
+              if t in ('+', '-', '*', '/'):
+                  b = stack.pop()
+                  a = stack.pop()
+                  if t == '+':
+                      stack.append(a + b)
+                  elif t == '-':
+                      stack.append(a - b)
+                  elif t == '*':
+                      stack.append(a * b)
+                  else:
+                      stack.append(a // b)
+              else:
+                  stack.append(int(t))
+          return stack.pop()
+      ```
+
+      What does `rpn(['8', '4', '2', '/', '-'])` return?
+    options:
+      - id: right-order
+        text: "`6`"
+        explanation: >-
+          The `/` pops 2 into `b` and 4 into `a`, and pushes `4 // 2`, which is 2. The `-` then
+          pops that 2 into `b` and 8 into `a`, and pushes `8 - 2`, which is 6.
+      - id: swapped
+        text: "`-8`"
+        explanation: >-
+          This computes `b // a` and `b - a`: `2 // 4` is 0, and `0 - 8` is -8. The number popped
+          first went on the stack last, so it is the one written second, the right-hand number.
+      - id: oldest-two
+        text: "`0`"
+        explanation: >-
+          This takes the two oldest numbers each time: `8 // 4` is 2, and then `2 - 2` is 0. `pop()`
+          takes from the end of the list, so an operator uses the two numbers pushed last.
+    correct: right-order
+    followUps:
+      swapped:
+        prompt: "The `/` arrives with `stack` at `[8, 4, 2]`. Which number does `b = stack.pop()` take?"
+        options:
+          - id: two
+            text: The 2, which is the right-hand number of `4 2 /`
+          - id: four
+            text: The 4, which is the left-hand number of `4 2 /`
+          - id: eight
+            text: The 8, at the bottom of the stack
+        correct: two
+        explanation: >-
+          The first pop takes the newest item, here the 2, written just before the `/`. That makes
+          it the divisor, so the line computes `4 // 2`.
+      oldest-two:
+        prompt: "The `/` arrives with `stack` at `[8, 4, 2]`. Which two numbers does it combine?"
+        options:
+          - id: top-two
+            text: The 4 and the 2, the two on top
+          - id: bottom-two
+            text: The 8 and the 4, the two pushed first
+          - id: ends
+            text: The 8 and the 2, the two ends
+        correct: top-two
+        explanation: >-
+          Each `pop()` removes the end of the list, which is the top. An operator applies to the
+          two newest values on the stack, whether each is a number read or a result pushed.
+
+  - id: simplify-path-review
+    heading: What does this return?
+    tags: [stack, python]
+    prompt: |-
+      A folder path is simplified piece by piece: `..` goes up one folder, and `.` or an empty
+      piece stays put. `path.split('/')` cuts a string at every `/`, so a slash at the start or two
+      in a row give an empty piece, `''`, which counts as false. `'/'.join(stack)` glues the items
+      with a `/` between each pair.
+
+      ```python
+      def simplify(path):
+          stack = []
+          for part in path.split('/'):
+              if part == '..':
+                  if stack:
+                      stack.pop()
+              elif part and part != '.':
+                  stack.append(part)
+          return '/' + '/'.join(stack)
+      ```
+
+      What does `simplify('/../x//y/./../z')` return?
+    options:
+      - id: up-from-y
+        text: "`'/x/z'`"
+        explanation: >-
+          The pieces are `''`, `..`, `x`, `''`, `y`, `.`, `..` and `z`. The first `..` finds
+          `stack` empty and pops nothing. `x` and `y` are pushed, the last `..` pops `y`, and `z`
+          is pushed, so `stack` ends as `['x', 'z']`.
+      - id: pops-oldest
+        text: "`'/y/z'`"
+        explanation: >-
+          This removes `x`, the first folder pushed. `pop()` removes the end of the list, the
+          folder entered last, so going up from `y` leaves `x` in place.
+      - id: ignores-up
+        text: "`'/x/y/z'`"
+        explanation: >-
+          This treats `..` like `.`. The code has its own branch for `..`, and there it pops the
+          top of `stack` when `stack` has an item.
+      - id: raises
+        text: It raises `IndexError` at the first `..`
+        explanation: >-
+          A pop on an empty list would raise, but this pop runs only under `if stack:`. When the
+          first `..` arrives, `stack` is empty, so nothing happens.
+    correct: up-from-y
+    followUps:
+      pops-oldest:
+        prompt: "The last `..` arrives with `stack` at `['x', 'y']`. Which folder does `stack.pop()` remove?"
+        options:
+          - id: newest
+            text: "`'y'`, at the end of the list"
+          - id: oldest
+            text: "`'x'`, at the start of the list"
+          - id: both
+            text: Both of them
+        correct: newest
+        explanation: >-
+          `pop()` with no argument takes the last item, the folder pushed most recently. Going up
+          leaves the folder you are in, which is always the newest one on the stack.
+      ignores-up:
+        prompt: What does a `..` piece do to `stack`?
+        options:
+          - id: pops
+            text: It removes the top folder, if there is one
+          - id: nothing
+            text: Nothing, just as `.` does
+          - id: pushes
+            text: It pushes `..` as a folder name
+        correct: pops
+        explanation: >-
+          The first branch catches `..` before the push branch is reached. It goes up one folder
+          by popping, unless `stack` is already empty.
+      raises:
+        prompt: The first `..` arrives with `stack` empty. What does the code do?
+        options:
+          - id: skips
+            text: "`if stack:` is false, so nothing is popped"
+          - id: errors
+            text: "`stack.pop()` raises `IndexError`"
+          - id: pushes
+            text: It pushes the `..` instead
+        correct: skips
+        explanation: >-
+          The test guards the pop, as the empty-stack test guards a bracket matcher. Going up from
+          the root, `/`, stays at the root.
+
   - id: leftover-review
     heading: What is left?
     tags: [stack, python]
