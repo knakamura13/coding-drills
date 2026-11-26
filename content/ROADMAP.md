@@ -189,9 +189,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | done |
 | Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | done |
 | Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | done |
-| Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | done |
-| Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | done |
-| Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | done |
+| Problem-solving patterns #14 | DP: saving space (teaching levels) | `dp-storage` | done |
+| Problem-solving patterns #14 | DP: saving space (review variants) | `dp-storage-review` | done |
+| Problem-solving patterns #14 | DP: saving space (checkpoint) | `dp-storage-checkpoint` | done |
 | Problem-solving patterns #14 | Dynamic programming: grids (teaching levels) | `grid-tables` | done |
 | Problem-solving patterns #14 | Dynamic programming: grids (review variants) | `grid-tables-review` | done |
 | Problem-solving patterns #14 | Dynamic programming: grids (checkpoint) | `grid-tables-checkpoint` | done |
@@ -201,9 +201,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Dynamic programming: 1D tables (teaching levels) | `one-dimensional-tables` | done |
 | Problem-solving patterns #14 | Dynamic programming: 1D tables (review variants) | `one-dimensional-tables-review` | done |
 | Problem-solving patterns #14 | Dynamic programming: 1D tables (checkpoint) | `one-dimensional-tables-checkpoint` | done |
-| Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | done |
-| Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | done |
-| Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (teaching levels) | `subsequence-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (review variants) | `subsequence-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (checkpoint) | `subsequence-tables-checkpoint` | done |
 | Problem-solving patterns #14 | Backtracking: subsets and orderings: teaching levels | `enumerating-choices` | done |
 | Problem-solving patterns #14 | Backtracking: subsets and orderings: review variants | `enumerating-choices-review` | done |
 | Problem-solving patterns #14 | Backtracking: subsets and orderings: checkpoint | `enumerating-choices-checkpoint` | done |

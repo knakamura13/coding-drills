@@ -1,6 +1,6 @@
 id: dp-storage-checkpoint
-title: "DP storage: checkpoint"
-description: Choose between memoization, a table and rolling variables, and repair a one-row update. Each item combines the DP storage skills.
+title: "DP: saving space (checkpoint)"
+description: Choose between memoization, a table and rolling variables, weigh what one row costs, and repair a one-row update. Each item combines the skills of saving space.
 heading: Which one is right?
 
 questions:
@@ -33,7 +33,7 @@ questions:
         text: Two rolling variables, since each value reads only two others
         explanation: >-
           Rolling variables need reads a fixed distance back. `n // 2` and `n // 3` are far from
-          `n`, and the distance grows with `n`, so no fixed window holds them.
+          `n`, and the distance grows with `n`, so no fixed number of recent entries holds them.
       - id: neither
         text: Neither works well, since the recursion is about `n` calls deep before it returns
         explanation: >-
@@ -69,8 +69,8 @@ questions:
             text: One position, since it is the previous call
         correct: half
         explanation: >-
-          A rolling window keeps a fixed number of recent entries. When the look-back grows with
-          `n`, no fixed window covers it.
+          Rolling variables keep a fixed number of recent entries. When the look-back grows with
+          `n`, no fixed number of entries covers it.
       neither:
         prompt: How deep is the longest chain of calls from `f(10**6)`?
         options:
@@ -154,7 +154,7 @@ questions:
         text: A loop that keeps two values, `dp[i - 1]` and `dp[i - 3]`, since those are read
         explanation: >-
           `dp[i - 2]` is not read now, but it is the next step's `dp[i - 3]`. Dropping it loses a
-          value that is still ahead, so the window must hold three.
+          value that is still ahead, so the loop must keep three.
       - id: memo
         text: Memoized recursion, in O(n) time, since the cache keeps only what is needed
         explanation: >-
@@ -165,7 +165,7 @@ questions:
         text: The full table, since `dp[i - 3]` skips over `dp[i - 2]`
         explanation: >-
           A skipped index does not force a full table. Nothing older than `i - 3` is read again, so
-          a three-value window is enough.
+          keeping three values is enough.
     correct: three-vars
     followUps:
       two-vars:
@@ -297,3 +297,222 @@ questions:
         explanation: >-
           From right to left, every read at `c - 1` and `c` happens before that index is
           rewritten. One list holds both rows correctly at the moment each is read.
+
+  - id: storage-exam-coin-cache-depth
+    heading: What is the cost?
+    tags: [dp, recursion, complexity]
+    prompt: >-
+      The fewest coins that pay amount `n`, with `k` coin values, is computed two ways: a
+      recursion with `@cache` on `fewest(a)`, which tries every coin as the last one, and a loop
+      that fills a table `fewest[0]` to `fewest[n]` from 0 up. The smallest coin is 1 and the
+      recursion tries it first. `k` may grow with the input, and Python's default limit of 1000
+      live calls applies. Which statement is correct?
+    options:
+      - id: exponential-memo
+        text: The cached recursion is exponential in `n`, since every call branches `k` ways
+        explanation: >-
+          The cache runs each amount's body once, so the branching happens once per amount, not
+          once per route. Without the cache, coins 1, 7 and 10 already make 4,409 calls for
+          `n = 30`. With it, `n + 1` amounts each try `k` coins.
+      - id: linear-only
+        text: Both take O(n) time, since each of the `n + 1` amounts is computed once
+        explanation: >-
+          Computing one amount tries every coin as its last one, which is `k` steps, so the time
+          is O(n·k). With coins 1, 7 and 10 and `n = 300`, the table makes 900 coin tries.
+      - id: no-depth-limit
+        text: Both take O(n·k) time, and neither nears the limit, since the cache cuts calls short
+        explanation: >-
+          Nothing is cached until a call returns, and coin 1 is tried first, so the first chain
+          goes `n`, `n - 1`, and so on down to 0 before any call returns. With coins 1, 7 and 10,
+          `n = 1000` raises `RecursionError`, while the table finishes.
+      - id: both-nk-limit
+        text: Both take O(n·k) time; only the recursion raises `RecursionError` once `n` nears 1000
+        explanation: >-
+          There are `n + 1` amounts, each computed once with `k` coin tries, in either version.
+          The loop makes no calls. The recursion's first chain has about `n` live calls before
+          anything returns, so with coins 1, 7 and 10 it runs at `n = 998` and raises
+          `RecursionError` at `n = 1000`.
+    correct: both-nk-limit
+    followUps:
+      exponential-memo:
+        prompt: With `@cache`, how many times does the body of `fewest(20)` run?
+        options:
+          - { id: once, text: "Once; every later call with 20 returns the stored value" }
+          - { id: per-route, text: "Once for every route of coins that reaches 20" }
+          - { id: k-times, text: "`k` times, once from each coin" }
+        correct: once
+        explanation: >-
+          A repeated amount is a lookup. The work is the number of distinct amounts times the
+          coins tried for each, `n + 1` times `k`.
+      linear-only:
+        prompt: With coins 1, 7 and 10 and `n = 300`, how many coin tries does the table make?
+        options:
+          - { id: nine-hundred, text: "900, three tries for each of the 300 amounts" }
+          - { id: three-hundred, text: "300, one for each amount" }
+          - { id: three-oh-three, text: "303, the 300 amounts plus the 3 coins" }
+        correct: nine-hundred
+        explanation: >-
+          Each amount tries every coin, so the work is amounts times coins. `k` counts as a
+          constant only when it cannot grow, and here it can.
+      no-depth-limit:
+        prompt: When the cached `fewest(n)` starts, how many calls are live before the first one returns?
+        options:
+          - { id: about-n, text: "About `n`, since coin 1 sends each call to `fewest(a - 1)` first" }
+          - { id: two, text: "Two, since the cache answers the rest" }
+          - { id: k, text: "`k`, one for each coin" }
+        correct: about-n
+        explanation: >-
+          A value is stored only when its call returns, so the first chain runs from `n` down to
+          0 with nothing cached. That chain is what passes the limit of 1000.
+
+  - id: storage-exam-row-cost
+    heading: What does one row cost?
+    tags: [dp, grid, complexity]
+    prompt: |-
+      The cheapest walk on a grid of `R` rows and `C` columns moves right or down and pays for
+      every cell it stands on. One list `row` of `C` entries replaces the `R x C` table.
+
+      ```python
+      row = [0] * C
+      row[0] = grid[0][0]
+      for c in range(1, C):
+          row[c] = row[c - 1] + grid[0][c]
+      for r in range(1, R):
+          row[0] += grid[r][0]
+          for c in range(1, C):
+              row[c] = grid[r][c] + min(row[c], row[c - 1])
+      return row[C - 1]
+      ```
+
+      Which statement gives its time and its extra space?
+    options:
+      - id: rc-and-c
+        text: O(R·C) time and O(C) extra space
+        explanation: >-
+          Every cell of the grid still gets one total, `R` rows of `C` entries, so the time is
+          O(R·C). Only `row` is kept, `C` entries, so the extra space drops from O(R·C) to O(C).
+      - id: c-and-c
+        text: O(C) time and O(C) extra space, since the list has only `C` entries
+        explanation: >-
+          The list is overwritten once per row of the grid, and each write is a computed total.
+          Keeping fewer entries saves memory, not work, so the time stays O(R·C).
+      - id: rc-and-one
+        text: O(R·C) time and O(1) extra space, since each total reads only two entries
+        explanation: >-
+          Each total reads two entries, but the next row reads every entry of this one, the cell
+          above for each column. So all `C` entries stay, O(C).
+      - id: rc-and-rc
+        text: O(R·C) time and O(R·C) extra space, since every cell gets a total
+        explanation: >-
+          Every cell gets a total, but each one overwrites the total of the cell above it, which
+          no later step reads. The list never holds more than `C` entries.
+    correct: rc-and-c
+    followUps:
+      c-and-c:
+        prompt: Over the whole run, how many totals does the loop compute?
+        options:
+          - { id: rc, text: "R·C, one for each cell of the grid" }
+          - { id: c, text: "C, one for each entry of the list" }
+          - { id: r-plus-c, text: "R + C, one for each row and column" }
+        correct: rc
+        explanation: >-
+          Each row pass rewrites all `C` entries, and there are `R` rows. Time counts every write;
+          space counts what is held at once.
+      rc-and-one:
+        prompt: While row `r` is filled, which entries of `row` will a later step still read?
+        options:
+          - { id: all, text: "All `C` of them, as the cells above the next row" }
+          - { id: two, text: "Only `row[c]` and `row[c - 1]`" }
+          - { id: none, text: "None, since each row is finished before the next" }
+        correct: all
+        explanation: >-
+          The next row reads the cell above at every column, so no entry can be dropped. The two
+          reads for one cell move along the whole row.
+      rc-and-rc:
+        prompt: When `row[c]` is rewritten for row `r`, which old value does it lose?
+        options:
+          - { id: above, text: "The total for `(r - 1, c)`, which no later step reads" }
+          - { id: left, text: "The total for `(r, c - 1)`, which the next column needs" }
+          - { id: start, text: "The total for the start cell" }
+        correct: above
+        explanation: >-
+          The cell above is read for the last time in this very line. Overwriting it loses
+          nothing, so one row of totals is all the loop holds.
+
+  - id: storage-exam-debug-blocked-cell
+    heading: Which call goes wrong?
+    tags: [dp, grid, python]
+    prompt: |-
+      A suggested solution counts the paths from the top-left cell to the bottom-right cell that
+      move right or down and never enter a cell marked `#`. One list `row` replaces the table, and
+      each pass rewrites it, left to right, into the next row.
+
+      ```python
+      def paths(grid):
+          C = len(grid[0])
+          row = [1] + [0] * (C - 1)
+          for r in range(len(grid)):
+              for c in range(C):
+                  if grid[r][c] == '#':
+                      continue
+                  if c > 0:
+                      row[c] += row[c - 1]
+          return row[C - 1]
+      ```
+
+      Which call returns a wrong count?
+    options:
+      - id: under-open
+        text: '`paths(["...", ".#.", "..."])`'
+        explanation: >-
+          It returns 4, but the answer is 2. On row 1 the `#` is skipped, so `row[1]` keeps the 1
+          it held on row 0, where a blocked cell should hold 0. The cells to its right and below
+          then add paths through the block.
+      - id: under-block
+        text: '`paths([".#..", ".#..", "...."])`'
+        explanation: >-
+          It returns 1, which is right. The `#` on row 1 is skipped, but `row[1]` still holds 0
+          from the `#` above it, which is what a blocked cell needs.
+      - id: top-row
+        text: '`paths(["..#.", "....", "...."])`'
+        explanation: >-
+          It returns 7, which is right. The only `#` is on row 0, where `row[2]` starts at 0 and
+          stays 0 when the cell is skipped.
+      - id: under-unreached
+        text: '`paths([".#..", "..#.", "...."])`'
+        explanation: >-
+          It returns 2, which is right. No path reaches `(0, 2)`, so `row[2]` holds 0 when the `#`
+          below it is skipped.
+    correct: under-open
+    followUps:
+      under-block:
+        prompt: When the loop skips a `#`, what does that entry of `row` hold afterward?
+        options:
+          - { id: above, text: "The count for the cell above, left over from the last pass" }
+          - { id: zero, text: "0, since a skipped entry is cleared" }
+          - { id: left, text: "The count for the cell to the left" }
+        correct: above
+        explanation: >-
+          Skipping writes nothing, so the entry keeps the row above's count. That is harmless only
+          when the cell above holds 0, as it does under another `#`.
+      top-row:
+        prompt: A skipped `#` keeps the row above's count. Which skipped cells does that make wrong?
+        options:
+          - { id: reached-above, text: "Those with paths into the cell above them" }
+          - { id: every, text: "Every `#`, wherever it is" }
+          - { id: last-row, text: "Only a `#` on the last row" }
+        correct: reached-above
+        explanation: >-
+          On row 0 every entry after the first starts at 0, and under a cell no path reaches the
+          entry is 0 too. Apart from a blocked start, a `#` goes wrong only under a cell with a
+          count above 0.
+      under-unreached:
+        prompt: "In `[\".#..\", \"..#.\", \"....\"]`, how many paths reach `(0, 2)`?"
+        options:
+          - { id: zero, text: "None, since the `#` at `(0, 1)` blocks the only way along row 0" }
+          - { id: one, text: "One, straight along row 0" }
+          - { id: two, text: "Two, from the left and from above" }
+        correct: zero
+        explanation: >-
+          A cell on row 0 is reached only from its left. The `#` at `(0, 1)` cuts that off, so
+          `row[2]` is 0 when the `#` at `(1, 2)` is skipped, and the count stays right.
