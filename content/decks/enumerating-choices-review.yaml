@@ -207,6 +207,79 @@ questions:
           That counts 4 strings per first letter. Each first letter leads 6, one per ordering of
           the other three, so d first appears at the 19th string.
 
+  - id: bracket-count-review
+    heading: How many strings?
+    tags: [backtracking, recursion]
+    prompt: |-
+      This search builds strings of `n = 3` pairs of brackets, starting from `build(0, 0)`.
+      `opens` and `closes` count the `(` and `)` in `path`. It adds `(` while `opens < n` and `)`
+      while `closes < opens`, and it records `path` once it holds `2 * n` brackets.
+
+      ```python
+      def build(opens, closes):
+          if len(path) == 2 * n:
+              out.append("".join(path))
+              return
+          if opens < n:
+              path.append("(")
+              build(opens + 1, closes)
+              path.pop()
+          if closes < opens:
+              path.append(")")
+              build(opens, closes + 1)
+              path.pop()
+      ```
+
+      How many strings does the search record?
+    options:
+      - id: five
+        text: "5"
+        explanation: >-
+          The strings are `((()))`, `(()())`, `(())()`, `()(())` and `()()()`. Each holds three
+          `(` and three `)`, and no string closes a bracket before it has opened one, since `)` is
+          added only while `closes < opens`.
+      - id: twenty
+        text: "20"
+        explanation: >-
+          20 counts every way to place three `(` and three `)` in 6 spots. The `closes < opens`
+          test cuts each string that closes more than it has opened at some point, such as
+          `())(()`, so 5 remain.
+      - id: sixty-four
+        text: "64"
+        explanation: >-
+          64 is 2 × 2 × 2 × 2 × 2 × 2, as if every call could add either bracket. A `)` needs an
+          open `(` to close, so the first call has one choice, and no string holds more than three
+          `(`.
+    correct: five
+    followUps:
+      twenty:
+        prompt: With `path == ['(', ')']`, can the next call add `)`?
+        options:
+          - id: no
+            text: No, `closes < opens` is `1 < 1`, which is false
+          - id: yes-count
+            text: Yes, since fewer than three `)` are in `path`
+          - id: yes-any
+            text: Yes, any bracket can follow a closed pair
+        correct: no
+        explanation: >-
+          A `)` is added only while some `(` is still open. That cuts every string that closes
+          more than it has opened at some point, which leaves 5 of the 20 ways to place the
+          brackets.
+      sixty-four:
+        prompt: Which brackets can the first call, `build(0, 0)`, add?
+        options:
+          - id: open
+            text: Only `(`, since `closes < opens` is `0 < 0`
+          - id: both
+            text: Both, one call for each
+          - id: close
+            text: Only `)`, since nothing is open yet
+        correct: open
+        explanation: >-
+          Each `if` adds its bracket only while its test holds. A call branches two ways only when
+          both tests hold, so the search reaches 5 leaves, not 64.
+
   - id: three-fours-review
     heading: What does the search return?
     tags: [backtracking, sorting]
@@ -372,104 +445,6 @@ questions:
         explanation: >-
           The skip needs `nums[2] == nums[1]`, and 5 is not 3. Every loop that reaches index 2
           takes it.
-
-  - id: ordering-skip-trace-review
-    format: step-trace
-    heading: Trace the skips
-    tags: [backtracking, sorting]
-    prompt: >-
-      This search records each distinct ordering of sorted `nums = [3, 3, 7]` once. The top call
-      has taken index 0, so `path == [3]` and `used == [True, False, False]`. `i` marks the item
-      each step takes. Predict each step before it is shown.
-    code: |
-      def explore():
-          if len(path) == len(nums):
-              out.append(path[:])
-              return
-          for i in range(len(nums)):
-              if used[i]:
-                  continue
-              if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
-                  continue
-              used[i] = True
-              path.append(nums[i])
-              explore()
-              path.pop()
-              used[i] = False
-    sequence:
-      kind: array
-      name: nums
-      cells: [3, 3, 7]
-    start:
-      - { name: i, at: 0 }
-    steps:
-      - line: 5
-        ask: The call one level down runs its loop. Tap the first item it takes.
-        pointer: i
-        correct: 1
-        explanation: >-
-          Index 0 is used, so it is skipped. Index 1 equals index 0, but `used[0]` is True, so the
-          first 3 is in `path` and this 3 is the next position, not a repeat. `path` becomes
-          `[3, 3]`.
-        misses:
-          - index: 0
-            explanation: >-
-              `used[0]` is True, since that 3 is already in `path`. The first `continue` skips it.
-          - index: 2
-            explanation: >-
-              The second 3 is not skipped here. Its left neighbour is in `path`, so `not used[0]`
-              is False and the test lets it through.
-        elsewhere: The first unused item that passes the skip test is index 1.
-      - line: 14
-        ask: >-
-          That branch records `[3, 3, 7]`, then `[3, 7, 3]`. Back in the top call, `used[0]` is
-          False again. Tap the next item the top loop takes.
-        pointer: i
-        correct: 2
-        explanation: >-
-          Index 1 equals index 0 and `used[0]` is now False, so it is skipped: starting with that 3
-          would repeat both orderings just recorded. The loop takes the 7.
-        misses:
-          - index: 1
-            explanation: >-
-              This 3 is a sibling of the 3 the top loop just finished. `not used[0]` is True, so
-              the test skips it to avoid recording `[3, 3, 7]` and `[3, 7, 3]` again.
-          - index: 0
-            explanation: >-
-              The top loop has finished index 0 and moves forward. It never goes back.
-        elsewhere: The top loop skips index 1 and takes index 2.
-      - line: 5
-        ask: "`path == [7]`. Tap the first item the next level takes."
-        pointer: i
-        correct: 0
-        explanation: >-
-          Index 0 is unused and has no left neighbour, so it is taken. `path` becomes `[7, 3]`.
-        misses:
-          - index: 1
-            explanation: >-
-              Index 1 is skipped while index 0 is unused, since `not used[0]` is True. The loop
-              takes index 0 first.
-          - index: 2
-            explanation: >-
-              `used[2]` is True, since the 7 is already in `path`.
-        elsewhere: The first item tried is index 0, and nothing skips it.
-      - line: 3
-        ask: How many orderings does the search record in all?
-        options:
-          - id: three
-            text: "3"
-            explanation: >-
-              `[3, 3, 7]`, `[3, 7, 3]` and `[7, 3, 3]`: one for each place the 7 can go.
-          - id: six
-            text: "6"
-            explanation: >-
-              6 treats the two 3s as different items. The skip test drops the 3 orderings that
-              only swap them.
-          - id: two
-            text: "2"
-            explanation: >-
-              The 7 can go first, second or last, and each gives a different ordering, so 3.
-        correct: three
 
   - id: ones-and-twos-review
     heading: How many lists?
@@ -745,3 +720,101 @@ questions:
               4 fits with 2 to spare. The loop takes it, and the call below breaks on 6 > 2, which
               ends only the call below's loop.
         elsewhere: The break runs at the first weight greater than `left`, which is 6.
+
+  - id: ordering-skip-trace-review
+    format: step-trace
+    heading: Trace the skips
+    tags: [backtracking, sorting]
+    prompt: >-
+      This search records each distinct ordering of sorted `nums = [3, 3, 7]` once. The top call
+      has taken index 0, so `path == [3]` and `used == [True, False, False]`. `i` marks the item
+      each step takes. Predict each step before it is shown.
+    code: |
+      def explore():
+          if len(path) == len(nums):
+              out.append(path[:])
+              return
+          for i in range(len(nums)):
+              if used[i]:
+                  continue
+              if i > 0 and nums[i] == nums[i - 1] and not used[i - 1]:
+                  continue
+              used[i] = True
+              path.append(nums[i])
+              explore()
+              path.pop()
+              used[i] = False
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 3, 7]
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 5
+        ask: The call one level down runs its loop. Tap the first item it takes.
+        pointer: i
+        correct: 1
+        explanation: >-
+          Index 0 is used, so it is skipped. Index 1 equals index 0, but `used[0]` is True, so the
+          first 3 is in `path` and this 3 is the next position, not a repeat. `path` becomes
+          `[3, 3]`.
+        misses:
+          - index: 0
+            explanation: >-
+              `used[0]` is True, since that 3 is already in `path`. The first `continue` skips it.
+          - index: 2
+            explanation: >-
+              The second 3 is not skipped here. Its left neighbour is in `path`, so `not used[0]`
+              is False and the test lets it through.
+        elsewhere: The first unused item that passes the skip test is index 1.
+      - line: 14
+        ask: >-
+          That branch records `[3, 3, 7]`, then `[3, 7, 3]`. Back in the top call, `used[0]` is
+          False again. Tap the next item the top loop takes.
+        pointer: i
+        correct: 2
+        explanation: >-
+          Index 1 equals index 0 and `used[0]` is now False, so it is skipped: starting with that 3
+          would repeat both orderings just recorded. The loop takes the 7.
+        misses:
+          - index: 1
+            explanation: >-
+              This 3 is a sibling of the 3 the top loop just finished. `not used[0]` is True, so
+              the test skips it to avoid recording `[3, 3, 7]` and `[3, 7, 3]` again.
+          - index: 0
+            explanation: >-
+              The top loop has finished index 0 and moves forward. It never goes back.
+        elsewhere: The top loop skips index 1 and takes index 2.
+      - line: 5
+        ask: "`path == [7]`. Tap the first item the next level takes."
+        pointer: i
+        correct: 0
+        explanation: >-
+          Index 0 is unused and has no left neighbour, so it is taken. `path` becomes `[7, 3]`.
+        misses:
+          - index: 1
+            explanation: >-
+              Index 1 is skipped while index 0 is unused, since `not used[0]` is True. The loop
+              takes index 0 first.
+          - index: 2
+            explanation: >-
+              `used[2]` is True, since the 7 is already in `path`.
+        elsewhere: The first item tried is index 0, and nothing skips it.
+      - line: 3
+        ask: How many orderings does the search record in all?
+        options:
+          - id: three
+            text: "3"
+            explanation: >-
+              `[3, 3, 7]`, `[3, 7, 3]` and `[7, 3, 3]`: one for each place the 7 can go.
+          - id: six
+            text: "6"
+            explanation: >-
+              6 treats the two 3s as different items. The skip test drops the 3 orderings that
+              only swap them.
+          - id: two
+            text: "2"
+            explanation: >-
+              The 7 can go first, second or last, and each gives a different ordering, so 3.
+        correct: three

@@ -106,6 +106,139 @@ questions:
               After one 1, 2 is still owed, so `while amount > 0` runs two more passes.
         correct: six
 
+  - id: greedy-farthest-reach
+    format: tap-cell
+    heading: Tap where it stops
+    tags: [greedy, arrays-strings]
+    workedExample: |-
+      Consider `nums = [1, 2, 0, 0, 1]`, where `nums[i]` is the longest jump from index `i`. The
+      loop keeps `reach`, the farthest index that any index so far can jump to, and stops at the
+      first index past `reach`.
+
+      1. Index 0 jumps up to `0 + 1 = 1`, so `reach` is 1. Index 1 is not past it, and it jumps up
+         to `1 + 2 = 3`, so `reach` grows to 3.
+      2. Indices 2 and 3 hold 0, so they jump only as far as themselves, 2 and 3. Neither is past
+         3, so `reach` stays 3.
+      3. Index 4 is past `reach`, since `4 > 3`. No index before it jumps that far, so the loop
+         stops there and returns 4.
+    prompt: >-
+      Each cell holds the longest jump from its index: from index `i` you can land on any index
+      from `i + 1` to `i + nums[i]`, and you start at index 0. The greedy rule keeps `reach`, the
+      farthest index that any index visited so far can jump to. An index past `reach` cannot be
+      reached. Tap the index the call returns.
+    code: |
+      def first_stuck(nums):
+          reach = 0
+          for i in range(len(nums)):
+              if i > reach:
+                  return i
+              reach = max(reach, i + nums[i])
+          return -1   # every index can be reached
+
+      first_stuck([2, 3, 0, 1, 0, 0, 2, 1])
+    sequence: { kind: array, name: nums, cells: [2, 3, 0, 1, 0, 0, 2, 1] }
+    correct: 5
+    explanation: >-
+      Index 0 sets `reach` to 2, and index 1 raises it to `1 + 3 = 4`. Indices 2, 3 and 4 jump to
+      2, 4 and 4, none past 4. So at index 5, `5 > 4`, and the call returns 5. The 2 at index 6
+      could jump on, but nothing lands on it.
+    misses:
+      - index: 0
+        explanation: Index 0 is the start, and `0 > 0` is false. It sets `reach` to 2.
+      - index: 1
+        explanation: >-
+          Index 0 jumps up to 2, so index 1 is within `reach`. It raises `reach` to `1 + 3 = 4`.
+      - index: 2
+        explanation: >-
+          A full jump from index 0 lands on this 0 and stalls, but the rule keeps the best jump of
+          every index so far, not one route. Index 1 already jumps up to 4.
+      - index: 3
+        explanation: >-
+          Index 0 alone reaches only index 2, but index 1 jumps up to `1 + 3 = 4`, so `reach` is
+          4 when the loop gets here.
+      - index: 4
+        explanation: >-
+          Index 1 jumps up to `1 + 3 = 4`, so index 4 can be reached. Its 0 adds nothing, which is
+          why the index after it is the first past `reach`.
+      - index: 6
+        explanation: >-
+          Index 6 is past `reach` too, but the loop returns at the first index past it, which
+          comes one cell earlier.
+      - index: 7
+        explanation: >-
+          The loop never gets this far. It returns at the first index past `reach`, two cells
+          earlier.
+
+  - id: greedy-restart-station
+    format: tap-cell
+    heading: Tap the start
+    tags: [greedy, arrays-strings]
+    workedExample: |-
+      Consider `net = [-2, 3, -4, 4]` in a circle. A start fails if the tank goes below 0 on the way
+      round, and the values add up to 1, so some start works.
+
+      1. From station 0 the tank is -2 at once, so the loop restarts at station 1 with an empty
+         tank.
+      2. Station 1 leaves 3, and station 2 brings it to `3 - 4 = -1`. The tank held at least 0 on
+         arrival at each station in between, so starting at one of them with 0 is no better. The
+         loop restarts after the failing station, at 3.
+      3. Station 3 leaves 4, and the loop ends with `start` at 3. Going round from 3 the tank
+         holds 4, 2, 5 and 1, never below 0.
+    prompt: >-
+      Stations sit in a circle. `net[i]` is the gas station `i` gives minus the gas the drive to the
+      next station burns, and the last station's drive leads back to station 0. A car starts at
+      one station with an empty tank, and the tank must never fall below 0. The values add up to
+      1, which is at least 0, so some start goes all the way round. When the tank goes negative,
+      the loop restarts after that station. Tap the station the call returns.
+    code: |
+      def pick_start(net):
+          start, tank = 0, 0
+          for i in range(len(net)):
+              tank += net[i]
+              if tank < 0:
+                  start = i + 1
+                  tank = 0
+          return start
+
+      pick_start([2, -6, 2, 1, 1, -5, 2, 4])
+    sequence: { kind: array, name: net, cells: [2, -6, 2, 1, 1, -5, 2, 4] }
+    correct: 6
+    explanation: >-
+      The tank goes negative at station 1 (`2 - 6 = -4`), so `start` moves to 2. From there it
+      holds 2, 3 and 4, then `4 - 5 = -1` at station 5, so `start` moves to 6. Stations 6 and 7
+      leave 2 and 6, and the call returns 6. Going round from 6 the tank holds 2, 6, 8, 2, 4, 5,
+      6 and 1, never below 0.
+    misses:
+      - index: 0
+        explanation: >-
+          From station 0 the tank holds 2, then `2 - 6 = -4` at station 1, so the car runs dry.
+          The loop moves `start` past station 1.
+      - index: 1
+        explanation: >-
+          Station 1's net is -6, so a car starting there runs dry on its first drive. A restart
+          goes to the station after the one where the tank went negative.
+      - index: 2
+        explanation: >-
+          The loop does restart at 2, but it keeps going. From 2 the tank holds 2, 3 and 4, then
+          -1 at station 5, so `start` moves again.
+      - index: 3
+        explanation: >-
+          Station 3 lies between the start at 2 and station 5, where the tank went negative.
+          Arriving from 2, the tank already held 2, so starting at 3 with nothing is no better: it
+          holds 1, 2, then -3 at station 5.
+      - index: 4
+        explanation: >-
+          Station 4 lies between the start at 2 and station 5. Arriving from 2, the tank already
+          held 3, so starting at 4 with nothing is no better: it holds 1, then -4 at station 5.
+      - index: 5
+        explanation: >-
+          Station 5's net is -5, so a car starting there runs dry on its first drive. The loop
+          restarts after it.
+      - index: 7
+        explanation: >-
+          Station 7 has the largest value, 4, but going round from it the tank holds 4, 6, 0, 2,
+          3, 4 and then -1 at station 5. The largest single value does not pick the start.
+
   - id: greedy-rule-for-goal
     heading: Which rule fits the goal?
     tags: [greedy, sorting]
