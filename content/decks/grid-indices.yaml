@@ -1,0 +1,589 @@
+id: grid-indices
+title: Grid indices
+description: Read a cell by its row and column, find where a cell lands after a transpose or a turn, and walk a grid's boundary in a spiral. Each card asks for one decision.
+heading: What happens next?
+
+questions:
+  - format: step-trace
+    id: row-then-column
+    heading: Which cell does it read?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      A grid is a list of rows, and each row is a list of cells. A cell is named by its row and
+      then its column: `grid[r]` is row `r`, and `grid[r][c]` is the cell in column `c` of that
+      row. Consider `seats = [['A', 'B', 'C'], ['D', 'E', 'F']]`.
+
+      1. `len(seats)` counts the items of the outer list. Those items are the rows, so it is 2.
+      2. `len(seats[0])` counts the cells in row 0, one per column, so it is 3. Every row has that
+         many cells.
+      3. `seats[1]` is row 1, `['D', 'E', 'F']`, so `seats[1][0]` is column 0 of that row, `'D'`.
+    prompt: >-
+      A grid is a list of rows, so `grid[r]` is row `r`, and `grid[r][c]` is the cell in column
+      `c` of that row. `len(grid)` counts the rows, and `len(grid[0])` counts the cells in a row,
+      one per column. The cells show the rows of `grid`. Predict each step before it is shown.
+    code: |
+      grid = [[5, 8, 1],
+              [6, 0, 3],
+              [9, 4, 7],
+              [2, 11, 10]]
+      rows, cols = len(grid), len(grid[0])
+      r = rows - 1
+      print(grid[r][1])
+    sequence:
+      kind: array
+      name: grid
+      cells: ['[5, 8, 1]', '[6, 0, 3]', '[9, 4, 7]', '[2, 11, 10]']
+    start:
+      - { name: r, at: 0 }
+    steps:
+      - line: 5
+        ask: What are `rows` and `cols` after line 5?
+        options:
+          - id: four-three
+            text: "`4` and `3`"
+            explanation: >-
+              The outer list holds 4 rows, so `len(grid)` is 4. Row 0, `[5, 8, 1]`, holds 3 cells,
+              so `len(grid[0])` is 3.
+          - id: three-four
+            text: "`3` and `4`"
+            explanation: >-
+              That swaps them. The outer list holds the rows, 4 of them, and each row holds 3
+              cells, one per column.
+          - id: twelve-three
+            text: "`12` and `3`"
+            explanation: >-
+              `len` counts only the items of the list it is given. The outer list holds 4 items,
+              the rows, and the 12 numbers sit inside them.
+        correct: four-three
+      - line: 6
+        ask: Where does `r` point after line 6?
+        pointer: r
+        correct: 3
+        explanation: '`rows` is 4, so `r` is 3, the index of the last row, `[2, 11, 10]`.'
+        misses:
+          - index: 2
+            explanation: >-
+              That is `cols - 1`. Line 6 uses `rows`, which is 4, so `r` is 3.
+        elsewhere: '`rows - 1` is 3, the index of the last row.'
+      - line: 7
+        ask: What does line 7 print?
+        options:
+          - id: eleven
+            text: "`11`"
+            explanation: >-
+              `grid[3]` is row 3, `[2, 11, 10]`, and `[1]` then reads column 1 of that row, which
+              holds `11`.
+          - id: two
+            text: "`2`"
+            explanation: >-
+              That is column 0, the first cell of the row. Columns count from 0 like any index, so
+              column 1 is the second cell, `11`.
+          - id: index-error
+            text: Raises `IndexError`
+            explanation: >-
+              That reads the first index as a column, and there is no column 3. But the first
+              index picks the row: `grid[3]` is row 3, and `[1]` picks column 1 inside it.
+        correct: eleven
+
+  - format: tap-cell
+    id: flat-index-cell
+    heading: Which cell is it?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider a grid with 5 columns stored row by row in one list, `flat`. Each row takes 5
+      cells, so row 0 fills `flat[0]` to `flat[4]`, and row 1 starts at `flat[5]`.
+
+      1. For `flat[8]`, `8 // 5` is 1: one full row of 5 cells comes before it, so it is in
+         row 1.
+      2. `8 % 5` is 3, the remainder: after that full row, 3 more cells come before it in its own
+         row, so it is in column 3.
+      3. So `flat[8]` is row 1, column 3, the cell `grid[1][3]` names.
+    prompt: >-
+      A grid can also be stored in one list, row by row: `flat` holds row 0, then row 1, then
+      row 2. With `cols` columns, `flat[i]` is the cell in row `i // cols` and column
+      `i % cols`. `%` gives the remainder after dividing, so `5 % 3` is 2. Tap the cell of
+      `flat` that is row 2, column 1.
+    code: |
+      cols = 4
+      flat = ['k', 'd', 'w', 'a', 'm', 'z', 'e', 'q', 'b', 'x', 'h', 'n']
+      # flat[i] is the cell in row i // cols, column i % cols
+    sequence:
+      kind: array
+      name: flat
+      cells: [k, d, w, a, m, z, e, q, b, x, h, n]
+    correct: 9
+    explanation: >-
+      `9 // 4` is 2 and `9 % 4` is 1. Rows 0 and 1 fill indices 0 to 7, so row 2 starts at index
+      8, and column 1 is the next cell.
+    misses:
+      - index: 0
+        explanation: '`0 // 4` and `0 % 4` are both 0, so this is row 0, column 0, the first cell.'
+      - index: 1
+        explanation: >-
+          `1 // 4` is 0, so this is row 0, column 1. The column is right, but rows 0 and 1 come
+          first, 4 cells each.
+      - index: 2
+        explanation: '`2 // 4` is 0 and `2 % 4` is 2, so this is row 0, column 2.'
+      - index: 3
+        explanation: >-
+          Index 3 is the row and column added, `2 + 1`. It is row 0, column 3: each row holds 4
+          cells, so row 2 starts much later.
+      - index: 4
+        explanation: '`4 // 4` is 1 and `4 % 4` is 0, so this is row 1, column 0.'
+      - index: 5
+        explanation: >-
+          `5 // 4` is 1, so this is row 1, column 1. Rows count from 0, so row 2 is the third
+          row.
+      - index: 6
+        explanation: >-
+          `6 // 4` is 1 and `6 % 4` is 2, so this is row 1, column 2: the row and the column
+          swapped.
+      - index: 7
+        explanation: >-
+          Index 7 is `2 * 3 + 1`, which takes 3 as the row length. Each row holds `cols = 4`
+          cells, so `7 // 4` is 1, and this is row 1, column 3.
+      - index: 8
+        explanation: >-
+          Row 2 starts here, since `8 // 4` is 2. But `8 % 4` is 0, so this is column 0. Column 1
+          is one cell later.
+      - index: 10
+        explanation: '`10 // 4` is 2 and `10 % 4` is 2, so this is row 2, column 2, one cell too far.'
+      - index: 11
+        explanation: '`11 // 4` is 2 and `11 % 4` is 3, so this is row 2, column 3, the last cell.'
+
+  - id: transpose-swaps-back
+    heading: What does this print?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider `m = [[5, 6], [7, 8]]`. A transpose sends the value at `(r, c)` to `(c, r)`, so
+      row 0 becomes column 0.
+
+      1. A cell with `r == c`, such as `(0, 0)` or `(1, 1)`, maps to itself, so `5` and `8` stay
+         where they are.
+      2. `6` at `(0, 1)` must go to `(1, 0)`, and `7` at `(1, 0)` must go to `(0, 1)`. One swap,
+         `m[0][1], m[1][0] = m[1][0], m[0][1]`, moves both.
+      3. So the transpose is `[[5, 7], [6, 8]]`: the old row 0, `[5, 6]`, is now column 0.
+    prompt: |-
+      A transpose sends the value at `(r, c)` to `(c, r)`, so each row becomes a column. This
+      `transpose` tries to do it in place by swapping `m[i][j]` with `m[j][i]` for every `i` and
+      every `j`.
+
+      ```python
+      def transpose(m):
+          n = len(m)
+          for i in range(n):
+              for j in range(n):
+                  m[i][j], m[j][i] = m[j][i], m[i][j]
+
+      m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+      transpose(m)
+      print(m)
+      ```
+
+      What does this print?
+    options:
+      - id: unchanged
+        text: "`[[1, 2, 3], [4, 5, 6], [7, 8, 9]]`"
+        explanation: >-
+          With `i = 0` and `j = 1` the swap trades `2` and `4`. Later, `i = 1` and `j = 0` names
+          the same two cells and trades them back. Every pair off the diagonal is swapped twice,
+          so `m` ends as it began. Starting the inner loop at `i + 1`, with
+          `range(i + 1, n)`, visits each pair once.
+      - id: transposed
+        text: "`[[1, 4, 7], [2, 5, 8], [3, 6, 9]]`"
+        explanation: >-
+          That is the transpose, which one swap per pair would give. This loop meets each pair
+          twice, once as `(i, j)` and once as `(j, i)`, and the second swap undoes the first.
+      - id: copied-down
+        text: "`[[1, 4, 7], [4, 5, 8], [7, 8, 9]]`"
+        explanation: >-
+          That treats the swap as two writes in a row, where the second reads the value the
+          first just wrote. Python reads both values on the right before it writes either cell,
+          so a swap never loses a value.
+    correct: unchanged
+    followUps:
+      transposed:
+        prompt: Which passes of the loops swap the cells `(0, 1)` and `(1, 0)`?
+        options:
+          - id: two-passes
+            text: "Two: the pass with `i = 0, j = 1` and the pass with `i = 1, j = 0`"
+          - id: one-pass
+            text: "One: the pass with `i = 0, j = 1`"
+          - id: none
+            text: None, since a cell off the diagonal is never visited
+        correct: two-passes
+        explanation: >-
+          Both loops run over every index, so each pair of cells is named twice, once in each
+          order. The second swap puts both values back.
+      copied-down:
+        prompt: 'With `m[0][1] = 2` and `m[1][0] = 4`, what does `m[0][1], m[1][0] = m[1][0], m[0][1]` leave?'
+        options:
+          - id: traded
+            text: "`m[0][1]` is `4` and `m[1][0]` is `2`"
+          - id: both-four
+            text: Both cells hold `4`
+          - id: both-two
+            text: Both cells hold `2`
+        correct: traded
+        explanation: >-
+          The right side is read in full first, giving `4` and `2`, and only then are the two
+          cells written. So the values trade places.
+
+  - format: tap-cell
+    id: turn-lands-tap
+    heading: Where does it land?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider a 3 by 3 grid turned clockwise a quarter turn, so `n` is 3. The top row moves to
+      the right column, and reading that row from left to right becomes reading the column from
+      top to bottom.
+
+      1. Row 0 becomes the last column, column 2, and each row below it lands one column further
+         left. So row `r` becomes column `n - 1 - r`.
+      2. Moving along a row from column 0 to column 2 becomes moving down from row 0 to row 2, so
+         column `c` becomes row `c`.
+      3. So `grid[0][1]` lands in row 1, column `3 - 1 - 0`, which is 2: the cell `(r, c)` goes
+         to `(c, n - 1 - r)`.
+    prompt: >-
+      A clockwise quarter turn moves the top row of a grid to its right column, read from top to
+      bottom. Column `c` becomes row `c`, so the loop writes each `grid[r][c]` into row `c` of
+      `turned`. The cells show `turned[3]` before the loop runs. Tap the cell that receives
+      `grid[1][3]`.
+    code: |
+      n = 4   # grid has 4 rows and 4 columns
+      turned = [[0] * n for _ in range(n)]
+      for r in range(n):
+          for c in range(n):
+              turned[c][?] = grid[r][c]
+    sequence:
+      kind: array
+      cells: [0, 0, 0, 0]
+    correct: 2
+    explanation: >-
+      Row 0 lands in the right column, column 3, and row 1 one column further left, in column 2.
+      So `grid[1][3]` lands at `turned[3][2]`. A clockwise turn sends `(r, c)` to
+      `(c, n - 1 - r)`, and `4 - 1 - 1` is 2.
+    misses:
+      - index: 0
+        explanation: >-
+          Column 0 is where the bottom row, row 3, lands. Row 1 is second from the top, so it
+          lands second from the right.
+      - index: 1
+        explanation: >-
+          That keeps `r` as the column, which is a transpose, `(c, r)`. A turn sends the top row
+          to the right edge, so the columns run the other way.
+      - index: 3
+        explanation: >-
+          Column 3, the right edge, is where the top row, row 0, lands. Row 1 lands one column
+          further left: `4 - 1 - 1` is 2.
+
+  - id: turn-second-step
+    heading: Which step comes second?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider `m = [[1, 2], [3, 4]]` and `m.reverse()`, which reverses the order of the rows.
+      One way to check a step is to follow one value and compare where it lands with where a
+      clockwise turn puts it.
+
+      1. `m.reverse()` moves row 0 to row 1 and keeps every column, so `1` moves from `(0, 0)` to
+         `(1, 0)`. In general it sends `(r, c)` to `(n - 1 - r, c)`.
+      2. A clockwise turn sends `(0, 0)` to `(0, 1)`, since the top row becomes the right column.
+      3. `1` landed at `(1, 0)`, not `(0, 1)`, so `m.reverse()` alone turns the grid upside down.
+         It is not a quarter turn.
+    prompt: |-
+      A clockwise quarter turn sends the value at `(r, c)` to `(c, n - 1 - r)`. To turn `m` in
+      place, the first step is `transpose(m)`, which sends `(r, c)` to `(c, r)`.
+      `row.reverse()` reverses one row in place, and `m.reverse()` reverses the order of the
+      rows.
+
+      Which line, run second, finishes the turn?
+    options:
+      - id: each-row
+        text: "`for row in m: row.reverse()`"
+        explanation: >-
+          After the transpose a value sits at `(c, r)`, and it must reach `(c, n - 1 - r)`: same
+          row, mirrored column. Reversing each row does exactly that. On `[[1, 2], [3, 4]]` the
+          transpose gives `[[1, 3], [2, 4]]`, and reversing each row gives `[[3, 1], [4, 2]]`.
+      - id: row-order
+        text: "`m.reverse()`"
+        explanation: >-
+          That moves each value to row `n - 1 - c` and keeps its column, so the result is a turn
+          the other way. On `[[1, 2], [3, 4]]` it gives `[[2, 4], [1, 3]]`.
+      - id: again
+        text: "`transpose(m)`"
+        explanation: >-
+          A second transpose sends `(c, r)` back to `(r, c)`, so `m` ends where it started.
+      - id: rebind
+        text: "`for row in m: row = list(reversed(row))`"
+        explanation: >-
+          That builds a reversed copy and points the loop name `row` at it. No row of `m`
+          changes, so `m` stays transposed.
+    correct: each-row
+    followUps:
+      row-order:
+        prompt: After the transpose, a value sits at `(c, r)`. Where does `m.reverse()` move it?
+        options:
+          - id: new-row
+            text: "To `(n - 1 - c, r)`: a new row, the same column"
+          - id: new-column
+            text: "To `(c, n - 1 - r)`: the same row, a new column"
+          - id: stays
+            text: It stays at `(c, r)`
+        correct: new-row
+        explanation: >-
+          `m.reverse()` changes which row each list sits in and leaves the lists alone, so only
+          the row index changes. The turn needs the column index to change.
+      again:
+        prompt: What does a transpose do to a grid that is already transposed?
+        options:
+          - id: undoes
+            text: It sends every value back to where it started
+          - id: turns
+            text: It turns the grid a quarter turn
+          - id: nothing
+            text: It leaves the transposed grid as it is
+        correct: undoes
+        explanation: >-
+          A transpose swaps the row and column of every value. Swapping them twice restores both.
+      rebind:
+        prompt: Inside `for row in m:`, what does `row = list(reversed(row))` change?
+        options:
+          - id: name-only
+            text: Only the name `row`, which now points at a new list
+          - id: row-of-m
+            text: The row of `m` that `row` referred to
+          - id: whole-grid
+            text: Every row of `m`
+        correct: name-only
+        explanation: >-
+          Assigning to a name rebinds it and changes no list. To change a row of `m`, the loop
+          must change the list itself, as `row.reverse()` does.
+
+  - format: step-trace
+    id: spiral-first-ring
+    heading: Follow the bounds
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider `grid = ["ab", "cd"]`, with `top` 0, `bottom` 1, `left` 0 and `right` 1. Each side
+      of the ring moves its own bound one step inward as soon as that side is read.
+
+      1. The top row reads `a` and `b`, and then `top` becomes 1.
+      2. The right column runs from row `top` to row `bottom`, so it reads only `d`: `b` is not
+         read again, because `top` already moved. Then `right` becomes 0.
+      3. The bottom row runs from column `right` down to `left`, so it reads `c`, and `bottom`
+         becomes 0.
+      4. The left column would run from row `bottom` up to row `top`, but `range(0, 0, -1)` is
+         empty. So the ring is `a`, `b`, `d`, `c`.
+    prompt: >-
+      `spiral` reads a grid's cells in a clockwise spiral. Each row of `grid` is a string, so
+      `grid[r][c]` is one letter. `top` and `bottom` are the first and last rows not yet read,
+      and `left` and `right` the first and last columns. `range(a, b, -1)` counts down from `a`
+      and stops before `b`. The cells show the rows. Predict each step of the first ring.
+    code: |
+      def spiral(grid):
+          out = []
+          top, bottom = 0, len(grid) - 1
+          left, right = 0, len(grid[0]) - 1
+          while top <= bottom and left <= right:
+              for c in range(left, right + 1):
+                  out.append(grid[top][c])
+              top += 1
+              for r in range(top, bottom + 1):
+                  out.append(grid[r][right])
+              right -= 1
+              if top <= bottom:
+                  for c in range(right, left - 1, -1):
+                      out.append(grid[bottom][c])
+                  bottom -= 1
+              if left <= right:
+                  for r in range(bottom, top - 1, -1):
+                      out.append(grid[r][left])
+                  left += 1
+          return out
+
+      spiral(["abcd", "efgh", "ijkl"])
+    sequence:
+      kind: array
+      name: grid
+      cells: [abcd, efgh, ijkl]
+    start:
+      - { name: top, at: 0 }
+      - { name: bottom, at: 2 }
+    steps:
+      - line: 6
+        ask: Lines 6 and 7 append `a`, `b`, `c` and `d`. Where does `top` point after line 8?
+        pointer: top
+        correct: 1
+        explanation: '`top += 1` moves `top` from row 0 to row 1, so the top row counts as read.'
+        misses:
+          - index: 0
+            explanation: >-
+              Line 8 adds 1 to `top` right after the top row is read, so it moves to row 1.
+        elsewhere: '`top` moves one row, from 0 to 1.'
+      - line: 9
+        ask: What does the loop on lines 9 and 10 append?
+        options:
+          - id: h-l
+            text: "`h`, `l`"
+            explanation: >-
+              `right` is 3, and `r` runs from `top`, now 1, to `bottom`, 2. So it reads `grid[1][3]`
+              and `grid[2][3]`, which are `h` and `l`.
+          - id: d-h-l
+            text: "`d`, `h`, `l`"
+            explanation: >-
+              That starts at row 0. `top` moved to row 1 on line 8, so the corner `d`, read with the
+              top row, is not read again.
+          - id: h-only
+            text: "`h`"
+            explanation: >-
+              `range(top, bottom + 1)` includes `bottom`, since the stop is `bottom + 1`. So row 2
+              is read too, giving `l`.
+        correct: h-l
+      - line: 13
+        ask: What does the loop on lines 13 and 14 append?
+        options:
+          - id: k-j-i
+            text: "`k`, `j`, `i`"
+            explanation: >-
+              Line 11 moved `right` to 2, so `c` counts down from 2 to `left`, 0, along row
+              `bottom`, 2. That reads `k`, `j` and `i`.
+          - id: l-k-j-i
+            text: "`l`, `k`, `j`, `i`"
+            explanation: >-
+              That starts at column 3. Line 11 moved `right` to 2 after the right column was read,
+              so `l` is not read again.
+          - id: i-j-k
+            text: "`i`, `j`, `k`"
+            explanation: >-
+              The loop counts down, from `right` to `left`, so the bottom row is read from right
+              to left: `k` first.
+          - id: k-j
+            text: "`k`, `j`"
+            explanation: >-
+              The stop is `left - 1`, which is -1, and the count stops just before it. So column 0
+              is read too, giving `i`.
+        correct: k-j-i
+      - line: 15
+        ask: Where does `bottom` point after line 15?
+        pointer: bottom
+        correct: 1
+        explanation: '`bottom -= 1` moves `bottom` from row 2 to row 1, since the bottom row is read.'
+        misses:
+          - index: 2
+            explanation: >-
+              Line 15 subtracts 1 from `bottom` right after the bottom row is read, so it moves to
+              row 1.
+        elsewhere: '`bottom` moves up one row, from 2 to 1.'
+      - line: 17
+        ask: What does the loop on lines 17 and 18 append?
+        options:
+          - id: e
+            text: "`e`"
+            explanation: >-
+              `r` counts down from `bottom`, 1, and stops before `top - 1`, 0. So only row 1 is
+              read, in column `left`, 0, which holds `e`.
+          - id: i-e
+            text: "`i`, `e`"
+            explanation: >-
+              That starts at row 2. Line 15 moved `bottom` to 1, so `i`, read with the bottom row,
+              is not read again.
+          - id: e-a
+            text: "`e`, `a`"
+            explanation: >-
+              The count stops before `top - 1`, which is 0, so row 0 is not read. `a` was read
+              with the top row.
+        correct: e
+
+  - format: step-trace
+    id: spiral-single-row
+    heading: Which check stops it?
+    tags: [grid, arrays-strings]
+    workedExample: |-
+      Consider `spiral(["abc", "def"])`, a grid of two rows. The test `top <= bottom` on line 12
+      asks whether any row is still unread before the bottom row is read.
+
+      1. The top row reads `a`, `b`, `c`, and `top` becomes 1, so `top` and `bottom` are both 1.
+      2. The right column reads `f`, from row 1, and `right` becomes 1.
+      3. `1 <= 1` is true, since row 1 is still unread, so the bottom row reads `e` and `d`, and
+         `bottom` becomes 0.
+      4. Now `top` is past `bottom`: every row has been read, and the `while` test on line 5 ends
+         the walk with `a`, `b`, `c`, `f`, `e`, `d`.
+    prompt: >-
+      `grid` has one row, so `top` and `bottom` both start at 0. Lines 6 to 8 read `p`, `q`, `r`,
+      `s` and move `top` to 1, past `bottom`. Lines 9 and 10 read nothing, since `range(1, 1)` is
+      empty. The cells show the one row, with `left` and `right` on its columns. Predict each
+      step before it is shown.
+    code: |
+      def spiral(grid):
+          out = []
+          top, bottom = 0, len(grid) - 1
+          left, right = 0, len(grid[0]) - 1
+          while top <= bottom and left <= right:
+              for c in range(left, right + 1):
+                  out.append(grid[top][c])
+              top += 1
+              for r in range(top, bottom + 1):
+                  out.append(grid[r][right])
+              right -= 1
+              if top <= bottom:
+                  for c in range(right, left - 1, -1):
+                      out.append(grid[bottom][c])
+                  bottom -= 1
+              if left <= right:
+                  for r in range(bottom, top - 1, -1):
+                      out.append(grid[r][left])
+                  left += 1
+          return out
+
+      spiral(["pqrs"])
+    sequence:
+      kind: string
+      cells: [p, q, r, s]
+    start:
+      - { name: left, at: 0 }
+      - { name: right, at: 3 }
+    steps:
+      - line: 9
+        ask: Where does `right` point after line 11?
+        pointer: right
+        correct: 2
+        explanation: >-
+          `right -= 1` runs whether or not the right column read anything, so `right` moves from
+          3 to 2.
+        misses:
+          - index: 3
+            explanation: >-
+              Line 11 runs on every pass, even though the right column read nothing here. It
+              moves `right` to 2.
+        elsewhere: '`right` moves one column left, from 3 to 2.'
+      - line: 13
+        ask: The loop on lines 13 and 14 would read `r`, `q`, `p`, the same row a second time. Which line stops it?
+        options:
+          - id: line-twelve
+            text: "Line 12, `if top <= bottom:`"
+            explanation: >-
+              `top` is 1 and `bottom` is 0, so `1 <= 0` is false, and the bottom-row loop is
+              skipped. The one row was already read as the top row.
+          - id: line-five
+            text: "Line 5, the `while` test"
+            explanation: >-
+              The `while` test runs only before each pass. This pass is already under way, so
+              only a test inside it can skip the bottom row.
+          - id: line-sixteen
+            text: "Line 16, `if left <= right:`"
+            explanation: >-
+              Line 16 comes after the bottom-row loop and guards only the left column. Here `0 <= 2`
+              is true, so it would not stop anything.
+        correct: line-twelve
+      - line: 16
+        ask: The loop on lines 17 and 18 reads nothing, since `range(0, 0, -1)` is empty. Where does `left` point when the pass ends?
+        pointer: left
+        correct: 1
+        explanation: >-
+          `0 <= 2` is true, so line 19 runs and moves `left` to 1. Then the `while` test finds
+          `top` past `bottom` and ends the walk, which returns `['p', 'q', 'r', 's']`.
+        misses:
+          - index: 0
+            explanation: >-
+              Line 16 passes, since `left` 0 is at most `right` 2, so line 19 moves `left` to 1.
+        elsewhere: '`left` moves one column right, from 0 to 1.'
