@@ -324,6 +324,106 @@ questions:
         explanation: '4 + 4 = 8 is more than `dist["C"]`, 7.'
 
   - format: step-trace
+    id: wp-rv-k-stops-trace
+    heading: Follow the passes within two stops
+    tags: [graph, python]
+    prompt: >-
+      A stop is a node a route passes through between its start and its end, so a route with at
+      most `k` stops uses at most `k + 1` edges. Each pass reads from `before`, a copy of `dist`
+      made when the pass starts, so a write during the pass leaves `before` unchanged.
+      `float('inf')` marks a node with no known route yet. Predict each step. The pointer `new`
+      is used only in the second step.
+    code: |
+      INF = float('inf')
+      edges = [("S", "P", 1), ("P", "Q", 1), ("Q", "R", 1),
+               ("R", "T", 1), ("Q", "T", 7), ("P", "T", 12),
+               ("S", "T", 20)]
+      k = 2
+      dist = {"S": 0, "P": INF, "Q": INF, "R": INF, "T": INF}
+      for _ in range(k + 1):
+          before = dist.copy()
+          for u, v, w in edges:
+              if before[u] + w < dist[v]:
+                  dist[v] = before[u] + w
+      print(dist["T"])
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, P, Q, R, T]
+    start:
+      - { name: new, at: 0 }
+    steps:
+      - line: 8
+        ask: 'Pass 1 starts. What is `dist["T"]` when it ends?'
+        options:
+          - id: twenty
+            text: '`20`'
+            explanation: >-
+              `before` has only `S` at a cost, so only edges out of `S` help: `S -> P` sets `P` to
+              1, and `S -> T` sets `T` to 20. `P -> Q` reads `before["P"]`, still `inf`.
+          - id: four
+            text: '`4`'
+            explanation: >-
+              4 chains `S -> P -> Q -> R -> T` in one pass, reading each cost as soon as it is
+              written. Every edge reads `before`, where only `S` has a cost during pass 1.
+        correct: twenty
+      - line: 8
+        ask: Pass 2 starts. Which node gets its first cost during it? Move `new` to it.
+        pointer: new
+        correct: 2
+        explanation: >-
+          `before["P"]` is now 1, so `P -> Q` sets `Q` to 2. `Q -> R` reads `before["Q"]`, which
+          was copied while `Q` was still `inf`.
+        misses:
+          - index: 1
+            explanation: '`P` got its cost, 1, in pass 1 from `S -> P`.'
+          - index: 3
+            explanation: >-
+              `Q -> R` reads `before["Q"]`, and `Q` was `inf` when pass 2 copied `dist`. `R` waits
+              for pass 3.
+          - index: 4
+            explanation: '`T` has had a cost since pass 1, when `S -> T` set it to 20.'
+        elsewhere: '`S` is the start at 0, and no edge leads into it.'
+      - line: 10
+        ask: 'What is `dist["T"]` when pass 2 ends?'
+        options:
+          - id: thirteen
+            text: '`13`'
+            explanation: >-
+              `P -> T` reads `before["P"]`, which is 1, and 1 + 12 = 13 beats 20. `Q -> T` and
+              `R -> T` read `inf` from `before`, so they lower nothing.
+          - id: twenty
+            text: '`20`'
+            explanation: >-
+              A cost already set can still drop. `P -> T` offers 1 + 12 = 13, which is less than
+              20, so `T` is lowered.
+          - id: four
+            text: '`4`'
+            explanation: >-
+              4 needs `R` at 3, written in this same pass. `R -> T` reads `before["R"]`, which is
+              `inf` in pass 2.
+        correct: thirteen
+      - line: 12
+        ask: 'The loop ends. What does `print(dist["T"])` show?'
+        options:
+          - id: nine
+            text: '`9`'
+            explanation: >-
+              `Q -> T` reads `before["Q"]`, which is 2, and 2 + 7 = 9 beats 13: the route
+              `S -> P -> Q -> T`, with 2 stops. `R -> T` reads `before["R"]`, still `inf`.
+          - id: four
+            text: '`4`'
+            explanation: >-
+              4 is `S -> P -> Q -> R -> T`, the cheapest route, but it has 3 stops. `R` gets its
+              cost only during pass 3, after `before` was copied.
+          - id: thirteen
+            text: '`13`'
+            explanation: >-
+              13 is `T` after 2 passes. The loop runs `k + 1` passes, 3 here, and the third lets
+              `Q -> T` read `Q` at 2.
+        correct: nine
+
+  - format: step-trace
     id: wp-rv-prev-trace
     heading: Follow the route a pass records
     tags: [graph, python]
