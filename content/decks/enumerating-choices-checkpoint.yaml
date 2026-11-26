@@ -480,11 +480,12 @@ questions:
           never runs, and the search records every subset once.
 
   - id: checkpoint-ordering-value-test
-    heading: Which call goes wrong?
+    heading: What does it return?
     tags: [backtracking, sorting]
     prompt: |-
-      A suggested `orderings_once(nums)` should return each distinct ordering of `nums` once. For
-      `[5, 8, 5]` that is `[5, 5, 8]`, `[5, 8, 5]` and `[8, 5, 5]`. One detail is slightly off:
+      A suggested `orderings_once(nums)` should return each distinct ordering once, so
+      `[5, 8, 5]` gives `[5, 5, 8]`, `[5, 8, 5]` and `[8, 5, 5]`. Its second test asks if the
+      value is in `path`:
 
       ```python
       def orderings_once(nums):
@@ -508,73 +509,74 @@ questions:
           return out
       ```
 
-      Which call returns a wrong answer?
+      What does `orderings_once([7, 7, 7])` return?
     options:
-      - id: three-equal
-        text: "`orderings_once([7, 7, 7])`"
+      - id: two-copies
+        text: "`[[7, 7, 7], [7, 7, 7]]`"
         explanation: >-
-          In the call holding the 7 at index 0, index 1 passes, and so does index 2 once index 1
-          is popped: a 7 is in `path`, though index 1 is not. Both open a branch, so the call
-          returns `[[7, 7, 7], [7, 7, 7]]`. Testing `not used[i - 1]` instead fixes it, since index
-          2 then waits until the 7 at index 1 is in use.
-      - id: one-pair
-        text: "`orderings_once([9, 2, 2])`"
+          In the top call `path` is empty, so the second test skips indices 1 and 2, and only index
+          0 opens a branch. In that call, index 1 passes, since a 7 is in `path`, and so does index
+          2 once index 1 is popped, though index 1 is not in use. Each branch records `[7, 7, 7]`.
+          Testing `not used[i - 1]` instead makes index 2 wait until index 1 is in use.
+      - id: one-copy
+        text: "`[[7, 7, 7]]`"
         explanation: >-
-          Sorted, the input is `[2, 2, 9]`, and the call returns `[[2, 2, 9], [2, 9, 2],
-          [9, 2, 2]]`, which is right. With only two 2s, which 2 can be in `path` when index 1 is
-          tested?
-      - id: two-pairs
-        text: "`orderings_once([8, 3, 8, 3])`"
+          That is what `not used[i - 1]` returns. The value test agrees with it while a value has
+          two copies. With three, in the call holding index 0, what does the test see when index 2
+          is tested after index 1 is popped?
+      - id: six-copies
+        text: "Six copies of `[7, 7, 7]`"
         explanation: >-
-          Sorted, the input is `[3, 3, 8, 8]`, and the call returns its 6 distinct orderings once
-          each, which is right. Each value has only two copies.
-      - id: distinct
-        text: "`orderings_once([6, 1])`"
+          Six is the count with no second test, but this code has one. In the top call `path` is
+          empty. What does the second test do with the 7s at indices 1 and 2 there?
+      - id: empty
+        text: "`[]`"
         explanation: >-
-          Sorted, the input is `[1, 6]`, and the call returns `[[1, 6], [6, 1]]`, which is right.
-          The second test needs two equal values side by side.
-    correct: three-equal
+          `[]` would mean no branch ever holds three 7s. In the call holding the 7 at index 0, what
+          does `nums[i] not in path` give for the other 7s?
+    correct: two-copies
     followUps:
-      one-pair:
+      one-copy:
         prompt: >-
-          In `orderings_once([9, 2, 2])`, the loop tests the 2 at index 1. Which 2 can already be
-          in `path`?
+          In the call holding the 7 at index 0, index 1 has been placed and popped. The loop now
+          tests index 2. Is a 7 in `path`?
         options:
-          - id: index-zero
-            text: Only the 2 at index 0, so the value test matches `used[0]`
-          - id: either
-            text: The 2 at index 0 or the 2 at index 1
-          - id: none
-            text: Neither, since a 2 is never placed before another 2
-        correct: index-zero
+          - id: yes-zero
+            text: Yes, the 7 at index 0, so index 2 opens a branch too
+          - id: no-popped
+            text: No, index 1 was popped, so index 2 is skipped
+          - id: not-tested
+            text: Index 2 is never tested once index 1 has opened a branch
+        correct: yes-zero
         explanation: >-
-          `used[1]` is False whenever index 1 is tested, so a 2 in `path` must be index 0. With
-          only two copies, "a 2 is in `path`" and "the 2 to the left is in use" always agree.
-      two-pairs:
+          The value test asks whether any 7 is in `path`, not whether index 1 is. With three
+          copies, the 7 in `path` can be index 0 while index 1 is free, so index 2 opens a second
+          branch.
+      six-copies:
+        prompt: In the top call, `path` is empty. Does the loop place the 7 at index 1?
+        options:
+          - id: skipped
+            text: No, no 7 is in `path`, so the second test skips it
+          - id: placed
+            text: Yes, the second test skips only values already in `path`
+          - id: deeper
+            text: Yes, the second test runs only below the top call
+        correct: skipped
+        explanation: >-
+          `nums[1] == nums[0]` and `7 not in []` both hold, so `continue` runs. Only index 0 opens
+          a branch in the top call.
+      empty:
         prompt: >-
-          Sorted, the input is `[3, 3, 8, 8]`. When the loop tests the 8 at index 3, which 8 can be
-          in `path`?
+          In the call holding the 7 at index 0, the loop tests index 1. What does
+          `nums[i] not in path` give?
         options:
-          - id: index-two
-            text: Only the 8 at index 2, so the value test matches `used[2]`
-          - id: any
-            text: Any 8 in the input, including the one at index 3
-          - id: threes
-            text: None, since the 3s block it
-        correct: index-two
+          - id: gives-false
+            text: False, since the 7 at index 0 is in `path`, so index 1 is placed
+          - id: true-index
+            text: True, since index 1 itself is not in `path` yet, so it is skipped
+          - id: true-full
+            text: True, since `path` does not hold every 7 yet, so it is skipped
+        correct: gives-false
         explanation: >-
-          Index 3 is not in use when it is tested, so an 8 in `path` must be index 2. Each value
-          has two copies, so the value test agrees with a check on the left neighbor.
-      distinct:
-        prompt: When does the second `continue` run on `[1, 6]`?
-        options:
-          - id: never
-            text: Never, since `nums[1]` is 6 and `nums[0]` is 1
-          - id: always
-            text: Whenever the 1 is already in `path`
-          - id: once
-            text: Once, in the top call
-        correct: never
-        explanation: >-
-          All three parts of the `if` must hold, and the values differ, so the slipped test never
-          fires. With distinct values, `used` alone records each ordering once.
+          `not in` compares values, and a 7 is already in `path`. So the test lets index 1
+          through, and the search reaches full orderings.
