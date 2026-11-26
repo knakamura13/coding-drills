@@ -565,11 +565,11 @@ questions:
           moves 7 to `hi`. That move goes from `lo` to `hi`, and it comes after the 11.
 
   - id: checkpoint-median-route-lo
-    heading: What does this print?
+    heading: Which values go to hi?
     tags: [heap, python]
     prompt: |-
-      This running median pushes every arrival into `lo` first. `lo` holds the smaller half, stored
-      negated, and `hi` holds the larger half.
+      This version of `medians` pushes every arrival into `lo` first. `lo` holds the smaller half,
+      stored negated, and `hi` holds the larger half.
 
       ```python
       from heapq import heappush, heappop
@@ -587,31 +587,33 @@ questions:
                   out.append((-lo[0] + hi[0]) / 2)
           return out
 
-      print(medians([8, 3, 6, 10]))
+      medians([8, 3, 6, 10])
       ```
 
-      What does it print?
+      Which value does `heappush(hi, -heappop(lo))` send to `hi` on each of the four arrivals?
     options:
-      - id: medians
-        text: '`[8, 5.5, 6, 7.0]`'
+      - id: largest-in-lo
+        text: '`8, 8, 6, 10`'
         explanation: >-
-          `heappop(lo)` returns the largest value in `lo`, so the second line sends that value to
-          `hi`, whether or not it is the arrival. When 3 arrives, the 8 goes to `hi`. When 6
-          arrives, it goes to `hi` and comes back, since `hi` then holds 2 values to `lo`'s 1. The
-          code prints the running medians.
-      - id: arrival-to-hi
-        text: '`[8, 5.5, 8, 7.0]`'
-        explanation: Check which value the second line moves to `hi` when 3 arrives.
-      - id: whole-numbers
-        text: '`[8, 5, 6, 7]`'
-        explanation: Check what `/` returns.
-      - id: lo-top-only
-        text: '`[8, 3, 6, 6]`'
-        explanation: Check what the code appends when the two heaps hold the same number of values.
-    correct: medians
+          `-heappop(lo)` is the largest value in `lo` once the arrival is in, so the second line
+          sends that value to `hi`, whether or not it is the arrival. The first 8 goes and comes
+          back, since `hi` then holds 1 value to `lo`'s 0. When 3 arrives, `lo` holds 3 and 8, so
+          the 8 goes and stays. When 6 arrives, `lo` holds 3 and 6, so the 6 goes and comes back,
+          since `hi` then holds 2 values to `lo`'s 1. When 10 arrives, it is the largest in `lo`,
+          so it goes.
+      - id: arrival
+        text: '`8, 3, 6, 10`'
+        explanation: Check which value `-heappop(lo)` takes when 3 arrives.
+      - id: plain-min
+        text: '`8, 3, 6, 3`'
+        explanation: Check how `lo` stores its values.
+      - id: hi-root
+        text: '`8, 8, 6, 8`'
+        explanation: Check whether the value sent and `hi[0]` are the same once 10 arrives.
+    correct: largest-in-lo
     followUps:
-      arrival-to-hi:
-        prompt: 'When 3 arrives, `lo` holds 8 and 3 after the first push. Which value does `heappush(hi, -heappop(lo))` move to `hi`?'
+      arrival:
+        prompt: 'When 3 arrives, `lo` holds 8 and 3 after the first push. Which value does `-heappop(lo)` send to `hi`?'
         options:
           - id: eight
             text: 8, the largest value in `lo`
@@ -621,33 +623,34 @@ questions:
             text: Nothing, since `hi` is still empty
         correct: eight
         explanation: >-
-          `heappop(lo)` returns the smallest stored entry, -8, which stands for the largest value.
-          So 8 goes to `hi` and 3 stays in `lo`. Moving the arrival instead would leave 8 in `lo`
-          above the values in `hi`, and the third value printed would be 8.
-      whole-numbers:
-        prompt: 'What does `(3 + 8) / 2` evaluate to in Python?'
+          `heappop(lo)` returns the smallest stored entry, -8, and the minus sign turns it back into
+          8. So 8 goes to `hi` and 3 stays in `lo`. The line sends the arrival only when the arrival
+          is the largest value in `lo`, as the 8, the 6 and the 10 are.
+      plain-min:
+        prompt: 'After 3 is pushed, `lo` stores `[-8, -3]`. What does `-heappop(lo)` evaluate to?'
         options:
-          - id: five-half
-            text: '`5.5`, since `/` always returns a float'
-          - id: five
-            text: '`5`, since both values are whole numbers'
+          - id: eight
+            text: 8, since the pop returns -8, the smallest stored entry
+          - id: three
+            text: 3, the smallest value in `lo`
+          - id: minus-eight
+            text: '-8, the root as it is stored'
+        correct: eight
+        explanation: >-
+          `lo` stores each value negated, so its smallest entry, -8, stands for its largest value,
+          and the minus sign turns it back into 8. Reading `lo` as a plain min-heap of the values
+          would send 3 here, and 3 again when 10 arrives.
+      hi-root:
+        prompt: 'When 10 arrives, `lo` holds 3, 6 and 10 after the first push, and `hi` holds 8. Which value does the second line send to `hi`?'
+        options:
+          - id: ten
+            text: 10, which then sits behind the 8 in `hi`
+          - id: eight
+            text: 8, the root of `hi` after the push
           - id: six
-            text: '`6`, rounded to the nearest whole number'
-        correct: five-half
+            text: 6, the next largest value in `lo`
+        correct: ten
         explanation: >-
-          `/` always returns a float, even when the mean is whole: `(6 + 8) / 2` is `7.0`. Only
-          `//` rounds down.
-      lo-top-only:
-        prompt: After 10 arrives, `lo` holds 3 and 6 and `hi` holds 8 and 10. Which branch appends?
-        options:
-          - id: else
-            text: The `else`, since `len(lo) > len(hi)` is false
-          - id: if
-            text: The `if`, since `lo` keeps the extra value
-          - id: both
-            text: Both, one after the other
-        correct: else
-        explanation: >-
-          With 2 values in each heap the first test is false, so the code appends the mean of
-          `-lo[0]`, 6, and `hi[0]`, 8, which is `7.0`. `-lo[0]` alone is the median only for an odd
-          count.
+          `-heappop(lo)` takes 10, the largest value in `lo`, and pushes it into `hi`. `hi[0]` is
+          still 8 afterwards, since a min-heap keeps its smallest value at the root, but the value
+          the line sends is the 10. The 8 was sent when 3 arrived.

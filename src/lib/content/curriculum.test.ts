@@ -65,7 +65,11 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'problem-solving-patterns': { keep: 0, rewrite: 0, exam: 0, retire: 22 }
 };
 
-/** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */
+/**
+ * The 16 deck ids audited for #9. Fifteen still hold only their retired questions. `monotonic-stack`
+ * was rewritten under its old id, so its current teaching cards are counted too. Every other deck
+ * written later is mapped but stays out of these counts.
+ */
 const AUDITED_DECKS = new Set([
 	'binary-search-on-answer',
 	'complexity-analysis',
@@ -132,7 +136,7 @@ describe('shipped curriculum', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
-	it('maps each of the 100 primary drills once, onto a real question', () => {
+	it('maps each of the 100 drills in the audited deck ids once, onto a real question', () => {
 		expect(audited).toHaveLength(100);
 		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(100);
 		const known = new Map(
