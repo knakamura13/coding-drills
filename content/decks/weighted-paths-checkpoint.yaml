@@ -385,16 +385,16 @@ questions:
         explanation: >-
           A depot popped later has a toll of at least `d`, and a free road adds 0, so it offers at
           least `d`. That ties at best, and a tie does not pass the strict `<` test.
-      - id: wait-empty
-        text: No. A toll is certain only once the heap is empty
+      - id: first-push
+        text: Yes. The first entry pushed for `dst` always holds its cheapest toll
         explanation: >-
-          The heap pops its smallest entry, and pushes add 0 or more to a popped toll, so every
-          later pop is at least `d`. The pops after `dst` cannot lower it, and waiting returns the
-          same toll.
+          It does return the cheapest toll, but not for that reason. A later relaxation can push a
+          cheaper entry for `dst`. That entry pops first, since the heap pops by toll, and the
+          return uses it.
       - id: stale-first
         text: No. The first entry for `dst` to pop can be stale and too large
         explanation: >-
-          A stale entry fails the check `d > dist[u]` and is skipped before the return. And the
+          A stale entry makes `d > dist[u]` true, so `continue` skips it before the return. And the
           smallest entry for `dst` pops before any larger one, so the first one to pop is not
           stale.
     correct: yes-final
@@ -414,19 +414,21 @@ questions:
         explanation: >-
           The heap pops in order, so `t` is at least `d`. Adding 0 keeps it at least `d`, and the
           test `d + w < dist[v]` needs strictly less.
-      wait-empty:
-        prompt: After an entry with toll `d` pops, how small can a later pop be?
+      first-push:
+        prompt: >-
+          `(9, dst)` is pushed, and later a cheaper route pushes `(4, dst)`. Which entry for `dst`
+          reaches the return?
         options:
-          - id: floor
-            text: No smaller than `d`
-          - id: any
-            text: Any size, since a later push can be cheaper than `d`
-          - id: free-only
-            text: Smaller than `d`, but only through a free road
-        correct: floor
+          - id: smaller
+            text: '`(4, dst)`, since the heap pops the smaller toll first'
+          - id: older
+            text: '`(9, dst)`, since it was pushed first'
+          - id: both
+            text: Both, one after the other
+        correct: smaller
         explanation: >-
-          The entries already in the heap are at least `d`, and each later push is a popped toll
-          plus a toll of 0 or more. So the pops never go below `d`.
+          The heap pops by toll, not by push order. `(4, dst)` pops first, matches `dist[dst]` and
+          is returned, so `(9, dst)` never pops.
       stale-first:
         prompt: When an entry for `dst` pops, which runs first, the stale check or the return?
         options:
@@ -450,8 +452,8 @@ questions:
       recently.
     code: |
       import heapq
-      graph = {"S": [("C", 2), ("B", 10)], "A": [("B", 4), ("D", 9)],
-               "B": [("D", 1)], "C": [("A", 1), ("B", 7)], "D": []}
+      graph = {"S": [("C", 2), ("B", 10)], "A": [("B", 4), ("D", 12)],
+               "B": [("D", 4)], "C": [("A", 1), ("B", 7)], "D": []}
       dist = {node: float("inf") for node in graph}
       dist["S"] = 0
       heap = [(0, "S")]
@@ -497,29 +499,29 @@ questions:
         pointer: u
         correct: 2
         explanation: >-
-          `A` pushed `(7, "B")`, since 3 + 4 is less than 9, and `(12, "D")`. The heap holds 7, 9,
-          10 and 12, so `B` is expanded at 7.
+          `A` pushed `(7, "B")`, since 3 + 4 is less than 9, and `(15, "D")`. The heap holds 7, 9,
+          10 and 15, so `B` is expanded at 7.
         misses:
           - index: 4
-            explanation: '`D`''s only entry is 12, larger than `B`''s 7.'
+            explanation: '`D`''s only entry is 15, larger than `B`''s 7.'
         elsewhere: The smallest entry in the heap is `(7, "B")`.
       - line: 8
         ask: '`D` is expanded next. With what distance does its entry pop?'
         options:
-          - id: seven
-            text: '`8`'
-            explanation: >-
-              `B` pushed `(8, "D")`, since 7 + 1 is less than 12. It pops before the stale 9 and 10
-              for `B` and the old 12 for `D`.
           - id: eleven
-            text: '`12`'
-            explanation: '12 came from `A`. `B` later found 7 + 1 = 8, and that entry pops first.'
-          - id: nine
-            text: '`10`'
+            text: '`11`'
             explanation: >-
-              10 would be the stale `(9, "B")` entry plus `B -> D`. `B` was expanded at 7, so it
-              pushed 8 instead.
-        correct: seven
+              `B` pushed `(11, "D")`, since 7 + 4 is less than 15. It pops after the stale 9 and 10
+              for `B` and before the old 15 for `D`.
+          - id: fifteen
+            text: '`15`'
+            explanation: '15 came from `A`. `B` later found 7 + 4 = 11, and that entry pops first.'
+          - id: thirteen
+            text: '`13`'
+            explanation: >-
+              13 would be the stale `(9, "B")` entry plus `B -> D`. `B` was expanded at 7, so it
+              pushed 11 instead.
+        correct: eleven
       - line: 9
         ask: If the two stale-check lines were deleted, how many times would the loop scan the edges out of `B`?
         options:
@@ -527,7 +529,7 @@ questions:
             text: '3'
             explanation: >-
               `B` was pushed with 10, 9 and 7. Without the check, all three entries are expanded.
-              The answers stay right, since 9 + 1 and 10 + 1 do not beat 8, but two scans are
+              The answers stay right, since 9 + 4 and 10 + 4 do not beat 11, but two scans are
               wasted.
           - id: one
             text: '1'
