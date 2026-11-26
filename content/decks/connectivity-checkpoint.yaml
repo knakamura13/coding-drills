@@ -358,3 +358,93 @@ questions:
         explanation: >-
           A correct union writes the root of the first node's set. Here that root is node 1 itself, so
           the buggy line writes the same cell.
+
+  - id: connectivity-exam-union-by-size
+    heading: What does union by size leave?
+    tags: [graph]
+    prompt: |-
+      This union by size starts from three sets: {0, 1, 2, 3} with root 1, {4, 5, 6} with root 5, and {7}. `size[r]` counts the nodes in the set whose root is `r`, and the code reads it only at roots. What is `parent` after both unions?
+
+      ```python
+      parent = [1, 1, 1, 2, 5, 5, 5, 7]
+      size = [1, 4, 2, 1, 1, 3, 1, 1]
+
+      def union(a, b):
+          ra, rb = find(a), find(b)
+          if ra == rb:
+              return
+          if size[ra] > size[rb]:
+              parent[rb] = ra
+              size[ra] += size[rb]
+          else:
+              parent[ra] = rb
+              size[rb] += size[ra]
+
+      union(0, 4)
+      union(7, 2)
+      ```
+    options:
+      - id: by-size
+        text: '`[1, 1, 1, 2, 5, 1, 5, 1]`'
+        explanation: >-
+          `union(0, 4)` compares root 1, a set of 4, with root 5, a set of 3, and runs
+          `parent[5] = 1`. `union(7, 2)` compares root 7, a set of 1, with root 1, a set of 7 by
+          then, and runs `parent[7] = 1`. No other cell changes.
+      - id: a-root
+        text: '`[1, 5, 1, 2, 5, 5, 5, 5]`'
+        explanation: >-
+          That hangs `a`'s root under `b`'s root every time, as `parent[find(a)] = find(b)` does:
+          `parent[1] = 5`, then `parent[7] = 5`. In `union(0, 4)` the set of `a` is the larger one,
+          so union by size hangs root 5 instead.
+      - id: larger-under
+        text: '`[1, 5, 1, 2, 5, 7, 5, 7]`'
+        explanation: >-
+          That hangs the larger set's root under the smaller one: root 1 under 5, and then root 5,
+          with 7 nodes, under the single node 7. Union by size keeps the larger set's root as the
+          root.
+      - id: all-root
+        text: '`[1, 1, 1, 1, 1, 1, 1, 1]`'
+        explanation: >-
+          That points every node at the final root. Each union writes a single `parent` cell, so 3
+          still points at 2, and 4 and 6 still point at 5.
+    correct: by-size
+    followUps:
+      a-root:
+        prompt: In `union(0, 4)`, which root stays a root?
+        options:
+          - id: one
+            text: 1, whose set holds 4 nodes to root 5's 3
+          - id: five
+            text: 5, the root of `b`'s set
+          - id: four
+            text: 4, the node passed as `b`
+        correct: one
+        explanation: >-
+          Union by size compares `size[1]`, 4, with `size[5]`, 3, and keeps the larger set's root.
+          Only on a tie does `a`'s root go under `b`'s.
+      larger-under:
+        prompt: Which root does union by size hang under the other?
+        options:
+          - id: smaller
+            text: The root of the smaller set
+          - id: larger
+            text: The root of the larger set
+          - id: higher-index
+            text: The root with the larger index
+        correct: smaller
+        explanation: >-
+          Hanging the smaller set's root puts fewer nodes one link further from their root. Here
+          root 5 goes under 1, and then root 7 goes under 1.
+      all-root:
+        prompt: How many `parent` cells does one union write?
+        options:
+          - id: one-cell
+            text: One, the cell of the root it hangs
+          - id: smaller-set
+            text: One for each node in the smaller set
+          - id: both-sets
+            text: One for each node in both sets
+        correct: one-cell
+        explanation: >-
+          A union writes `parent[ra]` or `parent[rb]`, a single root's cell. The nodes below that
+          root keep their cells and reach the new root through it.

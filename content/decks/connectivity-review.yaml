@@ -502,3 +502,62 @@ questions:
         explanation: >-
           Each union merges whole sets. `link(1, 2)` joins the set that holds 1 with the set that holds
           2, so every node in either one reaches the same root.
+
+  - id: connectivity-review-union-by-size
+    format: tap-cell
+    tags:
+      - graph
+    prompt: >-
+      This union by size holds three sets: {0, 2, 5} with root 2, {1, 3} with root 3, and {4, 6}
+      with root 6. `size[r]` counts the nodes in the set whose root is `r`, and the code reads it
+      only at roots. Tap the cell `union(0, 1)` writes in `parent`.
+    code: |-
+      parent = [2, 3, 2, 3, 6, 2, 6]
+      size = [1, 1, 3, 2, 1, 1, 2]
+
+      def union(a, b):
+          ra, rb = find(a), find(b)
+          if ra == rb:
+              return
+          if size[ra] > size[rb]:
+              parent[rb] = ra
+              size[ra] += size[rb]
+          else:
+              parent[ra] = rb
+              size[rb] += size[ra]
+
+      union(0, 1)
+    sequence:
+      kind: array
+      name: parent
+      cells: [2, 3, 2, 3, 6, 2, 6]
+    correct: 3
+    explanation: >-
+      `find(0)` is 2 and `find(1)` is 3. Root 2's set holds 3 nodes and root 3's holds 2, so
+      `size[2] > size[3]` and the union runs `parent[3] = 2`. Root 3, the root of the smaller set,
+      now hangs under root 2.
+    misses:
+      - index: 2
+        explanation: >-
+          Root 2's set holds 3 nodes, more than the 2 nodes under root 3, so 2 stays a root.
+          Writing `parent[2]` is what `parent[find(a)] = find(b)` would do, or what comparing
+          `size[0]` with `size[1]` would give. The code compares the roots' sizes.
+      - index: 0
+        explanation: >-
+          Node 0 is `a`, but it is not a root: `parent[0]` is 2. A union writes the cell of one of
+          the two roots, never a node below them.
+      - index: 1
+        explanation: >-
+          Node 1 is `b`, but it is not a root: `parent[1]` is 3. The union writes the cell of the
+          root it hangs, `find(1)`, not the cell of `b`.
+      - index: 4
+        explanation: >-
+          Node 4 is in {4, 6}, a set neither 0 nor 1 belongs to. This union leaves that set alone.
+      - index: 5
+        explanation: >-
+          Node 5 is in 0's set, but it is not a root: `parent[5]` is 2. The union writes the cell of
+          a root.
+      - index: 6
+        explanation: >-
+          Node 6 is the root of {4, 6}, a set neither 0 nor 1 belongs to. This union leaves it
+          alone.

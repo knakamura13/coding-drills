@@ -63,8 +63,9 @@ questions:
     heading: Which tree slips through?
     tags: [tree, recursion]
     prompt: |-
-      This version is meant to check that a tree with distinct values is a BST. It is called as
-      `valid(root, float('-inf'), float('inf'))`.
+      A suggested solution checks whether a tree with distinct values is a BST. It is called as
+      `valid(root, float('-inf'), float('inf'))`, and `TreeNode(v, left, right)` builds a node
+      holding `v` with those children (a missing child is `None`).
 
       ```python
       def valid(node, low, high):
@@ -132,13 +133,88 @@ questions:
           Accepting a real BST is not a mistake. The question asks for a tree the function accepts even
           though it breaks the rule.
 
+  - id: bst-order-exam-fit-count
+    heading: How many values fit here?
+    tags: [tree]
+    prompt: |-
+      All values in this BST are distinct.
+
+      ```text
+              45
+            /    \
+          20      82
+            \    /
+            31  60
+               /  \
+             52    74
+                  /
+                66
+      ```
+
+      How many of the values 38, 50, 57, 69 and 79 could replace 66 and keep the tree a BST? (Keep
+      everything else as it is.)
+    options:
+      - id: one
+        text: "1"
+        explanation: >-
+          The path down to 66 goes right at 45, left at 82, right at 60 and left at 74. So a value there
+          must be above 45 and 60 and below 82 and 74, which means between 60 and 74. Only 69 is.
+      - id: two
+        text: "2"
+        explanation: >-
+          That counts 69 and 79, so it drops the limit from the parent, 74. The spot is 74's left
+          child, so 79 would sit on 74's left while being larger than it.
+      - id: three
+        text: "3"
+        explanation: >-
+          That counts 50, 57 and 69, using only the root and the parent. The spot is also in 60's right
+          subtree, so 50 and 57 would sit on 60's right while being smaller than it.
+      - id: four
+        text: "4"
+        explanation: >-
+          That counts 38, 50, 57 and 69, every value below the parent, 74. The spot is also in the right
+          subtrees of 45 and 60, so it needs a value above 60 as well.
+    correct: one
+    followUps:
+      two:
+        prompt: Is the spot that 66 fills in 74's left subtree or its right subtree?
+        options:
+          - { id: left, text: "Left, so the value there must be smaller than 74" }
+          - { id: right, text: "Right, so the value there must be larger than 74" }
+          - { id: neither, text: "Neither; only the root's two subtrees set limits" }
+        correct: left
+        explanation: >-
+          The parent is an ancestor too. A left child must be smaller than its parent, and here that
+          limit, 74, is tighter than the one from 82.
+      three:
+        prompt: Which ancestor sets the lower limit for the spot that 66 fills?
+        options:
+          - { id: sixty, text: "60, the nearest ancestor whose right subtree holds the spot" }
+          - { id: root, text: "45, the root, since only the root and the parent set limits" }
+          - { id: twenty, text: "20, the smallest value on the root's left" }
+        correct: sixty
+        explanation: >-
+          The spot is in the right subtrees of both 45 and 60, so it must be larger than both. The
+          larger of the two, 60, is the limit that binds.
+      four:
+        prompt: Does the spot that 66 fills need a lower limit at all?
+        options:
+          - { id: yes-sixty, text: "Yes; it is in 60's right subtree, so its value must be above 60" }
+          - { id: no-left, text: "No; it is a left child, so only an upper limit applies" }
+          - { id: root-only, text: "Only the root's: its value must be above 45" }
+        correct: yes-sixty
+        explanation: >-
+          Being a left child sets only the upper limit from the parent. Every ancestor whose right
+          subtree holds the spot adds a lower limit, and the nearest one, 60, is the tightest.
+
   - id: bst-order-exam-target-ancestor
     format: tap-cell
     heading: Which node is the lowest common ancestor?
     tags: [tree, binary-search]
     prompt: |-
-      The lowest common ancestor of two values is the lowest node with both of them in its subtree, and a
-      node counts as being in its own subtree.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two values is the lowest node that is an ancestor of
+      both.
 
       ```text
                 58
@@ -152,7 +228,7 @@ questions:
                47
       ```
 
-      Tap the lowest common ancestor of 47 and 44.
+      Tap the lowest common ancestor of 90 and 74.
     code: |
       def lca(node, p, q):
           while node is not None:
@@ -166,27 +242,28 @@ questions:
       kind: array
       name: nodes
       cells: [58, 31, 74, 19, 44, 90, 37, 50, 47]
-    correct: 4
+    correct: 2
     explanation: >-
-      Both values are smaller than 58, so the walk goes left to 31. Both are larger than 31, so it goes
-      right to 44. 44 is one of the targets and 47 is below it, so 44 is the answer.
+      Both values are larger than 58, so the walk goes right to 74. 74 is one of the targets, so it is
+      not larger than itself, neither test holds, and the walk stops. 90 is 74's right child, so 74 is
+      an ancestor of both.
     misses:
       - index: 0
-        explanation: 58 holds both, but both values are smaller than 58, so a lower node holds both too.
+        explanation: 58 holds both, but both values are larger than 58, so both are in its right subtree.
       - index: 1
-        explanation: 31 holds both, but both values are larger than 31, so both are in its right subtree.
-      - index: 2
-        explanation: 74 is in 58's right subtree. Both values are smaller than 58, so neither is there.
+        explanation: 31 is in 58's left subtree. Both values are larger than 58, so neither is there.
       - index: 3
-        explanation: 19 is 31's left child. Both values are larger than 31, so neither is under 19.
+        explanation: 19 is in 58's left subtree, where neither value is.
+      - index: 4
+        explanation: 44 is in 58's left subtree. Both values are larger than 58, so neither is under 44.
       - index: 5
-        explanation: 90 is in 58's right subtree, where neither value is.
+        explanation: 90 is one target, but 74 is above it, not below. The answer has to hold both.
       - index: 6
-        explanation: 37 is 44's left child. 47 is larger than 44, so it is not under 37, and neither is 44.
+        explanation: 37 is in 58's left subtree, where neither value is.
       - index: 7
-        explanation: 50 is 47's parent, but 44 is above 50. The answer has to hold 44 as well.
+        explanation: 50 is in 58's left subtree. Both values are larger than 58, so neither is under 50.
       - index: 8
-        explanation: 47 is one target, but 44 is above it, not below. The answer has to hold both.
+        explanation: 47 is a leaf in 58's left subtree. It holds neither 90 nor 74.
 
   - id: bst-order-exam-or-split
     heading: What does the faulty walk return?
@@ -216,7 +293,9 @@ questions:
             37    50
       ```
 
-      What does `lca(root, 37, 74)` return, and what is the correct answer?
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included, and the lowest common ancestor of two values is the lowest node that is an ancestor
+      of both. What does `lca(root, 37, 74)` return, and what is their lowest common ancestor?
     options:
       - id: none-58
         text: It returns `None`, but the answer is 58
@@ -272,187 +351,78 @@ questions:
           With `or`, a node is left whenever either value differs from it. For two different values the
           walk never stops on a node and ends at `None`.
 
-  - id: bst-order-exam-bounds-check
-    heading: What must each call receive?
-    tags: [tree, dfs, recursion]
+  - id: bst-order-exam-pick-pair
+    heading: Which pair splits here?
+    tags: [tree, binary-search]
     prompt: |-
-      In this tree all values are distinct, and at every node the whole left subtree must be smaller
-      and the whole right subtree larger. The function below returns `True` for
-      `TreeNode(30, TreeNode(12), TreeNode(45, TreeNode(18), TreeNode(60)))`, but the 18 sits in the
-      right subtree of the 30, so the tree is not a BST.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two values is the lowest node that is an ancestor of
+      both.
 
-      ```python
-      def looks_like_bst(node):
-          if node is None:
-              return True
-          if node.left and node.left.val >= node.val:
-              return False
-          if node.right and node.right.val <= node.val:
-              return False
-          return looks_like_bst(node.left) and looks_like_bst(node.right)
+      ```text
+              38
+            /    \
+          19      72
+                 /  \
+               55    86
+              /  \
+            47    63
+                 /  \
+               59    68
       ```
 
-      What extra information should each recursive call receive to be correct for every tree?
+      Which pair of values has 55 as its lowest common ancestor?
     options:
-      - id: nothing-more
-        text: Nothing; comparing each node with its children already checks the whole tree
+      - id: split-at-55
+        text: 47 and 59
         explanation: >-
-          The sample tree shows otherwise: the 18 is smaller than its parent 45, so that comparison
-          passes, but it is also in the right subtree of the 30 and must exceed 30. A parent-child
-          comparison never sees an ancestor that is further up.
-      - id: root-value
-        text: The root's value, so every node is also compared with the root
+          Both are below 72 and above 38, so they stay together down to 55. There 47 is smaller and 59
+          is larger, so 47 is in 55's left subtree and 59 in its right. No lower node is an ancestor of
+          both.
+      - id: both-below
+        text: 59 and 68
         explanation: >-
-          This catches the sample, but it only looks at the top of the tree. In
-          `TreeNode(30, TreeNode(14, None, TreeNode(22, TreeNode(9))))` the 9 passes the parent check
-          (9 < 22) and the root check (9 < 30), and the tree is still not a BST.
-      - id: sibling-value
-        text: The sibling's value, so the left child must also be smaller than the right child
+          55 is an ancestor of both, but not the lowest one. Both are larger than 55, so they stay
+          together down to 63, where 59 goes left and 68 goes right. Their lowest common ancestor is 63.
+      - id: parent-pair
+        text: 59 and 63
         explanation: >-
-          Siblings are not what the rule is about. The sample passes this extra test too: 12 < 45 at
-          the root and 18 < 60 below it. The rule links a node with every node in its subtrees, not
-          with its sibling.
-      - id: low-high
-        text: A (low, high) range that narrows as the call goes left or right
+          63 is one of the values, and 59 is in 63's left subtree. A node counts as its own ancestor, so
+          63 is an ancestor of both, and it is lower than 55.
+      - id: one-target
+        text: 55 and 86
         explanation: >-
-          Pass `low` and `high` down: going left sets `high` to the current value, going right sets
-          `low`, and every node must satisfy `low < val < high`. In the sample the 18 arrives with the
-          range (30, 45) and fails. Equivalently, an inorder traversal of a valid BST with distinct
-          values is strictly increasing, and the sample's is `[12, 30, 18, 45, 60]`.
-    correct: low-high
+          55 is one of the values, but 86 is not below it. 86 is larger than 72, so it is on 72's
+          right, while 55 is on its left. The two part at 72.
+    correct: split-at-55
     followUps:
-      nothing-more:
-        prompt: >-
-          The 18 is a left child of the 45 and passes the check. Which BST rule does it break?
+      both-below:
+        prompt: At 63, which way do 59 and 68 go?
         options:
-          - id: whole-subtree
-            text: Every value in a node's right subtree must exceed the node, and 18 is in the right subtree of 30
-          - id: complete
-            text: A BST must have every level full, and this tree does not
-          - id: bigger-than-parent
-            text: Every node must be larger than its parent, and 18 is not
-        correct: whole-subtree
+          - { id: apart, text: "Different ways: 59 is smaller than 63 and 68 is larger" }
+          - { id: both-right, text: "Both go right, so they part below 63" }
+          - { id: both-left, text: "Both go left, so they part below 63" }
+        correct: apart
         explanation: >-
-          The rule covers a node's entire subtree, not just its direct children. A left child is
-          allowed to be smaller than its parent (the 12 under the 30 is), and a BST does not have to be
-          full or balanced.
-      root-value:
-        prompt: >-
-          In `TreeNode(30, TreeNode(14, None, TreeNode(22, TreeNode(9))))` the 9 passes its parent
-          check and the root check. Which ancestor does it violate?
+          A node above the split is an ancestor of both values, but the lowest common ancestor is the
+          node where they go different ways. For 59 and 68 that is 63, one level below 55.
+      parent-pair:
+        prompt: Is 63 an ancestor of itself?
         options:
-          - id: the-fourteen
-            text: The 14, because the 9 is in the right subtree of the 14 and must be larger than 14
-          - id: the-twenty-two
-            text: The 22, because a left child must be larger than its parent
-          - id: none
-            text: None, because 9 < 30 puts it correctly in the left half of the tree
-        correct: the-fourteen
+          - { id: yes-self, text: "Yes; the path from the root down to 63 ends at 63 itself" }
+          - { id: no-above, text: "No; an ancestor must sit above the node" }
+          - { id: only-leaf, text: "Only if 63 has no children" }
+        correct: yes-self
         explanation: >-
-          Every ancestor sets a limit, not only the root. With bounds, the 22 is called with the range
-          (14, 30) and the 9 with (14, 22), so `9 <= 14` fails. A left child smaller than its parent
-          (9 < 22) is allowed.
-      sibling-value:
-        prompt: >-
-          The sample's inorder traversal is `[12, 30, 18, 45, 60]`. Which two adjacent entries of that
-          list show that the tree is not a BST?
+          The definition includes the node itself. So when one value sits below the other, the upper
+          value is their lowest common ancestor.
+      one-target:
+        prompt: Is 86 anywhere in 55's subtree?
         options:
-          - id: thirty-eighteen
-            text: 30 then 18, which goes down; the inorder list of a BST must be strictly increasing
-          - id: eighteen-fortyfive
-            text: 18 then 45, because a left child must be larger than its parent
-          - id: none
-            text: None; inorder order depends on the tree's shape, so a dip proves nothing
-        correct: thirty-eighteen
+          - { id: no-86, text: "No; 86 sits on the right side of 72, and 55 on the left side" }
+          - { id: yes-larger, text: "Yes; 86 is larger than 55, so it is in 55's right subtree" }
+          - { id: yes-root, text: "Yes; every value except the root is below 55's level" }
+        correct: no-86
         explanation: >-
-          Inorder visits a valid BST in increasing order whatever its shape, so any step down exposes a
-          violation. The 30 followed by the 18 is exactly the node that ended up on the wrong side of
-          the root. Whether two siblings happen to be in order proves nothing about the rest.
-
-  - id: bst-order-exam-lca-approach
-    heading: Which technique fits?
-    tags: [tree, binary-search, complexity]
-    prompt: |-
-      In a binary search tree with distinct values, `p` and `q` both exist in the tree. Their lowest
-      common ancestor is the lowest node with both in its subtree, and a node counts as being in its
-      own subtree. Example:
-      `TreeNode(40, TreeNode(20, TreeNode(10), TreeNode(30, TreeNode(25), TreeNode(35))), TreeNode(60, TreeNode(50), TreeNode(70)))`.
-      For `p = 25` and `q = 70` it is 40. Which approach uses the ordering to find it in O(h) time,
-      where `h` is the height of the tree?
-    options:
-      - id: two-paths
-        text: Search the whole tree for the path to `p` and the path to `q`, then compare them
-        explanation: >-
-          This returns the correct node, since the last shared node of the two paths is the ancestor.
-          It does not use the ordering, though: searching an unordered tree can look at every node, so
-          the cost is O(n) rather than O(h). The ordering lets a search follow a single downward
-          path.
-      - id: strictly-between
-        text: Walk down and return the first node whose value lies strictly between `p` and `q`
-        explanation: >-
-          This fails when the ancestor is `p` or `q` itself, because that node is not strictly between
-          the two. For `p = 20` and `q = 35` the walk passes the 20 and returns 30, but the lowest
-          common ancestor is 20, which has 35 in its own subtree. It also finds nothing when `p == q`.
-      - id: inorder-midpoint
-        text: List the values in order and return the one halfway between `p` and `q` in the list
-        explanation: >-
-          The ancestor lies between `p` and `q` in inorder, but not halfway. Inorder is
-          `[10, 20, 25, 30, 35, 40, 50, 60, 70]`. For `p = 10` and `q = 35` the halfway element is 25,
-          while the ancestor is 20. Building the list also costs O(n).
-      - id: split-point
-        text: Go left if both are smaller, right if both are larger, otherwise return the current node
-        explanation: >-
-          While both values are smaller, both lie in the left subtree, so the ancestor is there too,
-          and likewise on the right. The first node that does not send both the same way either splits
-          them or equals one of them, so it is the ancestor. Each step goes down one level, so the cost
-          is O(h): about log₂ n if the tree is balanced, n for a chain.
-    correct: split-point
-    followUps:
-      two-paths:
-        prompt: Why can a BST reach `p` in O(h) steps, while the search above may look at nodes it does not need?
-        options:
-          - id: order-picks-child
-            text: At each node the ordering says which child can hold `p`, so only one path is followed
-          - id: always-balanced
-            text: A BST is always balanced, so h is about log n
-          - id: parent-pointers
-            text: Every BST node stores a pointer to its parent
-        correct: order-picks-child
-        explanation: >-
-          Comparing `p` with the current value discards a whole subtree, so the search follows a single
-          root-to-node path of at most h nodes. A BST is not always balanced: inserting 1, 2, ..., 50
-          in that order gives a chain with h = 50, and then O(h) is O(n). Nothing in this approach
-          needs parent pointers.
-      strictly-between:
-        prompt: >-
-          In the example tree, take `p = 20` and `q = 35`. What does the strictly-between version
-          return, and what is the correct answer?
-        options:
-          - id: thirty-vs-twenty
-            text: It returns 30, but the answer is 20, because 20 has 35 in its subtree and is itself one of the values
-          - id: twenty-both
-            text: It returns 20, the same as the correct answer
-          - id: forty
-            text: It returns 40, the root
-        correct: thirty-vs-twenty
-        explanation: >-
-          The strict test skips the 20 because it equals `p`, so the walk continues to the right and
-          lands on 30. A node counts as its own descendant, so 20 is the answer. The both-smaller and
-          both-larger tests handle that case without a special rule.
-      inorder-midpoint:
-        prompt: >-
-          Inorder for the example tree is `[10, 20, 25, 30, 35, 40, 50, 60, 70]`. For `p = 10` and
-          `q = 35`, the halfway element is 25. What is the lowest common ancestor?
-        options:
-          - id: twenty
-            text: 20, the lowest node with both 10 and 35 in its subtree; a position in the list says nothing about depth
-          - id: twenty-five
-            text: 25, because it sits halfway between them in the list
-          - id: thirty
-            text: 30, the parent of the 35, because the ancestor sits just above the larger value
-        correct: twenty
-        explanation: >-
-          The ancestor is defined by the tree structure (who contains whom), not by list distance. Here
-          25 is not even an ancestor of the 10, and 30 is the parent of the 35 but does not contain the 10.
-          Inorder only guarantees the ancestor lies somewhere between the two values, inclusive, and the
-          split-point walk finds it directly.
+          Being one of the values makes a node the answer only when the other value is below it. 86 is
+          on the other side of 72, so 55 is not an ancestor of 86.

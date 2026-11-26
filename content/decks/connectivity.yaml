@@ -737,3 +737,203 @@ questions:
               No edge joins 0 and 2 directly, but connection follows chains: 0 to 1 to 2. Both
               `find` calls now stop at 3.
         correct: true-second
+
+  - id: connectivity-union-by-size
+    format: step-trace
+    tags:
+      - graph
+    workedExample: |-
+      Consider the sets {0} and {1, 2, 3} with root 3, so `size[0]` is 1 and `size[3]` is 3, and
+      the call `union(0, 1)`. The union compares the sizes of the two roots' sets.
+
+      1. `find(0)` is 0 and `find(1)` is 3, so `ra` is 0 and `rb` is 3. The roots differ, so the
+         union goes on.
+      2. `size[0]` is 1, which is not more than `size[3]`, 3. The `else` branch runs
+         `parent[0] = 3` and `size[3] += size[0]`, and `size[3]` becomes 4.
+      3. Root 0, the root of the smaller set, went under root 3. Only node 0 is one link further
+         from its root, and nodes 1, 2 and 3 walk as far as before.
+    prompt: >-
+      Union by size keeps the walks to a root short. It stores `size[r]`, the number of nodes in the
+      set whose root is `r` (the code reads it only at roots), and a union hangs the root of the
+      smaller set under the root of the larger set. On a tie it hangs `a`'s root under `b`'s root,
+      as `parent[find(a)] = find(b)` does. `find` follows `parent` links to a root, as before.
+      Lines 15 and 16 are ties, so `child` starts on 2, the root `union(2, 3)` hung under 3. Move
+      `child` to the root each later union hangs.
+    code: |-
+      parent = list(range(6))
+      size = [1] * 6
+
+      def union(a, b):
+          ra, rb = find(a), find(b)
+          if ra == rb:
+              return
+          if size[ra] > size[rb]:
+              parent[rb] = ra
+              size[ra] += size[rb]
+          else:
+              parent[ra] = rb
+              size[rb] += size[ra]
+
+      union(0, 1)
+      union(2, 3)
+      union(0, 4)
+      union(2, 0)
+      union(0, 5)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [0, 1, 2, 3, 4, 5]
+    start:
+      - name: child
+        at: 2
+    steps:
+      - line: 17
+        ask: Which root does `union(0, 4)` hang under another root?
+        pointer: child
+        correct: 4
+        explanation: >-
+          `find(0)` is 1, whose set {0, 1} holds 2 nodes, and `find(4)` is 4, a set of 1. Since
+          `size[1] > size[4]`, line 9 runs `parent[4] = 1`, and `size[1]` becomes 3.
+        misses:
+          - index: 1
+            explanation: >-
+              Root 1's set holds 2 nodes and root 4's holds 1, so 1 stays a root and 4 goes under
+              it. Hanging `a`'s root 1 under 4 is what `parent[find(a)] = find(b)` would do.
+          - index: 0
+            explanation: >-
+              Node 0 is `a`, but it is not a root: `parent[0]` is 1. A union hangs one of the two
+              roots, here root 4.
+        elsewhere: >-
+          Compare the sets of the two roots, `find(0)` and `find(4)`. Root 1 holds 2 nodes and root
+          4 holds 1, so the smaller set's root, 4, is hung.
+      - line: 18
+        ask: Which root does `union(2, 0)` hang under another root?
+        pointer: child
+        correct: 3
+        explanation: >-
+          `find(2)` is 3, a set of 2 nodes, and `find(0)` is 1, a set of 3 nodes. Since 2 is not
+          more than 3, line 12 runs `parent[3] = 1`, and `size[1]` becomes 5.
+        misses:
+          - index: 2
+            explanation: >-
+              Node 2 is `a`, but it is not a root: `parent[2]` is 3. The union hangs 2's root, 3,
+              and node 2 comes along under it.
+          - index: 1
+            explanation: >-
+              Root 1's set {0, 1, 4} holds 3 nodes, more than the 2 nodes of {2, 3}. The root of the
+              larger set stays a root.
+          - index: 0
+            explanation: >-
+              Node 0 is `b`, but it is not a root: `parent[0]` is 1. The union compares the roots
+              `find(2)` and `find(0)`, which are 3 and 1.
+        elsewhere: >-
+          Find both roots first: `find(2)` is 3 and `find(0)` is 1. Root 3 holds 2 nodes and root 1
+          holds 3, so root 3 is hung.
+      - line: 19
+        ask: Which root does `union(0, 5)` hang under another root?
+        pointer: child
+        correct: 5
+        explanation: >-
+          `find(0)` is 1, whose set holds 5 nodes, and node 5 is a set of 1. Since
+          `size[1] > size[5]`, line 9 runs `parent[5] = 1`.
+        misses:
+          - index: 1
+            explanation: >-
+              Root 1 holds 5 nodes and root 5 holds 1. Hanging 1 under 5 would put five nodes one
+              link further from their root. Union by size hangs 5 and moves only one node.
+          - index: 0
+            explanation: >-
+              Node 0 is `a`, but it is not a root: `parent[0]` is 1. The union hangs one of the
+              roots 1 and 5.
+        elsewhere: >-
+          Root 1 holds 5 nodes and root 5 holds 1, so the smaller set's root, 5, is hung.
+      - line: 19
+        ask: All six nodes share root 1 after line 19. What is the most links any `find` walks?
+        options:
+          - id: two
+            text: '2'
+            explanation: >-
+              Node 2 points at 3, and 3 points at 1, so `find(2)` walks 2 links. Nodes 0, 3, 4 and
+              5 point straight at 1, and 1 is the root.
+          - id: three
+            text: '3'
+            explanation: >-
+              That is the tree `parent[find(a)] = find(b)` builds on every union, ties or not: 0
+              walks 1, 4, 5 and 2 walks 3, 4, 5. Union by size hung 4 and 5 under 1 instead.
+          - id: four
+            text: '4'
+            explanation: >-
+              That is the tree built by hanging the larger set's root under the smaller one on every
+              union: 0 walks 1, 4, 3, 5. Union by size does the opposite.
+          - id: one
+            text: '1'
+            explanation: >-
+              That would point every node of the smaller set straight at the new root. A union
+              writes one cell, `parent[3]` on line 18, so node 2 still reaches 1 through 3.
+        correct: two
+
+  - id: connectivity-size-bounds-height
+    tags:
+      - graph
+    workedExample: |-
+      Consider node `x` in a set of 5 nodes under union by size, and two unions that join its set
+      with others. A union hangs the root of the smaller set under the root of the larger set.
+
+      1. `x`'s set of 5 joins a set of 3. The other set is smaller, so its root goes under `x`'s
+         root. `x`'s walk to its root is as long as before, and its set holds 8 nodes.
+      2. `x`'s set of 8 then joins a set of 9. `x`'s set is the smaller one, so `x`'s root goes
+         under the other root, and `x`'s walk grows by one link.
+      3. `x`'s set holds 8 + 9 = 17 nodes. Its walk grew only in step 2, the one union that hung
+         its root.
+    prompt: |-
+      Under union by size, node `x` gets one link further from its root only when its root is hung under another root, and a root is hung only under a root whose set holds at least as many nodes. That is why a `find` on n nodes walks at most log2 n links, rounded down: the largest whole `k` with `2 ** k <= n`, where `2 ** k` is `k` 2s multiplied together. That allows at most 10 links for 1,024 nodes, since `2 ** 10 == 1024`, and at most 9 for 1,000 nodes, since `2 ** 9 == 512` and `2 ** 10` is over 1,000. With path compression as well, the cost of each operation, averaged over a long run of operations, is near constant.
+
+      Node `x` started in a set of its own, and its root has been hung under another root 3 times. What is the smallest number of nodes `x`'s set can hold now?
+    options:
+      - id: eight
+        text: '8'
+        explanation: >-
+          Each time `x`'s root is hung, the set it joins holds at least as many nodes as `x`'s set,
+          so `x`'s set at least doubles: from 1 to at least 2, 4 and then 8. Ties reach 8 exactly,
+          by joining sets of 1, 2 and 4. That doubling is why `x`'s root can be hung at most 10
+          times among 1,024 nodes.
+      - id: four
+        text: '4'
+        explanation: >-
+          That adds at least one node per hang, as if the set `x` joins could always be a single
+          node. Union by size hangs `x`'s root only under a set at least as large as `x`'s, so the
+          set at least doubles each time.
+      - id: fifteen
+        text: '15'
+        explanation: >-
+          That hangs a root only under a strictly larger set, so the set grows from 1 to at least
+          3, 7 and 15. On a tie the union still hangs one root under the other, so `x`'s set can
+          grow from 1 to exactly 2, 4 and 8.
+    correct: eight
+    followUps:
+      four:
+        prompt: When `x`'s root is hung under another root, how many nodes does the other set hold?
+        options:
+          - id: as-many
+            text: At least as many as `x`'s set
+          - id: one-or-more
+            text: At least 1, whatever `x`'s set holds
+          - id: exactly
+            text: Exactly as many as `x`'s set
+        correct: as-many
+        explanation: >-
+          Union by size hangs the root of the smaller set, so the set `x` joins is never smaller than
+          its own. Joining it at least doubles `x`'s set.
+      fifteen:
+        prompt: Two sets of 4 nodes meet in a union by size. What happens?
+        options:
+          - id: one-hangs
+            text: One root goes under the other, and the set holds 8
+          - id: waits
+            text: Neither root moves until one set is larger
+          - id: new-root
+            text: Both roots go under a new root
+        correct: one-hangs
+        explanation: >-
+          On a tie, union by size hangs `a`'s root under `b`'s root. A set of 4 can join another set
+          of 4 and exactly double.

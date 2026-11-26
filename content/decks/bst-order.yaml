@@ -1,6 +1,6 @@
 id: bst-order
 title: BST order
-description: Use the ordering of a binary search tree to pick a subtree, carry an ancestor's bound down, and find where two targets split.
+description: Use the ordering of a binary search tree to pick a subtree, read values in sorted order, carry an ancestor's bound down, and find where two targets split.
 heading: Where does the order send you?
 
 questions:
@@ -8,17 +8,30 @@ questions:
     heading: What can one comparison rule out?
     tags: [tree, binary-search]
     workedExample: |-
-      In the question's tree, a search for `25` starts by comparing it with the root, `50`. In a BST
-      every value in a node's right subtree is larger than the node.
+      A binary search tree, or BST, keeps its values in order: every value in a node's left
+      subtree is smaller than the node, and every value in its right subtree is larger. So a search
+      compares the target with one node and then goes down one side only. Here a search for `25`
+      starts at the root of the BST below, `46`.
 
-      1. `25` is smaller than `50`. Every value in 50's right subtree is larger than 50, so none of
-         them can be 25.
-      2. 50's right subtree is 70 and its children 60 and 80. Since all three are larger than 50,
-         that one comparison rules out all of them without looking at any.
-      3. So only 50's left subtree can hold 25, and the search goes on at 30.
+      ```text
+            46
+          /    \
+        12      67
+       /  \    /  \
+      5   34  53   82
+      ```
+
+      1. `25` is smaller than `46`, and every value in 46's right subtree is larger than 46, so none
+         of them can be 25.
+      2. 46's right subtree holds 67, 53 and 82. That one comparison rules out all three without
+         reading them.
+      3. So only 46's left subtree can hold 25, and the search goes on at its top node, 12.
     prompt: |-
-      In a binary search tree (BST) with distinct values, every value in a node's left subtree is smaller
-      than the node and every value in its right subtree is larger.
+      In a binary search tree (BST) with distinct values, every value in a node's left subtree is
+      smaller than the node and every value in its right subtree is larger. A node's children are
+      the nodes one link below it, and its parent is the node one link above it. A node's left
+      subtree is its left child together with every node below that child, and likewise on the
+      right. The top node is the root.
 
       ```text
               50
@@ -30,8 +43,8 @@ questions:
            35
       ```
 
-      A search for 63 also starts by comparing with 50. Besides 50 itself, which nodes does that one
-      comparison rule out?
+      A search for 63 starts by comparing 63 with the root, 50. Besides 50 itself, which nodes does
+      that one comparison rule out?
     options:
       - id: left-subtree
         text: 30, 20, 40 and 35, the whole left subtree of 50
@@ -91,6 +104,23 @@ questions:
     format: step-trace
     heading: Where does the search go next?
     tags: [tree, binary-search]
+    workedExample: |-
+      Take the BST below and `search(root, 10)`. Each pass of the loop compares `target` with
+      `node.val`, returns `node` on a match, and otherwise moves `node` one level down: left for a
+      smaller target, right for a larger one.
+
+      ```text
+          8
+         / \
+        4   12
+       / \  / \
+      2  6 10  14
+      ```
+
+      1. `node` starts at 8. 10 is not 8 and is larger, so `node` moves to 8's right child, 12.
+      2. 10 is not 12 and is smaller, so `node` moves to 12's left child, 10.
+      3. 10 equals `node.val`, so the search returns that node after three comparisons. It never
+         looked at 4, 2, 6 or 14.
     prompt: |-
       `search(root, 38)` runs on the tree below. The cells list the nodes level by level; they are not
       the order the search visits them. Tap where `node` is after each pass, then say how the search ends.
@@ -179,6 +209,23 @@ questions:
     format: tap-cell
     heading: Where does the new value go?
     tags: [tree, binary-search, recursion]
+    workedExample: |-
+      Take the BST below and `insert(root, 5)`. Each call compares `val` with its node and passes
+      it on to the left child if it is smaller, or the right child otherwise. A call on an empty
+      slot builds the new node, and the call above stores it as its child.
+
+      ```text
+          8
+         / \
+        4   12
+       / \  / \
+      2  6 10  14
+      ```
+
+      1. 5 is smaller than 8, so the call on 8 passes it on to 8's left child, 4.
+      2. 5 is larger than 4, so the call on 4 passes it on to 4's right child, 6.
+      3. 5 is smaller than 6, and 6 has no left child, so `insert(None, 5)` returns `TreeNode(5)`
+         and the call on 6 stores it as `node.left`. 6 becomes the parent of 5.
     prompt: |-
       `insert(root, 65)` adds 65 to the tree below. It follows the same left-or-right choices as a
       search, and puts the new node in the first empty child slot it reaches.
@@ -231,22 +278,118 @@ questions:
       - index: 7
         explanation: 35 is in 50's left subtree, which the first comparison ruled out.
 
+  - id: bst-order-kth-inorder
+    format: tap-cell
+    heading: Which value comes back?
+    tags: [tree, dfs, recursion]
+    workedExample: |-
+      Take the BST below. An inorder walk records a node after its whole left subtree and before
+      its right subtree, and in a BST the left subtree holds the smaller values.
+
+      ```text
+        6
+       / \
+      2   9
+       \
+        4
+      ```
+
+      1. The call on 6 walks 6's left subtree first. 2 has no left child, so 2 is recorded, then
+         2's right child 4, and `out` is `[2, 4]`.
+      2. Next 6 is recorded, after the smaller values below it on the left, and last 9 from its
+         right subtree. `out` is `[2, 4, 6, 9]`.
+      3. Every node came after all the smaller values in its left subtree and before the larger
+         ones in its right subtree, so the walk recorded the values from smallest to largest.
+    prompt: |-
+      `kth(root, 7)` runs on the BST below. `walk` is the inorder walk: it walks the left subtree,
+      records the node, then walks the right subtree. The cells list the nodes level by level; they
+      are not the order the walk records them. Tap the node `kth(root, 7)` returns.
+
+      ```text
+                56
+             /      \
+           33        83
+          /  \     /    \
+        21    47  70     93
+                 /  \   /
+               57   77 85
+      ```
+    code: |
+      def kth(root, k):
+          out = []
+          walk(root, out)
+          return out[k - 1]
+
+      def walk(node, out):
+          if node is None:
+              return
+          walk(node.left, out)
+          out.append(node.val)
+          walk(node.right, out)
+    sequence:
+      kind: array
+      name: nodes
+      cells: [56, 33, 83, 21, 47, 70, 93, 57, 77, 85]
+    correct: 8
+    explanation: >-
+      In a BST the inorder walk records the values from smallest to largest: 21, 33, 47, 56, 57, 70,
+      77, 83, 85, 93. `out[6]` is the 7th value recorded, 77, so `kth` returns the 7th smallest value.
+    misses:
+      - index: 0
+        explanation: >-
+          56 is the root, but the walk records all of its left subtree first: 21, 33 and 47. So 56 is
+          the 4th value recorded.
+      - index: 1
+        explanation: 33 is the 2nd value recorded, right after 21, the only smaller value.
+      - index: 2
+        explanation: >-
+          83 is the 8th value recorded. `out[k - 1]` reads index 6, and index 0 holds the first value,
+          so it is the 7th value, one before 83.
+      - index: 3
+        explanation: 21 is the smallest value, so it is the 1st one recorded.
+      - index: 4
+        explanation: 47 is the 3rd value recorded, after 21 and 33. Only the left subtree of 56 comes first.
+      - index: 5
+        explanation: >-
+          70 is the 6th value recorded, at index 5. `out[k - 1]` reads index 6, one further along.
+      - index: 6
+        explanation: >-
+          93 is the 7th cell of the strip, but the strip lists nodes level by level. 93 is the largest
+          value, so the walk records it last.
+      - index: 7
+        explanation: >-
+          57 would be 7th in preorder, which records each node before its subtrees. Inorder records it
+          5th, right after 56.
+      - index: 9
+        explanation: >-
+          85 would be 7th if the walk recorded each node after both of its subtrees. Inorder records it
+          9th, between 83 and 93.
+
   - id: bst-order-inherited-range
     heading: What range is allowed here?
     tags: [tree]
     workedExample: |-
-      In the question's tree, find the limits that ancestors put on the position of 60. Being in an
+      In the BST below, find the limits that ancestors put on the position of 53. Being in an
       ancestor's left subtree means smaller than it, and being in its right subtree means larger.
 
-      1. The path from the root down to 60 is 50, then 70, then 60. So 50 and 70 are both ancestors
-         of 60.
-      2. 60 is in 50's right subtree, so the value there must be larger than 50.
-      3. 60 is also in 70's left subtree, so the value there must be smaller than 70.
-      4. So the ancestors allow any value greater than 50 and less than 70, since both limits apply
-         at once.
+      ```text
+            46
+          /    \
+        12      67
+       /  \    /  \
+      5   34  53   82
+      ```
+
+      1. The path from the root down to 53 is 46, then 67, then 53. So 46 and 67 are the ancestors
+         above 53.
+      2. 53 is in 46's right subtree, so the value there must be larger than 46.
+      3. 53 is also in 67's left subtree, so the value there must be smaller than 67.
+      4. Both limits apply at once, so the ancestors allow any value greater than 46 and less than
+         67.
     prompt: |-
-      Every ancestor puts a limit on a node: being in an ancestor's left subtree means smaller than it,
-      and being in its right subtree means larger.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. Every ancestor above a node puts a limit on it: being in an ancestor's left subtree
+      means smaller than it, and being in its right subtree means larger.
 
       ```text
               50
@@ -314,10 +457,132 @@ questions:
           Only ancestors constrain a node. Their bounds are inherited down the path, and nodes on other
           branches, such as 70, put no limit on it.
 
+  - id: bst-order-range-passed
+    heading: What range does this call receive?
+    tags: [tree, recursion]
+    workedExample: |-
+      Take the tree below and `valid(root, float('-inf'), float('inf'))`. Each call checks its node
+      against `low` and `high`, then passes its own value down as one bound of each child call.
+
+      ```text
+        40
+       /
+      15
+        \
+         30
+      ```
+
+      1. The call on 40 has no limits, and 40 fits. Its left call passes the range (-inf, 40):
+         going left, 40 becomes `high`, and `low` stays the -inf it received.
+      2. 15 fits (-inf, 40). Its right call passes (15, 40): going right, 15 becomes `low`, and
+         `high` stays the 40 it received from the call above.
+      3. 30 fits (15, 40), so its check passes. Its two bounds came from two different ancestors.
+    prompt: |-
+      `valid(root, float('-inf'), float('inf'))` checks the tree below. `float('inf')` is larger than
+      every number and `float('-inf')` is smaller than every number, so the root's call has no
+      limit. `low < node.val < high` is true only when both comparisons are.
+
+      ```python
+      def valid(node, low, high):
+          if node is None:
+              return True
+          if not low < node.val < high:
+              return False
+          return (valid(node.left, low, node.val)
+                  and valid(node.right, node.val, high))
+      ```
+
+      ```text
+                80
+              /    \
+            50      93
+           /  \
+         20    66
+        /  \
+      11    35
+              \
+               42
+      ```
+
+      What `low` and `high` does the call on 42 receive?
+    options:
+      - id: inherited
+        text: "`low = 35, high = 50`"
+        explanation: >-
+          The call on 50 passes the range (-inf, 50) left to 20. The call on 20 passes (20, 50) right to
+          35, keeping 50. The call on 35 passes (35, 50) right to 42: 35 replaces `low`, and `high` is
+          still the 50 handed down from 50.
+      - id: right-drops-high
+        text: "`low = 35, high = float('inf')`"
+        explanation: >-
+          That would need a right call to pass `float('inf')` as `high`. It passes `high`, the bound it
+          received, and the calls on 20 and 35 both received 50.
+      - id: never-replaced
+        text: "`low = 20, high = 80`"
+        explanation: >-
+          That keeps the first bound set on each side for good. But every call passes its own value
+          down, as `high` to its left child and as `low` to its right child, so 50 replaces 80 as
+          `high`, and 35 replaces 20 as `low`.
+      - id: right-keeps-low
+        text: "`low = float('-inf'), high = 50`"
+        explanation: >-
+          That would need a right call to keep `low` as it is. A right call passes `node.val` as `low`,
+          so the calls on 20 and 35 each raise it, first to 20 and then to 35.
+    correct: inherited
+    followUps:
+      right-drops-high:
+        prompt: What does the call on 35 pass as `high` to its right child?
+        options:
+          - { id: its-high, text: "The `high` it received, 50, since a right call passes `high` along" }
+          - { id: no-high, text: "`float('inf')`, since a right child only needs a lower bound" }
+          - { id: own-value, text: "Its own value, 35, since every call passes its own value down" }
+        correct: its-high
+        explanation: >-
+          A right call replaces only `low`. `high` is passed along unchanged, so the limit 50 set two
+          calls up still reaches 42.
+      never-replaced:
+        prompt: The call on 50 received `high = 80`. What `high` does it pass to its left child?
+        options:
+          - { id: fifty, text: "50, its own value, since going left makes the node's value `high`" }
+          - { id: eighty, text: "80, since a bound that is already set is kept" }
+          - { id: inf-high, text: "`float('inf')`, since only the root sets a bound" }
+        correct: fifty
+        explanation: >-
+          Going left, the call passes `node.val` as `high`, whatever it received. A node that passed
+          its check lies inside its range, so its own value is always the tighter bound.
+      right-keeps-low:
+        prompt: In `valid(node.right, node.val, high)`, which argument is the new `low`?
+        options:
+          - { id: node-val, text: "`node.val`, the value of the node making the call" }
+          - { id: low-kept, text: "None; `low` is passed along and only `high` changes" }
+          - { id: high-arg, text: "`high`, since the right side holds the larger values" }
+        correct: node-val
+        explanation: >-
+          The second argument becomes the child call's `low`, and it is the parent's value. A right
+          child must be larger than its parent, so going right always raises `low`.
+
   - id: bst-order-grandparent-violation
     format: tap-cell
     heading: Which node breaks the rule?
     tags: [tree, recursion]
+    workedExample: |-
+      Take the tree below and `valid(root, float('-inf'), float('inf'))`. A node passes when it
+      lies strictly between the `low` and `high` its call receives, and those bounds come from
+      every ancestor above it.
+
+      ```text
+          30
+         /  \
+        10   50
+         \
+          20
+      ```
+
+      1. 30 fits (-inf, inf). Its left call gives 10 the range (-inf, 30), and 10 fits.
+      2. 10's right call gives 20 the range (10, 30): 10 replaces `low`, and 30 is inherited from
+         the root. 20 fits.
+      3. 50's call gets (30, inf), and 50 fits. Every node fits its range, so `valid` returns
+         `True`.
     prompt: |-
       In the tree below, every left child is smaller than its parent and every right child is larger.
       It is still not a BST, because one node does not fit an ancestor further up.
@@ -330,7 +595,7 @@ questions:
         10  45  50  70
       ```
 
-      Tap the node that breaks the BST rule. The function shows the range each call checks.
+      Tap the node that does not fit one of its ancestors. The function shows the range each call checks.
     code: |
       def valid(node, low, high):
           if node is None:
@@ -349,7 +614,7 @@ questions:
       subtree, so it must be smaller than 40. Its call gets the range (20, 40), and 45 is outside it.
     misses:
       - index: 0
-        explanation: 40 is the root. It has no ancestor, so its range is unlimited and it always fits.
+        explanation: 40 is the root. It has no ancestor above it, so its range is unlimited and it always fits.
       - index: 1
         explanation: 20 is in 40's left subtree and is smaller than 40. Its range is (-inf, 40), and 20 fits.
       - index: 2
@@ -367,19 +632,28 @@ questions:
     heading: Where do the two targets part ways?
     tags: [tree, binary-search]
     workedExample: |-
-      In the question's tree, find the lowest common ancestor of `20` and `40`. Walking down from
+      Take the BST below and find the lowest common ancestor of `3` and `11`. Walking down from
       the root, the two values stay together while both go the same way. The first node where they
       go different ways is their lowest common ancestor.
 
-      1. At the root, `20 < 50` and `40 < 50`. Both go left, so both are in 50's left subtree, and
-         the walk moves to 30.
-      2. At 30, `20 < 30` but `40 > 30`. So 20 is in 30's left subtree and 40 is in its right
-         subtree: they go different ways here.
-      3. Every node below 30 sits inside one of those two subtrees, so it cannot hold both values.
-         30 holds both, so the lowest common ancestor of 20 and 40 is 30.
+      ```text
+          15
+         /  \
+        7    22
+       / \
+      3   11
+      ```
+
+      1. At the root, `3 < 15` and `11 < 15`. Both go left, so both are in 15's left subtree, and
+         the walk moves to 7.
+      2. At 7, `3 < 7` but `11 > 7`. So 3 is in 7's left subtree and 11 is in its right subtree:
+         they go different ways here.
+      3. Every node below 7 sits inside one of those two subtrees, so it is an ancestor of at most
+         one of the values. 7 is an ancestor of both, so 7 is their lowest common ancestor.
     prompt: |-
-      The lowest common ancestor of two values is the lowest node with both of them in its subtree. A
-      node counts as being in its own subtree.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. The lowest common ancestor of two values is the lowest node that is an ancestor of
+      both.
 
       ```text
               50
@@ -448,10 +722,26 @@ questions:
     format: step-trace
     heading: Where does the walk stop?
     tags: [tree, binary-search]
+    workedExample: |-
+      Take the BST below and `lca(root, 10, 14)`. Each pass moves `node` left while both values are
+      smaller than it, moves right while both are larger, and otherwise returns `node`.
+
+      ```text
+          8
+         / \
+        4   12
+       / \  / \
+      2  6 10  14
+      ```
+
+      1. At 8, both 10 and 14 are larger, so the second test holds and `node` moves to 12.
+      2. At 12, 10 is smaller but 14 is larger, so neither test holds. The `else` returns 12, the
+         node where the two values go different ways.
     prompt: |-
-      `lca(root, 35, 40)` finds the lowest common ancestor of 35 and 40. A node counts as being in its
-      own subtree. The cells list the nodes level by level. Tap where `node` is after each pass, then
-      say what the call returns.
+      An ancestor of a node is any node on the path from the root down to it, the node itself
+      included. `lca(root, 35, 40)` finds the lowest common ancestor of 35 and 40, the lowest node
+      that is an ancestor of both. The cells list the nodes level by level. Tap where `node` is
+      after each pass, then say what the call returns.
 
       ```text
               50

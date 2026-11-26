@@ -344,75 +344,104 @@ questions:
           Chaining set `T` to 10, but the direct flight is cheaper and comes later. The bug shows
           only when the chained trip is the cheaper one.
 
-  - id: wp-exam-zero-weights
-    heading: Which method fits?
-    tags: [graph, heap, complexity]
-    prompt: >-
-      A delivery map has V depots and E one-way roads. Each road has a toll of 0 or more, and
-      some roads are free. You need the cheapest total toll from one depot to every other depot,
-      in O((V + E) log V) time. Which method fits?
+  - id: wp-exam-free-road-stop
+    heading: Can the search stop at the target?
+    tags: [graph, heap, python]
+    prompt: |-
+      A delivery map has one-way roads between depots, and every road has a toll of 0 or more.
+      Some roads are free. This version of Dijkstra's algorithm should return the cheapest total
+      toll from `src` to `dst`, but it stops early instead of waiting for the heap to empty:
+
+      ```python
+      import heapq
+
+      def toll(graph, src, dst):
+          dist = {node: float('inf') for node in graph}
+          dist[src] = 0
+          heap = [(0, src)]
+          while heap:
+              d, u = heapq.heappop(heap)
+              if d > dist[u]:
+                  continue
+              if u == dst:
+                  return d
+              for v, w in graph[u]:
+                  if d + w < dist[v]:
+                      dist[v] = d + w
+                      heapq.heappush(heap, (d + w, v))
+          return dist[dst]
+      ```
+
+      Does it always return the cheapest toll?
     options:
-      - id: dijkstra
-        text: Dijkstra's algorithm, relaxing free roads like any other road
+      - id: yes-final
+        text: Yes. No entry left is smaller than `d`, and tolls add 0 or more
         explanation: >-
-          No toll is negative, so the smallest heap entry is always final, and a free road adds
-          0, which never undercuts it. With a binary heap this runs in O((V + E) log V).
-      - id: bellman-ford
-        text: Bellman-Ford, since a toll of 0 breaks Dijkstra's finalizing
+          When `dst` pops, every entry left is at least `d`, and every later push adds a toll of 0
+          or more to a popped value. No route found later costs less than `d`, so `d` is final and
+          returning it early is safe. A free road can at best tie it.
+      - id: free-road
+        text: No. A free road from a depot popped later can still lower `dst`
         explanation: >-
-          A toll of 0 is not negative, so Dijkstra stays correct. Bellman-Ford would also be
-          correct, but it costs O(V * E), above the limit.
-      - id: bfs
-        text: Breadth-first search, counting each road as one step
+          A depot popped later has a toll of at least `d`, and a free road adds 0, so it offers at
+          least `d`. That ties at best, and a tie does not pass the strict `<` test.
+      - id: first-push
+        text: Yes. The first entry pushed for `dst` always holds its cheapest toll
         explanation: >-
-          Tolls differ from road to road, so the route with the fewest roads need not be the
-          cheapest. A free road and a costly road count the same to BFS.
-      - id: drop-free
-        text: Dijkstra's algorithm, after deleting every free road first
+          It does return the cheapest toll, but not for that reason. A later relaxation can push a
+          cheaper entry for `dst`. That entry pops first, since the heap pops by toll, and the
+          return uses it.
+      - id: stale-first
+        text: No. The first entry for `dst` to pop can be stale and too large
         explanation: >-
-          A free road is often the cheapest way on. Deleting it can raise a depot's toll or cut
-          the depot off entirely.
-    correct: dijkstra
+          A stale entry makes `d > dist[u]` true, so `continue` skips it before the return. And the
+          smallest entry for `dst` pops before any larger one, so the first one to pop is not
+          stale.
+    correct: yes-final
     followUps:
-      bellman-ford:
-        prompt: Why are free roads safe for Dijkstra's finalizing?
+      free-road:
+        prompt: >-
+          `dst` popped with toll `d`. A depot with toll `t` pops later, and a free road leads from
+          it to `dst`. Can that road lower `dst`?
         options:
-          - id: ties-only
-            text: A route that adds 0 can at best tie a popped distance, never beat it
-          - id: pushed-back
-            text: The heap moves entries that cost 0 to the back, so they never pop
-          - id: skipped
-            text: Dijkstra's algorithm skips every road whose weight is 0
-        correct: ties-only
+          - id: tie-at-best
+            text: No. `t` is at least `d`, so `t + 0` is at least `d` too
+          - id: always-cheaper
+            text: Yes. A free road adds nothing, so its route is always cheaper
+          - id: tie-replaces
+            text: Yes, when `t` equals `d`, since a tie replaces the old toll
+        correct: tie-at-best
         explanation: >-
-          A popped distance is final when no later route can be cheaper. Later routes add weights
-          of 0 or more, so they can match it but never undercut it.
-      bfs:
-        prompt: When does counting roads give the cheapest total toll?
+          The heap pops in order, so `t` is at least `d`. Adding 0 keeps it at least `d`, and the
+          test `d + w < dist[v]` needs strictly less.
+      first-push:
+        prompt: >-
+          `(9, dst)` is pushed, and later a cheaper route pushes `(4, dst)`. Which entry for `dst`
+          reaches the return?
         options:
-          - id: equal-tolls
-            text: Only when every road has the same toll
-          - id: non-negative
-            text: Whenever no toll in the map is negative
-          - id: some-free
-            text: Whenever at least some of the roads are free
-        correct: equal-tolls
+          - id: smaller
+            text: '`(4, dst)`, since the heap pops the smaller toll first'
+          - id: older
+            text: '`(9, dst)`, since it was pushed first'
+          - id: both
+            text: Both, one after the other
+        correct: smaller
         explanation: >-
-          Fewest roads matches cheapest only when every road costs the same. Once tolls differ,
-          a route with more roads can cost less.
-      drop-free:
-        prompt: What is lost by deleting the free roads before searching?
+          The heap pops by toll, not by push order. `(4, dst)` pops first, matches `dist[dst]` and
+          is returned, so `(9, dst)` never pops.
+      stale-first:
+        prompt: When an entry for `dst` pops, which runs first, the stale check or the return?
         options:
-          - id: routes
-            text: Every route that uses one, and those are often the cheapest
-          - id: nothing
-            text: Nothing, since a road that costs 0 adds no cost to a route
-          - id: ties
-            text: Only some tied routes, which never change a cheapest toll
-        correct: routes
+          - id: check-first
+            text: The stale check, so a stale entry never reaches the return
+          - id: return-first
+            text: The return, since it tests `u` before anything else
+          - id: together
+            text: Both at once, so a stale toll can still be returned
+        correct: check-first
         explanation: >-
-          A free road adds nothing to the toll, which is exactly why a cheapest route may need
-          it. Without it, the search can only find dearer routes, or none.
+          `if d > dist[u]: continue` comes before `if u == dst: return d`, so only an entry that
+          matches `dist[dst]` is returned.
 
   - format: step-trace
     id: wp-exam-repeat-trace
@@ -423,8 +452,8 @@ questions:
       recently.
     code: |
       import heapq
-      graph = {"S": [("C", 2), ("B", 10)], "A": [("B", 4), ("D", 9)],
-               "B": [("D", 1)], "C": [("A", 1), ("B", 7)], "D": []}
+      graph = {"S": [("C", 2), ("B", 10)], "A": [("B", 4), ("D", 12)],
+               "B": [("D", 4)], "C": [("A", 1), ("B", 7)], "D": []}
       dist = {node: float("inf") for node in graph}
       dist["S"] = 0
       heap = [(0, "S")]
@@ -470,29 +499,29 @@ questions:
         pointer: u
         correct: 2
         explanation: >-
-          `A` pushed `(7, "B")`, since 3 + 4 is less than 9, and `(12, "D")`. The heap holds 7, 9,
-          10 and 12, so `B` is expanded at 7.
+          `A` pushed `(7, "B")`, since 3 + 4 is less than 9, and `(15, "D")`. The heap holds 7, 9,
+          10 and 15, so `B` is expanded at 7.
         misses:
           - index: 4
-            explanation: '`D`''s only entry is 12, larger than `B`''s 7.'
+            explanation: '`D`''s only entry is 15, larger than `B`''s 7.'
         elsewhere: The smallest entry in the heap is `(7, "B")`.
       - line: 8
         ask: '`D` is expanded next. With what distance does its entry pop?'
         options:
-          - id: seven
-            text: '`8`'
-            explanation: >-
-              `B` pushed `(8, "D")`, since 7 + 1 is less than 12. It pops before the stale 9 and 10
-              for `B` and the old 12 for `D`.
           - id: eleven
-            text: '`12`'
-            explanation: '12 came from `A`. `B` later found 7 + 1 = 8, and that entry pops first.'
-          - id: nine
-            text: '`10`'
+            text: '`11`'
             explanation: >-
-              10 would be the stale `(9, "B")` entry plus `B -> D`. `B` was expanded at 7, so it
-              pushed 8 instead.
-        correct: seven
+              `B` pushed `(11, "D")`, since 7 + 4 is less than 15. It pops after the stale 9 and 10
+              for `B` and before the old 15 for `D`.
+          - id: fifteen
+            text: '`15`'
+            explanation: '15 came from `A`. `B` later found 7 + 4 = 11, and that entry pops first.'
+          - id: thirteen
+            text: '`13`'
+            explanation: >-
+              13 would be the stale `(9, "B")` entry plus `B -> D`. `B` was expanded at 7, so it
+              pushed 11 instead.
+        correct: eleven
       - line: 9
         ask: If the two stale-check lines were deleted, how many times would the loop scan the edges out of `B`?
         options:
@@ -500,7 +529,7 @@ questions:
             text: '3'
             explanation: >-
               `B` was pushed with 10, 9 and 7. Without the check, all three entries are expanded.
-              The answers stay right, since 9 + 1 and 10 + 1 do not beat 8, but two scans are
+              The answers stay right, since 9 + 4 and 10 + 4 do not beat 11, but two scans are
               wasted.
           - id: one
             text: '1'
@@ -689,10 +718,9 @@ questions:
 
       ```python
       import heapq
-      from math import inf
 
       def dijkstra(graph, src):
-          dist = [inf] * len(graph)
+          dist = [float('inf')] * len(graph)
           dist[src] = 0
           heap = [(0, src)]
           while heap:

@@ -1,6 +1,6 @@
 id: weighted-paths
 title: Weighted paths
-description: Add up a route's edge weights, relax every edge in a pass, and find the cheapest route within k stops.
+description: Add up a route's edge weights, relax every edge in a pass, and find the cheapest route within k stops. The last cards, on pass counts, negative cycles, routes and Dijkstra's algorithm, go deeper.
 heading: What does the weighted search do?
 
 questions:
@@ -430,53 +430,349 @@ questions:
           One stop is one node between `S` and `T`, so the route uses 2 edges. That is why the
           loop runs `k + 1` passes.
 
+  - id: wp-passes-needed
+    heading: How many passes does the route need?
+    tags: [graph, python]
+    workedExample: |-
+      Consider `edges = [("S", "P", 2), ("Q", "R", 1), ("P", "Q", 3)]`, with `dist` at 0 for `S`
+      and `inf` for `P`, `Q` and `R`. The cheapest route to `R` is `S -> P -> Q -> R`, and each
+      pass checks the edges in list order.
+
+      1. In pass 1, `S -> P` sets `P` to 2. `Q -> R` comes next, while `Q` is still `inf`, so `R`
+         stays `inf`.
+      2. `P -> Q` comes last and reads the new `P`, so `Q` drops to `2 + 3`, which is 5. Pass 1
+         has fixed two edges of the route, because `P -> Q` comes after `S -> P` in the list.
+      3. In pass 2, `Q -> R` reads `Q` at 5, so `R` drops to 6. `Q -> R` waited one pass because
+         it was checked before its start had a cost.
+    prompt: |-
+      Bellman-Ford repeats the pass V - 1 times, where V is the number of nodes. Below, V is 4, so
+      the loop runs 3 passes and prints `dist["C"]` after each one. The cheapest route to `C` is
+      `S -> A -> B -> C`, which costs 3, and the list holds its edges in reverse order.
+
+      ```python
+      INF = float('inf')
+      edges = [("B", "C", 1), ("A", "B", 1), ("S", "A", 1), ("S", "C", 9)]
+      dist = {"S": 0, "A": INF, "B": INF, "C": INF}
+      for p in range(1, 4):  # V - 1 = 3 passes
+          for u, v, w in edges:
+              if dist[u] + w < dist[v]:
+                  dist[v] = dist[u] + w
+          print(p, dist["C"])
+      ```
+
+      After which pass does it first print 3 for `C`?
+    options:
+      - id: one
+        text: After pass 1
+        explanation: >-
+          Pass 1 gives `C` the cost 9 through `S -> C`, so it prints 9. `B -> C` and `A -> B` come
+          before `S -> A` in the list, so in pass 1 they still read `inf`.
+      - id: two
+        text: After pass 2
+        explanation: >-
+          Pass 2 lowers `B` to 2 through `A -> B`, but `B -> C` was checked earlier in that pass,
+          while `B` was still `inf`. So pass 2 still prints 9.
+      - id: three
+        text: After pass 3
+        explanation: >-
+          Each pass fixes one more edge of the route: pass 1 sets `A` to 1, pass 2 sets `B` to 2
+          and pass 3 sets `C` to 3. Unless some cycle's weights add up to less than 0, every node the
+          start reaches has a cheapest route that repeats no node, so it has at most V - 1 edges.
+          Each pass fixes at least one more of them, so V - 1 passes always suffice.
+      - id: four
+        text: None, since it needs a 4th pass
+        explanation: >-
+          A 4th pass, one per node, is not needed: pass 3 already prints 3. The start needs no
+          pass, so a route through all 4 nodes has 3 edges, and 3 passes fix them even when the
+          list holds them in reverse.
+    correct: three
+    followUps:
+      one:
+        prompt: 'When pass 1 checks `B -> C`, what is `dist["B"]`?'
+        options:
+          - id: inf
+            text: '`inf`, since `A -> B` and `S -> A` come later in the list'
+          - id: two
+            text: '`2`, since a pass follows the route out from `S` first'
+          - id: one
+            text: '`1`, the weight of `A -> B`'
+        correct: inf
+        explanation: >-
+          A pass works through the list in order, and an edge reads the values written so far. In
+          this order each pass carries the route only one edge further.
+      two:
+        prompt: Pass 2 lowers `B` to 2. Why does `C` not drop in the same pass?
+        options:
+          - id: checked-first
+            text: '`B -> C` was checked before `A -> B` lowered `B`'
+          - id: has-cost
+            text: '`C` already has the cost 9, and a cost is set only once'
+          - id: one-per-pass
+            text: A pass can lower at most one distance
+        correct: checked-first
+        explanation: >-
+          `B -> C` is first in the list, so in pass 2 it still read `B` at `inf`. It sees the new
+          `B` only in pass 3.
+      four:
+        prompt: On 4 nodes, how many edges can a route have if it repeats no node?
+        options:
+          - id: three
+            text: At most 3, one fewer than the nodes
+          - id: four
+            text: At most 4, one for each node
+          - id: any
+            text: Any number, depending on the weights
+        correct: three
+        explanation: >-
+          A route that repeats no node visits at most 4 nodes, and joining 4 nodes in a row takes
+          3 edges. So V - 1 passes are enough for such a route on V nodes, even in the worst order.
+
+  - id: wp-negative-cycle-pass
+    heading: When does pass V still lower a distance?
+    tags: [graph, python]
+    workedExample: |-
+      Consider a cycle `X -> Y -> X` with weights 3 and -1, and a route that reaches `X` for 5. A
+      route can go round a cycle and come back to the node it left.
+
+      1. Going on to `Y` costs `5 + 3`, which is 8, and coming back to `X` costs `8 - 1`, which is
+         7.
+      2. The trip round the cycle added `3 + (-1)`, which is 2. So the second visit to `X` costs
+         more than the first, and a cheapest route skips the trip.
+      3. Each further trip adds 2 again, so going round this cycle never lowers the cost of `X`.
+    prompt: |-
+      A cycle is a route back to its own start, and a negative cycle is one whose weights add up to
+      less than 0. This code runs Bellman-Ford's V - 1 passes, where V is `len(nodes)`, and then
+      one more pass, pass V, which only checks whether some edge would still lower a distance:
+
+      ```python
+      def pass_v_lowers(nodes, edges, src):
+          dist = {n: float('inf') for n in nodes}
+          dist[src] = 0
+          for _ in range(len(nodes) - 1):
+              for u, v, w in edges:
+                  if dist[u] + w < dist[v]:
+                      dist[v] = dist[u] + w
+          for u, v, w in edges:  # pass V
+              if dist[u] + w < dist[v]:
+                  return True
+          return False
+      ```
+
+      The nodes are `S`, `A`, `B` and `C`, and every edge is one-way. On which edge list does
+      `pass_v_lowers(nodes, edges, "S")` return `True`?
+    options:
+      - id: reachable
+        text: '`S -> A` 2, `A -> B` 1, `B -> A` -3, `B -> C` 4'
+        explanation: >-
+          `A -> B -> A` adds up to 1 - 3 = -2, and `S` reaches `A`. Each trip round it lowers `A`
+          and `B` by 2 more, so no number of passes settles them, and pass V finds an edge that
+          still lowers a distance. A route can get as cheap as you like, so `A`, `B` and `C` have
+          no cheapest cost.
+      - id: negative-edge
+        text: '`S -> A` 4, `S -> B` 1, `B -> A` -2, `A -> C` 3'
+        explanation: >-
+          `B -> A` lowers `A` from 4 to -1, but this graph has no cycle, so no route can use that
+          edge twice. Every route has at most 3 edges, 3 passes settle them, and pass V lowers
+          nothing.
+      - id: zero-cycle
+        text: '`S -> A` 1, `A -> B` 2, `B -> A` -2, `B -> C` 1'
+        explanation: >-
+          `A -> B -> A` adds up to 2 - 2 = 0. A trip round it brings a route back to `A` at the
+          same cost, and the test needs strictly less, so pass V lowers nothing.
+      - id: unreachable
+        text: '`S -> A` 3, `B -> C` 2, `C -> B` -4, `C -> A` 1'
+        explanation: >-
+          `B -> C -> B` adds up to 2 - 4 = -2, but no edge from `S` or `A` leads into `B` or `C`.
+          They stay `inf`, `inf + w` is still `inf`, and pass V lowers nothing.
+    correct: reachable
+    followUps:
+      negative-edge:
+        prompt: In a graph with no cycle, can a negative edge make pass V lower a distance?
+        options:
+          - id: no-cycle
+            text: No. No route repeats a node, so V - 1 passes fix every route
+          - id: every-pass
+            text: Yes. A negative edge lowers its end again in every pass
+          - id: listed-last
+            text: Yes, whenever the negative edge comes last in the list
+        correct: no-cycle
+        explanation: >-
+          A route can come back to a node only by going round a cycle. Without one, every route
+          has at most V - 1 edges, and V - 1 passes settle them all, negative edges included.
+      zero-cycle:
+        prompt: How much does a trip round a cycle whose weights add up to 0 change a route's cost?
+        options:
+          - id: nothing
+            text: It stays the same, since 2 + (-2) is 0
+          - id: by-negative
+            text: It lowers it by 2, the size of the negative edge
+          - id: by-positive
+            text: It raises it by 2, the weight of `A -> B`
+        correct: nothing
+        explanation: >-
+          The trip adds 2 + (-2) = 0, so the route comes back at the same cost. Only a cycle that
+          adds up to less than 0 makes a route cheaper each time round.
+      unreachable:
+        prompt: In a pass, what does an edge out of a node still at `inf` do?
+        options:
+          - id: nothing
+            text: Nothing, since `inf + w` is `inf` and lowers no distance
+          - id: negative-w
+            text: It lowers its end by `w` whenever `w` is negative
+          - id: sets-w
+            text: It sets its end to `w`, the edge's weight
+        correct: nothing
+        explanation: >-
+          `inf` plus any number is still `inf`, which is never less than a distance. A negative
+          cycle the start cannot reach keeps its nodes at `inf`, so pass V never sees it.
+
+  - id: wp-record-prev
+    heading: Which route does `prev` rebuild?
+    tags: [graph, python]
+    workedExample: |-
+      Consider one pass over `edges = [("S", "X", 6), ("S", "Y", 2), ("Y", "X", 3), ("X", "Y", 1)]`,
+      starting with `S` at 0 and the rest at `inf`. A relaxation that lowers `dist[v]` also sets
+      `prev[v] = u`.
+
+      1. `S -> X` lowers `X` from `inf` to 6, so `prev["X"]` becomes `S`. `S -> Y` lowers `Y` to
+         2, so `prev["Y"]` becomes `S`.
+      2. `Y -> X` offers `2 + 3`, which is 5, less than 6. So `X` drops to 5, and `prev["X"]` is
+         overwritten with `Y`.
+      3. `X -> Y` offers `5 + 1`, which is 6, not less than 2. The test fails, so neither
+         `dist["Y"]` nor `prev["Y"]` changes.
+    prompt: |-
+      A relaxation that lowers `dist[v]` can also record `prev[v] = u`, the node the cheaper route
+      came through. Following `prev` back from a node, then from that node's `prev`, and so on
+      until the start, rebuilds the node's route backward. Every edge is one-way.
+
+      ```python
+      INF = float('inf')
+      edges = [("S", "A", 4), ("S", "B", 1), ("B", "A", 2), ("A", "T", 3),
+               ("B", "C", 5), ("C", "T", 1), ("S", "T", 9)]
+      dist = {n: INF for n in "SABCT"}
+      dist["S"] = 0
+      prev = {}
+      for u, v, w in edges:  # one pass, in list order
+          if dist[u] + w < dist[v]:
+              dist[v] = dist[u] + w
+              prev[v] = u
+      ```
+
+      After this pass, which route does following `prev` back from `T` rebuild?
+    options:
+      - id: via-b-a
+        text: '`S -> B -> A -> T`, costing 6'
+        explanation: >-
+          `prev["T"]` is `A`, written when `A -> T` set `T` to 3 + 3 = 6. `prev["A"]` is `B`,
+          since `B -> A` lowered `A` to 3, and `prev["B"]` is `S`. Read backward, the walk gives
+          `S -> B -> A -> T`, which costs 1 + 2 + 3 = 6.
+      - id: via-a
+        text: '`S -> A -> T`, costing 7'
+        explanation: >-
+          `prev["A"]` was `S` only until `B -> A` lowered `A` from 4 to 3 and wrote `B` over it.
+          The walk reads `prev` as it stands after the pass.
+      - id: direct
+        text: '`S -> T`, costing 9'
+        explanation: >-
+          `S -> T` is the last edge into `T`, but it offers 9, not less than 6, so it never writes
+          `prev["T"]`. Neither does `C -> T`, which offers 6 + 1 = 7.
+      - id: backward
+        text: '`T -> A -> B -> S`, costing 6'
+        explanation: >-
+          That is the order the walk visits the nodes, from `T` back to `S`. The route runs the
+          other way, and every edge is one-way: there is no edge `T -> A`.
+    correct: via-b-a
+    followUps:
+      via-a:
+        prompt: '`S -> A` wrote `prev["A"] = "S"`. What happens to it when `B -> A` lowers `A`?'
+        options:
+          - id: replaced
+            text: It is replaced by `B`, the start of the cheaper edge
+          - id: kept
+            text: It stays `S`, since a key is written only once
+          - id: both
+            text: Both are kept, and the walk follows the first one
+        correct: replaced
+        explanation: >-
+          Assigning to a dictionary key replaces its old value. Each lowering of `A` writes the
+          node it came through, so `prev["A"]` always names the node whose edge set the current
+          `dist["A"]`.
+      direct:
+        prompt: Does checking `S -> T` change `prev["T"]`?
+        options:
+          - id: no-write
+            text: No. The test `0 + 9 < 6` fails, so `prev` is left alone
+          - id: every-check
+            text: Yes. Every edge that is checked writes its start into `prev`
+          - id: last-edge
+            text: Yes, since it is the last edge into `T` in the list
+        correct: no-write
+        explanation: >-
+          `prev[v] = u` sits inside the `if`, so it runs only when the route through `u` is
+          cheaper. `prev` changes exactly when `dist` does.
+      backward:
+        prompt: Which way does the rebuilt route run?
+        options:
+          - id: from-start
+            text: From `S` to `T`, so the walk's nodes are read in reverse
+          - id: from-end
+            text: From `T` to `S`, the order in which the walk visits them
+          - id: either
+            text: Either way, since a route can use an edge in both directions
+        correct: from-start
+        explanation: >-
+          `prev[v]` is the node before `v` on the route, so the walk from `T` meets the nodes last
+          to first. Reversing them gives the route from `S`.
+
   - format: tap-cell
-    id: wp-tap-finalize-next
-    heading: Which node is final next?
+    id: wp-pop-smallest-final
+    heading: Which distance is already final?
     tags: [graph, heap, python]
     workedExample: |-
-      No weight is negative. `S`, `Y` and `X` are done, `dist = {"S": 0, "Y": 1, "X": 2, "Z": 4}`,
-      and `heap = [(4, "Z"), (6, "X")]`. The `(6, "X")` entry was pushed before `Y` found a cheaper
-      route to `X`.
+      No weight is negative. `S` is done, with its edges `S -> X` 3 and `S -> Y` 6 relaxed, so
+      `dist = {"S": 0, "X": 3, "Y": 6}` and the heap holds `(3, "X")` and `(6, "Y")`. The only
+      other edge is `X -> Y` with weight 2.
 
-      1. The first pop is `(4, "Z")`, the smallest entry. `dist["Z"]` is 4, so `4 > 4` is false and
-         the entry is not stale.
-      2. Every other entry is at least 4, and edges add 0 or more. So no route through another entry
-         can reach `Z` for less than 4.
-      3. So `Z` is final at 4. The later pop `(6, "X")` has 6, more than `dist["X"]`, which is 2, so
-         it is stale and skipped.
+      1. `Y`'s entry is 6, but a route through `X` costs `3 + 2`, which is 5. So `Y`'s 6 can still
+         drop, and it is not final.
+      2. Any route to `X` other than `S -> X` must leave `S` through `Y`, and reaching `Y` already
+         costs at least 6.
+      3. Weights add 0 or more, so such a route costs at least 6, more than 3. Nothing found later
+         can beat 3, so `X`'s distance is final.
     prompt: >-
-      Below, `S`, `B` and `A` are already done, and the loop keeps popping. Which
-      node is finalized next? Tap it.
+      Dijkstra's algorithm finds cheapest distances when no weight is negative. It keeps a heap
+      of `(distance, node)` pairs, pushes one whenever a relaxation lowers `dist[v]`, and pops the
+      pair with the smallest distance (Python compares tuples item by item from the left, and
+      moves to the next item only on a tie). A distance is final when no route found later can
+      lower it. Below, `S` and `A` are done: their distances are final and their edges are
+      relaxed. The cells list the nodes still in the heap. Whose distance is already final? Tap
+      it.
     code: |
-      dist = {"S": 0, "A": 3, "B": 1, "C": 6, "D": 9}
-      heap = [(5, "A"), (6, "C"), (9, "D")]  # S, B, A done
-      while heap:
-          d, u = heapq.heappop(heap)
-          if d > dist[u]:
-              continue  # stale entry
-          ...  # u is final: relax its edges
+      graph = {"S": [("A", 2), ("B", 7)], "A": [("C", 2), ("D", 3), ("E", 7)],
+               "B": [("E", 1)], "C": [("B", 1), ("D", 0)], "D": [("E", 2)], "E": []}
+      dist = {"S": 0, "A": 2, "B": 7, "C": 4, "D": 5, "E": 9}
+      heap = [(4, "C"), (7, "B"), (5, "D"), (9, "E")]  # S and A done
     sequence:
       kind: array
       name: nodes
-      cells: [S, A, B, C, D]
-    correct: 3
+      cells: [B, C, D, E]
+    correct: 1
     explanation: >-
-      The first pop is `(5, "A")`, but `dist["A"]` is already 3, so that entry is stale and the
-      loop skips it. The next pop, `(6, "C")`, matches `dist["C"]`, so `C` is final at 6.
+      `(4, "C")` is the smallest entry. A route that reaches `C` through `B`, `D` or `E` starts
+      from at least 5, and weights add 0 or more. Nothing found later can beat 4, so `C` is final.
     misses:
       - index: 0
-        explanation: '`S` was finalized first, at 0, and has no entry left in the heap.'
-      - index: 1
         explanation: >-
-          `A`'s entry is on top of the heap, but `A` was finalized at 3. `5 > 3`, so the loop
-          skips that entry.
+          `B` is at 7, but once `C`'s edges are relaxed, `C -> B` offers 4 + 1 = 5. A larger entry
+          can still drop.
       - index: 2
-        explanation: '`B` was finalized at 1, and has no entry left in the heap.'
-      - index: 4
         explanation: >-
-          `D`'s 9 is the largest entry in the heap, so it pops last. `C` is final first, and its
-          edges may still lower `D`.
+          `D`'s 5 is the next smallest, but `C -> D` weighs 0 and offers 4 + 0 = 4, less than 5.
+          Only the smallest entry is safe.
+      - index: 3
+        explanation: >-
+          `E`'s 9 is the largest entry, and a route through `D` costs only 5 + 2 = 7. A distance
+          that a cheaper route can still beat is not final.
 
   - format: step-trace
     id: wp-dijkstra-pop-trace
@@ -493,8 +789,12 @@ questions:
       3. `(2, "X")` pops next and expands `X` at 2. Then `(4, "X")` pops. 4 is more than
          `dist["X"]`, which is 2, so that entry is stale and skipped.
     prompt: >-
-      `u` marks the node expanded most recently.
-      Predict each step.
+      This is Dijkstra's algorithm. The heap holds `(distance, node)` pairs and pops the pair with
+      the smallest distance (Python compares tuples item by item from the left, and moves to the
+      next item only on a tie). A node is expanded when an entry for it pops and its edges are
+      relaxed, each lowered `dist[v]` pushing `(d + w, v)`. An entry is stale when its distance is
+      larger than the node's `dist`, because a cheaper entry for that node was pushed after it.
+      `u` marks the node expanded most recently. Predict each step.
     code: |
       import heapq
       graph = {"S": [("A", 2), ("B", 7)], "A": [("B", 3), ("C", 7)],
@@ -588,6 +888,54 @@ questions:
               13 would be 7 + 6, the stale `B` entry plus `B -> D`. That entry was skipped, so its
               edges were never scanned.
         correct: eight
+
+  - format: tap-cell
+    id: wp-tap-finalize-next
+    heading: Which node is final next?
+    tags: [graph, heap, python]
+    workedExample: |-
+      No weight is negative. `S`, `Y` and `X` are done, `dist = {"S": 0, "Y": 1, "X": 2, "Z": 4}`,
+      and `heap = [(4, "Z"), (6, "X")]`. The `(6, "X")` entry was pushed before `Y` found a cheaper
+      route to `X`.
+
+      1. The first pop is `(4, "Z")`, the smallest entry. `dist["Z"]` is 4, so `4 > 4` is false and
+         the entry is not stale.
+      2. Every other entry is at least 4, and edges add 0 or more. So no route through another entry
+         can reach `Z` for less than 4.
+      3. So `Z` is final at 4. The later pop `(6, "X")` has 6, more than `dist["X"]`, which is 2, so
+         it is stale and skipped.
+    prompt: >-
+      Below, `S`, `B` and `A` are already done, and the loop keeps popping. Which
+      node is finalized next? Tap it.
+    code: |
+      dist = {"S": 0, "A": 3, "B": 1, "C": 6, "D": 9}
+      heap = [(5, "A"), (6, "C"), (9, "D")]  # S, B, A done
+      while heap:
+          d, u = heapq.heappop(heap)
+          if d > dist[u]:
+              continue  # stale entry
+          ...  # u is final: relax its edges
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, A, B, C, D]
+    correct: 3
+    explanation: >-
+      The first pop is `(5, "A")`, but `dist["A"]` is already 3, so that entry is stale and the
+      loop skips it. The next pop, `(6, "C")`, matches `dist["C"]`, so `C` is final at 6.
+    misses:
+      - index: 0
+        explanation: '`S` was finalized first, at 0, and has no entry left in the heap.'
+      - index: 1
+        explanation: >-
+          `A`'s entry is on top of the heap, but `A` was finalized at 3. `5 > 3`, so the loop
+          skips that entry.
+      - index: 2
+        explanation: '`B` was finalized at 1, and has no entry left in the heap.'
+      - index: 4
+        explanation: >-
+          `D`'s 9 is the largest entry in the heap, so it pops last. `C` is final first, and its
+          edges may still lower `D`.
 
   - id: wp-negative-early-final
     heading: When is finalizing unsafe?
