@@ -1,6 +1,6 @@
 id: bounded-heaps
 title: Bounded heaps
-description: Keep the k largest or smallest with a capped heap and say what it costs, then merge sorted runs with one entry per run. Each card asks for one decision, with a worked example on hand.
+description: Keep the k largest, smallest or most frequent in a capped heap, merge sorted runs, and keep a running median in two heaps. Each card asks for one decision, with a worked example on hand.
 heading: What does the capped heap do?
 
 questions:
@@ -466,6 +466,102 @@ questions:
           A small heap keeps each arrival cheap, but every arrival still pays. Work done once per
           arrival adds up over all `n` arrivals.
 
+  - id: top-frequent-evict
+    heading: Which value is evicted?
+    tags: [heap, hash-map, python]
+    workedExample: |-
+      Top k frequent asks for the `k` values that appear most often. Count each value first, then
+      keep a capped min-heap of `(count, value)` entries, so its root is the least frequent value
+      kept. Here `nums = [4, 7, 4, 9, 9, 9]` and `k = 2`.
+
+      1. The counts are 4: 2, 7: 1 and 9: 3, in the order each value first appears.
+      2. `(2, 4)` and `(1, 7)` fill the heap. Its root is `(1, 7)`, since tuples compare their
+         first items, the counts, first.
+      3. `(3, 9)` is pushed, so the heap holds 3 entries, and the pop removes the root, `(1, 7)`.
+         So 7, the least frequent value, is evicted, and 4 and 9, the 2 most frequent, stay.
+    prompt: |-
+      Top k frequent asks for the `k` values that appear most often. This code counts each value
+      with a dict, then keeps at most `k = 3` entries `(count, value)` in a min-heap.
+      `counts.items()` gives each value with its count, in the order the values first appear.
+
+      ```python
+      from heapq import heappush, heappop
+
+      nums = [6, 2, 2, 6, 8, 5, 2, 5, 5, 5]
+      counts = {}
+      for x in nums:
+          if x in counts:
+              counts[x] += 1
+          else:
+              counts[x] = 1
+      h = []
+      for x, c in counts.items():
+          heappush(h, (c, x))
+          if len(h) > 3:
+              heappop(h)
+      ```
+
+      The first three entries fill the heap. Which value is evicted when the fourth is pushed?
+    options:
+      - id: least-frequent
+        text: '`8`'
+        explanation: >-
+          The counts are 6: 2, 2: 3, 8: 1 and 5: 4. Once `(2, 6)`, `(3, 2)` and `(1, 8)` fill the
+          heap, its root is `(1, 8)`, the smallest count. `(4, 5)` is pushed and the pop removes
+          `(1, 8)`, so the heap keeps 5, 2 and 6, the 3 most frequent values.
+      - id: smallest-value
+        text: '`2`'
+        explanation: Check which item of each entry is compared first.
+      - id: first-counted
+        text: '`6`'
+        explanation: Check whether the heap evicts by the order the entries were pushed.
+      - id: newest
+        text: '`5`'
+        explanation: Check what happens to an entry pushed onto a full heap.
+    correct: least-frequent
+    followUps:
+      smallest-value:
+        prompt: 'The heap holds `(2, 6)`, `(3, 2)`, `(1, 8)` and `(4, 5)`. Which entry is the root?'
+        options:
+          - id: count-one
+            text: '`(1, 8)`, since the counts are compared first'
+          - id: value-two
+            text: '`(3, 2)`, since 2 is the smallest value'
+          - id: first-in
+            text: '`(2, 6)`, since it was pushed first'
+        correct: count-one
+        explanation: >-
+          Tuples compare their first items first, and here the first item is the count. The counts
+          all differ, so the values are never compared, and the least frequent value, 8, is at the
+          root.
+      first-counted:
+        prompt: Which entry does `heappop` remove from the heap of four entries?
+        options:
+          - id: smallest
+            text: The smallest entry, whenever it was pushed
+          - id: oldest
+            text: The entry pushed first
+          - id: latest
+            text: The entry pushed last
+        correct: smallest
+        explanation: >-
+          A heap ignores push order. `(2, 6)` went in first, but `(1, 8)` has the smaller count, so
+          it is the root, and the pop removes it.
+      newest:
+        prompt: The heap holds 3 entries when `(4, 5)` arrives. What happens to it?
+        options:
+          - id: stays
+            text: It is pushed, then the pop removes the root, so it stays
+          - id: turned-away
+            text: It is turned away, since the heap is full
+          - id: replaces-first
+            text: It replaces the entry pushed first
+        correct: stays
+        explanation: >-
+          The loop always pushes first and pops after. `(4, 5)` has the largest count, so it does
+          not become the root, and the root `(1, 8)` is what leaves. An entry leaves at once only
+          when it is the smallest entry in the heap.
+
   - id: initial-heads
     heading: What does the heap start with?
     tags: [heap, sorting]
@@ -822,4 +918,322 @@ questions:
         correct: run-one
         also:
           - { name: b, at: 4 }
+
+  - id: median-arrival-joins
+    heading: Which heap does it join?
+    tags: [heap, python]
+    workedExample: |-
+      A running median is the median of every value read so far, given after each arrival. Two
+      heaps keep it: `lo` holds the smaller half as a max-heap, its largest value at the root, by
+      storing each value negated, and `hi` holds the larger half as a plain min-heap. Here `lo`
+      stores `[-3, -1]`, `hi` stores `[5]`, and 8 arrives.
+
+      1. `-lo[0]` is 3, the largest value of the smaller half. `lo[0]` alone is -3, the stored form.
+      2. 8 is larger than 3, so it is larger than every value in the smaller half, and
+         `heappush(hi, 8)` runs.
+      3. `lo` holds 1 and 3 and `hi` holds 5 and 8. Every value in `lo` is still at most every value
+         in `hi`, so the middle of all the values stays at the two tops.
+    prompt: |-
+      A running median gives the median of every value read so far after each arrival. `lo` holds
+      the smaller half as a max-heap, a heap whose root is its largest value, by storing each value
+      negated. `hi` holds the larger half as a plain min-heap. An arrival `x` joins one of them:
+
+      ```python
+      lo = [-6, -2, -5]
+      hi = [8, 11, 9]
+      if lo and x > -lo[0]:
+          heappush(hi, x)
+      else:
+          heappush(lo, -x)
+      ```
+
+      Take three separate cases, each starting from the `lo` and `hi` above, with `x` set to 4, 6
+      and 7. Which heap does `x` join in each case?
+    options:
+      - id: compare-top
+        text: '`lo`, `lo`, `hi`'
+        explanation: >-
+          `-lo[0]` reads 6, the top of the smaller half. 4 falls below 6, so the `else` branch puts
+          it in `lo`. 6 equals the top, and `6 > 6` is false, so it goes to `lo` as well. Only 7
+          passes the test, so 7 goes to `hi`.
+      - id: raw-root
+        text: '`hi`, `hi`, `hi`'
+        explanation: Check what `-lo[0]` evaluates to.
+      - id: tie-to-hi
+        text: '`lo`, `hi`, `hi`'
+        explanation: Check whether `x > -lo[0]` is true when `x` is 6.
+      - id: compare-hi
+        text: '`lo`, `lo`, `lo`'
+        explanation: Check which heap's top the `if` reads.
+    correct: compare-top
+    followUps:
+      raw-root:
+        prompt: '`lo` stores `[-6, -2, -5]`. What does `-lo[0]` evaluate to?'
+        options:
+          - id: six
+            text: 6, the largest value of the smaller half
+          - id: minus-six
+            text: '-6, the root as it is stored'
+          - id: two
+            text: 2, the smallest value of the smaller half
+        correct: six
+        explanation: >-
+          `lo[0]` is -6, the stored form, and the minus sign turns it back into 6. Comparing `x`
+          with -6 instead would send every positive arrival to `hi`, and the halves would mix.
+      tie-to-hi:
+        prompt: '`x` is 6 and `-lo[0]` is 6. Is `x > -lo[0]` true?'
+        options:
+          - id: no
+            text: No, 6 is not larger than 6, so the `else` branch pushes it into `lo`
+          - id: yes
+            text: Yes, a value equal to the top counts as larger
+          - id: depends
+            text: It depends on which heap holds fewer values
+        correct: no
+        explanation: >-
+          `>` is false on a tie, so the `else` branch runs and 6 joins `lo`. A value equal to the
+          top could sit in either half without breaking the split, and this code puts it in `lo`.
+      compare-hi:
+        prompt: Which value does the `if` compare `x` with?
+        options:
+          - id: lo-top
+            text: '`-lo[0]`, which is 6, the largest value of the smaller half'
+          - id: hi-top
+            text: '`hi[0]`, which is 8, the smallest value of the larger half'
+          - id: lo-newest
+            text: The value pushed into `lo` most recently
+        correct: lo-top
+        explanation: >-
+          The test reads `-lo[0]`, and 7 is larger than 6, so 7 joins `hi`. 7 is also smaller than
+          `hi[0]`, 8, so a test against `hi[0]` could send it to `lo`, but this code never reads
+          `hi` to place an arrival.
+
+  - id: median-rebalance-moves
+    heading: Which value moves?
+    tags: [heap, python]
+    workedExample: |-
+      After an arrival joins a heap, the halves are rebalanced so that their sizes differ by at most
+      1, with `lo` keeping the extra value when the count is odd. Here `lo` stores `[-6, -1, -4]`,
+      for 1, 4 and 6, `hi` stores `[9, 12]`, and 3 arrives.
+
+      1. 3 is not larger than `-lo[0]`, which is 6, so it joins `lo`. `lo` then holds 4 values and
+         `hi` holds 2.
+      2. `lo` holds 2 more values than `hi`, so the first test is true and `lo` gives one away.
+         `heappop(lo)` returns -6, the stored form of 6, the largest value of the smaller half.
+      3. `heappush(hi, 6)` puts it in as 6, so `lo` holds 1, 3 and 4 and `hi` holds 6, 9 and 12.
+         Every value in `lo` is still at most every value in `hi`.
+    prompt: |-
+      `lo` holds the smaller half of the values read so far as a max-heap, its largest value at the
+      root, by storing each value negated. `hi` holds the larger half as a plain min-heap. `add`
+      places an arrival and then rebalances:
+
+      ```python
+      def add(x):
+          if lo and x > -lo[0]:
+              heappush(hi, x)
+          else:
+              heappush(lo, -x)
+          if len(lo) > len(hi) + 1:
+              heappush(hi, -heappop(lo))
+          elif len(hi) > len(lo):
+              heappush(lo, -heappop(hi))
+      ```
+
+      `lo` stores `[-5, -2]` and `hi` stores `[7, 10]`. Then `add(8)` runs. Which value does the
+      rebalance move, if any?
+    options:
+      - id: hi-smallest
+        text: 7, from `hi` to `lo`
+        explanation: >-
+          8 is larger than `-lo[0]`, 5, so it joins `hi`, which then holds 3 values to `lo`'s 2.
+          The `elif` is true, and `heappop(hi)` returns the smallest value in `hi`, 7, which is
+          pushed into `lo` as -7. `lo` holds 2, 5 and 7, `hi` holds 8 and 10, and `lo` keeps the
+          extra value.
+      - id: nothing
+        text: No value moves
+        explanation: Check both rebalance tests once 8 has joined its heap.
+      - id: arrival
+        text: 8, from `hi` to `lo`
+        explanation: Check which value `heappop(hi)` returns.
+      - id: hi-largest
+        text: 10, from `hi` to `lo`
+        explanation: Check what would happen to the split if the largest value in `hi` moved.
+    correct: hi-smallest
+    followUps:
+      nothing:
+        prompt: After 8 joins `hi`, `lo` holds 2 values and `hi` holds 3. Which test is true?
+        options:
+          - id: elif
+            text: The `elif`, since `hi` holds more values than `lo`
+          - id: neither
+            text: Neither, since the sizes differ by only 1
+          - id: first
+            text: The first `if`, since the sizes differ
+        correct: elif
+        explanation: >-
+          The first test needs `lo` to hold 2 more than `hi`. The `elif` is true whenever `hi`
+          holds more than `lo`, even by 1, so `lo` always keeps the extra value of an odd count.
+      arrival:
+        prompt: After the push, `hi` holds 7, 8 and 10. What does `heappop(hi)` return?
+        options:
+          - id: seven
+            text: 7, the smallest, since `hi` is a min-heap
+          - id: eight
+            text: 8, the value pushed last
+          - id: none
+            text: Nothing, since 8 is still being placed
+        correct: seven
+        explanation: >-
+          A heap ignores push order. `hi` is a plain min-heap, so the pop returns 7, its smallest,
+          and 8 stays in `hi`.
+      hi-largest:
+        prompt: If 10 moved from `hi` to `lo`, what would go wrong?
+        options:
+          - id: mixed
+            text: '`lo` would hold 10 while `hi` holds 7 and 8, so the halves would mix'
+          - id: fine
+            text: Nothing, since the sizes would still be right
+          - id: error
+            text: '`lo` would raise an error on a value above its top'
+        correct: mixed
+        explanation: >-
+          Every value in `lo` must stay at most every value in `hi`. Only the smallest value in
+          `hi`, 7, can cross without breaking that, and `heappop(hi)` returns exactly that value.
+
+  - format: step-trace
+    id: median-trace
+    heading: Follow the medians
+    tags: [heap, python]
+    workedExample: |-
+      Consider the stream `4, 10, 6`. Each arrival joins a heap, the halves are rebalanced, and the
+      code prints `-lo[0]` when `lo` holds more values, otherwise the mean of `-lo[0]` and `hi[0]`.
+
+      1. 4 meets an empty `lo`, which counts as false, so the `else` branch pushes it into `lo`.
+         `lo` holds 1 value to `hi`'s 0, so the code prints `-lo[0]`, 4.
+      2. 10 is larger than 4, so it joins `hi`. Each heap holds 1, so the code prints
+         `(4 + 10) / 2`, which is `7.0`, a float although the mean is whole.
+      3. 6 is larger than 4 and joins `hi`, which then holds 2 values to `lo`'s 1. The `elif` moves
+         the smallest value in `hi`, 6, to `lo`, so `lo` holds 4 and 6, and the code prints 6.
+    prompt: >-
+      The median is the middle of the values read so far, in sorted order. With an even count it is
+      the mean of the two middle values, here `-lo[0]` and `hi[0]`, and `/` always returns a float.
+      `lo` holds the smaller half, negated, and `hi` the larger half, and `lo` keeps the extra
+      value of an odd count. The first three arrivals are read: `lo` holds 1 and 5, and `hi` holds
+      15. `top` marks the value `-lo[0]`, the 5. Predict each step.
+    code: |
+      from heapq import heappush, heappop
+
+      stream = [5, 15, 1, 3, 8, 7, 9, 10]
+      lo, hi = [], []
+      for x in stream:
+          if lo and x > -lo[0]:
+              heappush(hi, x)
+          else:
+              heappush(lo, -x)
+          if len(lo) > len(hi) + 1:
+              heappush(hi, -heappop(lo))
+          elif len(hi) > len(lo):
+              heappush(lo, -heappop(hi))
+          if len(lo) > len(hi):
+              print(-lo[0])
+          else:
+              print((-lo[0] + hi[0]) / 2)
+    sequence:
+      kind: array
+      name: stream
+      cells: [5, 15, 1, 3, 8, 7, 9, 10]
+    start:
+      - { name: top, at: 0 }
+    steps:
+      - line: 6
+        ask: 3 arrives. Where is `top` once the rebalance is done? Move `top` to it.
+        pointer: top
+        correct: 3
+        explanation: >-
+          3 is not larger than 5, so it joins `lo`, which then holds 1, 3 and 5 against the 15 in
+          `hi`. That is 2 more values than `hi` holds, so the 5 moves to `hi`, and the top of `lo`
+          is now the 3.
+        misses:
+          - index: 0
+            explanation: >-
+              5 was the top, but `lo` then held 3 values to `hi`'s 1. The first rebalance test
+              moves the largest value in `lo`, the 5, to `hi`.
+          - index: 2
+            explanation: '1 is the smallest value in `lo`. The top of `lo` is its largest, read as `-lo[0]`.'
+          - index: 1
+            explanation: 15 is in `hi`, and it stays there. Only the largest value in `lo` crosses.
+        elsewhere: After the rebalance `lo` holds 1 and 3, so its top is the 3.
+      - line: 14
+        ask: What does the code print after the 3?
+        options:
+          - id: four-float
+            text: '4.0'
+            explanation: >-
+              4 values are read, an even count. The two middle values are `-lo[0]`, 3, and `hi[0]`,
+              5, and `(3 + 5) / 2` is `4.0`.
+          - id: midrange
+            text: '8.0'
+            explanation: >-
+              8.0 is the mean of the smallest and largest values, 1 and 15. The median uses the two
+              middle values, `-lo[0]` and `hi[0]`, which are 3 and 5.
+          - id: four-int
+            text: '4'
+            explanation: 'The mean is right, but `/` always returns a float, so it prints `4.0`.'
+          - id: lo-top
+            text: '3'
+            explanation: >-
+              3 is `-lo[0]` alone, which is the median only when `lo` holds more values than `hi`.
+              Here each holds 2.
+        correct: four-float
+      - line: 6
+        ask: 8 arrives. Where is `top` once the rebalance is done?
+        pointer: top
+        correct: 0
+        explanation: >-
+          8 is larger than 3, so it joins `hi`, which then holds 5, 8 and 15 against the 1 and 3 in
+          `lo`. `hi` holds more, so the `elif` moves its smallest value, the 5, back to `lo`, where
+          it is the top again.
+        misses:
+          - index: 3
+            explanation: >-
+              3 stays in `lo`, but `hi` then holds 3 values to `lo`'s 2. The `elif` moves the 5
+              over, and 5 is larger than 3.
+          - index: 4
+            explanation: '8 joins `hi` and stays there. `heappop(hi)` returns the smallest value in `hi`, the 5.'
+          - index: 1
+            explanation: 15 is the largest value in `hi`. The pop takes the smallest, the 5.
+        elsewhere: The 5 moves back from `hi` to `lo`, so it is the top.
+      - line: 6
+        ask: 7 joins `hi` and nothing moves, so each heap holds 3. Then 9 arrives. Where is `top` once the rebalance is done?
+        pointer: top
+        correct: 5
+        explanation: >-
+          9 is larger than 5, so it joins `hi`, which then holds 4 values to `lo`'s 3. The `elif`
+          moves the smallest value in `hi`, the 7, to `lo`, and 7 is larger than everything already
+          there.
+        misses:
+          - index: 0
+            explanation: '5 was the top, but the 7 that moves over is larger, so it becomes the top of `lo`.'
+          - index: 6
+            explanation: '9 joins `hi` and stays. The smallest value in `hi` at that moment is the 7.'
+          - index: 4
+            explanation: '8 is in `hi`, but the 7 is smaller, so the 7 is what `heappop(hi)` returns.'
+        elsewhere: The 7 moves from `hi` to `lo` and becomes its top.
+      - line: 14
+        ask: The last value, 10, arrives. What does the code print?
+        options:
+          - id: mean
+            text: '7.5'
+            explanation: >-
+              10 joins `hi`, and each heap then holds 4, so nothing moves. The tops are 7 and 8, and
+              `(7 + 8) / 2` is `7.5`.
+          - id: lo-only
+            text: '7'
+            explanation: >-
+              7 is `-lo[0]` alone. With 8 values the count is even, so the median is the mean of
+              both tops.
+          - id: hi-only
+            text: '8'
+            explanation: '8 is `hi[0]` alone. With an even count the median is the mean of `-lo[0]` and `hi[0]`.'
+        correct: mean
 

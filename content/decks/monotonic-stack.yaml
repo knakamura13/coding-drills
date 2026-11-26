@@ -1,6 +1,6 @@
 id: monotonic-stack
 title: Monotonic stack
-description: Find each position's next greater element in one pass, pop the smaller tops as each value arrives, and read what is left. Each card asks for one decision, with a worked example on hand.
+description: Find each next greater element in one pass by popping smaller tops, read what is left, then keep each window's maximum in a deque. Each card asks for one decision, with a worked example on hand.
 heading: What does the stack do?
 
 questions:
@@ -763,3 +763,299 @@ questions:
         explanation: >-
           Every index enters once. The ones that are gone at the end each left by exactly one pop,
           so pops equal pushes minus leftovers.
+
+  - id: expired-front-index
+    heading: Which index leaves the front?
+    tags: [sliding-window, queue, python]
+    workedExample: |-
+      A window is `k` neighboring values, and the window maximum is the largest value in each one.
+      One pass keeps a deque `dq` of indices whose values fall from front to back, so the front
+      holds the largest value, as long as an index that has left the window is removed. Here
+      `nums = [5, 9, 4, 3]` and `k = 2`.
+
+      1. Before index 3 is read, `dq` holds `[1, 2]`: the 9 and then the 4, falling from front to
+         back.
+      2. The window that ends at index 3 holds its 2 values, indices 2 and 3. Index 1 is outside
+         it, and `1 <= 3 - 2` is true, so `popleft()` removes index 1 from the front.
+      3. The front is now index 2, and the 3 at index 3 is appended behind it. So the window
+         maximum is 4, even though the 9 was the largest value in `dq` a moment before.
+    prompt: |-
+      `window_max` finds the largest value in each window, the `k` neighboring values that end at
+      index `i`. `dq` is a deque of indices whose values fall from front to back: `dq[0]` reads the
+      front and `dq[-1]` the back, `popleft()` removes the item at the front, `pop()` the item at
+      the back, and `append` adds at the back.
+
+      ```python
+      from collections import deque
+
+      def window_max(nums, k):
+          dq = deque()
+          out = []
+          for i, x in enumerate(nums):
+              if dq and dq[0] <= i - k:
+                  dq.popleft()
+              while dq and nums[dq[-1]] <= x:
+                  dq.pop()
+              dq.append(i)
+              if i >= k - 1:
+                  out.append(nums[dq[0]])
+          return out
+      ```
+
+      For `nums = [2, 5, 1, 9, 6, 4, 5, 3]` and `k = 3`, `dq` holds `[3, 4, 5]` before index 6 is
+      read. What does the first `if` remove?
+    options:
+      - id: index-three
+        text: Index 3
+        explanation: >-
+          The window that ends at index 6 runs from index 4 to index 6, so index 3 has left it, and
+          `3 <= 6 - 3` is true. `popleft()` removes it, even though its 9 is the largest value in
+          `dq`.
+      - id: nothing
+        text: No index
+        explanation: >-
+          This keeps index 3 one step too long. The `k = 3` values that end at index 6 start at
+          index 4, and `3 <= 6 - 3` is true, so the first `if` removes the front.
+      - id: index-five
+        text: Index 5
+        explanation: >-
+          Index 5 is the back, the newest index in `dq`, and it is inside the window. `popleft()`
+          removes the front.
+      - id: three-and-four
+        text: Indices 3 and 4
+        explanation: >-
+          Index 4 is inside the window that ends at index 6, and `4 <= 6 - 3` is false. An `if`
+          also runs its body at most once, so it removes one index at most.
+    correct: index-three
+    followUps:
+      nothing:
+        prompt: With `k = 3`, which indices does the window that ends at index 6 cover?
+        options:
+          - id: four-to-six
+            text: Indices 4, 5 and 6
+          - id: three-to-six
+            text: Indices 3, 4, 5 and 6
+          - id: three-to-five
+            text: Indices 3, 4 and 5
+        correct: four-to-six
+        explanation: >-
+          A window of `k` values that ends at index `i` starts at `i - k + 1`, here 4. So index
+          `i - k`, here 3, is the newest index outside it, which is what `dq[0] <= i - k` catches.
+      index-five:
+        prompt: Which end of `dq` holds the oldest index?
+        options:
+          - id: front
+            text: The front, since each index is appended at the back as it is read
+          - id: back
+            text: The back, since the newest index goes in at the front
+          - id: smaller
+            text: Whichever end holds the smaller value
+        correct: front
+        explanation: >-
+          `append` adds each index at the back, in the order the indices are read, so they grow from
+          front to back. An index that has left the window is the oldest, so it can only be at the
+          front.
+      three-and-four:
+        prompt: Why is an `if`, not a `while`, enough at the front?
+        options:
+          - id: one-step
+            text: Each new index moves the window one place right, so at most one index leaves it
+          - id: next-pass
+            text: An index left over now is removed when the next index is read
+          - id: back-loop
+            text: The `while` loop at the back removes any other old index
+        correct: one-step
+        explanation: >-
+          When index 6 is read, every index before 3 has already been removed at an earlier step.
+          Moving the window to end at index 6 drops one more position, index 3, so at most one index
+          in `dq` can have expired.
+
+  - format: tap-cell
+    id: back-pops-equal-value
+    heading: Which index is popped last?
+    tags: [sliding-window, queue, python]
+    workedExample: |-
+      Consider `nums = [7, 4, 4]` with `k = 3`. Before index `i` is appended, the `while` loop pops
+      the back while its value is at most `x`. A popped index is never needed again: every later
+      window that holds it also holds index `i`, whose value is at least as large.
+
+      1. Before index 2 is read, `dq` holds `[0, 1]`, the 7 and then the 4, and the front check
+         removes nothing.
+      2. The 4 at index 2 meets the back, index 1, which also holds 4. `4 <= 4` is true, so index 1
+         is popped: the newer 4 is just as large and stays in the window longer.
+      3. The back is now index 0, holding 7, and `7 <= 4` is false, so the loop stops. Index 2 is
+         appended, and `dq` is `[0, 2]`, with 7 and 4 still falling from front to back.
+    prompt: >-
+      `window_max` finds the largest value in each window, the `k` neighboring values that end at
+      index `i`. `dq` is a deque of indices: `dq[0]` reads its front and `dq[-1]` its back,
+      `popleft()` removes the item at the front, `pop()` removes the item at the back, and `append`
+      adds at the back. Before index `i` is appended, the `while` loop pops the back while its value
+      is at most `x`. With `k = 4`, `dq` holds `[2, 3, 4]` when index 5 is read, and the front check
+      removes nothing. Which index is the last one the `while` loop pops? Tap it.
+    code: |
+      from collections import deque
+
+      def window_max(nums, k):
+          dq = deque()  # indices
+          out = []
+          for i, x in enumerate(nums):
+              if dq and dq[0] <= i - k:
+                  dq.popleft()
+              while dq and nums[dq[-1]] <= x:
+                  dq.pop()
+              dq.append(i)
+              if i >= k - 1:
+                  out.append(nums[dq[0]])
+          return out
+
+      window_max([4, 6, 9, 7, 3, 7, 5, 8], 4)
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 6, 9, 7, 3, 7, 5, 8]
+    markers:
+      - { name: i, at: 5 }
+    correct: 3
+    explanation: >-
+      The 7 at index 5 pops index 4, since `3 <= 7`. The new back, index 3, holds an equal 7, and
+      `7 <= 7` is true, so it is popped too. The 9 at index 2 stops the loop, so index 3 is the last
+      pop and `dq` becomes `[2, 5]`.
+    misses:
+      - index: 0
+        explanation: Index 0 is no longer in `dq`. The 6 at index 1 popped it, since `4 <= 6`.
+      - index: 1
+        explanation: Index 1 is no longer in `dq`. The 9 at index 2 popped it, since `6 <= 9`.
+      - index: 2
+        explanation: >-
+          The 9 stops the loop: `9 <= 7` is false, so index 2 stays at the front.
+      - index: 4
+        explanation: >-
+          Index 4 is popped first, since `3 <= 7`. The loop then tests the new back, the 7 at index
+          3, and `7 <= 7` is true, so the popping goes on.
+      - index: 5
+        explanation: Index 5 is the arrival. It is appended after the pops, not popped.
+      - index: 6
+        explanation: The 5 at index 6 has not been read when index 5 arrives.
+      - index: 7
+        explanation: The 8 at index 7 has not been read when index 5 arrives.
+
+  - format: step-trace
+    id: trace-window-maxima
+    heading: Predict each step
+    tags: [sliding-window, queue, python]
+    workedExample: |-
+      Consider `nums = [3, 8, 2, 5]` with `k = 2`. Each index runs the front check, then the back
+      pops, and is then appended. From index `k - 1` on, `out` gets the value at the front.
+
+      1. Index 1: the 8 pops index 0, since `3 <= 8`. `dq` is `[1]`, so `out` gets 8.
+      2. Index 2: the front, index 1, is not at most `2 - 2`, so it stays. The 2 is appended behind
+         it, `dq` is `[1, 2]`, and `out` gets 8 again.
+      3. Index 3: index 1 is at most `3 - 2`, so the front check removes it. The 5 then pops index 2,
+         since `2 <= 5`, so `dq` is `[3]` and `out` ends as `[8, 8, 5]`.
+    prompt: >-
+      The loop keeps `dq`, a deque of indices whose values fall from front to back: `dq[0]` reads
+      its front and `dq[-1]` its back, `popleft()` removes the item at the front, `pop()` removes the
+      item at the back, and `append` adds at the back. Each window is the `k` neighboring values
+      that end at index `i`. For each index, the front leaves once it is at most `i - k`, the back
+      pops while its value is at most `x`, and from index `k - 1` on, `out` gets the value at the
+      front. `front` marks `dq[0]`, which is index 0 after index 2. Predict each step.
+    code: |
+      from collections import deque
+      nums = [6, 2, 4, 1, 9, 5, 7, 3]
+      k = 3
+      dq = deque()
+      out = []
+      for i, x in enumerate(nums):
+          if dq and dq[0] <= i - k:
+              dq.popleft()
+          while dq and nums[dq[-1]] <= x:
+              dq.pop()
+          dq.append(i)
+          if i >= k - 1:
+              out.append(nums[dq[0]])
+    sequence:
+      kind: array
+      name: nums
+      cells: [6, 2, 4, 1, 9, 5, 7, 3]
+    start:
+      - { name: front, at: 0 }
+    steps:
+      - line: 6
+        ask: Index 3 is read. Where is `front` once index 3 is appended? Tap it.
+        pointer: front
+        correct: 2
+        explanation: >-
+          Index 0 is at most `3 - 3`, so the front check removes it and its 6. The 1 at index 3 pops
+          nothing, since `4 <= 1` is false, so `dq` is `[2, 3]` with index 2 at the front.
+        misses:
+          - index: 0
+            explanation: Index 0 has left the window. `0 <= 3 - 3` is true, so `popleft()` removes it.
+          - index: 3
+            explanation: >-
+              The 1 is smaller than the 4 at index 2, so it is appended behind it, at the back.
+          - index: 1
+            explanation: The 4 at index 2 popped index 1 earlier, since `2 <= 4`.
+        elsewhere: Only indices 2 and 3 are in `dq` after index 3, with index 2 at the front.
+      - line: 9
+        ask: The 9 at index 4 arrives with `dq` at `[2, 3]`. How many indices does the `while` loop pop?
+        options:
+          - id: two
+            text: "2"
+            explanation: >-
+              The 1 at index 3 and the 4 at index 2 are both at most 9, so both are popped and `dq`
+              becomes `[4]`.
+          - id: one
+            text: "1"
+            explanation: >-
+              After index 3 goes, the loop tests the new back, the 4 at index 2, and `4 <= 9` is
+              true, so it pops that index too.
+          - id: three
+            text: "3"
+            explanation: >-
+              Index 0 left from the front when index 3 was read, so only two indices are in `dq`
+              to pop.
+        correct: two
+        also:
+          - { name: front, at: 4 }
+      - line: 6
+        ask: "After index 6, `dq` is `[4, 6]`. Index 7 is read. Where is `front` once index 7 is appended? Tap it."
+        pointer: front
+        correct: 6
+        explanation: >-
+          Index 4 is at most `7 - 3`, so the front check removes it and its 9. The 3 at index 7 pops
+          nothing, since `7 <= 3` is false, so index 6 is at the front.
+        misses:
+          - index: 4
+            explanation: >-
+              Index 4 has left the window. `4 <= 7 - 3` is true, so `popleft()` removes it, even
+              though its 9 is the largest value read.
+          - index: 7
+            explanation: >-
+              The 3 is smaller than the 7 at index 6, so it is appended behind it, at the back.
+          - index: 5
+            explanation: The 7 at index 6 popped index 5, since `5 <= 7`.
+        elsewhere: Only indices 6 and 7 are in `dq` after index 7, with index 6 at the front.
+      - line: 13
+        ask: What does `out` hold when the loop ends?
+        options:
+          - id: maxima
+            text: "`[6, 4, 9, 9, 9, 7]`"
+            explanation: >-
+              The front holds each window's largest value: the 6 until index 0 leaves, the 4 once it
+              has, the 9 from index 4 to index 6, and the 7 once index 4 leaves.
+          - id: never-expire
+            text: "`[6, 6, 9, 9, 9, 9]`"
+            explanation: >-
+              This never removes an expired front, so the 6 and the 9 stay too long. Index 0 leaves
+              when index 3 is read, and index 4 leaves when index 7 is read.
+          - id: early
+            text: "`[4, 4, 9, 9, 7, 7]`"
+            explanation: >-
+              This removes each front one step early, as if each window held 2 values. Index 0 is
+              still inside the window that ends at index 2.
+          - id: backs
+            text: "`[4, 1, 9, 5, 7, 3]`"
+            explanation: >-
+              These are the values at the back, which is always the index just appended. The
+              largest value in the window is at the front.
+        correct: maxima

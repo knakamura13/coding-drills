@@ -60,12 +60,16 @@ const PATH_TITLES = [
 const COUNTS: Record<string, Record<string, number>> = {
 	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
+	'data-structures': { keep: 12, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
 	'problem-solving-patterns': { keep: 0, rewrite: 0, exam: 0, retire: 22 }
 };
 
-/** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */
+/**
+ * The 16 deck ids audited for #9. Fifteen still hold only their retired questions. `monotonic-stack`
+ * was rewritten under its old id, so its current teaching cards are counted too. Every other deck
+ * written later is mapped but stays out of these counts.
+ */
 const AUDITED_DECKS = new Set([
 	'binary-search-on-answer',
 	'complexity-analysis',
@@ -132,15 +136,15 @@ describe('shipped curriculum', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
-	it('maps each of the 97 primary drills once, onto a real question', () => {
-		expect(audited).toHaveLength(97);
-		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(97);
+	it('maps each of the 100 drills in the audited deck ids once, onto a real question', () => {
+		expect(audited).toHaveLength(100);
+		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(100);
 		const known = new Map(
 			decks
 				.filter((deck) => AUDITED_DECKS.has(deck.id))
 				.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id]))
 		);
-		expect(known.size).toBe(97);
+		expect(known.size).toBe(100);
 		for (const drill of audited) {
 			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
 		}
