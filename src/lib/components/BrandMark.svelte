@@ -5,4 +5,4 @@
 	let { height }: { height: number } = $props();
 </script>
 
-<img src={height < 40 ? small : regular} alt="" {height} style="width: auto; flex: none" />
+<img src={height < 40 ? small : regular} alt="" {height} style="aspect-ratio: 277 / 375; width: auto; flex: none" />
