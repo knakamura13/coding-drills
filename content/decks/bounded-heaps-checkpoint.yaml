@@ -1,6 +1,6 @@
 id: bounded-heaps-checkpoint
 title: "Bounded heaps: checkpoint"
-description: Keep the top K of a stream or merge sorted runs lazily, on new inputs, within a memory limit.
+description: Keep the top K of a stream, merge sorted runs lazily, or keep a running median in two heaps, on new inputs.
 heading: What does the capped heap do?
 
 questions:
@@ -257,6 +257,92 @@ questions:
           The 1 was popped when the 4th value arrived. With every kept value equal, any cell of `h`
           gives the `k`th largest.
 
+  - id: checkpoint-frequent-tie
+    heading: What does this print?
+    tags: [heap, hash-map, python]
+    prompt: |-
+      Python compares tuples item by item from the left, and moves to the next item only on a tie.
+
+      ```python
+      from heapq import heappush, heappop
+
+      def top_k(nums, k):
+          counts = {}
+          for x in nums:
+              if x in counts:
+                  counts[x] += 1
+              else:
+                  counts[x] = 1
+          h = []
+          for x, c in counts.items():
+              heappush(h, (c, x))
+              if len(h) > k:
+                  heappop(h)
+          return sorted(x for c, x in h)
+
+      print(top_k([3, 5, 8, 3, 1, 5, 3, 8, 1], 2))
+      ```
+
+      What does it print?
+    options:
+      - id: largest-tied
+        text: '`[3, 8]`'
+        explanation: >-
+          3 appears 3 times, and 5, 8 and 1 twice each. The tied entries `(2, 5)`, `(2, 8)` and
+          `(2, 1)` compare their values, so each pop takes the one with the smaller value. `(2, 5)`
+          and then `(2, 1)` are evicted, and `(2, 8)` stays beside `(3, 3)`.
+      - id: first-tied
+        text: '`[3, 5]`'
+        explanation: Check what decides between two entries with the same count.
+      - id: smallest-tied
+        text: '`[1, 3]`'
+        explanation: Check which of two tied entries is the smaller tuple.
+      - id: by-value
+        text: '`[5, 8]`'
+        explanation: Check which item of each entry is compared first.
+    correct: largest-tied
+    followUps:
+      first-tied:
+        prompt: 'The heap holds `(3, 3)` and `(2, 5)`, and `(2, 8)` is pushed. Which entry does the pop remove?'
+        options:
+          - id: five
+            text: '`(2, 5)`, since the counts tie and 5 is less than 8'
+          - id: eight
+            text: '`(2, 8)`, since it arrived last'
+          - id: either
+            text: Either of the two, since their counts tie
+        correct: five
+        explanation: >-
+          A tie on the count moves the comparison to the value, so `(2, 5) < (2, 8)`. Push order
+          never decides, so 5 leaves although it was counted first.
+      smallest-tied:
+        prompt: 'Which is smaller, `(2, 1)` or `(2, 8)`?'
+        options:
+          - id: one
+            text: '`(2, 1)`, so the pop removes it and 1 leaves'
+          - id: eight
+            text: '`(2, 8)`, so the pop removes it and 8 leaves'
+          - id: neither
+            text: Neither, so the heap keeps both
+        correct: one
+        explanation: >-
+          The counts tie, so 1 and 8 decide, and `(2, 1)` is smaller. A min-heap pops the smaller
+          entry, so among tied counts the largest value is the one that stays.
+      by-value:
+        prompt: Which item of `(c, x)` decides the order first?
+        options:
+          - id: count
+            text: The count `c`, so the least frequent value is at the root
+          - id: value
+            text: The value `x`, so the smallest value is at the root
+          - id: pushed
+            text: Neither, the entry pushed first is at the root
+        correct: count
+        explanation: >-
+          The count is the first item, so it is compared first, and the value is reached only when
+          two counts tie. Keeping the two largest values, 5 and 8, would need entries ordered by
+          value.
+
   - id: checkpoint-refill-line
     heading: Which line completes it?
     tags: [heap, python]
@@ -415,3 +501,153 @@ questions:
         explanation: '2 is not a 4. It is the smallest front, so it is printed first of all.'
       - index: 5
         explanation: '9 is not a 4. Run 2 pushes it when its 4 pops, and it is printed last of all.'
+
+  - format: tap-cell
+    id: checkpoint-median-first-move
+    heading: Which arrival makes the move?
+    tags: [heap, python]
+    prompt: >-
+      `add` places each value of `stream` in `lo`, the smaller half stored negated, or in `hi`, the
+      larger half, and then rebalances. An empty `lo` counts as false, so `and` stops early and the
+      first arrival joins `lo`. Which arrival is the first whose `add` moves a value from `hi` to
+      `lo`? Tap it.
+    code: |
+      from heapq import heappush, heappop
+
+      lo, hi = [], []
+
+      def add(x):
+          if lo and x > -lo[0]:
+              heappush(hi, x)
+          else:
+              heappush(lo, -x)
+          if len(lo) > len(hi) + 1:
+              heappush(hi, -heappop(lo))
+          elif len(hi) > len(lo):
+              heappush(lo, -heappop(hi))
+
+      stream = [7, 12, 3, 9, 5, 2, 11, 6]
+      for x in stream:
+          add(x)
+    sequence:
+      kind: array
+      name: stream
+      cells: [7, 12, 3, 9, 5, 2, 11, 6]
+    correct: 6
+    explanation: >-
+      Once 2 has been read, each heap holds 3 values: `lo` holds 2, 3 and 5, and `hi` holds 7, 9
+      and 12. 11 is larger than `-lo[0]`, 5, so it joins `hi`, which then holds 4 values to `lo`'s
+      3. The `elif` moves the smallest value in `hi`, the 7, back to `lo`.
+    misses:
+      - index: 0
+        explanation: >-
+          7 is the first arrival and joins the empty `lo`, so nothing moves. It is the value that
+          crosses when 11 arrives, but the question asks which arrival makes the move.
+      - index: 1
+        explanation: '12 joins `hi`, but each heap then holds 1 value, so neither rebalance test is true.'
+      - index: 2
+        explanation: >-
+          3 joins `lo`, which then holds 2 values to `hi`'s 1. `lo` may keep one extra value, so
+          nothing moves.
+      - index: 3
+        explanation: '9 is larger than `-lo[0]`, 7, so it joins `hi`, but each heap then holds 2, so nothing moves.'
+      - index: 4
+        explanation: >-
+          5 joins `lo`, which then holds 3 values to `hi`'s 2. That is one extra, which `lo` may
+          keep.
+      - index: 5
+        explanation: >-
+          2 joins `lo`, which then holds 4 values to `hi`'s 2, so the first test moves 7 from `lo`
+          to `hi`. That is the first move, but it goes the other way.
+      - index: 7
+        explanation: >-
+          6 is not larger than `-lo[0]`, which is 7 by then, so it joins `lo`, and the first test
+          moves 7 to `hi`. That move goes from `lo` to `hi`, and it comes after the 11.
+
+  - id: checkpoint-median-route-lo
+    heading: What does this print?
+    tags: [heap, python]
+    prompt: |-
+      This running median pushes every arrival into `lo` first. `lo` holds the smaller half, stored
+      negated, and `hi` holds the larger half.
+
+      ```python
+      from heapq import heappush, heappop
+
+      def medians(stream):
+          lo, hi, out = [], [], []
+          for x in stream:
+              heappush(lo, -x)
+              heappush(hi, -heappop(lo))
+              if len(hi) > len(lo):
+                  heappush(lo, -heappop(hi))
+              if len(lo) > len(hi):
+                  out.append(-lo[0])
+              else:
+                  out.append((-lo[0] + hi[0]) / 2)
+          return out
+
+      print(medians([8, 3, 6, 10]))
+      ```
+
+      What does it print?
+    options:
+      - id: medians
+        text: '`[8, 5.5, 6, 7.0]`'
+        explanation: >-
+          `heappop(lo)` returns the largest value in `lo`, so the second line sends that value to
+          `hi`, whether or not it is the arrival. When 3 arrives, the 8 goes to `hi`. When 6
+          arrives, it goes to `hi` and comes back, since `hi` then holds 2 values to `lo`'s 1. The
+          code prints the running medians.
+      - id: arrival-to-hi
+        text: '`[8, 5.5, 8, 7.0]`'
+        explanation: Check which value the second line moves to `hi` when 3 arrives.
+      - id: whole-numbers
+        text: '`[8, 5, 6, 7]`'
+        explanation: Check what `/` returns.
+      - id: lo-top-only
+        text: '`[8, 3, 6, 6]`'
+        explanation: Check what the code appends when the two heaps hold the same number of values.
+    correct: medians
+    followUps:
+      arrival-to-hi:
+        prompt: 'When 3 arrives, `lo` holds 8 and 3 after the first push. Which value does `heappush(hi, -heappop(lo))` move to `hi`?'
+        options:
+          - id: eight
+            text: 8, the largest value in `lo`
+          - id: three
+            text: 3, the value just pushed
+          - id: nothing
+            text: Nothing, since `hi` is still empty
+        correct: eight
+        explanation: >-
+          `heappop(lo)` returns the smallest stored entry, -8, which stands for the largest value.
+          So 8 goes to `hi` and 3 stays in `lo`. Moving the arrival instead would leave 8 in `lo`
+          above the values in `hi`, and the third value printed would be 8.
+      whole-numbers:
+        prompt: 'What does `(3 + 8) / 2` evaluate to in Python?'
+        options:
+          - id: five-half
+            text: '`5.5`, since `/` always returns a float'
+          - id: five
+            text: '`5`, since both values are whole numbers'
+          - id: six
+            text: '`6`, rounded to the nearest whole number'
+        correct: five-half
+        explanation: >-
+          `/` always returns a float, even when the mean is whole: `(6 + 8) / 2` is `7.0`. Only
+          `//` rounds down.
+      lo-top-only:
+        prompt: After 10 arrives, `lo` holds 3 and 6 and `hi` holds 8 and 10. Which branch appends?
+        options:
+          - id: else
+            text: The `else`, since `len(lo) > len(hi)` is false
+          - id: if
+            text: The `if`, since `lo` keeps the extra value
+          - id: both
+            text: Both, one after the other
+        correct: else
+        explanation: >-
+          With 2 values in each heap the first test is false, so the code appends the mean of
+          `-lo[0]`, 6, and `hi[0]`, 8, which is `7.0`. `-lo[0]` alone is the median only for an odd
+          count.

@@ -90,7 +90,7 @@ paths:
 
   - id: bounded-heaps
     title: Bounded heaps
-    summary: Evict to keep a size limit, and price it. Merging sorted runs is a separate fork.
+    summary: Evict to keep a size limit, and price it. Merging sorted runs and the running median are separate forks.
     after: [heap-operations]
     afterNote: Heap operations brings `heapify`, the O(log n) cost of one push or pop, and tuple entries that settle ties. Priority order comes through it, with the negated push that pops the largest first.
     levels:
@@ -106,11 +106,17 @@ paths:
             title: Put one front per run in the heap
           - id: replenish-popped-stream
             title: Refill the run just popped
+      - id: running-median
+        title: Running median
+        after: preserve-size-limit
+        levels:
+          - id: balance-two-heaps
+            title: Balance two heaps
     checkpoints:
       - id: top-k-or-merge
-        title: Top K or a lazy merge
-        summary: Meet a memory limit while selecting top K or merging lazily.
-        mix: [top-k, merge]
+        title: Top K, a lazy merge, or a running median
+        summary: Select top K or merge sorted runs within a memory limit, or keep a running median balanced across two heaps, on new inputs.
+        mix: [top-k, merge, median]
 
   - id: link-rewrites
     title: Link rewrites
@@ -1166,6 +1172,11 @@ drills:
     path: bounded-heaps
     skill: preserve-size-limit
     note: 'Pick O(n log k) time and O(k) memory for a capped heap, against O(n log n) with O(n) memory, O(n × k), and the cost of one arrival. The prompt restates O(log m) per push or pop.'
+  - questionId: top-frequent-evict
+    disposition: keep
+    path: bounded-heaps
+    skill: preserve-size-limit
+    note: 'Top k frequent: count with a plain dict, keep a size-3 min-heap of `(count, value)`, and pick the value evicted when the fourth entry is pushed, against the smallest value, the first counted and the arrival.'
   - questionId: initial-heads
     disposition: keep
     path: bounded-heaps
@@ -1186,6 +1197,21 @@ drills:
     path: bounded-heaps
     skill: replenish-popped-stream
     note: Tap each value the merge prints next, then pick the entry pushed for the popped run.
+  - questionId: median-arrival-joins
+    disposition: keep
+    path: bounded-heaps
+    skill: balance-two-heaps
+    note: 'Pick the heap an arrival joins in three cases (below, equal to and above `-lo[0]`), against reading the stored root, sending a tie to `hi` and comparing with `hi[0]`. The worked example introduces the fork: `lo` a max-heap of the smaller half stored negated, `hi` a min-heap of the larger half.'
+  - questionId: median-rebalance-moves
+    disposition: keep
+    path: bounded-heaps
+    skill: balance-two-heaps
+    note: 'Pick the value the rebalance moves when `hi` outgrows `lo` by one: its smallest goes to `lo`, against no move, the arrival and the largest in `hi`.'
+  - questionId: median-trace
+    disposition: keep
+    path: bounded-heaps
+    skill: balance-two-heaps
+    note: 'Step through a running median, tapping the top of `lo` after moves both ways and picking the printed median, a float for an even count.'
   - questionId: arrival-evicted-tap
     disposition: keep
     path: bounded-heaps
@@ -1276,6 +1302,24 @@ drills:
     tests: [expose-stream-head, replenish-popped-stream]
     covers: [merge]
     note: Tap the 4 printed last when three runs hold a 4 and the run numbers break the ties.
+  - questionId: checkpoint-frequent-tie
+    disposition: exam
+    path: bounded-heaps
+    tests: [track-eviction-candidate, preserve-size-limit]
+    covers: [top-k]
+    note: 'Top k frequent with three values tied on count at the cut: predict the output, where the tie keeps the largest value, against the first counted, the smallest and entries ordered by value.'
+  - questionId: checkpoint-median-first-move
+    disposition: exam
+    path: bounded-heaps
+    tests: [balance-two-heaps]
+    covers: [median]
+    note: Tap the first arrival whose `add` moves a value from `hi` to `lo`, past arrivals that join `hi` with equal sizes and a move the other way.
+  - questionId: checkpoint-median-route-lo
+    disposition: exam
+    path: bounded-heaps
+    tests: [balance-two-heaps]
+    covers: [median]
+    note: 'A running median that pushes every arrival into `lo` first and moves its largest to `hi`: predict the medians, against moving the arrival itself, whole-number means and `-lo[0]` alone on an even count.'
   - questionId: min-pair-trace
     disposition: keep
     path: design-structures
