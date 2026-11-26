@@ -24,7 +24,7 @@ questions:
           This count is right, but the loop keeps going until every digit up to the top 1 has been
           shifted out, zeros included. A mask with feature 59 on takes 60 passes.
       - id: every-bit
-        text: "`for j in range(60): count += m >> j & 1`"
+        text: "`for j in range(60): count += (m >> j) & 1`"
         explanation: >-
           This count is right, but the loop reads all 60 bits on every mask, however few are set.
       - id: count-down
@@ -42,8 +42,9 @@ questions:
           - { id: fifty-nine, text: "59, since bit 59 is the last one it reaches" }
         correct: digits
         explanation: >-
-          The shift loop stops only when `m` is 0, which takes `m.bit_length()` passes: 60 here.
-          The zeros between the two set bits each cost a pass, which the `m &= m - 1` loop skips.
+          The shift loop stops only when `m` is 0, which takes one pass per binary digit up to the
+          highest set bit, bit 59: 60 passes here. The zeros between the two set bits each cost a
+          pass, which the `m &= m - 1` loop skips.
       every-bit:
         prompt: How many passes does `for j in range(60)` make on a mask with two bits set?
         options:
@@ -65,70 +66,73 @@ questions:
           `m -= 1` steps through every value down to 0, so the loop runs `m` times and counts
           them. `m &= m - 1` jumps straight past all those values to the next set bit.
 
-  - id: bits-exam-badge-log
-    heading: Which method fits?
-    tags: [bit-manipulation, hash-map, python]
+  - id: bits-exam-shared-tags
+    heading: Which check fits?
+    tags: [bit-manipulation, python]
     prompt: >-
-      A door logs a badge id each time someone enters or leaves. Every id appears exactly twice,
-      except the id of the one visitor still inside, which appears once. The log is a read-only
-      list of `n` ints. Find the id still inside in O(n) time with O(1) extra space.
+      A site has 60 interest tags, numbered 0 to 59, and stores each user's tags as one int, with
+      bit `j` set when the user has tag `j`. It checks millions of times whether two users `a` and
+      `b` share at least one tag, so each check must run with no loop over the tags. Which check
+      fits?
     options:
-      - id: xor
-        text: Fold every id into one value with `^`
+      - id: and
+        text: "`(a & b) != 0`"
         explanation: >-
-          Each pair of equal ids cancels, in any order, so one pass with one variable leaves only
-          the id seen once. That is O(n) time and O(1) extra space, and the log is never changed.
+          `a & b` has bit `j` set only when both users have tag `j`, so it is not 0 exactly when
+          they share a tag. It is one operation and one comparison, with no loop.
       - id: or
-        text: Fold every id into one value with `|`
+        text: "`(a | b) != 0`"
         explanation: >-
-          `|` keeps every 1 bit it has seen, so a second copy of an id does not remove the first.
-          The result mixes the bits of every id instead of leaving the one seen once.
-      - id: set
-        text: Toggle each id in a set, then report the id left
+          `a | b` has a bit set when either user has that tag, so it is not 0 whenever at least
+          one of them has any tag at all, shared or not.
+      - id: xor
+        text: "`(a ^ b) != 0`"
         explanation: >-
-          The answer is right, but the set can hold one id for every visitor inside at once, up to
-          about `n / 2`, which is O(n) extra space.
-      - id: sort
-        text: Sort a copy, then find the id with no equal neighbor
+          `a ^ b` has a bit set where exactly one user has the tag, so it is not 0 whenever their
+          tags differ. Two users with the same tags share them all, and this check says no.
+      - id: loop
+        text: "`any((a >> j) & (b >> j) & 1 for j in range(60))`"
         explanation: >-
-          The answer is right, but a sorted copy is a second list of `n` ids, O(n) extra space,
-          and the sort takes O(n log n) time. Sorting the log in place is not allowed.
-    correct: xor
+          This answer is right, since it tests bit `j` of both users for each tag. But it loops
+          over the tags: for two users who share none it runs all 60 tests.
+    correct: and
     followUps:
       or:
-        prompt: "With the log `[31, 8, 52, 8, 31]`, what does folding with `|` give?"
+        prompt: "For `a = 0b0011` and `b = 0b0100`, what is `(a | b) != 0`?"
         options:
-          - { id: sixty-three, text: "63" }
-          - { id: fifty-two, text: "52" }
-          - { id: zero, text: "0" }
-        correct: sixty-three
+          - { id: true-unshared, text: "`True`, though the two share no tag" }
+          - { id: says-false, text: "`False`, since they share no tag" }
+          - { id: true-shared, text: "`True`, since both have tag 2" }
+        correct: true-unshared
         explanation: >-
-          `x | x` is `x`, so a pair never cancels. `31 | 8 | 52` is already 63, and the repeated 8 and 31 add nothing. Only `^` cancels a
-          value against its copy, which leaves 52.
-      set:
-        prompt: Which limit does the toggling set break?
+          `a | b` is `0b0111`, which is not 0, yet `a` has tags 0 and 1 and `b` has only tag 2.
+          `a & b` is 0, which gives the right answer.
+      xor:
+        prompt: "For `a = 0b0110` and `b = 0b0110`, what is `(a ^ b) != 0`?"
         options:
-          - { id: space, text: "Extra space, since the set can hold about n / 2 ids at once" }
-          - { id: time, text: "Time, since each toggle scans the whole set" }
-          - { id: neither, text: "Neither, since a set of ints counts as O(1) space" }
-        correct: space
+          - { id: false-shared, text: "`False`, though the two share tags 1 and 2" }
+          - { id: says-true, text: "`True`, since they share tags 1 and 2" }
+          - { id: false-none, text: "`False`, since they share no tag" }
+        correct: false-shared
         explanation: >-
-          A set lookup takes O(1) expected time, so the pass is O(n). But if many visitors enter
-          before anyone leaves, the set holds all of them at once, which grows with `n`.
-      sort:
-        prompt: Setting time aside, which limit does sorting a copy break?
+          Every bit is set in both, so `a ^ b` is 0. `^` drops the bits the two have in common,
+          which are exactly the shared tags this check needs.
+      loop:
+        prompt: >-
+          `any` stops at the first true test. How many tests does the `any` check run for two users
+          who share no tag?
         options:
-          - { id: space, text: "Extra space, since the copy holds all n ids" }
-          - { id: read-only, text: "Read-only, since sorting a copy changes the log" }
-          - { id: none, text: "None, since a sorted copy costs no extra space" }
-        correct: space
+          - { id: sixty, text: "60, one per tag" }
+          - { id: one, text: "1, since `any` stops early" }
+          - { id: their-tags, text: "As many as the tags the two users have" }
+        correct: sixty
         explanation: >-
-          `sorted(log)` builds a new list of `n` ids, so the log is untouched but the copy is O(n)
-          extra space. The `^` fold needs one int.
+          With no shared tag no test is true, so `any` never stops early and tests every `j` from
+          0 to 59. `(a & b) != 0` compares all 60 bits in one operation.
 
   - id: bits-exam-tap-isolate
     format: tap-cell
-    heading: Tap the only 1
+    heading: Tap the only set bit
     tags: [bit-manipulation, python]
     prompt: >-
       The cells show `n` from line 1, highest bit first. Tap the only digit that is 1 in `m` after
@@ -171,65 +175,147 @@ questions:
         explanation: >-
           `n - 1` sets this digit, but `n` has a 0 here, so line 2 gives 0. Line 3 XORs two 0s.
 
-  - id: bits-exam-negative-print
+  - id: bits-exam-shift-mask-xor
     heading: What does this print?
     tags: [bit-manipulation, python]
     prompt: |-
       ```python
-      x = -7
-      print(x >> 1, x & 1, ~x)
+      n = 0b11010110
+      m = (n >> 3) & 0b1111
+      m ^= m >> 2
+      print(m)
       ```
 
       What does this print?
     options:
-      - id: right
-        text: "`-4 1 6`"
+      - id: eight
+        text: "`8`"
         explanation: >-
-          `-7 >> 1` rounds -3.5 down to -4. -7 is odd, so its lowest bit is 1 and `-7 & 1` is 1.
-          `~(-7)` is one less than 7, which is 6.
-      - id: truncated
-        text: "`-3 1 6`"
+          `n >> 3` drops the three lowest bits and gives `0b11010`. `& 0b1111` keeps its low four
+          bits, so `m` is 10. Shifting that down two places gives 2, and bit 1 is set in both 10
+          and 2, so `^` turns it off and leaves `0b1000`, or 8.
+      - id: ten
+        text: "`10`"
         explanation: >-
-          -3 cuts -3.5 toward zero. Python's `>>` rounds down, the same way `//` does, so `-7 >> 1`
-          is -4.
-      - id: negated
-        text: "`-4 1 7`"
+          10 is `m | (m >> 2)`. Bit 1 is set in both `0b1010` and `0b10`, and `|` keeps it, so
+          nothing changes. `^` drops a bit set in both, so line 3 turns bit 1 off.
+      - id: twenty-eight
+        text: "`28`"
         explanation: >-
-          7 is `-x`. `~` is not negation: it lands one below `-x`, so `~(-7)` is 6.
-      - id: signed-and
-        text: "`-4 -1 6`"
+          28 skips the mask: `n >> 3` is `0b11010`, and `0b11010 ^ 0b110` is 28. `& 0b1111` first
+          drops bit 4, so `m` is 10 before line 3.
+      - id: thirty-four
+        text: "`34`"
         explanation: >-
-          `&` with a positive mask cannot give a negative result, since the mask has no sign bits
-          to keep. `-7 & 1` is 1, unlike C's `-7 % 2`, which is -1.
-    correct: right
+          34 is `m ^ (m << 2)`, which is `0b1010 ^ 0b101000`. `>>` moves bits toward the low end,
+          so `m >> 2` is 2, not 40.
+    correct: eight
     followUps:
-      truncated:
-        prompt: Which expression gives the same value as `-7 >> 1`?
+      ten:
+        prompt: What is `0b1010 ^ 0b0010`?
         options:
-          - { id: floor, text: "`-7 // 2`, which is -4" }
-          - { id: trunc, text: "`int(-7 / 2)`, which is -3" }
-          - { id: magnitude, text: "`-(7 >> 1)`, which is -3" }
-        correct: floor
+          - { id: eight, text: "`0b1000`, which is 8" }
+          - { id: ten, text: "`0b1010`, which is 10" }
+          - { id: twelve, text: "`0b1100`, which is 12" }
+        correct: eight
         explanation: >-
-          For any Python int, `x >> k` is `x // 2 ** k`, and floor division rounds toward negative
-          infinity. Truncating, or shifting the size and negating, rounds toward zero instead.
-      negated:
-        prompt: For a Python int `x`, what is `~x`?
+          Bit 3 is set only in the first number and bit 1 in both. `^` keeps a bit set in exactly
+          one, so only bit 3 is left, which is 8. `|` would keep bit 1 and give 10, and 12 is the
+          sum.
+      twenty-eight:
+        prompt: What is `0b11010 & 0b1111`?
         options:
-          - { id: neg-minus-one, text: "`-x - 1`" }
-          - { id: neg, text: "`-x`" }
-          - { id: sign-flip, text: "`x` with only its sign bit flipped" }
-        correct: neg-minus-one
+          - { id: ten, text: "`0b1010`, which is 10" }
+          - { id: twenty-six, text: "`0b11010`, which is 26" }
+          - { id: thirteen, text: "`0b1101`, which is 13" }
+        correct: ten
         explanation: >-
-          Negation is flip and add 1, so flipping alone gives one less than `-x`. For -7 that is
-          7 - 1, which is 6.
-      signed-and:
-        prompt: What is `x & 1` for a negative odd Python int `x`?
+          `0b1111` sets bits 0 to 3, so the `&` keeps those four bits of `0b11010` and drops bit 4.
+          That leaves `0b1010`, which is 10.
+      thirty-four:
+        prompt: What is `0b1010 >> 2`?
         options:
-          - { id: one, text: "1, since a negative odd int still ends in a 1 bit" }
-          - { id: minus-one, text: "-1, since `&` keeps the sign of `x`" }
-          - { id: zero, text: "0, since a negative number's low bit is cleared" }
-        correct: one
+          - { id: two, text: "`0b10`, which is 2" }
+          - { id: forty, text: "`0b101000`, which is 40" }
+          - { id: five, text: "`0b101`, which is 5" }
+        correct: two
         explanation: >-
-          A negative int is stored with endless 1s on top, and its lowest bit is 1 exactly when it
-          is odd. `1` has only bit 0, so the `&` keeps that bit and drops the sign: `-7 & 1` is 1.
+          `>> 2` moves every bit two places toward the low end and drops the two that pass bit 0,
+          so `0b1010` becomes `0b10`. 40 is `0b1010 << 2`, and 5 is a shift by one place.
+
+  - id: bits-exam-debug-subset-sums
+    heading: Which change fixes it?
+    tags: [bit-manipulation, backtracking, python]
+    prompt: |-
+      A suggested solution should return the sum of each subset of `nums`, in mask order, where
+      bit `j` of `mask` is set when `nums[j]` is in the subset.
+
+      ```python
+      def subset_sums(nums):
+          sums = []
+          for mask in range(1 << len(nums)):
+              total = 0
+              for j in range(len(nums)):
+                  if (mask & (1 << j)) == 1:
+                      total += nums[j]
+              sums.append(total)
+          return sums
+      ```
+
+      `subset_sums([4, 7])` should return `[0, 4, 7, 11]`, but it does not. Which change makes the
+      function right for every list?
+    options:
+      - id: nonzero
+        text: "Change line 6 to `if mask & (1 << j):`"
+        explanation: >-
+          `1 << j` has only bit `j` set, so `mask & (1 << j)` is `2 ** j` when bit `j` of `mask`
+          is set and 0 when it is not. It equals 1 only for `j = 0`, so `nums[1]` is never added
+          and the call returns `[0, 4, 0, 4]`. Testing for any value but 0 adds each item whose
+          bit is set.
+      - id: shift
+        text: "Change line 6 to `if (mask >> j) == 1:`"
+        explanation: >-
+          `mask >> j` keeps every bit from bit `j` up, so it is 1 only when bit `j` is the highest
+          set bit. For mask 3 it skips `nums[0]`, and the call returns `[0, 4, 7, 7]`.
+      - id: bit-number
+        text: "Change line 6 to `if (mask & j) == 1:`"
+        explanation: >-
+          `j` is the bit number, not a mask for bit `j`. For `j = 1` it tests bit 0, and for
+          `j = 0` it tests no bit at all, so the call returns `[0, 7, 0, 7]`.
+      - id: one-more
+        text: "Change line 3 to `for mask in range((1 << len(nums)) + 1):`"
+        explanation: >-
+          The loop already reaches mask 3, the full set's mask. Line 6 still never adds `nums[1]`,
+          so the call returns `[0, 4, 0, 4, 0]`, with one extra entry.
+    correct: nonzero
+    followUps:
+      shift:
+        prompt: For `mask = 3` and `j = 0`, what is `mask >> j`?
+        options:
+          - { id: three, text: "`3`, since a shift by 0 moves nothing" }
+          - { id: one, text: "`1`, since only bit 0 is read" }
+          - { id: zero, text: "`0`, since bit 0 is dropped" }
+        correct: three
+        explanation: >-
+          `>> j` moves bits down but keeps every bit above bit `j`, so `3 >> 0` is 3 and `3 == 1`
+          fails, though bit 0 is set. `& 1` after the shift would keep bit 0 alone.
+      bit-number:
+        prompt: Which value has only bit `j` set?
+        options:
+          - { id: shift, text: "`1 << j`, which is `2 ** j`" }
+          - { id: number, text: "`j`, the bit number" }
+          - { id: next, text: "`j + 1`, one past the bit number" }
+        correct: shift
+        explanation: >-
+          Bit `j` is worth `2 ** j`, and `1 << j` moves a 1 up to it. The number `j` is a different
+          mask: 1 has only bit 0 set, and 0 has no bit set.
+      one-more:
+        prompt: Which mask stands for the full set of two items?
+        options:
+          - { id: three, text: "3, `0b11`, which `range(4)` visits" }
+          - { id: four, text: "4, `0b100`, which `range(4)` stops before" }
+          - { id: two, text: "2, `0b10`, since there are two items" }
+        correct: three
+        explanation: >-
+          Both bits set is `0b11`, which is 3, and `range(1 << 2)` runs from 0 to 3. 4 sets bit 2,
+          which belongs to no item, so the stop value on line 3 is already right.

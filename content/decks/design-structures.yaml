@@ -1,6 +1,6 @@
 id: design-structures
 title: Design structures
-description: Meet stated costs by keeping two structures in step, from a min stack and a queue built from two stacks to an LRU cache. Each card asks for one decision, with a worked example on hand.
+description: 'Meet stated costs by keeping two structures in step: a min stack, a queue from two stacks, an LRU cache. The last four cards, which replay calls on a store, go deeper.'
 heading: What happens next?
 
 questions:
@@ -759,3 +759,451 @@ questions:
         explanation: >-
           Copying the last item into the gap moves exactly one number. Its entry in `pos` must
           follow it, so the two structures stay in step.
+
+  - format: step-trace
+    id: time-store-get-trace
+    heading: What does get return?
+    tags: [hash-map, binary-search, python]
+    workedExample: |-
+      A stateful design gives a few functions that share some structures, then a run of calls, and
+      asks what a call returns. Replay the calls in order, keeping the rule the structures always
+      obey: here, `times[key]` and `vals[key]` grow together, and `times[key]` stays sorted.
+      Consider `put('p', 'on', 3)`, `put('p', 'off', 8)` and then `get('p', 10)`.
+
+      1. Each put appends to both lists, so `times['p']` is `[3, 8]` and `vals['p']` is
+         `['on', 'off']`. Index 1 of each list came from the same call.
+      2. Both 3 and 8 are at most 10, so `bisect_right(times['p'], 10)` returns 2, and `i` is 2.
+      3. `i` is not 0, so the last line returns `vals['p'][1]`, which is `'off'`, the value put at
+         time 8.
+    prompt: >-
+      A time-keyed store remembers every value a key was given, and when. `put(key, value, t)`
+      appends `t` to `times[key]` and `value` to `vals[key]`, and each `put` has a larger `t` than
+      the one before, so every `times[key]` stays sorted. `get(key, t)` reads back one of the key's
+      values, chosen by `t`. `bisect_right(a, x)`, from the `bisect` module, returns how many
+      items of the sorted list `a` are at most `x`, in O(log n) for a list of `n` items. The calls
+      `put('k', 'red', 2)`, `put('k', 'blue', 5)`, `put('k', 'green', 9)` and `put('k', 'gold', 14)`
+      have run. The cells are `times['k']`, and `i` is drawn at index 0 until line 13 sets it.
+      Predict each step.
+    code: |
+      from bisect import bisect_right
+      times = {}
+      vals = {}
+
+      def put(key, value, t):
+          if key not in times:
+              times[key] = []
+              vals[key] = []
+          times[key].append(t)
+          vals[key].append(value)
+
+      def get(key, t):
+          i = bisect_right(times[key], t)
+          if i == 0:
+              return None
+          return vals[key][i - 1]
+    sequence:
+      kind: array
+      name: times
+      cells: [2, 5, 9, 14]
+      pastEnd: true
+    start:
+      - { name: i, at: 0 }
+    steps:
+      - line: 13
+        ask: "`get('k', 9)` runs. Where does `i` land? Tap it."
+        pointer: i
+        correct: 3
+        explanation: >-
+          2, 5 and 9 are all at most 9, so `bisect_right` returns 3. A time equal to `t` counts, so
+          `i` lands just past the 9, on index 3.
+        misses:
+          - index: 2
+            explanation: >-
+              The 9 sits at index 2, but `bisect_right` returns a count, not the index of a match.
+              Three times, 2, 5 and 9, are at most 9.
+          - index: 4
+            explanation: >-
+              14 is greater than 9, so it is not counted. Only the times at most 9 count, and there
+              are three of them.
+        elsewhere: Three of the times, 2, 5 and 9, are at most 9, so `i` is 3.
+      - line: 16
+        ask: "What does `get('k', 9)` return?"
+        options:
+          - id: green
+            text: "`'green'`"
+            explanation: >-
+              `i` is 3, so the last line reads `vals['k'][2]`, the value put at time 9. A put at
+              exactly `t` is the last one at or before `t`.
+          - id: gold
+            text: "`'gold'`"
+            explanation: >-
+              `'gold'` is `vals['k'][3]`, at index `i` itself. `i` counts the times up to the 9, so
+              the 9 sits one index to its left, and the last line reads `i - 1`.
+          - id: blue
+            text: "`'blue'`"
+            explanation: >-
+              `'blue'` was put at time 5. The put at time 9 came at exactly `t`, and `bisect_right`
+              counts it, so its value is the one read.
+        correct: green
+      - line: 13
+        ask: "`get('k', 7)` runs. What does it return?"
+        options:
+          - id: blue
+            text: "`'blue'`"
+            explanation: >-
+              2 and 5 are at most 7, so `i` is 2 and the last line reads `vals['k'][1]`. Nothing was
+              put at time 7, so `get` returns the value from the last put before it, at time 5.
+          - id: green
+            text: "`'green'`"
+            explanation: >-
+              `'green'` was put at time 9, after 7. `bisect_right` counts only the times at most 7,
+              so the 9 is left out.
+          - id: none
+            text: "`None`"
+            explanation: >-
+              `get` does not need a put at exactly time 7. `i` is 2, not 0, so line 14 lets the code
+              go on to read a value put earlier.
+        correct: blue
+        also:
+          - { name: i, at: 2 }
+      - line: 13
+        ask: "`get('k', 1)` runs. What does it return?"
+        options:
+          - id: none
+            text: "`None`"
+            explanation: >-
+              No time is at most 1, so `i` is 0, and line 15 returns `None`: the key held nothing
+              yet at time 1.
+          - id: red
+            text: "`'red'`"
+            explanation: >-
+              `'red'` was put at time 2, after time 1. No time is at most 1, so `i` is 0 and no
+              value is read.
+          - id: gold
+            text: "`'gold'`"
+            explanation: >-
+              With `i` at 0, `vals['k'][i - 1]` would read index -1, the last value, `'gold'`. Line
+              14 checks `i == 0` first, so that read never runs.
+        correct: none
+        also:
+          - { name: i, at: 0 }
+
+  - format: step-trace
+    id: hit-counter-trace
+    heading: Which hits still count?
+    tags: [queue, python]
+    workedExample: |-
+      Consider the counter below after hits at 10, 40, 50, 60 and 70, then `count(130)`. Times never
+      decrease, so the deque holds them oldest first, and the oldest hit is always `hits[0]`.
+
+      1. Before the call, `hits` holds `[10, 40, 50, 60, 70]`, with 10 at the front.
+      2. `count(130)` compares the front with `130 - 100`, which is 30. `10 <= 30` is true, so
+         `popleft()` removes the 10.
+      3. The new front is 40, and `40 <= 30` is false, so the loop stops: every hit behind the 40 is
+         at least as new. `count(130)` returns 4.
+    prompt: >-
+      A hit counter keeps recent hit times in `hits`, a deque: `hits[0]` reads its front,
+      `popleft()` removes the front, and `append` adds at the back. Times never decrease, so the
+      oldest hit is at the front. `count(t)` first drops the hits that are too old, then counts
+      the rest. The calls are `hit(4)`,
+      `hit(30)`, `hit(30)`, `hit(95)`, `count(110)`, `hit(130)`, `hit(160)`, `count(195)`,
+      `hit(210)` and `count(260)`. The cells are every hit time in the order they arrive, and
+      `front` marks `hits[0]`. Predict each step.
+    code: |
+      from collections import deque
+      hits = deque()
+
+      def hit(t):
+          hits.append(t)
+
+      def count(t):
+          while hits and hits[0] <= t - 100:
+              hits.popleft()
+          return len(hits)
+    sequence:
+      kind: array
+      name: times
+      cells: [4, 30, 30, 95, 130, 160, 210]
+    start:
+      - { name: front, at: 0 }
+    steps:
+      - line: 8
+        ask: "`count(110)` runs. Where is `front` when it returns? Tap it."
+        pointer: front
+        correct: 1
+        explanation: >-
+          `110 - 100` is 10. `4 <= 10` is true, so the 4 leaves. `30 <= 10` is false, so the loop
+          stops with the first 30 at the front, and `count(110)` returns 3.
+        misses:
+          - index: 0
+            explanation: >-
+              `4 <= 110 - 100` is true, so `popleft()` removes the 4. It came 106 seconds before
+              this call.
+          - index: 2
+            explanation: >-
+              The loop stops at the first 30, since `30 <= 10` is false. The second 30 is never
+              tested, and both stay.
+        elsewhere: Only the 4 is at most `110 - 100`, so only the 4 leaves.
+      - line: 8
+        ask: "`hit(130)` and `hit(160)` run. Where is `front` when `count(195)` returns? Tap it."
+        pointer: front
+        correct: 4
+        explanation: >-
+          `195 - 100` is 95. Both 30s are at most 95, and so is the 95 itself, since the test is
+          `<=`, so all three leave. `130 <= 95` is false, so the 130 is the new front.
+        misses:
+          - index: 3
+            explanation: >-
+              `95 <= 95` is true, so the 95 leaves too. A hit exactly 100 seconds old no longer
+              counts.
+          - index: 2
+            explanation: >-
+              The loop does not stop after one removal. The second 30 becomes the front, and
+              `30 <= 95` is true, so it leaves too.
+          - index: 5
+            explanation: >-
+              `130 <= 95` is false, so the loop stops at the 130 and keeps it.
+        elsewhere: Both 30s and the 95 are at most `195 - 100`, and the 130 is not.
+      - line: 10
+        ask: "What does `count(195)` return?"
+        options:
+          - id: two
+            text: "2"
+            explanation: >-
+              The deque holds the 130 and the 160. The 210 is not in it yet, since `hit(210)` runs
+              after this call.
+          - id: three
+            text: "3"
+            explanation: >-
+              That counts the 210 too, but `hit(210)` runs after `count(195)`. Only the 130 and the
+              160 are in the deque.
+          - id: six
+            text: "6"
+            explanation: >-
+              Six hits have arrived, but the loops removed the 4, both 30s and the 95. `len(hits)`
+              counts only the hits left.
+        correct: two
+      - line: 8
+        ask: "`hit(210)` runs, then `count(260)`. What does `count(260)` return?"
+        options:
+          - id: one
+            text: "1"
+            explanation: >-
+              `260 - 100` is 160. `130 <= 160` and `160 <= 160` are both true, so both leave, and
+              only the 210 is left.
+          - id: two
+            text: "2"
+            explanation: >-
+              `160 <= 160` is true, so the 160 leaves as well. A time equal to `t - 100` is old
+              enough to drop.
+          - id: three
+            text: "3"
+            explanation: >-
+              `count` drops old hits before it counts. The 130 and the 160 are both at most
+              `260 - 100`.
+        correct: one
+        also:
+          - { name: front, at: 6 }
+
+  - id: rate-limit-refused
+    heading: Which requests are refused?
+    tags: [queue, python]
+    workedExample: |-
+      Consider a limiter of the same shape with a limit of 2: its loop drops times at most `t - 5`,
+      and it accepts while `len(accepted) < 2`. Requests arrive at 6, 8 and 9.
+
+      1. At 6 and at 8, nothing is old enough to drop, and the deque holds fewer than 2 times, so
+         both are accepted, and `accepted` is `[6, 8]`.
+      2. At 9, the loop compares 6 with `9 - 5`, which is 4. `6 <= 4` is false, so nothing leaves,
+         and the deque still holds 2 times.
+      3. `len(accepted) < 2` is false, so `allow(9)` returns `False` without reaching `append`.
+         `accepted` is still `[6, 8]`.
+    prompt: |-
+      A rate limiter refuses a request when it already holds 3 recent accepted times. `accepted`
+      is a deque of the times of accepted requests, oldest at the front, and the loop drops the
+      times too old to count.
+
+      ```python
+      from collections import deque
+      accepted = deque()
+
+      def allow(t):
+          while accepted and accepted[0] <= t - 10:
+              accepted.popleft()
+          if len(accepted) < 3:
+              accepted.append(t)
+              return True
+          return False
+      ```
+
+      Requests arrive at times 2, 6, 11, 12, 15 and 19, each a call to `allow`. Which requests are
+      refused?
+    options:
+      - id: only-fifteen
+        text: Only the request at 15
+        explanation: >-
+          At 12, the 2 is at most `12 - 10`, so it leaves and 12 is accepted. At 15, the deque holds
+          6, 11 and 12, all newer than `15 - 10`, so 15 is refused and never joins. At 19, the 6
+          leaves, so 19 is accepted.
+      - id: only-twelve
+        text: Only the request at 12
+        explanation: >-
+          At 12, the loop tests the front, 2, against `12 - 10`. The test is `<=`, so the 2 leaves,
+          and 12 finds only two accepted times.
+      - id: fifteen-and-nineteen
+        text: The requests at 15 and 19
+        explanation: >-
+          A refused request returns `False` before `append` runs, so the 15 never joins the deque.
+          At 19, the 6 drops out, so there is room.
+      - id: all-after-third
+        text: The requests at 12, 15 and 19
+        explanation: >-
+          That would hold if no time ever left the deque. The loop drops times at most `t - 10`
+          before each check, so the 2 leaves at 12 and the 6 leaves at 19.
+    correct: only-fifteen
+    followUps:
+      only-twelve:
+        prompt: When `allow(12)` runs, the front is 2. Does the loop remove it?
+        options:
+          - id: removes
+            text: Yes, since `2 <= 12 - 10` is true
+          - id: keeps-exact
+            text: No, since it is exactly 10 seconds old
+          - id: only-when-full
+            text: No, the loop runs only when the deque is full
+        correct: removes
+        explanation: >-
+          A time equal to `t - 10` counts as old enough to drop. With the 2 gone, the deque holds 6
+          and 11, so 12 is accepted.
+      fifteen-and-nineteen:
+        prompt: "`allow(15)` returns `False`. What does `accepted` hold right after?"
+        options:
+          - id: unchanged
+            text: 6, 11 and 12, as before the call
+          - id: with-fifteen
+            text: 6, 11, 12 and 15
+          - id: shifted
+            text: 11, 12 and 15
+        correct: unchanged
+        explanation: >-
+          `return False` runs without `append`, so a refused request leaves no trace. At 19, only
+          11 and 12 are newer than `19 - 10`.
+      all-after-third:
+        prompt: Before it checks the length, what does `allow(19)` do with the 6 at the front?
+        options:
+          - id: drops
+            text: It removes it, since `6 <= 19 - 10`
+          - id: keeps-accepted
+            text: It keeps it, since it was accepted
+          - id: keeps-until-empty
+            text: It keeps it until the deque is empty
+        correct: drops
+        explanation: >-
+          Every call first drops the times at most `t - 10`. An accepted time leaves once it is old,
+          which makes room for a new request.
+
+  - id: rollback-get
+    heading: What does the store hold?
+    tags: [hash-map, stack, python]
+    workedExample: |-
+      Consider `put('n', 5)`, `begin()`, `put('n', 6)`, `put('n', 7)`, `put('m', 1)` and
+      `rollback()` on the store below. The top dict of `undo` belongs to the newest open
+      transaction and holds the values it saved.
+
+      1. `put('n', 5)` runs with `undo` empty, so it only sets `data['n']` to 5.
+      2. `begin()` pushes `{}`. `put('n', 6)` saves the old 5. `put('n', 7)` finds `n` already in
+         the top dict, so it saves nothing and only sets `data['n']` to 7.
+      3. `put('m', 1)` saves `None`, since `m` was missing, so the top dict is
+         `{'n': 5, 'm': None}`.
+      4. `rollback()` pops that dict, writes 5 back to `n` and deletes `m`, so `data` is
+         `{'n': 5}` again.
+    prompt: |-
+      A store supports transactions. `undo` is a stack with one dict per open transaction.
+      `data.get(key)` returns `None` for a missing key, and no stored value is `None`.
+
+      ```python
+      data = {}
+      undo = []
+
+      def begin():
+          undo.append({})
+
+      def put(key, value):
+          if undo and key not in undo[-1]:
+              undo[-1][key] = data.get(key)
+          data[key] = value
+
+      def rollback():
+          saved = undo.pop()
+          for key in saved:
+              if saved[key] is None:
+                  del data[key]
+              else:
+                  data[key] = saved[key]
+      ```
+
+      After `put('x', 1)`, `begin()`, `put('x', 2)`, `begin()`, `put('x', 3)`, `put('x', 4)` and
+      `rollback()`, what is `data['x']`?
+    options:
+      - id: two
+        text: "`2`"
+        explanation: >-
+          The first transaction saves the 1 when `x` becomes 2. The second saves the 2 when `x`
+          becomes 3, and `put('x', 4)` saves nothing more for `x`. `rollback()` pops `{'x': 2}` and
+          writes the 2 back.
+      - id: three
+        text: "`3`"
+        explanation: >-
+          `put('x', 4)` finds `x` already in the top dict, so it leaves the saved 2 alone. The top
+          dict keeps the value from before its transaction, not from before the latest put.
+      - id: one
+        text: "`1`"
+        explanation: >-
+          `rollback()` pops only the dict the second `begin()` pushed. The 1 sits in the dict below
+          it, which a second `rollback()` would restore.
+      - id: four
+        text: "`4`"
+        explanation: >-
+          `rollback()` does more than drop the top dict: its loop writes each saved value back into
+          `data`, so the 4 is replaced.
+    correct: two
+    followUps:
+      three:
+        prompt: "After `put('x', 3)`, the top dict is `{'x': 2}`. What does `put('x', 4)` do to that dict?"
+        options:
+          - id: nothing
+            text: Nothing, since `x` is already a key in it
+          - id: replaces
+            text: It replaces the 2 with a 3
+          - id: adds
+            text: It adds a second entry for `x`
+        correct: nothing
+        explanation: >-
+          `key not in undo[-1]` is false, so only `data` changes. A transaction saves each key once,
+          before its first write, so a rollback returns to how things were at its `begin()`.
+      one:
+        prompt: How many dicts does one `rollback()` pop from `undo`?
+        options:
+          - id: top-only
+            text: One, the top dict
+          - id: all
+            text: All of them
+          - id: per-put
+            text: One for each put since the first `begin()`
+        correct: top-only
+        explanation: >-
+          `undo.pop()` removes the newest dict only. Transactions nest, so each `rollback()` undoes
+          the innermost open one.
+      four:
+        prompt: What does `rollback()` do with each key in the dict it pops?
+        options:
+          - id: restores
+            text: Writes its saved value back, or deletes the key when the value is `None`
+          - id: drops
+            text: Nothing, it only throws the dict away
+          - id: clears
+            text: Sets the key to `None`
+        correct: restores
+        explanation: >-
+          The loop puts `data` back the way it was at the matching `begin()`. Dropping the dict
+          without the loop would keep every write.

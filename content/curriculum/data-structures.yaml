@@ -153,7 +153,7 @@ paths:
 
   - id: design-structures
     title: Design structures
-    summary: Carry a summary in each stack entry, build a queue from two stacks, and keep a map and a list in step.
+    summary: Carry a summary in each stack entry, build a queue from two stacks, and keep a map and a list in step. Stateful stores are a separate fork.
     after: [stack-matching, hash-lookups, link-rewrites]
     afterNote: Stack matching brings a list used as a stack. Hash lookups brings dict lookups that cost O(1) on average, and through Operation costs amortized cost and the big-O names. Link rewrites brings the node class and unlinking a node.
     levels:
@@ -163,6 +163,14 @@ paths:
         title: Move items between two stacks
       - id: keep-two-in-step
         title: Keep two structures in step
+    forks:
+      - id: stateful-stores
+        title: Stateful stores
+        after: keep-two-in-step
+        levels:
+          - id: replay-operations
+            title: Replay calls on a store
+            depth: deep
     checkpoints:
       - id: meet-stated-costs
         title: Meet stated costs
@@ -1365,6 +1373,26 @@ drills:
     path: design-structures
     skill: keep-two-in-step
     note: After removing by copying the last item into the gap, pick the index the dict must update.
+  - questionId: time-store-get-trace
+    disposition: keep
+    path: design-structures
+    skill: replay-operations
+    note: 'Replay gets on a time-keyed store kept as two lists per key: where `bisect_right` puts `i`, and the value from the last put at or before `t`, at an exact time, between two times and before the first. Its worked example introduces the fork.'
+  - questionId: hit-counter-trace
+    disposition: keep
+    path: design-structures
+    skill: replay-operations
+    note: 'Replay a hit counter on a deque: which old hits `count(t)` drops from the front, a hit exactly 100 seconds old included, and what it returns.'
+  - questionId: rate-limit-refused
+    disposition: keep
+    path: design-structures
+    skill: replay-operations
+    note: 'Pick the requests a deque rate limiter with a limit of 3 refuses, where its loop first drops times at most `t - 10` and a refused request never joins the deque.'
+  - questionId: rollback-get
+    disposition: keep
+    path: design-structures
+    skill: replay-operations
+    note: 'Read a value after a rollback in nested transactions, where each transaction saves a key''s old value only at its first write and `rollback` pops only the top undo dict.'
   - questionId: min-after-pops-review
     disposition: keep
     path: design-structures
@@ -1389,6 +1417,12 @@ drills:
     skill: keep-two-in-step
     variant: true
     note: Only the prev side of an unlink runs, so a walk forward still reads the node.
+  - questionId: nested-rollback-review
+    disposition: keep
+    path: design-structures
+    skill: replay-operations
+    variant: true
+    note: 'Read the store after two rollbacks of nested transactions, where a key that was missing before the outer transaction is deleted.'
   - questionId: checkpoint-lru-pair
     disposition: exam
     path: design-structures
@@ -1409,6 +1443,12 @@ drills:
     path: design-structures
     tests: [move-between-two-stacks]
     note: 'Debugging: pick the run a suggested two-stack queue gets wrong because it moves items on every pop, not only when the out-stack is empty.'
+  - questionId: checkpoint-token-expiry
+    disposition: exam
+    path: design-structures
+    tests: [replay-operations]
+    depth: deep
+    note: 'Replay issues and a renew on a dict of token expiry times, where a token whose expiry equals `t` is no longer live, and pick the tokens live at the end.'
 
 followUps:
   - questionId: heapq-min-heap
