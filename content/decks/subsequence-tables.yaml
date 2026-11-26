@@ -675,76 +675,152 @@ questions:
         correct: crt
         also:
           - { name: i, at: 0 }
-
-  - id: substring-table-rule
-    heading: Which rule fits the task?
-    tags: [dp]
-    workedExample: |-
-      Consider the longest common *substring* of `a = "stamp"` and `b = "tamer"`. `dp[i][j]` is the
-      length of the shared run that ends exactly at `a[i-1]` and `b[j-1]`: the diagonal plus 1 on a
-      match, and 0 on a mismatch.
-
-      1. `a[1:4]` and `b[0:3]` are both `tam`. Each matching pair adds 1 to the diagonal, so
-         `dp[2][1] = 1`, `dp[3][2] = 2` and `dp[4][3] = 3`.
-      2. The corner `dp[5][5]` compares the last letters, `p` and `r`. They differ, so no shared run
-         ends there, and the corner holds 0.
-      3. So the run `tam`, of length 3, is recorded at `dp[4][3]`, where it ends, and not in the
-         corner.
-    prompt: |-
-      Take `a = "parcel"` and `b = "pancake"`. On a match a cell is the
-      diagonal plus 1. Which mismatch rule and answer cell give the longest common substring?
-    options:
-      - id: reset-largest
-        text: "Mismatch: 0. Answer: the largest cell anywhere in the table"
-        explanation: >-
-          A mismatch breaks the run, so the cell is 0. The longest run can end anywhere, so the
-          answer is the largest cell: 2, for `pa`.
-      - id: skip-corner
-        text: "Mismatch: `max(up, left)`. Answer: the corner cell"
-        explanation: >-
-          That is the subsequence table. It carries counts across gaps and ends at 4, for `pace`,
-          which skips the `r` of `parcel` and three letters of `pancake`.
-      - id: reset-corner
-        text: "Mismatch: 0. Answer: the corner cell"
-        explanation: >-
-          The corner compares `l` with `e`. They differ, so it holds 0, though the two words share
-          the run `pa` earlier on.
-      - id: diagonal-largest
-        text: "Mismatch: the diagonal. Answer: the largest cell anywhere"
-        explanation: >-
-          Copying the diagonal carries a run across a mismatch. It reaches 3 at the two `c`s,
-          counting `p`, `a` and `c` as one run, though `r` and `n` sit between `a` and `c`.
-    correct: reset-largest
-    followUps:
-      skip-corner:
-        prompt: >-
-          On a mismatch, `max(up, left)` keeps the count from before the gap. What does that make
-          the table measure?
+      - line: 4
+        ask: >-
+          This call made 6 passes. For any `a` of 5 letters and `b` of 4, what is the most passes
+          the loop can make?
         options:
-          - { id: subseq, text: "The longest common subsequence, where gaps are allowed" }
-          - { id: substr, text: "The longest common substring, where gaps are not allowed" }
-          - { id: prefix, text: "The longest prefix the two words share" }
-        correct: subseq
+          - id: eight
+            text: '8'
+            explanation: >-
+              Every pass lowers `i`, `j` or both, so `i + j` falls by at least 1 from its start of
+              9. A pass runs only while both are at least 1, so `i + j` is still 2 or more when
+              the last pass starts: at most 7 passes come before it, 8 in all. That is one fewer
+              than `len(a) + len(b)`, and `a = "brown"` with `b = "bell"` takes all 8.
+          - id: twenty
+            text: '20'
+            explanation: >-
+              20 is one pass for each cell where `i` and `j` are both at least 1, 5 times 4. Each
+              pass lowers `i + j`, so the walk never comes back to a cell: it crosses the table
+              along one path, not cell by cell.
+          - id: nine
+            text: '9'
+            explanation: >-
+              9 passes would need `i + j` to fall from 9 to 0 by exactly 1 each time. The last
+              pass starts with both `i` and `j` at least 1, so at most 7 passes come before it.
+          - id: five
+            text: '5'
+            explanation: >-
+              5 counts only the passes that lower `i`. A pass that steps left lowers only `j`, so
+              a walk can step up 4 times and left 3 times before its last pass.
+        correct: eight
+
+  - id: substring-mismatch-zero
+    heading: What does the run cell hold?
+    tags: [dp, arrays-strings]
+    workedExample: |-
+      Consider `a = "stamp"` and `b = "tamer"`. In a longest common substring table, `run[i][j]`
+      is the length of the shared run that ends exactly at `a[i - 1]` and `b[j - 1]`. On a match,
+      the run that ends at the pair before it, the diagonal, grows by one letter.
+
+      1. `a[1]` and `b[0]` are both `t`. The diagonal `run[1][0]` sits in column 0, the empty
+         prefix of `b`, so it holds 0, and `run[2][1] = 0 + 1 = 1`.
+      2. `a[2]` and `b[1]` are both `a`. The run `t` ends just before them, so
+         `run[3][2] = run[2][1] + 1 = 2`, for `ta`.
+      3. `a[3]` and `b[2]` are both `m`, so `run[4][3] = run[3][2] + 1 = 3`. That cell holds the
+         run `tam`, which ends at the two `m`s.
+    prompt: |-
+      The longest common substring is the longest piece whose letters sit next to each other in
+      both words. Its table gives a cell a new meaning: `run[i][j]` is the length of the shared
+      run, letters next to each other in both words, that ends exactly at `a[i - 1]` and
+      `b[j - 1]`. A match adds 1 to the diagonal. For `a = "sport"` and `b = "spoon"`,
+      `run[4][4]` compares `a[3]`, an `r`, with `b[3]`, an `o`. The diagonal `run[3][3]` is 3, the
+      cell above, `run[3][4]`, is 1, and the cell to the left, `run[4][3]`, is 0. What does
+      `run[4][4]` hold?
+    options:
+      - id: zero
+        text: "0: the letters differ, so the run breaks"
         explanation: >-
-          Carrying the best count past a mismatch is what lets letters with gaps between them add
-          up. A substring count has to restart after every mismatch.
-      reset-corner:
-        prompt: In this substring table, which runs does the corner `dp[6][7]` describe?
+          A shared run that ends at this pair would end with an `r` in `sport` and an `o` in
+          `spoon`. The letters differ, so no shared run ends here, even though `spo` ends just
+          before the pair.
+      - id: larger
+        text: "1: the larger of the cell above and the cell to the left"
+        explanation: >-
+          That is the LCS rule, which carries a count across a gap. The cell above holds the run
+          `o` that pairs the `o` of `sport` with the second `o` of `spoon`, a run that ends at a
+          different pair. No neighbor's run ends at the `r` and the `o`.
+      - id: diagonal
+        text: "3: the diagonal, carried over unchanged"
+        explanation: >-
+          The diagonal is the run `spo`, which ends just before this pair. Carrying it over counts
+          the `r` and the `o` as part of the run, but they differ, so the run stops at `spo`.
+    correct: zero
+    followUps:
+      larger:
+        prompt: In this table, which run does the cell above, `run[3][4]`, describe?
+        options:
+          - { id: own-pair, text: "The run `o`, which ends at `a[2]` and `b[3]`" }
+          - { id: best-count, text: "The most letters `spo` and `spoo` share, as in the LCS table" }
+          - { id: this-pair, text: "A run that ends at this cell's `r` and `o`" }
+        correct: own-pair
+        explanation: >-
+          Each cell describes only the run that ends at its own two letters. The cell above ends
+          at a different pair, so its 1 cannot carry over to the `r` and the `o`.
+      diagonal:
+        prompt: "`spo` ends just before this pair. What must be true for a shared run to end at the pair?"
+        options:
+          - { id: equal, text: "The pair's two letters must be equal" }
+          - { id: after-run, text: "The pair must come right after a shared run" }
+          - { id: either, text: "One of the two letters must be in the run before it" }
+        correct: equal
+        explanation: >-
+          A shared run is the same letters in both words, so its last letters match. `r` and `o`
+          differ, so the run `spo` stops before them.
+
+  - id: substring-answer-cell
+    heading: Which cell holds the answer?
+    tags: [dp, arrays-strings]
+    workedExample: |-
+      Consider `a = "castle"` and `b = "pastel"`, where `run[i][j]` is the length of the shared run
+      that ends exactly at `a[i - 1]` and `b[j - 1]`. Read the cell `run[4][4]`, which holds 3.
+
+      1. `run[4][4]` compares `a[3]` and `b[3]`, both `t`, so the run it describes ends at those
+         two `t`s.
+      2. The run has 3 letters and ends at index 3, so it starts at index 1 in each word: it is
+         `a[1:4]` in `a` and `b[1:4]` in `b`.
+      3. Both slices are `ast`. So `run[4][4] = 3` says that the shared run `ast` ends at the two
+         `t`s.
+    prompt: |-
+      In the longest common substring table, `run[i][j]` is the length of the shared run that ends
+      exactly at `a[i - 1]` and `b[j - 1]`: the diagonal plus 1 on a match, and 0 on a mismatch.
+      The table for `a = "private"` and `b = "printer"` is filled. Which cell holds the length of
+      their longest common substring?
+    options:
+      - id: anywhere
+        text: The largest cell anywhere in the table
+        explanation: >-
+          Each cell holds the run that ends at its own two letters, and the longest run can end
+          anywhere. `pri` ends at `run[3][3]`, which holds 3, and no cell holds more.
+      - id: corner
+        text: "The corner cell, `run[7][7]`"
+        explanation: >-
+          The corner compares the last letters, `e` and `r`. They differ, so no shared run ends
+          there and it holds 0, though the words share `pri` earlier on.
+      - id: last-row
+        text: The largest cell in the last row
+        explanation: >-
+          Row 7 holds only runs that end at the last `e` of `private`. Its largest cell is 2, for
+          `te`, but `pri` ends in row 3.
+    correct: anywhere
+    followUps:
+      corner:
+        prompt: In this table, which runs can the corner `run[7][7]` describe?
         options:
           - { id: end-both, text: "Only a run that ends at the last letter of both words" }
-          - { id: any-run, text: "The longest run found anywhere in the two words" }
-          - { id: start-both, text: "Only a run that starts at the first letter of both words" }
+          - { id: whole, text: "Only a run that covers both whole words" }
+          - { id: any-run, text: "Any run in the two words, as the LCS corner counts every letter" }
         correct: end-both
         explanation: >-
-          Each cell describes the run that ends exactly at its two letters. The best run can end
-          earlier, so the answer is the largest cell in the table.
-      diagonal-largest:
-        prompt: "`r` and `n` do not match. How long is the shared run that ends at that pair?"
+          Each cell describes the run that ends exactly at its two letters. `pri` ends at the
+          `i`s, long before the last letters, so the corner never counts it.
+      last-row:
+        prompt: Which runs does row 7 of this table hold?
         options:
-          - { id: zero, text: "0, since no shared run can end at two different letters" }
-          - { id: two, text: "2, the run `pa` just before the pair" }
-          - { id: one, text: "1, since one of the two letters may be skipped" }
-        correct: zero
+          - { id: end-e, text: "Runs that end at `a[6]`, the last `e` of `private`" }
+          - { id: all-a, text: "Every run in `private`, since row 7 covers the whole word" }
+          - { id: start-e, text: "Runs that start at the last `e` of `private`" }
+        correct: end-e
         explanation: >-
-          A run that ends at a pair needs those two letters to be equal. Copying the diagonal
-          pretends the run goes on, so `p`, `a` and `c` are counted as one run across the gap.
+          Row 7 covers all of `private` as a prefix, but each of its cells describes only a run
+          that ends at `a[6]`. A run that ends sooner, like `pri`, sits in an earlier row.

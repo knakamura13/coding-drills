@@ -479,99 +479,104 @@ questions:
           Both parts of the `if` must hold. With no equal values side by side, the slipped line
           never runs, and the search records every subset once.
 
-  - id: checkpoint-ordering-repeats
-    heading: Which skip test dedupes?
-    tags: [backtracking, recursion, sorting]
+  - id: checkpoint-ordering-value-test
+    heading: What does it return?
+    tags: [backtracking, sorting]
     prompt: |-
-      The search below builds every ordering of `nums`, using the array `used` so that no index is
-      taken twice. `nums` may contain duplicates, for example `[5, 8, 5]`, and order matters, so
-      `[5, 8, 5]` and `[8, 5, 5]` are different results. Each distinct ordering must be recorded once.
+      A suggested `orderings_once(nums)` should return each distinct ordering once, so
+      `[5, 8, 5]` gives `[5, 5, 8]`, `[5, 8, 5]` and `[8, 5, 5]`. Its second test asks if the
+      value is in `path`:
 
       ```python
-      # step A runs here, before the search
-      def explore():
-          if len(path) == len(nums):
-              out.append(path[:])
-              return
-          for i in range(len(nums)):
-              if used[i]:
-                  continue
-              # step B runs here
-              used[i] = True
-              path.append(nums[i])
-              explore()
-              path.pop()
-              used[i] = False
+      def orderings_once(nums):
+          nums = sorted(nums)
+          out, path, used = [], [], [False] * len(nums)
+          def explore():
+              if len(path) == len(nums):
+                  out.append(path[:])
+                  return
+              for i in range(len(nums)):
+                  if used[i]:
+                      continue
+                  if i > 0 and nums[i] == nums[i - 1] and nums[i] not in path:
+                      continue
+                  used[i] = True
+                  path.append(nums[i])
+                  explore()
+                  path.pop()
+                  used[i] = False
+          explore()
+          return out
       ```
 
-      Which choice of steps A and B gives each distinct ordering exactly once for every input?
+      What does `orderings_once([7, 7, 7])` return?
     options:
-      - id: skip-any-equal
-        text: "Sort `nums`; B skips `i` when `i > 0 and nums[i] == nums[i - 1]`, used or not"
+      - id: two-copies
+        text: "`[[7, 7, 7], [7, 7, 7]]`"
         explanation: >-
-          This skips the second 5 every time, even when the first 5 is already in the path and the
-          second one is needed for a later position. No path can hold both 5s, so `[5, 8, 5]` returns
-          `[]`. The test also has to check whether the left neighbour is currently in the path.
-      - id: unsorted
-        text: "Do not sort; B skips `i` when `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+          In the top call `path` is empty, so the second test skips indices 1 and 2, and only index
+          0 opens a branch. In that call, index 1 passes, since a 7 is in `path`, and so does index
+          2 once index 1 is popped, though index 1 is not in use. Each branch records `[7, 7, 7]`.
+          Testing `not used[i - 1]` instead makes index 2 wait until index 1 is in use.
+      - id: one-copy
+        text: "`[[7, 7, 7]]`"
         explanation: >-
-          The test compares an item only with the one just before it. In the unsorted `[5, 8, 5]` the
-          two 5s are not neighbours, so nothing is skipped and 6 paths are recorded, three of them
-          repeats. Sorting first puts equal values side by side.
-      - id: by-value
-        text: "Do not sort; B skips `i` when the value `nums[i]` is already in `path`"
+          That is what `not used[i - 1]` returns. The value test agrees with it while a value has
+          two copies. With three, in the call holding index 0, what does the test see when index 2
+          is tested after index 1 is popped?
+      - id: six-copies
+        text: "Six copies of `[7, 7, 7]`"
         explanation: >-
-          Testing by value refuses the second 5 whenever one 5 is in the path, so no path reaches
-          length 3 and `[5, 8, 5]` returns `[]`. It would work only on distinct values, where `used`
-          already does the job.
-      - id: sorted-used-check
-        text: "Sort `nums`; B skips `i` if `i > 0 and nums[i] == nums[i - 1] and not used[i - 1]`"
+          Six is the count with no second test, but this code has one. In the top call `path` is
+          empty. What does the second test do with the 7s at indices 1 and 2 there?
+      - id: empty
+        text: "`[]`"
         explanation: >-
-          Sorted, `[5, 8, 5]` becomes `[5, 5, 8]`. The test `not used[i - 1]` means the equal item to the
-          left is not in the path, so it was already tried at this position and its copy would repeat
-          the same values. The result is `[[5, 5, 8], [5, 8, 5], [8, 5, 5]]`.
-    correct: sorted-used-check
+          `[]` would mean no branch ever holds three 7s. In the call holding the 7 at index 0, what
+          does `nums[i] not in path` give for the other 7s?
+    correct: two-copies
     followUps:
-      skip-any-equal:
+      one-copy:
         prompt: >-
-          In sorted `[5, 5, 8]` the path already holds the first 5. What does a test that ignores
-          `used[i - 1]` do to the second 5?
+          In the call holding the 7 at index 0, index 1 has been placed and popped. The loop now
+          tests index 2. Is a 7 in `path`?
         options:
-          - id: always-skipped
-            text: It skips the second 5 here too, so no path can ever hold both 5s
-          - id: allowed-here
-            text: It allows the second 5 here, because the first 5 is already placed
-          - id: after-eight
-            text: It allows the second 5 only after the 8 has been placed
-        correct: always-skipped
+          - id: yes-zero
+            text: Yes, the 7 at index 0, so index 2 opens a branch too
+          - id: no-popped
+            text: No, index 1 was popped, so index 2 is skipped
+          - id: not-tested
+            text: Index 2 is never tested once index 1 has opened a branch
+        correct: yes-zero
         explanation: >-
-          Without the `used` check the rule fires for the second 5 wherever it appears, including when
-          the first 5 sits earlier in the path. Every full-length path needs both 5s, so none survive.
-      unsorted:
+          The value test asks whether any 7 is in `path`, not whether index 1 is. With three
+          copies, the 7 in `path` can be index 0 while index 1 is free, so index 2 opens a second
+          branch.
+      six-copies:
+        prompt: In the top call, `path` is empty. Does the loop place the 7 at index 1?
+        options:
+          - id: skipped
+            text: No, no 7 is in `path`, so the second test skips it
+          - id: placed
+            text: Yes, the second test skips only values already in `path`
+          - id: deeper
+            text: Yes, the second test runs only below the top call
+        correct: skipped
+        explanation: >-
+          `nums[1] == nums[0]` and `7 not in []` both hold, so `continue` runs. Only index 0 opens
+          a branch in the top call.
+      empty:
         prompt: >-
-          In unsorted `[5, 8, 5]`, what does the test at index 2 compare `nums[2]` with?
+          In the call holding the 7 at index 0, the loop tests index 1. What does
+          `nums[i] not in path` give?
         options:
-          - id: eight
-            text: "`nums[1]`, which is 8, so the two 5s are never compared"
-          - id: first-five
-            text: "`nums[0]`, which is 5, so the duplicate is detected"
-          - id: whole-path
-            text: Every value in the path, so it finds the earlier 5
-        correct: eight
+          - id: gives-false
+            text: False, since the 7 at index 0 is in `path`, so index 1 is placed
+          - id: true-index
+            text: True, since index 1 itself is not in `path` yet, so it is skipped
+          - id: true-full
+            text: True, since `path` does not hold every 7 yet, so it is skipped
+        correct: gives-false
         explanation: >-
-          The test looks only at index `i - 1`. When equal values are not adjacent it never sees that a
-          value repeats, and sorting is what makes duplicates neighbours.
-      by-value:
-        prompt: >-
-          The path is `[5]` and the search is at the other 5. What does `nums[i] in path` say?
-        options:
-          - id: is-present
-            text: True, so the second 5 is skipped and no full path holds both 5s
-          - id: not-present
-            text: False, because the second 5 is at a different index than the first
-          - id: depends
-            text: It depends on whether the input was sorted first
-        correct: is-present
-        explanation: >-
-          The test compares values, and the value 5 is already present. The array `used` compares
-          indices instead, which is why it keeps duplicate values usable as separate items.
+          `not in` compares values, and a 7 is already in `path`. So the test lets index 1
+          through, and the search reaches full orderings.

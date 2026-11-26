@@ -591,3 +591,82 @@ questions:
         explanation: >-
           The count adds what the two choices lead to and never writes a subset down. A cached
           count of 1,000 is reused as one number, without visiting the 1,000 subsets again.
+
+  - id: bfs-or-dijkstra
+    heading: Which method is fastest and right?
+    tags: [graph, bfs, complexity]
+    workedExample: |-
+      Consider a map with V = 1,000 towns and E = 4,000 roads, and the three costs from the
+      question. To compare them, put the sizes into each cost and ignore constant factors.
+      `log2(1,000)` is about 10.
+
+      1. BFS takes about V + E = 5,000 steps.
+      2. Dijkstra's algorithm takes about (V + E) × 10 = 50,000 steps, 10 times BFS, since each of
+         its heap steps costs a log factor.
+      3. Bellman-Ford takes about (V - 1) × E = 999 × 4,000 = 3,996,000 steps, about 80 times
+         Dijkstra's algorithm.
+      4. So the costs rank BFS, then Dijkstra's algorithm, then Bellman-Ford. A cheaper method
+         counts only if it returns the right answer, so check each method's answer before its
+         cost.
+    prompt: |-
+      A map has V towns and E one-way roads, and every road takes 1 or 2 minutes. You need the
+      fewest minutes from one town to every other town. Three methods, with their costs:
+
+      - Breadth-first search (BFS) costs O(V + E): each town is popped from the queue once, and
+        each road is checked once, when the town it leaves is popped.
+      - Dijkstra's algorithm costs O((V + E) log V): each heap push or pop costs O(log V).
+      - Bellman-Ford costs O(V * E): it makes V - 1 passes over every road.
+
+      Which is the fastest of the three that returns the fewest minutes on every such map?
+    options:
+      - id: dijkstra
+        text: Dijkstra's algorithm
+        explanation: >-
+          Every road takes 1 or 2 minutes, and no weight is negative, so Dijkstra's algorithm
+          returns the fewest minutes, in O((V + E) log V). BFS is cheaper but counts roads, not
+          minutes: with `S -> X -> T` at 2 + 2 and `S -> A -> B -> T` at 1 + 1 + 1, it reaches `T`
+          first by the two roads, 4 minutes, though 3 is possible. Bellman-Ford is right too, but
+          O(V * E) grows faster.
+      - id: bfs
+        text: Breadth-first search
+        explanation: >-
+          BFS is the cheapest, but it reaches each town first by the fewest roads, and the fewest
+          roads need not take the fewest minutes. Two 2-minute roads take 4 minutes, while three
+          1-minute roads take 3.
+      - id: bellman-ford
+        text: Bellman-Ford
+        explanation: >-
+          Bellman-Ford returns the fewest minutes, but so does Dijkstra's algorithm, since no road
+          takes negative time. O((V + E) log V) grows more slowly than O(V * E), so Dijkstra's
+          algorithm is the faster of the two right methods.
+    correct: dijkstra
+    followUps:
+      bfs:
+        prompt: >-
+          The roads are `S -> X` 2, `X -> T` 2, `S -> A` 1, `A -> B` 1 and `B -> T` 1. BFS first
+          reaches `T` in its second round. How many minutes does that route take?
+        options:
+          - id: four
+            text: 4, by `S -> X -> T`, though `S -> A -> B -> T` takes 3
+          - id: three
+            text: 3, since BFS reaches the route with the fewest minutes first
+          - id: four-best
+            text: 4, and no route from `S` to `T` takes fewer minutes
+        correct: four
+        explanation: >-
+          BFS goes round by round in roads, so the 2-road route reaches `T` before the 3-road one.
+          It counts roads, so it misses the 3-minute route.
+      bellman-ford:
+        prompt: Both Bellman-Ford and Dijkstra's algorithm return the fewest minutes here. What lets Dijkstra's algorithm be right?
+        options:
+          - id: no-negative
+            text: No road takes negative time, so each town is final when it is expanded
+          - id: no-zero
+            text: Every road takes at least 1 minute, and a 0-minute road would break it
+          - id: passes
+            text: It also makes V - 1 passes over every road, as Bellman-Ford does
+        correct: no-negative
+        explanation: >-
+          Dijkstra's algorithm needs only that no weight is negative, and a weight of 0 is fine.
+          Each town is expanded once, at its final distance, so it needs no repeated passes, and
+          it costs less than Bellman-Ford.
