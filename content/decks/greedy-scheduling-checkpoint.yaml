@@ -367,69 +367,71 @@ questions:
           A wrong `last_end` matters only to the intervals read after it. The skipped interval is
           last here, so the count is still right.
 
-  - id: sched-exam-second-swap-start
+  - id: sched-exam-second-swap-end
     heading: What does the second swap need?
     tags: [intervals, greedy]
     prompt: >-
-      Touching intervals may both be kept. On
-      `[[0, 4], [1, 3], [2, 5], [3, 6], [4, 7], [7, 9]]`, the earliest-finish loop keeps
-      `[1, 3]`, `[3, 6]`, `[7, 9]`. Another best schedule is `[0, 4]`, `[4, 7]`, `[7, 9]`. A proof
-      turns it into the loop's schedule one swap at a time. The first swap gives `[1, 3]`,
-      `[4, 7]`, `[7, 9]`. The second puts `[3, 6]` in for `[4, 7]`. Which facts make `[1, 3]`,
-      `[3, 6]`, `[7, 9]` valid?
+      Touching intervals may both be kept. The earliest-finish loop sorts a list by end and keeps
+      each interval that starts at or after the last kept end. On some list it keeps `[1, 5]`
+      first, and its second pick is an interval X. A best schedule is `[0, 6]`, `[7, 11]`,
+      `[11, 13]`. A proof turns it into the loop's schedule one swap at a time. The first swap
+      gives `[1, 5]`, `[7, 11]`, `[11, 13]`. The second puts X in for `[7, 11]`. X starts at or
+      after 5, since the loop kept it after `[1, 5]`, so the swap needs only that X ends at or
+      before 11, where `[11, 13]` starts. Without seeing the rest of the list, what guarantees
+      that?
     options:
-      - id: start-and-end
-        text: "`[3, 6]` starts at or after 3, where `[1, 3]` ends, and ends no later than `[4, 7]`"
+      - id: rival
+        text: "`[7, 11]` also starts at or after 5, and X ends first among the intervals that do"
         explanation: >-
-          `[1, 3]` now comes first, so `[3, 6]` must start at 3 or later, and the loop kept it
-          because `3 >= 3`. `[4, 7]` also fits after `[1, 3]`, and the loop took the earliest end
-          among the intervals that fit there, so `[3, 6]` ends no later than 7, where `[7, 9]`
-          starts.
-      - id: end-only
-        text: "`[3, 6]` ends no later than `[4, 7]`, and its start is never tested"
+          The loop reads in end order and keeps the first interval that starts at or after 5, so
+          X ends first among all such intervals. `[7, 11]` starts at 7, so it is one of them, and
+          X ends no later than it, at 11 or before. So `[1, 5]`, X, `[11, 13]` is valid.
+      - id: whole-list
+        text: "X has the second earliest end in the whole list, after `[1, 5]`"
         explanation: >-
-          Only the first interval of a schedule has nothing before it. After the first swap,
-          `[1, 3]` sits before `[3, 6]`, so the start of `[3, 6]` is tested against 3.
-      - id: old-end
-        text: "`[3, 6]` starts at or after 4, where `[0, 4]` ends, and ends no later than `[4, 7]`"
+          Only the first pick is the earliest end in the whole list. `[0, 6]` ends at 6, but it
+          starts before 5, so the loop skips it. The second pick ends first only among the
+          intervals that start at or after 5.
+      - id: starts-sooner
+        text: "X starts no later than `[7, 11]`, so it also ends no later"
         explanation: >-
-          `[3, 6]` starts at 3, before `[0, 4]` ends, so that fact is false. It does not need to
-          hold: the first swap removed `[0, 4]`, and `[3, 6]` now follows `[1, 3]`.
-      - id: second-overall
-        text: "`[3, 6]` has the second earliest end in the whole list"
+          Where X starts says nothing about where it ends, and X need not start before 7. On
+          `[[0, 6], [1, 5], [8, 9], [7, 11], [11, 13]]` the loop's second pick is `[8, 9]`.
+      - id: best-ends-first
+        text: "`[7, 11]` is in a best schedule, so nothing that fits after `[1, 5]` ends sooner"
         explanation: >-
-          It does not: `[0, 4]` and `[2, 5]` end at 4 and 5. The loop skips both because they
-          start before 3, so what counts is the earliest end among the intervals that fit after
-          `[1, 3]`.
-    correct: start-and-end
+          A best schedule only keeps the most intervals. Its first, `[0, 6]`, ends after
+          `[1, 5]`, and on `[[0, 6], [1, 5], [1, 7], [5, 10], [7, 11], [11, 13]]` the loop's
+          second pick, `[5, 10]`, ends before `[7, 11]`.
+    correct: rival
     followUps:
-      end-only:
-        prompt: After the first swap, `[1, 3]` comes just before `[3, 6]`. What does that test about `[3, 6]`?
+      whole-list:
+        prompt: "`[0, 6]` ends at 6. Can the loop keep it second, after `[1, 5]`?"
         options:
-          - { id: start, text: "Its start, which must be 3 or later" }
-          - { id: nothing, text: "Nothing, since only an interval's end is ever tested" }
-          - { id: end, text: "Its end, which must be 3 or earlier" }
-        correct: start
-        explanation: >-
-          Each interval after the first must start at or after the end of the one before it. Only
-          the first interval of a schedule has its start untested.
-      old-end:
-        prompt: The first swap removed `[0, 4]`. The end of which interval must `[3, 6]` start at or after?
-        options:
-          - { id: one-three, text: "`[1, 3]`, the interval now just before it" }
-          - { id: zero-four, text: "`[0, 4]`, the first interval before any swap" }
-          - { id: four-seven, text: "`[4, 7]`, the interval it replaces" }
-        correct: one-three
-        explanation: >-
-          A schedule is checked pair by pair as it stands now. `[0, 4]` is gone, so only the end
-          of `[1, 3]`, 3, matters.
-      second-overall:
-        prompt: "`[0, 4]` ends at 4, before `[3, 6]`. Why does the loop not keep it second?"
-        options:
-          - { id: clashes, text: "It starts at 0, before `[1, 3]` ends" }
-          - { id: longer, text: "It is longer than `[3, 6]`" }
-          - { id: read-late, text: "It is read after `[3, 6]`" }
+          - { id: clashes, text: "No. It starts at 0, before `[1, 5]` ends" }
+          - { id: ends-early, text: "Yes. It ends at 6, before `[7, 11]` does" }
+          - { id: in-best, text: "Yes. It is in a best schedule" }
         correct: clashes
         explanation: >-
-          The second pick is the earliest end among the intervals that start at or after the first
-          pick's end. `[0, 4]` starts at 0, so it is not one of them.
+          The second pick is the earliest end among the intervals that start at or after 5, the
+          first pick's end. `[0, 6]` is not one of them, however soon it ends.
+      starts-sooner:
+        prompt: "`[5, 14]` starts before `[7, 11]`. Does it end at or before 11?"
+        options:
+          - { id: no-fourteen, text: "No. It ends at 14" }
+          - { id: yes-start, text: "Yes. A sooner start means a sooner end" }
+          - { id: if-kept, text: "Only if the loop keeps it" }
+        correct: no-fourteen
+        explanation: >-
+          A start says nothing about an end. X ends by 11 because `[7, 11]` is one of the
+          intervals the loop could have picked second, not because of where X starts.
+      best-ends-first:
+        prompt: "The best schedule starts with `[0, 6]`, though `[1, 5]` ends at 5. Does a best schedule always hold the earliest ends?"
+        options:
+          - { id: no-count, text: "No. It only has to keep the most intervals" }
+          - { id: yes-best, text: "Yes. Otherwise it would not be best" }
+          - { id: from-second, text: "Only from its second interval on" }
+        correct: no-count
+        explanation: >-
+          Several schedules can tie for the most. The swaps are needed because a best schedule can
+          hold later ends than the loop's picks.
