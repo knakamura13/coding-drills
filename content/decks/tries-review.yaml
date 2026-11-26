@@ -1,0 +1,353 @@
+id: tries-review
+title: "Tries: review"
+description: Fresh tries for the Tries skills, for recall on later days. No worked examples this time.
+heading: What does the trie do?
+
+questions:
+  - id: tries-review-stop-tap
+    format: tap-cell
+    heading: Where does the search stop?
+    tags: [tree, hash-map]
+    prompt: |-
+      The trie holds `"pin"`, `"pit"`, `"pen"` and `"top"`. The cells list its nodes level by
+      level, root first, each labeled by the prefix it spells. Tap the node `node` refers to when
+      `search(root, "pint")` returns.
+    code: |
+      def search(root, word):
+          node = root
+          for ch in word:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return node.is_word
+    sequence:
+      kind: array
+      name: nodes
+      cells: [root, p, t, pi, pe, to, pin, pit, pen, top]
+    correct: 6
+    explanation: >-
+      `'p'`, `'i'` and `'n'` lead from the root to `pin`. The `pin` node has no children, so `'t'`
+      is not a key there, and `search` returns `False` while `node` is `pin`.
+    misses:
+      - index: 0
+        explanation: "`'p'` is a key of `root.children`, so the first pass moves `node` down to `p`."
+      - index: 1
+        explanation: "`p` has the key `'i'`, so the second pass moves on to `pi`."
+      - index: 2
+        explanation: >-
+          `t` is the root's child for `'t'`, but the search starts with `'p'`. It never jumps to a
+          `'t'` elsewhere: the key it tests must be on the node it is on.
+      - index: 3
+        explanation: "`pi` has the key `'n'`, so the third pass moves on to `pin`."
+      - index: 4
+        explanation: "`pe` is reached by `'e'`. The second letter of `\"pint\"` is `'i'`, which leads to `pi`."
+      - index: 5
+        explanation: "`to` is on the `t` side, and the search went down through `p`."
+      - index: 7
+        explanation: >-
+          `pit` ends in `'t'`, but it is a child of `pi`. The `'t'` of `"pint"` comes after `'n'`,
+          so it would have to be a key of `pin`.
+      - index: 8
+        explanation: "`pen` is reached through `pe`, but the second letter of `\"pint\"` is `'i'`."
+      - index: 9
+        explanation: "`top` is on the `t` side, and the search went down through `p`."
+
+  - id: tries-review-word-inside
+    heading: What do the searches return?
+    tags: [tree, hash-map]
+    prompt: |-
+      `root = TrieNode()`, then `insert(root, "panel")` runs, then `insert(root, "pan")`. `insert`
+      sets `is_word = True` on the node where its word ends, and `search` returns `node.is_word`
+      after following one link per letter. What do `search(root, "pan")` and
+      `search(root, "pane")` return, in that order?
+    options:
+      - id: true-false
+        text: "`True`, then `False`"
+        explanation: >-
+          `insert(root, "pan")` makes no new nodes, but its last line marks the `"pan"` node as a
+          word, so that search returns `True`. No inserted word ends at `"pane"`, so the second returns
+          `False`.
+      - id: false-false
+        text: "`False`, then `False`"
+        explanation: >-
+          The `"pan"` node has a child, but `insert(root, "pan")` still set its `is_word`. A word
+          can end at a node that has children.
+      - id: true-true
+        text: "`True`, then `True`"
+        explanation: >-
+          `insert(root, "panel")` set `is_word` only on its last node, `"panel"`. The `"pane"` node
+          is on its path but holds no mark.
+    correct: true-false
+    followUps:
+      false-false:
+        prompt: What does `insert(root, "pan")` change, when all three letters are already in the trie?
+        options:
+          - { id: sets-mark, text: "It sets `is_word` on the existing `\"pan\"` node" }
+          - { id: nothing, text: "Nothing, since it makes no new nodes" }
+          - { id: new-branch, text: "It makes a separate `\"pan\"` branch from the root" }
+        correct: sets-mark
+        explanation: >-
+          The last line of `insert` runs whether or not the loop made a node. That mark is what
+          `search` reads.
+      true-true:
+        prompt: Which nodes does `insert(root, "panel")` mark with `is_word = True`?
+        options:
+          - { id: last-only, text: "Only the `\"panel\"` node, where the word ends" }
+          - { id: all-five, text: "All five nodes on its path" }
+          - { id: first-last, text: "The `\"p\"` node and the `\"panel\"` node" }
+        correct: last-only
+        explanation: >-
+          `node.is_word = True` runs once, after the loop, on the node the loop ended on. Nodes on
+          the way down stay unmarked unless their own word is inserted.
+
+  - id: tries-review-prefix-or-word
+    heading: Which call returns True?
+    tags: [tree, hash-map]
+    prompt: |-
+      The trie holds only `"stone"`. `starts_with` follows one link per letter and returns `True`
+      once every letter is found. `search` follows the same links but returns `node.is_word` at
+      the end. Both return `False` at the first letter that is not a key. Which call returns
+      `True`?
+    options:
+      - id: starts-sto
+        text: "`starts_with(root, \"sto\")`"
+        explanation: >-
+          `'s'`, `'t'` and `'o'` are keys along the way, and `starts_with` returns `True` once it
+          reaches the `"sto"` node: some word, `"stone"`, starts there.
+      - id: search-sto
+        text: "`search(root, \"sto\")`"
+        explanation: >-
+          The walk reaches the `"sto"` node, but `search` returns its `is_word`. Only the `"stone"`
+          node was marked, so this returns `False`.
+      - id: search-stones
+        text: "`search(root, \"stones\")`"
+        explanation: >-
+          The walk reaches `"stone"`, but that node has no children, so `'s'` is not a key and the
+          call returns `False`.
+      - id: starts-stun
+        text: "`starts_with(root, \"stun\")`"
+        explanation: >-
+          The one key of the `"st"` node is `'o'`, so `'u'` is not a key and the call returns
+          `False`.
+    correct: starts-sto
+    followUps:
+      search-sto:
+        prompt: What is `is_word` on the `"sto"` node?
+        options:
+          - { id: false-mark, text: "`False`, since no inserted word ends there" }
+          - { id: true-path, text: "`True`, since it is on the path of `\"stone\"`" }
+          - { id: no-field, text: "It has no `is_word` field" }
+        correct: false-mark
+        explanation: >-
+          `insert` marks only the node where its word ends. `search` asks whether a word ends at
+          the node; `starts_with` asks only whether the node exists.
+      search-stones:
+        prompt: Is `'s'` a key of the `"stone"` node's `children`?
+        options:
+          - { id: no-s, text: "No, the `\"stone\"` node has no children" }
+          - { id: yes-s, text: "Yes, every word can take an `'s'`" }
+          - { id: yes-first, text: "Yes, the first letter `'s'` is stored there" }
+        correct: no-s
+        explanation: >-
+          A node holds only the letters some inserted word goes on with. Nothing goes past
+          `"stone"`, so its dict is empty and the search returns `False` at `'s'`.
+      starts-stun:
+        prompt: Which keys does the `"st"` node hold?
+        options:
+          - { id: only-o, text: "Only `'o'`" }
+          - { id: o-and-u, text: "`'o'` and `'u'`" }
+          - { id: every-letter, text: "Every letter of the alphabet" }
+        correct: only-o
+        explanation: >-
+          The only word goes on from `"st"` with `'o'`, so a walk that needs `'u'` stops there with
+          `False`.
+
+  - id: tries-review-new-nodes
+    heading: How many nodes does it add?
+    tags: [tree, hash-map]
+    prompt: |-
+      The trie holds `"tram"` and `"trap"`. `insert` makes a new node only for a letter that is not
+      yet a key of the node it is on. How many new nodes does `insert(root, "trip")` make?
+    options:
+      - id: two
+        text: "2"
+        explanation: >-
+          `'t'` and `'r'` are already keys along the way. The `"tr"` node holds only `'a'`, so `'i'`
+          is new, and the new node is empty, so `'p'` is new too.
+      - id: one
+        text: "1"
+        explanation: >-
+          The `'p'` that `"trap"` added sits under `"tra"`. `"trip"` reaches `'p'` from a new `"tri"`
+          node, so it needs a new node there too.
+      - id: three
+        text: "3"
+        explanation: >-
+          That shares only the first letter. `'r'` is also a key below `'t'`, so `insert` follows it
+          and starts making nodes at `'i'`.
+      - id: four
+        text: "4"
+        explanation: >-
+          That gives the word all new nodes. `'t'` and `'r'` are already keys along the way, and
+          `insert` follows a key that exists.
+    correct: two
+    followUps:
+      one:
+        prompt: In which node's `children` is the `'p'` of `"trap"` a key?
+        options:
+          - { id: under-tra, text: "The `\"tra\"` node's" }
+          - { id: under-tr, text: "The `\"tr\"` node's" }
+          - { id: under-root, text: "`root.children`" }
+        correct: under-tra
+        explanation: >-
+          A letter is shared only when two words reach it by the same letters before it. `"trip"`
+          reaches its `'p'` through `'i'`, so the `'p'` under `"tra"` does not help.
+      three:
+        prompt: After `insert` follows `'t'`, is `'r'` a key of the `"t"` node?
+        options:
+          - { id: r-yes, text: "Yes, `\"tram\"` added it" }
+          - { id: r-no, text: "No, only first letters are shared" }
+          - { id: r-root, text: "No, `'r'` is a key of `root.children`" }
+        correct: r-yes
+        explanation: >-
+          Words share nodes as far as they agree from the start. `"trip"` agrees with `"tram"` on
+          `'t'` and `'r'`.
+      four:
+        prompt: When `insert(root, "trip")` starts, what does it do at `'t'`?
+        options:
+          - { id: follow-t, text: "Moves to the existing `'t'` node" }
+          - { id: new-t, text: "Makes a new `'t'` node for this word" }
+          - { id: check-end, text: "Checks `is_word` and stops" }
+        correct: follow-t
+        explanation: >-
+          `insert` makes a node only for a missing key, so a first letter that is already there is
+          followed.
+
+  - id: tries-review-total-nodes
+    heading: How many nodes in all?
+    tags: [tree, hash-map]
+    prompt: |-
+      `root = TrieNode()`, then `insert` runs for `"bed"`, `"bee"`, `"be"`, `"bet"` and `"a"`, in
+      that order. `insert` makes a new node only for a letter that is not yet a key of the node it
+      is on. Not counting the root, how many nodes does the trie hold?
+    options:
+      - id: six
+        text: "6"
+        explanation: >-
+          The calls make 3, 1, 0, 1 and 1 nodes. `"be"` comes after `"bed"`, so both its letters are
+          already there and it only sets `is_word`. The nodes are `b`, `be`, `bed`, `bee`, `bet` and
+          `a`.
+      - id: seven
+        text: "7"
+        explanation: >-
+          That gives `"be"` a node for its end. Both of its letters are already keys, so `insert`
+          makes nothing and only sets `is_word` on the `"be"` node.
+      - id: nine
+        text: "9"
+        explanation: >-
+          That shares only the first letter of each word. `"bee"` and `"bet"` also reuse the `'e'`
+          that `"bed"` added, and `"be"` reuses both of its letters.
+      - id: twelve
+        text: "12"
+        explanation: >-
+          That is one node per letter of every word. `insert` follows a letter that is already a key
+          instead of making a new node.
+    correct: six
+    followUps:
+      seven:
+        prompt: Is the end mark of `"be"` a node or a field?
+        options:
+          - { id: field, text: "A field, `is_word`, on the existing `\"be\"` node" }
+          - { id: node, text: "A node of its own, below `\"be\"`" }
+          - { id: root-field, text: "A field on the root" }
+        correct: field
+        explanation: >-
+          `insert` ends with `node.is_word = True` on the node its loop reached. A word whose
+          letters all exist adds no nodes.
+      nine:
+        prompt: When `insert(root, "bee")` runs after `"bed"`, is `'e'` a key of the `"b"` node?
+        options:
+          - { id: e-yes, text: "Yes, so only the second `'e'` is new" }
+          - { id: e-no, text: "No, only first letters are shared" }
+          - { id: e-root, text: "No, it is a key of `root.children`" }
+        correct: e-yes
+        explanation: >-
+          `"bed"` and `"bee"` agree on `'b'` and `'e'`, so they share both nodes and differ only at
+          the third letter.
+      twelve:
+        prompt: "What does `insert(root, \"bee\")` do at `'b'`, which `\"bed\"` already added?"
+        options:
+          - { id: follows-b, text: "Moves to the existing node" }
+          - { id: makes-b, text: "Makes a second `'b'` node" }
+          - { id: skips-word, text: "Stops, since the word is already there" }
+        correct: follows-b
+        explanation: >-
+          A key that exists is followed, so each distinct start of a word is stored once.
+
+  - id: tries-review-lookup-count
+    heading: How many key tests?
+    tags: [tree, hash-map, complexity]
+    prompt: |-
+      A trie holds 200,000 words, and `starts_with(root, "inter")` returns `True`. How many times
+      does it test `ch not in node.children`?
+
+      ```python
+      def starts_with(root, prefix):
+          node = root
+          for ch in prefix:
+              if ch not in node.children:
+                  return False
+              node = node.children[ch]
+          return True
+      ```
+    options:
+      - id: five
+        text: "5"
+        explanation: >-
+          The loop runs once per letter of `"inter"`, one key test per pass, and every letter is
+          found. The 200,000 stored words never enter the count.
+      - id: one
+        text: "1"
+        explanation: >-
+          Each key is one letter, so the walk tests the letters one at a time. `"inter"` is never a
+          key of any dict.
+      - id: eighteen
+        text: "About 18"
+        explanation: >-
+          That is about log2 of 200,000, as if the words were halved. The walk never looks at the
+          words; it follows one link per letter of the prefix.
+      - id: all-words
+        text: "200,000"
+        explanation: >-
+          That checks every word. The walk follows only the links for `'i'`, `'n'`, `'t'`, `'e'` and
+          `'r'`, one key test each.
+    correct: five
+    followUps:
+      one:
+        prompt: What is each key of a node's `children`?
+        options:
+          - { id: one-letter, text: "One letter, the next letter of some word" }
+          - { id: whole-prefix, text: "A whole prefix, such as `\"inter\"`" }
+          - { id: whole-word, text: "A whole word" }
+        correct: one-letter
+        explanation: >-
+          `insert` adds `node.children[ch]` for one `ch` at a time, so a prefix of 5 letters is 5
+          links, each found by its own key test.
+      eighteen:
+        prompt: Does the number of passes depend on how many words the trie holds?
+        options:
+          - { id: no-length, text: "No, only on the number of letters in the prefix" }
+          - { id: yes-log, text: "Yes, it grows like log2 of the word count" }
+          - { id: yes-linear, text: "Yes, one pass per stored word" }
+        correct: no-length
+        explanation: >-
+          The loop is `for ch in prefix`, so it runs once per letter. More words make the trie
+          wider, not the walk longer.
+      all-words:
+        prompt: "Which nodes does `starts_with(root, \"inter\")` visit?"
+        options:
+          - { id: path-only, text: "Only the nodes on the path that spells `\"inter\"`" }
+          - { id: every-node, text: "Every node in the trie" }
+          - { id: every-word, text: "One node per stored word" }
+        correct: path-only
+        explanation: >-
+          Each pass moves one level down along one link. The rest of the trie is never touched.

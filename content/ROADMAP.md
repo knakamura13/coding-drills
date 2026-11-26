@@ -253,6 +253,9 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Trees and graphs #13 | Tree answers | `tree-answers` | done |
 | Trees and graphs #13 | Tree answers: review | `tree-answers-review` | done |
 | Trees and graphs #13 | Tree answers: checkpoint | `tree-answers-checkpoint` | done |
+| Trees and graphs #13 | Tries | `tries` | done |
+| Trees and graphs #13 | Tries: review | `tries-review` | done |
+| Trees and graphs #13 | Tries: checkpoint | `tries-checkpoint` | done |
 | Trees and graphs #13 | Weighted paths | `weighted-paths` | done |
 | Trees and graphs #13 | Weighted paths: review | `weighted-paths-review` | done |
 | Trees and graphs #13 | Weighted paths: checkpoint | `weighted-paths-checkpoint` | done |
