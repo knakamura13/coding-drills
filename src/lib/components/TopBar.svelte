@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { status } from '$lib/nav/status.svelte';
 	import Icon from './Icon.svelte';
@@ -15,7 +16,7 @@
 
 <header class="bar" class:wide>
 	<div class="inner">
-		<a class="brand" href={resolve('/')}>{APP_NAME}</a>
+		<a class="brand" href={resolve('/')}><BrandMark height={24} />{APP_NAME}</a>
 		<span class="offline" role="status">Offline</span>
 		<button
 			type="button"
@@ -59,6 +60,7 @@
 
 	/* Wraps rather than truncates, so the name survives larger text spacing (WCAG 1.4.12). */
 	.brand {
+		gap: 6px;
 		flex: 1;
 		min-width: 0;
 		min-height: 44px;
