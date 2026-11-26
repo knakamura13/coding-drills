@@ -431,6 +431,82 @@ questions:
               has left is not counted.
         correct: right
 
+  - id: anagram-window-review
+    heading: What does the dictionary hold?
+    tags: [sliding-window, hash-map]
+    prompt: |-
+      To find the anagrams of `p = "aab"` in a string, the windows with the same letters in the
+      same amounts, a window of `len(p)` letters slides along it. `counts` holds the window's
+      letter counts, and the window is an anagram of `p` when `counts == target`, where `target`
+      is `{"a": 2, "b": 1}`. Two dictionaries are equal only when they hold the same keys with
+      the same values.
+
+      The window is `c, a, a`, so `counts` is `{"c": 1, "a": 2}`. A `b` comes in and the `c`
+      leaves. What is `counts` afterwards, and is it equal to `target`?
+    options:
+      - id: right
+        text: '`{"a": 2, "b": 1}`, so it is equal'
+        explanation: >-
+          The `c` was the only one, so its count reaches 0 and its key is deleted. The window
+          `a, a, b` then has exactly the keys and counts of `target`, so it is an anagram of `p`.
+      - id: zero-key
+        text: '`{"c": 0, "a": 2, "b": 1}`, so it is not equal'
+        explanation: >-
+          The counts are right, but the `c` key stays behind at 0. `target` has no `c`, so this
+          `counts` misses the window `a, a, b`, which is an anagram.
+      - id: no-remove
+        text: '`{"c": 1, "a": 2, "b": 1}`, so it is not equal'
+        explanation: >-
+          That adds the `b` but skips the removal. The window stays `len(p)` letters wide, so its
+          first letter, the `c`, goes out as the `b` comes in.
+      - id: next-cell
+        text: '`{"c": 1, "a": 1, "b": 1}`, so it is not equal'
+        explanation: >-
+          That takes a copy away from the first `a`, which stays in the window, and keeps the `c`
+          that left.
+    correct: right
+    followUps:
+      zero-key:
+        prompt: '`counts` is `{"c": 0, "a": 2, "b": 1}` and `target` is `{"a": 2, "b": 1}`. What does `counts == target` give?'
+        options:
+          - id: not-equal
+            text: '`False`, since `counts` has a key that `target` lacks'
+          - id: true-skip
+            text: '`True`, since a count of 0 is skipped'
+          - id: true-window
+            text: '`True`, since the window holds no `c`'
+        correct: not-equal
+        explanation: >-
+          Equality compares keys as well as values, and a key holding 0 is still a key. Deleting
+          a key when its count reaches 0 keeps `counts` equal to `target` whenever the window is
+          an anagram.
+      no-remove:
+        prompt: The window holds 3 letters. After the `b` comes in, how many letters must leave?
+        options:
+          - id: one
+            text: One, the `c` at the left edge
+          - id: none-match
+            text: None, since the window grows until it matches
+          - id: none-held
+            text: None, since `counts` already holds two `a`s
+        correct: one
+        explanation: >-
+          The window is always `len(p)` letters wide, so each letter that comes in pushes out the
+          letter `len(p)` places behind it. Here that is the `c`.
+      next-cell:
+        prompt: As the window slides one cell, whose count should drop?
+        options:
+          - id: old
+            text: The `c`, read before the left edge moves
+          - id: new
+            text: The first `a`, at the new left edge
+          - id: neither
+            text: Neither, since a `b` came in
+        correct: old
+        explanation: >-
+          The letter that leaves is the one at the old left edge. Moving the edge first and then
+          subtracting takes a copy away from a letter that stays.
+
   - id: drag-shrink-review
     format: drag-pointers
     heading: Where does the left edge stop?

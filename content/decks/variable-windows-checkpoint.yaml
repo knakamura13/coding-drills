@@ -277,6 +277,95 @@ questions:
           passes, so it grows with `k`. A dictionary whose size depends on the input is not O(1)
           extra space.
 
+  - id: checkpoint-anagram-starts
+    heading: What does it return?
+    tags: [sliding-window, hash-map, python]
+    prompt: |-
+      This function returns the start index of every window of `s` that is an anagram of `p`,
+      with the same letters in the same amounts.
+
+      ```python
+      def anagram_starts(s, p):
+          k = len(p)
+          target = {}
+          for ch in p:
+              target[ch] = target.get(ch, 0) + 1
+          counts = {}
+          out = []
+          for right, ch in enumerate(s):
+              counts[ch] = counts.get(ch, 0) + 1
+              if right >= k:
+                  gone = s[right - k]
+                  counts[gone] -= 1
+                  if counts[gone] == 0:
+                      del counts[gone]
+              if counts == target:
+                  out.append(right - k + 1)
+          return out
+
+      anagram_starts("abbcbaba", "abb")
+      ```
+
+      What does the call return?
+    options:
+      - id: right
+        text: '`[0, 4]`'
+        explanation: >-
+          The windows are `abb`, `bbc`, `bcb`, `cba`, `bab` and `aba`, and only `abb` and `bab`
+          hold an `a` and two `b` letters. The `c` key is deleted once the `c` has left, so
+          `counts` can equal `target` again at start 4.
+      - id: same-letters
+        text: '`[0, 4, 5]`'
+        explanation: Does the window `aba` hold the letters of `abb` in the same amounts?
+      - id: kept-zero
+        text: '`[0]`'
+        explanation: What happens to the `c` key once the `c` leaves the window?
+      - id: end-index
+        text: '`[2, 6]`'
+        explanation: Does `right - k + 1` name the first letter of a window or its last?
+    correct: right
+    followUps:
+      same-letters:
+        prompt: '`aba` uses the same two letters as `abb`. Is it an anagram of `abb`?'
+        options:
+          - id: amounts
+            text: No, it has two `a` letters and one `b`, and `abb` has one `a` and two `b` letters
+          - id: letters
+            text: Yes, since both use only `a` and `b`
+          - id: length
+            text: Yes, since both have three letters
+        correct: amounts
+        explanation: >-
+          An anagram needs every letter in the same amount, which is why `counts` keeps counts
+          and not only letters. `{"a": 2, "b": 1}` is not equal to `{"a": 1, "b": 2}`.
+      kept-zero:
+        prompt: Suppose the `c` key stayed at 0 after the `c` left. Could `counts` equal `target` for the window `bab`?
+        options:
+          - id: extra-key
+            text: No, `counts` would have a `c` key that `target` lacks
+          - id: zero-ignored
+            text: Yes, since a count of 0 is ignored
+          - id: right-amounts
+            text: Yes, since the window holds one `a` and two `b` letters
+        correct: extra-key
+        explanation: >-
+          Dictionaries are equal only with the same keys and the same values. Deleting a key at 0
+          is what lets a later window match `target` after a letter outside `p` has passed
+          through.
+      end-index:
+        prompt: On the pass with `right` at 2, the window is `s[0:3]`. Which index does the function record?
+        options:
+          - id: start
+            text: 0, which is `right - k + 1`, where the window starts
+          - id: end
+            text: 2, which is `right`, where the window ends
+          - id: past
+            text: 3, which is `right + 1`
+        correct: start
+        explanation: >-
+          A window of `k` letters that ends at `right` starts `k - 1` places earlier, at
+          `right - k + 1`. The function returns starts, so its first match is 0, not 2.
+
   - id: checkpoint-repair-zero-jump
     heading: Which change fixes it?
     tags: [sliding-window, python]
