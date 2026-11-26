@@ -1,0 +1,305 @@
+id: spanning-trees-review
+title: "Minimum spanning trees: review"
+description: Fresh graphs for the Minimum spanning trees skills, for recall on later days. No worked examples this time.
+heading: Which edges make the tree?
+
+questions:
+  - id: spanning-trees-review-pick
+    heading: Which edges form a spanning tree?
+    tags: [graph]
+    prompt: >-
+      The graph has nodes `A` to `F` and the undirected edges `A-B`, `A-D`, `B-C`, `B-E`, `C-F`,
+      `D-E` and `E-F`. A spanning tree is a set of the graph's edges that joins every node with no
+      cycle. Every list below has 5 edges. Which one is a spanning tree?
+    options:
+      - id: tree
+        text: '`A-B`, `B-C`, `C-F`, `B-E`, `D-E`'
+        explanation: >-
+          All five are edges of the graph. `A-B`, `B-C` and `C-F` join `A`, `B`, `C` and `F`,
+          `B-E` adds `E`, and `D-E` adds `D`. Every node is joined, with no cycle.
+      - id: two-parts
+        text: '`A-B`, `B-E`, `D-E`, `A-D`, `C-F`'
+        explanation: >-
+          `A-B`, `B-E`, `D-E` and `A-D` lead from `A` back to `A`, a cycle. That spends an edge
+          inside one part, so `C` and `F` are joined to each other but to nothing else.
+      - id: leaves-d
+        text: '`A-B`, `B-C`, `B-E`, `E-F`, `C-F`'
+        explanation: >-
+          `B-C`, `C-F`, `E-F` and `B-E` lead from `B` back to `B`, a cycle, and no edge in the list
+          touches `D`. Five edges spread over five nodes must close a cycle somewhere.
+      - id: not-an-edge
+        text: '`A-B`, `B-C`, `C-E`, `D-E`, `E-F`'
+        explanation: >-
+          These edges would join every node with no cycle, but `C-E` is not an edge of this graph.
+          A spanning tree is made only of the graph's own edges.
+    correct: tree
+    followUps:
+      two-parts:
+        prompt: Five edges touch all six nodes. Why are they not always a spanning tree?
+        options:
+          - { id: wasted, text: 'An edge that closes a cycle joins nothing new, so some part stays apart' }
+          - { id: count, text: 'Six nodes need six edges, one per node' }
+          - { id: touch, text: 'They always are, if every node is touched' }
+        correct: wasted
+        explanation: >-
+          Five edges join six nodes only if each edge joins two separate parts. A cycle uses one
+          edge between nodes that were already joined, so five edges then leave two parts.
+      leaves-d:
+        prompt: What must every spanning tree of this graph contain for node `D`?
+        options:
+          - { id: d-edge, text: 'At least one edge with `D` at one end' }
+          - { id: nothing, text: 'Nothing, if the other nodes are all joined' }
+          - { id: both, text: 'Both `A-D` and `D-E`' }
+        correct: d-edge
+        explanation: >-
+          A spanning tree joins every node, so `D` needs an edge to the rest. Either `A-D` or
+          `D-E` can serve, but at least one of them must be in the list.
+      not-an-edge:
+        prompt: Where do the edges of a spanning tree come from?
+        options:
+          - { id: graph, text: From the graph's own edge list }
+          - { id: any, text: 'Any pair of nodes, as long as there is no cycle' }
+          - { id: new, text: 'New edges, chosen to make the tree as short as possible' }
+        correct: graph
+        explanation: >-
+          A spanning tree is a choice among the edges the graph already has. Here `C` and `E` are
+          not linked, so `C-E` cannot be used.
+
+  - format: tap-cell
+    id: spanning-trees-review-skip-tap
+    heading: Which edge is skipped first?
+    tags: [graph, greedy, sorting]
+    prompt: >-
+      Kruskal's loop takes edges cheapest first and skips an edge whose ends already `find` the
+      same root. The cells list the edges sorted by weight. Tap the first edge it skips.
+    code: |
+      edges = [(2, 5, 6), (0, 2, 2), (4, 5, 7), (0, 1, 1),
+               (1, 2, 5), (3, 4, 4), (0, 3, 3)]
+      parent = list(range(6))
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              print("skip", u, v, w)
+              continue
+          parent[find(u)] = find(v)
+    sequence:
+      kind: array
+      name: sorted
+      cells: ['0-1 1', '0-2 2', '0-3 3', '3-4 4', '1-2 5', '2-5 6', '4-5 7']
+    correct: 4
+    explanation: >-
+      `0-1` and `0-2` put 0, 1 and 2 in one set, so `find(1)` and `find(2)` return the same root.
+      Taking `1-2` would close the cycle 0, 1, 2, 0, so the loop skips it.
+    misses:
+      - index: 0
+        explanation: Every node starts as its own root, so the cheapest edge always joins two sets and is taken.
+      - index: 1
+        explanation: Node 2 is still alone, so `0-2` joins it to {0, 1} and is taken.
+      - index: 2
+        explanation: >-
+          Node 0 gets its third edge, but a tree puts no limit on the edges at one node. Node 3 is
+          still alone, so the roots differ and `0-3` is taken.
+      - index: 3
+        explanation: Node 4 is still alone, so `3-4` joins it and is taken.
+      - index: 5
+        explanation: >-
+          Node 5 is still alone, so `2-5` joins it and is taken. `1-2` comes earlier and is skipped
+          first.
+      - index: 6
+        explanation: >-
+          `4-5` is skipped as well, since every node shares one root by then. But `1-2` comes
+          earlier and is skipped first.
+
+  - format: step-trace
+    id: spanning-trees-review-kruskal-trace
+    heading: Follow Kruskal's loop
+    tags: [graph, greedy, python]
+    prompt: >-
+      Kruskal's loop takes edges cheapest first, skips an edge whose ends already share a root,
+      and breaks once `taken` reaches `n - 1`. Here `n` is 6. The first three edges are taken, so
+      `total` is 6 and `taken` is 3. `e` marks the edge the loop read most recently. Predict each
+      step.
+    code: |
+      n = 6
+      edges = [(2, 5, 5), (0, 4, 1), (1, 2, 2), (4, 5, 3),
+               (0, 5, 4), (1, 3, 6), (3, 4, 7), (2, 4, 8)]
+      parent = list(range(n))
+      total = taken = 0
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              continue
+          parent[find(u)] = find(v)
+          total += w
+          taken += 1
+          if taken == n - 1:
+              break
+    sequence:
+      kind: array
+      name: sorted
+      cells: ['0-4 1', '1-2 2', '4-5 3', '0-5 4', '2-5 5', '1-3 6', '3-4 7', '2-4 8']
+    start:
+      - { name: e, at: 2 }
+    steps:
+      - line: 7
+        ask: Which edge is the next one taken? Move `e` to it.
+        pointer: e
+        correct: 4
+        explanation: >-
+          `0-5 4` comes next, but `0-4` and `4-5` put 0, 4 and 5 in one set, so it is skipped.
+          `2-5 5` joins {1, 2} with {0, 4, 5}, and it is taken.
+        misses:
+          - index: 3
+            explanation: >-
+              `find(0)` and `find(5)` return the same root, since `0-4` and `4-5` joined 0, 4 and
+              5. Taking `0-5` would close a cycle, so the loop skips it.
+        elsewhere: >-
+          After the skipped `0-5 4`, the next edge is `2-5 5`, and its ends are in {1, 2} and
+          {0, 4, 5}.
+      - line: 10
+        ask: What is `total` after that edge is taken?
+        options:
+          - id: eleven
+            text: '11'
+            explanation: '`total` was 6, and `2-5` adds 5. The skipped `0-5` added nothing.'
+          - id: fifteen
+            text: '15'
+            explanation: >-
+              That adds the 4 of `0-5` as well. The loop reached `continue` on that edge, before
+              `total += w`.
+          - id: five
+            text: '5'
+            explanation: '5 is the weight of `2-5` alone. `total` adds it to the 6 it already held.'
+        correct: eleven
+      - line: 12
+        ask: Which edge does the loop read last?
+        pointer: e
+        correct: 5
+        explanation: >-
+          `1-3 6` joins node 3, which is still alone. That makes `taken` 5, which is `n - 1`, so
+          the loop breaks right after it.
+        misses:
+          - index: 6
+            explanation: >-
+              `3-4 7` would be skipped, since every node shares one root by then. But the loop broke
+              after `1-3`, so it never reads `3-4`.
+          - index: 7
+            explanation: >-
+              Reading to the end of the list is what a loop with no `break` would do. This one stops
+              once `taken` reaches 5.
+        elsewhere: >-
+          `1-3 6` is the fifth edge taken, and `n - 1` is 5, so the loop breaks after it.
+      - line: 13
+        ask: What is `total` when the loop ends?
+        options:
+          - id: seventeen
+            text: '17'
+            explanation: '`total` was 11, and `1-3` adds 6. The loop breaks there.'
+          - id: twenty-one
+            text: '21'
+            explanation: >-
+              That adds the 4 of the skipped `0-5`. A skipped edge reaches `continue` before
+              `total += w`.
+          - id: eleven-again
+            text: '11'
+            explanation: >-
+              That stops one edge early. The loop breaks only after the fifth edge, `1-3 6`, is
+              taken and added.
+        correct: seventeen
+
+  - format: tap-cell
+    id: spanning-trees-review-prim-tap
+    heading: Which node joins next?
+    tags: [graph, greedy]
+    prompt: >-
+      Prim's algorithm grows one tree from `S` and adds the cheapest edge with exactly one end in
+      the tree. Edges can be walked both ways. The tree holds `S`, `C` and `E`, joined by `S-C`
+      and `C-E`. Which node joins next? Tap it.
+    code: |
+      edges = [("S", "C", 2), ("C", "E", 1), ("S", "A", 6),
+               ("C", "B", 7), ("E", "B", 5), ("E", "D", 8),
+               ("S", "E", 4)]
+      in_tree = {"S", "C", "E"}
+    sequence:
+      kind: array
+      name: nodes
+      cells: [S, A, B, C, D, E]
+    correct: 2
+    explanation: >-
+      The edges with one end in the tree are `S-A 6`, `C-B 7`, `E-B 5` and `E-D 8`. The cheapest
+      is `E-B 5`, so `B` joins.
+    misses:
+      - index: 0
+        explanation: '`S` is the start, so it is already in the tree.'
+      - index: 1
+        explanation: >-
+          The cheapest route from `S` to `A` costs 6, less than the 2 + 1 + 5 = 8 to `B`. But Prim
+          compares single edges, and `E-B 5` is cheaper than `S-A 6`.
+      - index: 3
+        explanation: '`C` is already in the tree, joined by `S-C`.'
+      - index: 4
+        explanation: '`E-D 8` is the most expensive edge with one end in the tree.'
+      - index: 5
+        explanation: >-
+          `E` is already in the tree. `S-E 4` is cheaper than `E-B 5`, but both its ends are in the
+          tree, so it would close a cycle.
+
+  - id: spanning-trees-review-dijkstra-edge
+    heading: Which edge differs?
+    tags: [graph, greedy]
+    prompt: >-
+      The graph has the undirected edges `S-A 3`, `S-B 4`, `A-B 2`, `A-C 5` and `B-C 2`.
+      Dijkstra's tree from `S` keeps, for each other node, the edge its cheapest route from `S`
+      arrives by. Which edge is in Dijkstra's tree from `S` but not in the minimum spanning tree?
+    options:
+      - id: s-b
+        text: '`S-B`'
+        explanation: >-
+          The cheapest route to `B` is the edge `S-B`, 4, against 3 + 2 = 5 through `A`, so
+          Dijkstra's tree keeps it. The minimum spanning tree keeps `A-B 2`, `B-C 2` and `S-A 3`,
+          for 7, and has no room for `S-B 4`.
+      - id: a-b
+        text: '`A-B`'
+        explanation: >-
+          `A-B` is in the minimum spanning tree but not in Dijkstra's tree. No cheapest route from
+          `S` arrives by it: `A` is reached for 3 by `S-A`, and `B` for 4 by `S-B`.
+      - id: b-c
+        text: '`B-C`'
+        explanation: >-
+          `B-C` is in both trees. The cheapest route to `C` goes through `B`, 4 + 2 = 6, and the
+          minimum spanning tree also uses `B-C 2`.
+      - id: a-c
+        text: '`A-C`'
+        explanation: >-
+          `A-C` is in neither tree. The route to `C` through `A` costs 3 + 5 = 8, more than 6
+          through `B`, and the minimum spanning tree joins `C` by the cheaper `B-C 2`.
+    correct: s-b
+    followUps:
+      a-b:
+        prompt: Which tree is `A-B` in?
+        options:
+          - { id: mst, text: 'The minimum spanning tree only' }
+          - { id: dijkstra, text: "Dijkstra's tree only" }
+          - { id: neither, text: Neither tree }
+        correct: mst
+        explanation: >-
+          `A-B 2` is the cheapest edge, so the minimum tree takes it. But no cheapest route from
+          `S` ends with it, so Dijkstra's tree leaves it out.
+      b-c:
+        prompt: Can one edge be in both Dijkstra's tree and the minimum spanning tree?
+        options:
+          - { id: yes, text: 'Yes, the two trees often share edges' }
+          - { id: never, text: 'No, the two trees never share an edge' }
+          - { id: start-only, text: 'Only an edge that touches the start' }
+        correct: yes
+        explanation: >-
+          The two trees answer different questions, but they can agree on many edges. Here both
+          use `B-C 2`, an edge that does not touch `S`.
+      a-c:
+        prompt: How does Dijkstra's tree pick the edge that reaches `C`?
+        options:
+          - { id: route, text: 'By the cheapest whole route from `S` to `C`' }
+          - { id: edge, text: 'By the cheapest single edge into `C`' }
+          - { id: first, text: 'By the first edge into `C` that is listed' }
+        correct: route
+        explanation: >-
+          It keeps the last edge of the cheapest route: `S-B-C` costs 6 and `S-A-C` costs 8, so it
+          keeps `B-C`.

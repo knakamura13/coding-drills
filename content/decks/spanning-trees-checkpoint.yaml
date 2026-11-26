@@ -1,0 +1,329 @@
+id: spanning-trees-checkpoint
+title: "Minimum spanning trees: checkpoint"
+description: Total a Kruskal run, order Prim's joins, find where a slip goes wrong, and find the input that breaks a suggested solution, on new graphs.
+heading: Which edges make the tree?
+
+questions:
+  - id: spanning-trees-exam-kruskal-total
+    heading: What does Kruskal's loop add up to?
+    tags: [graph, greedy, python]
+    prompt: |-
+      Kruskal's loop runs on 6 nodes. Edges can be walked both ways, and `find` follows `parent` links to the root of a set. What is `total` when the loop ends?
+
+      ```python
+      n = 6
+      edges = [(0, 1, 4), (1, 2, 2), (0, 2, 3), (2, 3, 6),
+               (3, 4, 1), (2, 4, 5), (4, 5, 8), (3, 5, 7)]
+      parent = list(range(n))
+      total = taken = 0
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              continue
+          parent[find(u)] = find(v)
+          total += w
+          taken += 1
+          if taken == n - 1:
+              break
+      ```
+    options:
+      - id: eighteen
+        text: '`18`'
+        explanation: >-
+          In order of weight it takes `3-4` 1, `1-2` 2 and `0-2` 3, skips `0-1` 4 (0 and 1 share
+          a root), takes `2-4` 5, skips `2-3` 6 (2 and 3 share a root) and takes `3-5` 7. That is
+          the fifth edge, so it breaks: 1 + 2 + 3 + 5 + 7 = 18.
+      - id: fifteen
+        text: '`15`'
+        explanation: >-
+          That adds the five cheapest edges, 1 + 2 + 3 + 4 + 5. But `0-1` 4 joins two nodes that
+          `1-2` and `0-2` already joined, so the loop skips it, and it later skips `2-3` 6 for the
+          same reason.
+      - id: eleven
+        text: '`11`'
+        explanation: >-
+          That stops after reading five edges, skipped ones included. The loop counts only the
+          edges it takes, so after skipping `0-1` it reads on until five are taken.
+      - id: twenty-eight
+        text: '`28`'
+        explanation: >-
+          That adds every edge the loop reads, 1 through 7. The skipped `0-1` 4 and `2-3` 6 reach
+          `continue` before `total += w`, so they add nothing.
+    correct: eighteen
+    followUps:
+      fifteen:
+        prompt: Kruskal reads `0-1` 4 after taking `1-2` and `0-2`. What does it do with it?
+        options:
+          - { id: skip, text: 'Skips it, since 0 and 1 already share a root' }
+          - { id: take, text: 'Takes it, since 0 and 1 have no edge between them yet' }
+          - { id: swap, text: 'Takes it in place of `0-2`, which costs less' }
+        correct: skip
+        explanation: >-
+          `1-2` and `0-2` put 0, 1 and 2 in one set. An edge inside a set closes a cycle, whether
+          or not its own two ends were linked directly.
+      eleven:
+        prompt: What does the loop compare with `n - 1` before it breaks?
+        options:
+          - { id: taken, text: '`taken`, the number of edges it has taken' }
+          - { id: read, text: The number of edges it has read }
+          - { id: total, text: '`total`, the weight added so far' }
+        correct: taken
+        explanation: >-
+          `taken += 1` runs only after an edge passes the root test, so a skipped edge does not
+          count. The loop reads on until it has taken `n - 1` edges.
+      twenty-eight:
+        prompt: Which edges add their weight to `total`?
+        options:
+          - { id: taken, text: Only the edges whose ends had different roots }
+          - { id: all, text: Every edge the loop reads }
+          - { id: skipped, text: Only the edges that close a cycle }
+        correct: taken
+        explanation: >-
+          `continue` sends a skipped edge back to the top of the loop, so `total += w` runs only
+          for an edge that joins two sets.
+
+  - id: spanning-trees-exam-prim-order
+    heading: In what order do the nodes join?
+    tags: [graph, heap]
+    prompt: >-
+      Prim's loop runs from `S` on a graph with the undirected edges `S-B 5`, `S-D 2`, `D-E 1`,
+      `E-B 3`, `B-A 2`, `E-A 6`, `D-C 4` and `C-A 7`. When a node joins, the loop pushes `(w, v)`
+      for each edge out of it to a node not in the tree. It pops the smallest pair and skips an
+      entry for a node already in the tree. In what order do the nodes join the tree?
+    options:
+      - id: prim
+        text: '`S`, `D`, `E`, `B`, `A`, `C`'
+        explanation: >-
+          `D` joins at 2 and `E` at 1. `E` pushes `(3, "B")`, which beats `(4, "C")`, so `B` joins
+          at 3. `B` pushes `(2, "A")`, so `A` joins at 2 before `C` at 4.
+      - id: routes
+        text: '`S`, `D`, `E`, `B`, `C`, `A`'
+        explanation: >-
+          That is the order of the cheapest routes from `S`: `C` at 2 + 4 = 6 before `A` at
+          5 + 2 = 7. Prim pushes the edge weight alone, so `A` comes in at 2, by `B-A`.
+      - id: first-entry
+        text: '`S`, `D`, `E`, `C`, `B`, `A`'
+        explanation: >-
+          That keeps each node at the weight of its first entry: `B` at 5 from `S-B` and `A` at 6
+          from `E-A`. But `E` later pushes `(3, "B")` and `B` pushes `(2, "A")`, and those smaller
+          entries pop first.
+    correct: prim
+    followUps:
+      routes:
+        prompt: When `B` joins and pushes an entry for `A`, what number does that entry hold?
+        options:
+          - { id: weight, text: '2, the weight of `B-A`' }
+          - { id: route, text: '7, the cost of the route `S`, `B`, `A`' }
+          - { id: old, text: '6, the weight of `E-A`' }
+        correct: weight
+        explanation: >-
+          Prim compares edges into the tree, not routes from `S`, so it pushes `(w, v)` with the
+          weight of the one edge. The entry for `A` holds 2.
+      first-entry:
+        prompt: '`B` already has the entry `(5, "B")` when `E` pushes `(3, "B")`. Which one pops first?'
+        options:
+          - { id: smaller, text: '`(3, "B")`, since the heap pops the smallest pair' }
+          - { id: older, text: '`(5, "B")`, since it was pushed first' }
+          - { id: neither, text: 'Neither, since a node can have only one entry' }
+        correct: smaller
+        explanation: >-
+          The heap orders entries by value, not by when they arrived. A node can have several
+          entries, and the smallest one decides when it joins.
+
+  - id: spanning-trees-exam-prim-slip
+    heading: Where does the slip go wrong?
+    tags: [graph, heap, python]
+    prompt: |-
+      A suggested solution should return the total weight of a minimum spanning tree, but it pushes `(cost + w, v)` where Prim's loop pushes `(w, v)`. `graph` is built from the listed undirected edges, and the loop starts at `S`. On which edge list does it return a wrong total?
+
+      ```python
+      def prim_total(graph):
+          in_tree, total = set(), 0
+          heap = [(0, "S")]
+          while heap:
+              cost, u = heapq.heappop(heap)
+              if u in in_tree:
+                  continue
+              in_tree.add(u)
+              total += cost
+              for v, w in graph[u]:
+                  if v not in in_tree:
+                      heapq.heappush(heap, (cost + w, v))
+          return total
+      ```
+    options:
+      - id: off-start
+        text: '`S-A 1`, `A-B 2`, `S-B 4`, `S-C 5`'
+        explanation: >-
+          `A` joins at 1 and pushes `(3, "B")`, so `B` pops at 3, the cost of the route through
+          `A`, and `C` at 5. The call returns 0 + 1 + 3 + 5 = 9, but the tree `S-A`, `A-B`, `S-C`
+          weighs 1 + 2 + 5 = 8.
+      - id: triangle
+        text: '`S-A 1`, `S-B 2`, `A-B 3`'
+        explanation: >-
+          `A` pops at 1 and `B` at 2, its own edge from `S`, since 1 + 3 is more. The call returns
+          3, and the minimum tree `S-A`, `S-B` also weighs 3.
+      - id: four-star
+        text: '`S-A 2`, `S-B 3`, `S-C 4`, `A-B 6`, `B-C 5`'
+        explanation: >-
+          Every node pops at the weight of its own edge from `S`: 2, 3 and 4. The call returns 9,
+          and the minimum tree `S-A`, `S-B`, `S-C` also weighs 9.
+      - id: leaf-edge
+        text: '`S-A 5`, `S-B 1`, `S-C 2`, `B-C 4`'
+        explanation: >-
+          `B` pops at 1, `C` at 2 and `A` at 5, each by its own edge from `S`. `B-C 4` would give
+          `C` 1 + 4 = 5, more than 2. The call returns 8, and the minimum tree also weighs 8.
+    correct: off-start
+    followUps:
+      triangle:
+        prompt: In `S-A 1`, `S-B 2`, `A-B 3`, which entry for `B` pops first?
+        options:
+          - { id: direct, text: '`(2, "B")`, pushed by `S`' }
+          - { id: through, text: '`(4, "B")`, pushed by `A`' }
+          - { id: edge, text: '`(3, "B")`, the weight of `A-B`' }
+        correct: direct
+        explanation: >-
+          `A` pushes `(1 + 3, "B")`, which is 4, so the 2 from `S` pops first. `B` joins by `S-B`,
+          the edge the minimum tree uses too.
+      four-star:
+        prompt: When does the slip's `cost` equal the weight of the edge that joins the node?
+        options:
+          - { id: from-start, text: 'When the edge starts at `S`, whose `cost` is 0' }
+          - { id: always, text: 'Always, since `cost + w` is just `w`' }
+          - { id: never, text: 'Never, since it always adds a second number' }
+        correct: from-start
+        explanation: >-
+          `S` pops with `cost` 0, so its pushes hold `0 + w`. Here every node joins by its edge from
+          `S`, so every `cost` is that edge's weight.
+      leaf-edge:
+        prompt: '`B` joins at 1 and pushes an entry for `C`. What does it hold?'
+        options:
+          - { id: five, text: '5, which is 1 + 4' }
+          - { id: four, text: '4, the weight of `B-C`' }
+          - { id: one, text: '1, the cost of `B`' }
+        correct: five
+        explanation: >-
+          The slip pushes `cost + w`. `(5, "C")` loses to the `(2, "C")` that `S` pushed, so `C`
+          still joins by `S-C`.
+
+  - format: tap-cell
+    id: spanning-trees-exam-last-read
+    heading: Where does the loop stop?
+    tags: [graph, greedy, sorting]
+    prompt: >-
+      Kruskal's loop takes edges cheapest first, skips an edge whose ends already share a root,
+      and breaks once `taken` reaches `n - 1`. Here `n` is 6. The cells list the edges sorted by
+      weight. Tap the last edge the loop reads.
+    code: |
+      for u, v, w in sorted(edges, key=lambda e: e[2]):
+          if find(u) == find(v):
+              continue
+          parent[find(u)] = find(v)
+          taken += 1
+          if taken == n - 1:
+              break
+    sequence:
+      kind: array
+      name: sorted
+      cells: ['0-1 1', '1-2 2', '0-2 3', '3-4 4', '2-3 5', '1-3 6', '0-4 7', '4-5 8', '2-5 9', '1-5 10']
+    correct: 7
+    explanation: >-
+      It takes `0-1`, `1-2`, `3-4` and `2-3`, skipping `0-2`. Then `1-3` and `0-4` are skipped,
+      since 0 to 4 share a root, and `4-5` joins node 5. That is the fifth edge taken, so the loop
+      breaks there.
+    misses:
+      - index: 0
+        explanation: '`0-1` is the first edge taken. The loop needs five.'
+      - index: 1
+        explanation: '`1-2` is the second edge taken. The loop needs five.'
+      - index: 2
+        explanation: '`0-2` is skipped, since 0 and 2 share a root, and the loop reads on.'
+      - index: 3
+        explanation: '`3-4` is the third edge taken. The loop needs five.'
+      - index: 4
+        explanation: >-
+          `2-3` is the fifth edge in the list but only the fourth taken, since `0-2` was skipped.
+          `taken` is 4, short of 5.
+      - index: 5
+        explanation: '`1-3` is skipped, since 1 and 3 share a root by then, and the loop reads on.'
+      - index: 6
+        explanation: '`0-4` is skipped, since 0 and 4 share a root by then, and the loop reads on.'
+      - index: 8
+        explanation: >-
+          `2-5` would be skipped, since every node shares one root after `4-5`. But the loop breaks
+          at `4-5`, so it never reads `2-5`.
+      - index: 9
+        explanation: >-
+          Reading to the end of the list is what a loop with no `break` would do. This one breaks
+          once `taken` reaches 5.
+
+  - id: spanning-trees-exam-debug-seen
+    heading: Which call breaks the suggested solution?
+    tags: [graph, greedy, python]
+    prompt: |-
+      A suggested solution for Kruskal's algorithm keeps a set of seen nodes instead of union-find, and takes an edge when either end is unseen. Which call returns a wrong total?
+
+      ```python
+      def kruskal(n, edges):
+          seen = set()
+          total = 0
+          for u, v, w in sorted(edges, key=lambda e: e[2]):
+              if u not in seen or v not in seen:
+                  seen.add(u)
+                  seen.add(v)
+                  total += w
+          return total
+      ```
+    options:
+      - id: two-pairs
+        text: '`kruskal(4, [(0, 1, 1), (2, 3, 2), (1, 2, 5), (0, 3, 9)])`'
+        explanation: >-
+          `(0, 1, 1)` and `(2, 3, 2)` make two separate pairs, and then all four nodes are seen.
+          `(1, 2, 5)` would join the pairs, but both its ends are seen, so it is skipped. The call
+          returns 3 from 2 edges, where the minimum spanning tree weighs 1 + 2 + 5 = 8.
+      - id: path
+        text: '`kruskal(4, [(0, 1, 1), (1, 2, 2), (2, 3, 3)])`'
+        explanation: >-
+          Each edge brings one unseen node, 1, then 2, then 3, so all three are taken. The call
+          returns 6, the weight of the only spanning tree.
+      - id: triangle
+        text: '`kruskal(3, [(0, 1, 1), (1, 2, 2), (0, 2, 3)])`'
+        explanation: >-
+          `(0, 1, 1)` and `(1, 2, 2)` are taken. `(0, 2, 3)` has both ends seen and both ends in
+          one part, so skipping it is right. The call returns 3, the true total.
+      - id: star
+        text: '`kruskal(4, [(1, 2, 1), (0, 1, 2), (0, 2, 3), (0, 3, 4)])`'
+        explanation: >-
+          `(1, 2, 1)` is taken, then `(0, 1, 2)` for node 0. `(0, 2, 3)` is skipped, rightly, and
+          `(0, 3, 4)` brings node 3. The call returns 7, which is the true total.
+    correct: two-pairs
+    followUps:
+      path:
+        prompt: In `(0, 1, 1)`, `(1, 2, 2)`, `(2, 3, 3)`, what does every edge after the first bring?
+        options:
+          - { id: one-new, text: One node that is not seen yet }
+          - { id: two-new, text: Two nodes that are not seen yet }
+          - { id: none-new, text: No new nodes }
+        correct: one-new
+        explanation: >-
+          Each edge reaches one step further along the path, so one end is always unseen. The seen
+          test then agrees with the root test.
+      triangle:
+        prompt: Is skipping `(0, 2, 3)` right here?
+        options:
+          - { id: right, text: 'Yes, 0 and 2 are already joined through 1' }
+          - { id: wrong, text: 'No, every edge of a triangle belongs in the tree' }
+          - { id: depends, text: 'Only if `(0, 2, 3)` were the cheapest edge' }
+        correct: right
+        explanation: >-
+          Both ends are seen and in one part, so taking the edge would close a cycle. The seen test
+          gives a wrong answer only when two seen nodes are in different parts.
+      star:
+        prompt: When `(0, 2, 3)` is read, are 0 and 2 in the same part?
+        options:
+          - { id: same, text: 'Yes, through `(1, 2, 1)` and `(0, 1, 2)`' }
+          - { id: different, text: 'No, no edge has joined them yet' }
+          - { id: unknown, text: 'Only once `(0, 3, 4)` is read' }
+        correct: same
+        explanation: >-
+          0 reaches 2 through 1, so the edge would close a cycle. Skipping it is right, and the call
+          returns the true total.
