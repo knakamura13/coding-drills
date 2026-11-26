@@ -19,6 +19,7 @@ const PATH_TITLES = [
 	'Pointer scans',
 	'Palindromes',
 	'Grid indices',
+	'Substring search',
 	'Sort order',
 	'Interval merging',
 	'Event sweeps',
@@ -134,7 +135,7 @@ describe('shipped curriculum', () => {
 	const paths = curriculum.branches.flatMap((item) => item.paths);
 	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
-	it('lists the 50 skill paths in plan order', () => {
+	it('lists the 51 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
 	});
 
@@ -178,7 +179,7 @@ describe('shipped curriculum', () => {
 
 	it('gives every checkpoint the skills that lead into it, including a converging path', () => {
 		const byId = new Map(paths.map((item) => [item.id, item]));
-		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(51);
+		expect(paths.flatMap((item) => item.checkpoints)).toHaveLength(52);
 		for (const item of paths) {
 			const skillIds = new Set(item.skills.map((skill) => skill.id));
 			for (const skill of item.skills) expect(skillIds.has(skill.id)).toBe(true);
