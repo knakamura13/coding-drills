@@ -180,94 +180,84 @@ questions:
           Undo the move: up one row and left one column. `(r-1, c+1)` would need a move down and to the
           left.
 
-  - id: grid-exam-debug-column-skip
+  - id: grid-exam-debug-diagonal-wrap
     heading: Which call does it fail on?
     tags: [dp, grid, python]
     prompt: |-
       A suggested `count_paths(grid)` should count the paths from `(0, 0)` to the bottom-right
-      cell, moving right or down, where `#` is blocked and the start is open. One detail is
-      slightly off:
+      cell, where each move goes one cell right or one cell diagonally down and to the right, `#`
+      is blocked, and the start is open. One detail is slightly off:
 
       ```python
       def count_paths(grid):
           rows, cols = len(grid), len(grid[0])
           ways = [[0] * cols for _ in range(rows)]
-          for c in range(cols):            # row 0
-              if grid[0][c] == '#':
-                  break
-              ways[0][c] = 1
-          for r in range(1, rows):         # column 0
-              if grid[r][0] == '#':
-                  continue
-              ways[r][0] = 1
-          for r in range(1, rows):
-              for c in range(1, cols):
-                  if grid[r][c] == '.':
-                      ways[r][c] = ways[r - 1][c] + ways[r][c - 1]
+          for r in range(rows):
+              for c in range(cols):
+                  if grid[r][c] == '#':
+                      continue
+                  if r == 0 and c == 0:
+                      ways[r][c] = 1
+                      continue
+                  left = ways[r][c - 1] if c > 0 else 0
+                  diag = ways[r - 1][c - 1] if r > 0 else 0
+                  ways[r][c] = left + diag
           return ways[-1][-1]
       ```
 
       Which call returns a wrong answer?
     options:
+      - id: open
+        text: "`count_paths(['...', '...'])`"
+        explanation: >-
+          No move enters column 0 below row 0, so `(1, 0)` should hold 0. But there `c - 1` is -1,
+          and `ways[0][-1]` is the last cell of row 0, which holds 1. That wrong 1 carries to the
+          right, and the call returns 3, though only 2 paths exist. Guarding the read with
+          `r > 0 and c > 0` fixes it.
+      - id: corner-blocked
+        text: "`count_paths(['..#', '...'])`"
+        explanation: >-
+          `(1, 0)` still makes the unguarded diagonal read, but here the cell it lands on adds
+          nothing to the count. The call returns 2, the true count.
       - id: column-block
-        text: "`count_paths(['....', '#...', '....'])`"
+        text: "`count_paths(['...', '#..'])`"
         explanation: >-
-          `continue` skips only the block at `(1, 0)`, so `(2, 0)` below it still gets 1. A
-          column 0 cell is entered only from above, so no path reaches `(2, 0)`. The call returns
-          7, but only 6 paths exist. Using `break`, as the row 0 loop does, fixes it.
-      - id: row-block
-        text: "`count_paths(['..#.', '....', '....'])`"
+          `(1, 0)` is blocked, so the loop skips it before any read. The call returns 2, the true
+          count.
+      - id: one-row
+        text: "`count_paths(['....'])`"
         explanation: >-
-          The row 0 loop stops at the block with `break`, so `(0, 3)` past it keeps 0, which is
-          right. The call returns 7, the true count.
-      - id: inner-block
-        text: "`count_paths(['....', '.#..', '....'])`"
-        explanation: >-
-          The block at `(1, 1)` is inside the edges, where the last loop leaves it at 0. The edges
-          are open, and the call returns 4, the true count.
-      - id: last-row-block
-        text: "`count_paths(['....', '....', '#...'])`"
-        explanation: >-
-          The block is in column 0, but in the last row, so no cell lies below it. `continue`
-          leaves it at 0, and the call returns 9, the true count.
-    correct: column-block
+          With one row, `r > 0` never holds, so the diagonal is never read. The call returns 1, the
+          true count.
+    correct: open
     followUps:
-      row-block:
-        prompt: In the row 0 loop, what happens once `c` reaches the block at `(0, 2)`?
+      corner-blocked:
+        prompt: "At `(1, 0)`, which cell does `ways[0][-1]` read in `['..#', '...']`?"
         options:
-          - id: stops
-            text: The loop stops, so `(0, 3)` keeps 0
-          - id: skips
-            text: The loop skips the block and sets `(0, 3)` to 1
-          - id: zeroes
-            text: The loop sets the block to 1, then the last loop resets it
-        correct: stops
+          - { id: blocked, text: "The blocked `(0, 2)`, which holds 0, so nothing is added" }
+          - { id: start, text: "The start `(0, 0)`, which holds 1" }
+          - { id: error, text: "No cell, so Python raises `IndexError`" }
+        correct: blocked
         explanation: >-
-          `break` ends the loop, so no cell past the block is set to 1. That is right for row 0,
-          where each cell is entered only from its left.
-      inner-block:
-        prompt: Which loop handles a block at `(1, 1)`?
+          A negative index counts back from the end of the row, so -1 is the last column. Here that
+          cell is blocked and holds 0, which hides the mistake.
+      column-block:
+        prompt: "In `['...', '#..']`, does the loop ever read the diagonal at `(1, 0)`?"
         options:
-          - id: last-loop
-            text: The last loop, which skips it and leaves its 0
-          - id: column-loop
-            text: The column 0 loop, which sets it to 1
-          - id: none
-            text: No loop, so it reads as an open cell
-        correct: last-loop
+          - { id: no, text: "No. `(1, 0)` is blocked, and `continue` skips it first" }
+          - { id: yes, text: "Yes. Every cell reads both of its neighbors" }
+          - { id: later, text: "Yes, once the row is finished" }
+        correct: no
         explanation: >-
-          The edge loops touch only row 0 and column 0. Inside the edges, a blocked cell keeps the
-          0 it started with, and the cells after it add that 0.
-      last-row-block:
-        prompt: The block is at `(2, 0)` in the last row. Which column 0 cell could the `continue` set wrongly?
+          Only an open cell in column 0, below row 0, makes the wrong read. Here that cell is
+          blocked, so the call is right.
+      one-row:
+        prompt: "With one row, when does `diag` read `ways[r - 1][c - 1]`?"
         options:
-          - id: none-below
-            text: None, since no cell of column 0 lies below it
-          - id: the-block
-            text: The block itself, which gets 1
-          - id: above
-            text: "`(1, 0)` above it, which gets 0"
-        correct: none-below
+          - { id: never, text: "Never, since `r > 0` is never true" }
+          - { id: first, text: "At `(0, 0)`, where `r - 1` is -1" }
+          - { id: each, text: "At every cell after the start" }
+        correct: never
         explanation: >-
-          `continue` skips the block and moves on to the next row. Only a cell below a block in
-          column 0 can be wrongly set to 1, and here there is none.
+          The read is guarded by `r > 0`, and a single row only has `r` equal to 0. The mistake
+          needs an open cell below row 0 in column 0.

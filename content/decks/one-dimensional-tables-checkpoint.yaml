@@ -273,84 +273,79 @@ questions:
           The right recurrence puts `+ v[i]` inside the second term only, so the first term,
           `best[i-1]`, stays a plain "skip slot `i`" case.
 
-  - id: tables-exam-debug-empty-seed
+  - id: tables-exam-debug-zero-pair
     heading: Which call does it fail on?
     tags: [dp, python]
     prompt: |-
-      A suggested `best_sum(nums)` should return the largest total of a subarray, a slice of
-      neighboring values with at least one value in it. Its `end[i + 1]` is the largest total of a
-      subarray that ends exactly at index `i`, and `end[0]` is an extra entry set to 0. One detail
-      is slightly off:
+      Digits are read as letters, with `1` to `26` standing for A to Z. A `0` cannot stand alone,
+      and a two-digit piece cannot start with `0`. A suggested `count_reads(s)` should count the
+      readings of `s`, where `ways[i]` counts the readings of the first `i` digits. One detail is
+      slightly off:
 
       ```python
-      def best_sum(nums):
-          end = [0] * (len(nums) + 1)
-          for i in range(len(nums)):
-              end[i + 1] = max(nums[i], end[i] + nums[i])
-          return max(end)
+      def count_reads(s):
+          ways = [0] * (len(s) + 1)
+          ways[0] = 1
+          for i in range(1, len(s) + 1):
+              if s[i - 1] != '0':
+                  ways[i] += ways[i - 1]
+              if i >= 2 and int(s[i - 2:i]) <= 26:
+                  ways[i] += ways[i - 2]
+          return ways[len(s)]
       ```
 
       Which call returns a wrong answer?
     options:
-      - id: all-negative
-        text: "`best_sum([-4, -1, -6])`"
+      - id: zero-led
+        text: "`count_reads('2105')`"
         explanation: >-
-          `end` is `[0, -4, -1, -6]`. The extra `end[0]` stands for no subarray at all, and
-          `max(end)` returns its 0, though every subarray here has a negative total. The right
-          answer is -1, the -1 alone. Returning `max(end[1:])` fixes it.
-      - id: zero-first
-        text: "`best_sum([0, -5, -1])`"
+          The last two digits are `05`, and `int('05')` is 5, which passes `<= 26`, so `ways[4]`
+          adds `ways[2]` for a piece that starts with 0. The call returns 3, but the only reading
+          is `2 10 5`. Testing `10 <= int(s[i - 2:i]) <= 26` fixes it.
+      - id: ten
+        text: "`count_reads('2610')`"
         explanation: >-
-          `max(end)` returns 0, and that is right: the subarray `0` alone totals 0. The extra
-          `end[0]` matches a real answer here, so no harm is done.
-      - id: middle-positive
-        text: "`best_sum([-5, 2, -8])`"
+          Its `0` pairs only as `10`, a real letter, and `61` fails `<= 26`. The call returns 2,
+          for `2 6 10` and `26 10`, the true count.
+      - id: high-pairs
+        text: "`count_reads('1729')`"
         explanation: >-
-          `end` is `[0, -5, 2, -6]`, so the call returns 2, the 2 alone, which is right. The extra
-          0 is smaller than 2 and never wins.
-      - id: restart-last
-        text: "`best_sum([3, -9, 4])`"
+          `72` and `29` fail `<= 26`, and no piece starts with 0. The call returns 2, for
+          `1 7 2 9` and `17 2 9`, the true count.
+      - id: no-zero
+        text: "`count_reads('2112')`"
         explanation: >-
-          `end` is `[0, 3, -6, 4]`. At index 2, `max(4, -6 + 4)` starts fresh with the 4, and the
-          call returns 4, which is right.
-    correct: all-negative
+          Every pair, `21`, `11` and `12`, is from 10 to 26, so the missing lower bound never
+          matters. The call returns 5, the true count.
+    correct: zero-led
     followUps:
-      zero-first:
-        prompt: What is the largest total of a subarray of `[0, -5, -1]`?
+      ten:
+        prompt: "Which two-digit pieces of `'2610'` does the code accept?"
         options:
-          - id: zero
-            text: 0, from the subarray `0` alone
-          - id: minus-one
-            text: -1, from the subarray `-1` alone
-          - id: minus-six
-            text: -6, from the whole list
-        correct: zero
+          - { id: both-real, text: "`26` and `10`, both real letters" }
+          - { id: sixty-one, text: "`26`, `61` and `10`" }
+          - { id: none, text: "None, since the string holds a 0" }
+        correct: both-real
         explanation: >-
-          The 0 at index 0 is a subarray of one value, and its total, 0, beats every other one. The
-          extra 0 in `end[0]` only goes wrong when no real subarray reaches 0.
-      middle-positive:
-        prompt: When can the 0 in `end[0]` change what `max(end)` returns?
+          `61` fails `<= 26`, and the only piece with a 0 is `10`, which really is a letter. The
+          missing lower bound matters only for a piece that starts with 0.
+      high-pairs:
+        prompt: "Which two-digit pieces of `'1729'` pass `int(s[i - 2:i]) <= 26`?"
         options:
-          - id: below-zero
-            text: Only when every real subarray totals less than 0
-          - id: any-negative
-            text: Whenever the list holds a negative value
-          - id: first-negative
-            text: Whenever the first value is negative
-        correct: below-zero
+          - { id: only-17, text: "Only `17`, which is a real letter" }
+          - { id: and-29, text: "`17` and `29`, since both are under 30" }
+          - { id: all, text: "`17`, `72` and `29`, since none starts with 0" }
+        correct: only-17
         explanation: >-
-          `max` returns the 0 only when no real entry is 0 or more. A list with any value that is
-          0 or more has a subarray that reaches it, so the extra 0 does no harm there.
-      restart-last:
-        prompt: "In `best_sum([3, -9, 4])`, does starting fresh at the 4 lose a better subarray?"
+          `72` and `29` are above 26, so the code accepts only `17`, a real letter. A call can
+          expose the bug only if one of its pieces starts with 0.
+      no-zero:
+        prompt: "When can dropping `10 <=` change the count?"
         options:
-          - id: no-lower
-            text: No. Extending to `3, -9, 4` totals -2, less than the 4 alone
-          - id: yes-whole
-            text: Yes. It loses `3, -9, 4`, which totals 7
-          - id: yes-three
-            text: Yes. It loses the 3, which the answer needs
-        correct: no-lower
+          - { id: zero-led, text: "Only when a two-digit piece starts with 0" }
+          - { id: any-zero, text: "Whenever the string holds a 0" }
+          - { id: always, text: "On every string of two or more digits" }
+        correct: zero-led
         explanation: >-
-          `end[2]` is -6, so adding it only lowers the total. A fresh start is right whenever the
-          entry before is negative, so this fill is right, and so is `max(end)`, which is 4.
+          Every pair from 10 to 26 already passes the test. The bound only rules out `00` to `09`,
+          and `'2112'` has none of them.
