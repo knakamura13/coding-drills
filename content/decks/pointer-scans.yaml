@@ -157,6 +157,67 @@ questions:
           scan stops after at most 3 sums, not one for each of the 6 pairs. The other pairs are
           skipped, each one because a sum proved it can't hit the target.
 
+  - format: drag-pointers
+    id: container-shorter-wall
+    heading: Place the pointers
+    tags: [two-pointers]
+    workedExample: |-
+      Consider `height = [6, 2, 5, 3]` with `l = 0` and `r = 3`. Two walls hold water up to the
+      shorter one, so the area is `min(height[l], height[r]) * (r - l)`, here `3 * 3 = 9`.
+
+      1. The 3 at index 3 is the shorter wall. Every other pair that uses index 3 has its left
+         wall closer, so its width is below 3.
+      2. Since the area uses the shorter wall, each of those pairs is at most 3 high. With less
+         width and no more height, each one holds less than 9.
+      3. So index 3 can be dropped, and `r` moves to 2. Dropping the 6 instead would skip
+         `(0, 2)`, whose area is `min(6, 5) * 2 = 10`, the largest here.
+    prompt: >-
+      Each value in `height` is a wall. Two walls hold water up to the shorter one, so the walls
+      at `l` and `r` hold an area of `min(height[l], height[r]) * (r - l)`. The task is the
+      largest area of any pair. A scan from both ends starts with the widest pair, records its
+      area, and then drops the one end that no untried pair can use for a larger area. The
+      first pass records `min(2, 7) * 7 = 14`. Drag `l` and `r` to where they sit when that pass
+      ends.
+    code: |
+      height = [2, 8, 3, 5, 4, 6, 3, 7]
+      l, r = 0, len(height) - 1
+      best = 0
+      while l < r:
+          best = max(best, min(height[l], height[r]) * (r - l))
+          ...  # drop one end
+    sequence:
+      kind: array
+      name: height
+      cells: [2, 8, 3, 5, 4, 6, 3, 7]
+    pointers:
+      - name: l
+        start: 0
+        correct: 1
+        explanation: >-
+          The 2 at `l` is the shorter wall. Every other pair that uses it is narrower and still at
+          most 2 high, so none can beat 14. Dropping it is safe, and `l` moves to 1.
+        misses:
+          - index: 0
+            explanation: >-
+              Keeping `l` means dropping the 7 at `r`. That skips the walls at indices 1 and 7,
+              whose area is `min(8, 7) * 6 = 42`, the largest of any pair.
+          - index: 2
+            explanation: One pass drops one wall, so `l` moves one cell, from index 0 to index 1.
+        elsewhere: The 2 at index 0 is the shorter wall, so the scan drops it and `l` moves to index 1.
+      - name: r
+        start: 7
+        correct: 7
+        explanation: >-
+          The 7 is the taller wall. The 2 held the area down, not the 7, so a pair of the 7 with a
+          taller left wall can still beat 14, and `r` stays.
+        misses:
+          - index: 6
+            explanation: >-
+              Moving the taller wall only shrinks the width, and the 2 still caps the height, so
+              the next area can't beat 14. Worse, it skips the walls at indices 1 and 7:
+              `min(8, 7) * 6 = 42`, the largest area.
+        elsewhere: This pass drops the shorter wall at `l`, so `r` stays on index 7.
+
   - format: step-trace
     id: trace-scan-to-target
     heading: Predict each step
@@ -750,6 +811,84 @@ questions:
           `write` counts the values kept so far. Indices 0 up to `write - 1` are filled, and
           `write` itself is the next index to fill.
 
+  - format: drag-pointers
+    id: compress-runs
+    heading: Place the pointers
+    tags: [two-pointers, arrays-strings]
+    workedExample: |-
+      Consider `compress(['p', 'q', 'q', 'q', 'q'])`. Each pass, `read` walks over one run of the
+      same letter. Then the letter goes into index `write`, and when the run is longer than one,
+      its count goes into the next index.
+
+      1. The first run is the single `p` at index 0, so `read` stops at 1. `p` goes into index 0,
+         a run of one gets no count, and `write` becomes 1.
+      2. The next run is the four `q`s at indices 1 to 4, so `read` walks on to 5, past the end.
+      3. `q` goes into index 1 and `'4'` into index 2, so `write` becomes 3. The call returns 3,
+         and `chars[:3]` is `['p', 'q', '4']`.
+    prompt: >-
+      `compress` shortens each run of the same letter in place: the run becomes its letter and
+      then its count, and a run of one letter gets no count. Every run here is shorter than 10,
+      so a count fits in one cell. The first pass turned the three `a`s into `a` and `'3'`, and
+      the cells show `chars` at the top of the second pass. Drag `read` and `write` to where
+      they sit when that pass ends.
+    code: |
+      def compress(chars):
+          write = 0
+          read = 0
+          while read < len(chars):
+              start = read
+              while read < len(chars) and chars[read] == chars[start]:
+                  read += 1
+              chars[write] = chars[start]
+              write += 1
+              if read - start > 1:
+                  chars[write] = str(read - start)
+                  write += 1
+          return write
+
+      compress(['a', 'a', 'a', 'b', 'b', 'c', 'd', 'd'])
+    sequence:
+      kind: array
+      name: chars
+      cells: [a, '3', a, b, b, c, d, d]
+    pointers:
+      - name: read
+        start: 3
+        correct: 5
+        explanation: >-
+          The inner loop walks `read` over both `b`s, at indices 3 and 4. It stops at 5, because
+          `c` differs from `chars[start]`, the `b` at index 3.
+        misses:
+          - index: 4
+            explanation: >-
+              Index 4 holds the second `b`, the same letter as `chars[start]`, so the inner loop
+              steps past it too.
+          - index: 3
+            explanation: The inner loop walks `read` over the whole run before anything is written.
+          - index: 6
+            explanation: >-
+              `read` stops on the first letter that differs from the run. The `c` at index 5
+              starts the next run, which the next pass reads.
+        elsewhere: '`read` walks over the run of two `b`s and stops on the `c` at index 5.'
+      - name: write
+        start: 2
+        correct: 4
+        explanation: >-
+          The run has two letters, so `b` goes into index 2, over the leftover `a`, and `'2'` into
+          index 3. `write` ends on 4, the next cell to fill.
+        misses:
+          - index: 3
+            explanation: >-
+              That writes the letter alone. The run is longer than one, so its count goes into
+              index 3 as well.
+          - index: 5
+            explanation: >-
+              `write` does not follow `read`. It moves one cell for each character written: `b`,
+              then `'2'`.
+          - index: 2
+            explanation: This pass writes two characters, so `write` moves twice.
+        elsewhere: Two characters are written, `b` and `'2'`, so `write` moves from index 2 to index 4.
+
   - format: step-trace
     id: trace-remove-value
     heading: Predict each step
@@ -977,3 +1116,79 @@ questions:
         explanation: >-
           Only the first 6 was kept before this step, so `write` is 1. The 9 is copied down next
           to it.
+
+  - format: drag-pointers
+    id: three-way-partition
+    heading: Place the pointers
+    tags: [two-pointers, sorting]
+    workedExample: |-
+      Consider `nums = [1, 0, 2]` with `low = 0`, `mid = 0` and `high = 2`. Each pass reads
+      `nums[mid]` and follows the rule for its value, and the loop runs while `mid <= high`.
+
+      1. `nums[0]` is 1, so it stays, and `mid` moves to 1.
+      2. `nums[1]` is 0, so it is swapped with `nums[low]`, the 1 at index 0, which makes `nums`
+         `[0, 1, 2]`. `low` and `mid` move to 1 and 2.
+      3. `nums[2]` is 2, so it is swapped with `nums[high]`, which is itself, and `high` moves
+         back to 1. Now `mid` is past `high`, and the loop ends with `[0, 1, 2]`.
+    prompt: >-
+      `sort_colors` sorts a list of 0s, 1s and 2s in place with three pointers. Indices before
+      `low` hold 0s, indices from `low` to `mid - 1` hold 1s, indices after `high` hold 2s, and
+      the cells from `mid` to `high` are not read yet. Each pass reads `nums[mid]`. A 0 is swapped
+      into index `low`, and `low` and `mid` both move on. A 1 stays, and `mid` moves on. A 2 is
+      swapped into index `high`, `high` moves back one, and `mid` stays. Two passes have run, and
+      the cells show `nums` now. Drag the pointers to where they sit when the next pass ends.
+    code: |
+      def sort_colors(nums):
+          low, mid, high = 0, 0, len(nums) - 1
+          while mid <= high:
+              if nums[mid] == 0:
+                  nums[low], nums[mid] = nums[mid], nums[low]
+                  low += 1
+                  mid += 1
+              elif nums[mid] == 1:
+                  mid += 1
+              else:
+                  nums[mid], nums[high] = nums[high], nums[mid]
+                  high -= 1
+
+      sort_colors([1, 0, 2, 1, 2, 1, 1, 0])
+    sequence:
+      kind: array
+      name: nums
+      cells: [0, 1, 2, 1, 2, 1, 1, 0]
+    pointers:
+      - name: low
+        start: 1
+        correct: 1
+        explanation: '`nums[mid]` is 2, so `low` stays on index 1. Only a 0 moves it.'
+        misses:
+          - index: 2
+            explanation: '`low` moves only after a 0 is swapped into it. This pass reads a 2.'
+        elsewhere: This pass reads a 2, which leaves `low` on index 1.
+      - name: mid
+        start: 2
+        correct: 2
+        explanation: >-
+          `mid` stays on 2. The swap brought the 0 from index 7 into index 2, and nothing has read
+          it yet. The next pass reads it and swaps it into index `low`.
+        misses:
+          - index: 3
+            explanation: >-
+              Moving on would leave the 0 that came from index 7 unread at index 2, after the 1 at
+              index 1. Nothing reads index 2 again, so the list would end as
+              `[0, 1, 0, 1, 1, 1, 2, 2]`.
+        elsewhere: A 2 leaves `mid` where it is, so `mid` stays on index 2.
+      - name: high
+        start: 7
+        correct: 6
+        explanation: >-
+          The 2 goes into index 7, the last unread cell, and `high` moves back to 6. Index 7 now
+          belongs to the 2s.
+        misses:
+          - index: 7
+            explanation: >-
+              A 2 is swapped into index `high`, and then `high` moves back one, so index 7 joins
+              the 2s and `high` steps to 6.
+          - index: 5
+            explanation: One 2 was placed, so `high` moves back one cell, from index 7 to index 6.
+        elsewhere: One 2 was placed at index 7, so `high` moves back one cell, to index 6.

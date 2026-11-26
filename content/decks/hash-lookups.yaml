@@ -180,6 +180,101 @@ questions:
               is stored as 1, so every count starts at 1.
         correct: right
 
+  - id: missing-key-reads
+    heading: What does this print?
+    tags: [hash-map, python]
+    workedExample: |-
+      Consider `c = Counter("aa")` and an empty `d = defaultdict(int)`. `Counter("aa")` counts each
+      letter of the string, so `c` holds `"a": 2`, one key.
+
+      1. `c["z"]` reads 0, since no `z` was counted. A `Counter` read stores nothing, so `c` still
+         has one key.
+      2. `d["a"] += 1` reads 0 for the new key `"a"`, adds 1 and stores the result, so `d` holds
+         `"a": 1`.
+      3. `d["z"]` also reads 0, but a `defaultdict(int)` keeps the key it was asked for. So `d`
+         now holds `"a": 1` and `"z": 0`, and `len(d)` is 2.
+    prompt: |-
+      `Counter` and `defaultdict` are kinds of dictionary from the `collections` module.
+      `Counter(items)` counts each item of `items`. `defaultdict(int)` starts a missing
+      key at 0, so `d[w] += 1` works on a new key. Reading a missing key with square brackets
+      gives 0 from both, but a `Counter` adds nothing, while a `defaultdict(int)` adds the key
+      with the value 0.
+
+      ```python
+      from collections import Counter, defaultdict
+
+      words = ["ox", "yak", "ox"]
+      c = Counter(words)
+      d = defaultdict(int)
+      for w in words:
+          d[w] += 1
+      print(c["elk"], d["elk"])
+      print(len(c), len(d))
+      ```
+
+      What does the last line print?
+    options:
+      - id: right
+        text: '`2 3`'
+        explanation: >-
+          Both count `ox` twice and `yak` once. Reading `"elk"` leaves `c` with its two keys, but
+          `d` keeps the key it was asked for, so it ends with three.
+      - id: neither
+        text: '`2 2`'
+        explanation: >-
+          That treats the `defaultdict` read like the `Counter` read. The same rule that lets
+          `d[w] += 1` start from 0 also files `"elk"` away when it is only read.
+      - id: both
+        text: '`3 3`'
+        explanation: >-
+          A `Counter` answers 0 for a key it never counted and leaves itself unchanged, so `c`
+          still has only `ox` and `yak`.
+      - id: swapped
+        text: '`3 2`'
+        explanation: >-
+          That swaps the two. Reading `"elk"` leaves `c` with two keys and gives `d` a third.
+    correct: right
+    followUps:
+      neither:
+        prompt: '`d = defaultdict(int)` is empty, and `print(d["elk"])` runs. What does `d` hold afterwards?'
+        options:
+          - id: stored
+            text: '`{"elk": 0}`, the key with its starting 0'
+          - id: empty
+            text: '`{}`, since a read changes nothing'
+          - id: raises
+            text: Nothing, since the read raises `KeyError`
+        correct: stored
+        explanation: >-
+          A `defaultdict(int)` fills in a missing key with 0 on any read with square brackets,
+          then returns it. A loop that only checks counts can grow `d` by one key per new word.
+      both:
+        prompt: '`c = Counter(["ox"])`, and `c["elk"]` is read. What is `len(c)` afterwards?'
+        options:
+          - id: one
+            text: '1, only `ox`'
+          - id: two
+            text: '2, `ox` and `elk`'
+          - id: raises
+            text: None, since the read raises `KeyError`
+        correct: one
+        explanation: >-
+          A missing key reads as 0 from a `Counter`, but only an assignment, such as `+=`, adds
+          it. So reading counts never changes which keys a `Counter` holds.
+      swapped:
+        prompt: Which one stores a missing key when it is only read?
+        options:
+          - id: dd
+            text: '`defaultdict(int)`'
+          - id: counter
+            text: '`Counter`'
+          - id: both
+            text: Both of them
+        correct: dd
+        explanation: >-
+          A `defaultdict` creates the missing entry, which is how `d[w] += 1` finds a 0 to add to.
+          A `Counter` answers 0 without creating anything, so its keys stay the items it counted.
+
   - id: missing-complement
     heading: Which key does it look up?
     tags: [hash-map]

@@ -539,72 +539,75 @@ questions:
     heading: Which line is wrong?
     tags: [complexity, python]
     prompt: |-
-      A suggested solution should scale each number so the largest becomes 100, in O(n) steps.
-      `nums` holds positive whole numbers, and `//` divides and rounds down. Its answers are right,
-      but on long lists it takes far more steps than that. Which line is wrong?
+      A suggested solution should return the tasks in `todo` that are not in the set `done`, in
+      order and with their repeats, in O(n) steps on average. `todo` is a list of `n` tasks, and
+      `out.remove(t)` deletes the first item of `out` that equals `t`. Its answers are right, but
+      when most tasks are done it takes far more steps than that. Which line is wrong?
 
       ```python
-      def scale_up(nums):
-          top = max(nums)
-          out = []
-          for x in nums:
-              out = out + [x * 100 // top]
+      def pending(todo, done):
+          out = list(todo)
+          for t in todo:
+              if t in done:
+                  out.remove(t)
           return out
       ```
     options:
-      - id: plus-line
-        text: 'Line 5: `out = out + [x * 100 // top]`'
+      - id: remove-line
+        text: 'Line 5: `out.remove(t)`'
         explanation: >-
-          `out + [...]` builds a new list and copies every item already in `out`, on every pass:
-          0 + 1 + ... + (n - 1) copies, about n² / 2. `out.append(x * 100 // top)` writes one slot
-          and keeps the call O(n).
-      - id: max-line
-        text: 'Line 2: `top = max(nums)`'
-        explanation: How many times does line 2 run, and what does it read?
+          `remove` reads `out` from the front to find `t`, then slides every item behind it one
+          slot left to close the gap. When every task is done, each call finds `t` at index 0 and
+          slides all the rest: (n - 1) + (n - 2) + ... + 0 moves, 499,500 for 1,000 tasks, about
+          n² / 2. Starting from `out = []` and appending each `t` that is not in `done` keeps the
+          call O(n) on average.
+      - id: copy-line
+        text: 'Line 2: `out = list(todo)`'
+        explanation: How many times does line 2 run, and what does it copy?
+      - id: in-line
+        text: 'Line 4: `if t in done:`'
+        explanation: What kind of object is `done`, and how does `in` search it?
       - id: loop-line
-        text: 'Line 4: `for x in nums:`'
-        explanation: Can any correct version make fewer than one pass over `nums`?
-      - id: return-line
-        text: 'Line 6: `return out`'
-        explanation: Does returning a list copy its items?
-    correct: plus-line
+        text: 'Line 3: `for t in todo:`'
+        explanation: Can any correct version decide about every task in fewer than `n` passes?
+    correct: remove-line
     followUps:
-      max-line:
-        prompt: What does `top = max(nums)` cost in this function?
+      copy-line:
+        prompt: What does `out = list(todo)` cost in this function?
         options:
           - id: once
-            text: One scan of `n` numbers, once, above the loop
+            text: One copy of the `n` tasks, made once above the loop
           - id: per-pass
-            text: One scan of `n` numbers on every pass
-          - id: one-step
-            text: One step, since `max` is built in
+            text: One copy of the `n` tasks on every pass
+          - id: none
+            text: Nothing, since `out` becomes a second name for `todo`
         correct: once
         explanation: >-
-          `max` reads every number, but it sits above the loop, so it runs one time. Its `n` reads
-          add to the loop's cost instead of multiplying it.
+          `list(...)` builds a new list and copies all `n` tasks, but it sits above the loop, so it
+          runs one time. Its `n` copies add to the loop's cost instead of multiplying it.
+      in-line:
+        prompt: '`done` is a set. What does `t in done` read?'
+        options:
+          - id: hash
+            text: About one place, found from the hash of `t`
+          - id: scan
+            text: Every task in `done`, from the first
+          - id: todo
+            text: Every task in `todo`, from the first
+        correct: hash
+        explanation: >-
+          `in` searches the object on its right, and a set finds `t` from its hash, in about one
+          step on average at any size. The steps pile up on line 5, which works on a list.
       loop-line:
-        prompt: The function returns one scaled number per input number. How many passes does that need?
+        prompt: The function keeps or drops each task in `todo`. How many passes does that need?
         options:
           - id: n-passes
-            text: '`n`, one per number, which fits O(n) if each pass is cheap'
-          - id: one-pass
-            text: One pass in all, whatever `n` is
+            text: '`n`, one per task, which fits O(n) if each pass is cheap'
+          - id: log-passes
+            text: About log n, by halving `todo` on each pass
           - id: n-squared
-            text: About n², one per pair of numbers
+            text: About n², one per pair of tasks
         correct: n-passes
         explanation: >-
-          Every number has to be scaled, so `n` passes are needed. What each pass costs decides the
-          total, and line 5 copies the whole list on each one.
-      return-line:
-        prompt: What does `return out` hand back?
-        options:
-          - id: reference
-            text: A reference to the list `out`, with nothing copied
-          - id: copy
-            text: A copy of every item in `out`
-          - id: tuple
-            text: A tuple made from `out`
-        correct: reference
-        explanation: >-
-          Returning a value passes a reference, whatever its size. The copies in this function come
-          from line 5.
+          Every task has to be checked, so `n` passes are needed. What each pass costs decides the
+          total, and on each pass whose task is done, line 5 searches and slides `out`.

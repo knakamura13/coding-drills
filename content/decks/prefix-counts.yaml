@@ -180,6 +180,77 @@ questions:
         also:
           - { name: i, at: 3 }
 
+  - id: trapped-water-tap
+    format: tap-cell
+    heading: Tap the bar with the most water
+    tags: [prefix-sum, python]
+    workedExample: |-
+      Consider `height = [3, 1, 2]`. The water above bar `i` rises to the shorter of
+      `left_max[i]`, the tallest bar from the left end through `i`, and `right_max[i]`, the
+      tallest from `i` through the right end, and the bar itself fills the part below.
+
+      1. From the left, each entry is the larger of the entry before it and `height[i]`: 3, then
+         `max(3, 1) = 3`, then `max(3, 2) = 3`. So `left_max` is `[3, 3, 3]`.
+      2. From the right the same way: 2 for the last bar, then `max(2, 1) = 2`, then
+         `max(2, 3) = 3`. So `right_max` is `[3, 2, 2]`.
+      3. At index 1 the shorter wall is `min(3, 2) = 2` and the bar is 1 tall, so 1 unit of water
+         sits on it. At index 2 it is `min(3, 2) - 2 = 0`: nothing stands to its right to hold
+         water in.
+    prompt: >-
+      Bars of width 1 stand side by side, with heights in `height`. After rain, the water above
+      bar `i` rises to the shorter of two walls: the tallest bar from the left end through `i`,
+      and the tallest bar from `i` through the right end. `left_max` and `right_max` hold those
+      walls. Each is a running maximum, built the way a prefix sum is but with `max` in place of
+      `+`, and each includes bar `i` itself, so neither starts with an empty entry. `right_max`
+      runs over suffixes, the parts of the list from an index to its end, so its loop takes `i`
+      from `n - 2` down to 0. Tap the bar with the most water above it.
+    code: |
+      def water_at(height):
+          n = len(height)
+          left_max = [height[0]] * n
+          for i in range(1, n):
+              left_max[i] = max(left_max[i - 1], height[i])
+          right_max = [height[-1]] * n
+          for i in range(n - 2, -1, -1):
+              right_max[i] = max(right_max[i + 1], height[i])
+          return [min(left_max[i], right_max[i]) - height[i]
+                  for i in range(n)]
+
+      water_at([2, 0, 4, 1, 5, 1, 5, 0])
+    sequence:
+      kind: array
+      name: height
+      cells: [2, 0, 4, 1, 5, 1, 5, 0]
+    correct: 5
+    explanation: >-
+      `left_max[5]` is 5, from bar 4, and `right_max[5]` is 5, from bar 6. The water rises to 5
+      above a bar 1 tall, so 4 units sit there, more than the 3 at index 3 or the 2 at index 1.
+    misses:
+      - index: 0
+        explanation: >-
+          Bar 0 is the left end, so `left_max[0]` is its own height, 2. `min(2, 5) - 2` is 0.
+      - index: 1
+        explanation: >-
+          The left wall here is only bar 0, which is 2 tall, and water spills over the shorter
+          wall. `min(2, 5) - 0` is 2, less than at index 5.
+      - index: 2
+        explanation: >-
+          Bar 2 is 4 tall, the tallest so far, so `left_max[2]` is 4 and `min(4, 5) - 4` is 0.
+      - index: 3
+        explanation: >-
+          `min(4, 5) - 1` is 3. The left wall is bar 2, which is 4 tall, lower than the 5 on each
+          side of index 5.
+      - index: 4
+        explanation: >-
+          Bar 4 is 5 tall, as tall as any bar, so both walls are 5 and `min(5, 5) - 5` is 0.
+      - index: 6
+        explanation: >-
+          Bar 6 is 5 tall, as tall as both of its walls, so `min(5, 5) - 5` is 0.
+      - index: 7
+        explanation: >-
+          Bar 7 is the right end, so `right_max[7]` is its own height, 0, and `min(5, 0) - 0` is
+          0. With `left_max` alone it would hold 5, but nothing on its right holds the water in.
+
   - id: tap-subtracted-prefix
     format: tap-cell
     heading: Tap the prefix to subtract

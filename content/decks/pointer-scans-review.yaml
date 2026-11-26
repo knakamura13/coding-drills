@@ -905,3 +905,159 @@ questions:
         explanation: >-
           `l` starts at `i + 1`, so each scan looks only after the fixed item. The first -2 at
           index 0 is out of reach once `i` is 1.
+
+  - id: merge-from-back-review
+    heading: What does the list hold?
+    tags: [two-pointers]
+    prompt: |-
+      `a` holds `m` sorted values, then one spare slot for each value of the sorted list `b`.
+      `merge_into` fills `a` from the back. `i >= 0 and ...` reads `a[i]` only while `i >= 0`,
+      since `and` stops at a false left side. Without it, `a[-1]` would read the last cell.
+
+      ```python
+      def merge_into(a, m, b):
+          i, j = m - 1, len(b) - 1
+          w = m + len(b) - 1
+          while j >= 0:
+              if i >= 0 and a[i] > b[j]:
+                  a[w] = a[i]
+                  i -= 1
+              else:
+                  a[w] = b[j]
+                  j -= 1
+              w -= 1
+
+      a = [1, 6, 8, 0, 0, 0]
+      merge_into(a, 3, [2, 7, 9])
+      ```
+
+      What does `a` hold after the first three passes?
+    options:
+      - id: leftover-kept
+        text: "`[1, 6, 8, 7, 8, 9]`"
+        explanation: >-
+          9 beats 8, so it goes into index 5 and `j` moves. 8 beats 7, so it goes into index 4
+          and `i` moves. 7 beats 6 and goes into index 3. Index 2 has not been written yet, so it
+          still holds the 8 that was copied out of it.
+      - id: cleared
+        text: "`[1, 6, 0, 7, 8, 9]`"
+        explanation: >-
+          That empties index 2 when its 8 is copied. An assignment writes only the cell on its
+          left, so the 8 stays at index 2 until a later pass writes over it.
+      - id: smaller-back
+        text: "`[1, 6, 8, 1, 6, 8]`"
+        explanation: >-
+          That sends the smaller value to the back. The test writes `a[i]` only when it is larger
+          than `b[j]`, so the larger of the two goes into `a[w]` on every pass.
+      - id: move-both
+        text: "`[1, 6, 8, 2, 7, 9]`"
+        explanation: >-
+          That moves `i` and `j` after every write. Only the pointer whose value was written
+          moves, so the 8 is still in play after the 9 is placed.
+    correct: leftover-kept
+    followUps:
+      cleared:
+        prompt: After `a[4] = a[2]` copies the 8, what does `a[2]` hold?
+        options:
+          - id: still-eight
+            text: Still 8, until a later pass writes there
+          - id: zero
+            text: 0, since the value moved out
+          - id: shorter
+            text: Nothing, the list gets one cell shorter
+        correct: still-eight
+        explanation: >-
+          The right side of `=` is only read. The old 8 is a leftover, and it is replaced when
+          `w` comes down to index 2.
+      smaller-back:
+        prompt: On the first pass, `a[2]` is 8 and `b[2]` is 9. Which one goes into `a[5]`?
+        options:
+          - id: nine
+            text: 9, the larger, since index 5 is the last slot
+          - id: eight
+            text: 8, the smaller
+          - id: both
+            text: Both, one after the other
+        correct: nine
+        explanation: >-
+          Filling from the back means the largest value left goes in first. Each list is sorted,
+          so the largest value left is at `a[i]` or at `b[j]`.
+      move-both:
+        prompt: After 9 is written into `a[5]`, which pointer moves?
+        options:
+          - id: only-j
+            text: Only `j`, since the 9 came from `b`
+          - id: both
+            text: Both `i` and `j`
+          - id: only-i
+            text: Only `i`
+        correct: only-j
+        explanation: >-
+          The 8 at `a[i]` lost the comparison but has not been placed, so it stays in play for
+          the next pass.
+
+  - id: rotate-three-reversals-review
+    heading: What does it print?
+    tags: [two-pointers]
+    prompt: |-
+      `reverse` reverses `nums` from index `l` to index `r` in place, both included.
+
+      ```python
+      def reverse(nums, l, r):
+          while l < r:
+              nums[l], nums[r] = nums[r], nums[l]
+              l += 1
+              r -= 1
+
+      nums = [4, 8, 1, 6, 3, 9, 5]
+      k = 3
+      reverse(nums, 0, len(nums) - 1)
+      reverse(nums, 0, k - 1)
+      reverse(nums, k, len(nums) - 1)
+      print(nums)
+      ```
+    options:
+      - id: rotated-right
+        text: "`[3, 9, 5, 4, 8, 1, 6]`"
+        explanation: >-
+          The first call gives `[5, 9, 3, 6, 1, 8, 4]`. Reversing indices 0 to 2 gives 3, 9, 5,
+          and reversing indices 3 to 6 gives 4, 8, 1, 6. The last three values moved to the front
+          in their old order, which rotates the list right by 3.
+      - id: undone
+        text: "`[4, 8, 1, 6, 3, 9, 5]`"
+        explanation: >-
+          That assumes the two short reversals undo the long one. Each one reverses only its own
+          part, so the two parts keep the places the first call gave them.
+      - id: rotated-left
+        text: "`[6, 3, 9, 5, 4, 8, 1]`"
+        explanation: >-
+          That moves the first three values to the back. The first call brings the original's
+          back end to the front, and the next two calls leave each part where it is.
+    correct: rotated-right
+    followUps:
+      undone:
+        prompt: After the first call, `nums` is `[5, 9, 3, 6, 1, 8, 4]`. What does `reverse(nums, 0, 2)` give?
+        options:
+          - id: front-only
+            text: "`[3, 9, 5, 6, 1, 8, 4]`"
+          - id: original
+            text: "`[4, 8, 1, 6, 3, 9, 5]`"
+          - id: back-only
+            text: "`[5, 9, 3, 4, 8, 1, 6]`"
+        correct: front-only
+        explanation: >-
+          It swaps indices 0 and 2, then stops when `l` and `r` meet at index 1. The cells from
+          index 3 on are not touched.
+      rotated-left:
+        prompt: After the first call, which values sit at indices 0 to 2?
+        options:
+          - id: last-three
+            text: 5, 9 and 3, the original's last three in reverse order
+          - id: first-three
+            text: 4, 8 and 1, the first three values of the original
+          - id: middle
+            text: 1, 6 and 3, the middle values
+        correct: last-three
+        explanation: >-
+          Reversing the whole list brings the back to the front. The next two calls only put
+          each part back in its own order.

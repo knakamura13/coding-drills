@@ -589,6 +589,103 @@ questions:
           `s[left:right + 1]` is valid, every substring that ends at `right` and starts at `left`
           or later is valid.
 
+  - id: cover-record-first
+    heading: Which plan fits?
+    tags: [sliding-window, hash-map]
+    workedExample: |-
+      Consider `s = "cbcb"` and `need = {"b": 2}`. `missing` starts at 1, since `need` names one
+      letter. It drops when a count rises to what `need` asks for, and it rises when a count
+      falls below that.
+
+      1. The first `b` brings `b` to 1 of 2, so `missing` stays 1. A `c` is not in `need`, so it
+         never changes `missing`.
+      2. The second `b` brings `b` to 2 of 2, so `missing` drops to 0, and the window
+         `c, b, c, b` covers `need`.
+      3. Dropping the left `c` leaves both `b`s, so `b, c, b` still covers `need`. Dropping the
+         next `b` takes `b` to 1, so `missing` is 1 again and `c, b` does not cover it.
+      4. So the shortest window that covers `need` is `b, c, b`, of length 3.
+    prompt: |-
+      To find the shortest substring of `s` that holds at least as many copies of each letter as
+      `need` asks for, a window counts its letters, and `missing` counts the letters of `need`
+      that the window holds too few of. Adding a letter can bring its count up to what `need`
+      asks for, and removing one can take it back below. The window covers `need` exactly when
+      `missing` is 0.
+
+      For `s = "xaaxbbc"` and `need = {"a": 2, "b": 1}` the answer is 4, from `a, a, x, b`.
+      Which plan computes it?
+    options:
+      - id: drop-then-record
+        text: 'Add each letter; while `missing` is 0, drop the left letter, then record the length'
+        explanation: >-
+          Recording after a removal can measure a window that the removal just broke. When the
+          `b` arrives, dropping the first `a` leaves `a, x, b`, one `a` short, and this plan
+          records its 3.
+      - id: record-then-drop
+        text: 'Add each letter; while `missing` is 0, record the length, then drop the left letter'
+        explanation: >-
+          While `missing` is 0 the window covers `need`, so its length is a real answer, and any
+          removal may be the one that breaks it. Recording before each removal measures the
+          window while it still covers. When the `b` arrives, this records 5 for
+          `x, a, a, x, b`, drops the `x`, records 4, then drops an `a` and stops.
+      - id: record-once
+        text: 'Add each letter; once `missing` is 0, record the length, then drop letters while it is 0'
+        explanation: >-
+          That measures one window per pass, before any letter is dropped. When the `b` arrives
+          it records 5 for `x, a, a, x, b`, and the shorter covering window the loop reaches next
+          is never measured. It returns 5.
+      - id: record-after
+        text: 'Add each letter; drop letters while `missing` is 0, then record the length'
+        explanation: >-
+          The loop stops only once a letter has fallen short, so after it the window never covers
+          `need`. This plan records those windows, starting with the lone `x` on the first pass,
+          and returns 1.
+    correct: record-then-drop
+    followUps:
+      drop-then-record:
+        prompt: >-
+          The window is `a, a, x, b`, and the left `a` leaves. Does `a, x, b` still cover
+          `need = {"a": 2, "b": 1}`?
+        options:
+          - id: short
+            text: No, it holds one `a`, and `need` asks for two
+          - id: holds-both
+            text: Yes, it still holds an `a` and a `b`
+          - id: not-checked
+            text: Yes, since the loop has not tested `missing` again yet
+        correct: short
+        explanation: >-
+          A removal can take a letter below its count, and that removal is the one that ends the
+          loop. The window it leaves does not cover `need`, so its length must not be recorded.
+      record-once:
+        prompt: >-
+          When the `b` arrives, `x, a, a, x, b` covers `need`. Which shorter window ending at that
+          `b` also covers it?
+        options:
+          - id: drop-x
+            text: '`a, a, x, b`, once the `x` is dropped'
+          - id: none
+            text: None, since the first covering window is the shortest
+          - id: drop-two
+            text: '`a, x, b`, once the `x` and an `a` are dropped'
+        correct: drop-x
+        explanation: >-
+          Dropping a letter the window has to spare keeps it covering, so one pass can go through
+          several covering windows. Each one has to be measured before the next removal.
+      record-after:
+        prompt: A loop drops letters from the left while `missing` is 0. When does it stop?
+        options:
+          - id: broken
+            text: When a removal leaves a letter short, so the window no longer covers `need`
+          - id: shortest
+            text: When the window is as short as it can be and still covers `need`
+          - id: first
+            text: When the window covers `need` for the first time
+        correct: broken
+        explanation: >-
+          For the longest window with at most `k` types, the loop repairs a broken window, so the
+          record comes after it. Here the loop runs while the window is valid and stops once it
+          breaks, so the record has to come first.
+
   - id: left-moves-total
     format: step-trace
     heading: Predict each step

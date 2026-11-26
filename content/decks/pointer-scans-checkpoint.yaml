@@ -1,6 +1,6 @@
 id: pointer-scans-checkpoint
 title: "Pointer scans: checkpoint"
-description: Return unique pairs or triples, trace an in-place compaction, or find the call that breaks a suggested scan, on new inputs. Most items combine two or more of the path's skills.
+description: Return unique pairs or triples, square a sorted list, trace an in-place compaction, or find the call that breaks a suggested scan, on new inputs. Most items combine two or more of the path's skills.
 heading: What does this print?
 
 questions:
@@ -464,6 +464,98 @@ questions:
         explanation: >-
           The skip looks back, so the first copy of a value always gets its scan, and that scan
           can still use the next copy as `nums[l]`.
+
+  - id: checkpoint-sorted-squares
+    heading: What does it hold?
+    tags: [two-pointers]
+    prompt: |-
+      `nums` is sorted and holds negative numbers. `[0] * len(nums)` makes a list of zeros, one
+      per item. The loop runs while `l <= r`, so the cell where the two pointers meet is used
+      too.
+
+      ```python
+      def sorted_squares(nums):
+          out = [0] * len(nums)
+          l, r = 0, len(nums) - 1
+          w = len(nums) - 1
+          while l <= r:
+              if abs(nums[l]) > abs(nums[r]):
+                  out[w] = nums[l] * nums[l]
+                  l += 1
+              else:
+                  out[w] = nums[r] * nums[r]
+                  r -= 1
+              w -= 1
+          return out
+      ```
+
+      For `sorted_squares([-5, -4, 1, 2, 3, 6])`, what does `out` hold after the first three
+      passes?
+    options:
+      - id: largest-back
+        text: "`[0, 0, 0, 16, 25, 36]`"
+        explanation: >-
+          Pass 1: 5 is not above 6, so 36 goes into index 5 and `r` moves to 4. Pass 2: 5 is
+          above 3, so 25 goes into index 4 and `l` moves to 1. Pass 3: 4 is above 3, so 16 goes
+          into index 3 and `l` moves to 2. The largest square is always at one end, so `out`
+          fills in sorted order from the back.
+      - id: no-abs
+        text: "`[0, 0, 0, 4, 9, 36]`"
+        explanation: >-
+          That compares `nums[l]` with `nums[r]` as signed values. -5 is below everything on the
+          right, so `r` would move on every pass. The test compares `abs` values, and 5 is above
+          3.
+      - id: smaller-back
+        text: "`[0, 0, 0, 1, 16, 25]`"
+        explanation: >-
+          That writes the smaller square into `out[w]` on every pass. The test picks the end with
+          the larger `abs` value, so the first pass writes 36, not 25.
+      - id: from-front
+        text: "`[36, 25, 16, 0, 0, 0]`"
+        explanation: >-
+          Those are the right squares in the wrong cells. `w` starts at the end of `out` and steps
+          toward the front.
+    correct: largest-back
+    followUps:
+      no-abs:
+        prompt: Pass 2 compares `nums[l] = -5` with `nums[r] = 3`. Which end does the test pick?
+        options:
+          - id: left
+            text: The left end, since 5 is above 3
+          - id: right
+            text: The right end, since 3 is above -5
+          - id: neither
+            text: Neither, the two ends tie
+        correct: left
+        explanation: >-
+          `abs` drops the sign, so the test compares sizes. A large negative number has a large
+          square: `-5 * -5` is 25.
+      smaller-back:
+        prompt: Which value does the first pass write into `out[5]`?
+        options:
+          - id: thirty-six
+            text: 36, the square of 6
+          - id: twenty-five
+            text: 25, the square of -5
+          - id: one
+            text: 1, the smallest square
+        correct: thirty-six
+        explanation: >-
+          The end with the larger `abs` value is written, and `w` starts at the last index. So
+          the largest square goes in first, at the back.
+      from-front:
+        prompt: Where does `w` start, and which way does it move?
+        options:
+          - id: back
+            text: At the last index, moving back one cell each pass
+          - id: front
+            text: At index 0, moving forward one cell each pass
+          - id: middle
+            text: At the middle, moving outward
+        correct: back
+        explanation: >-
+          Each pass finds the largest square left, at one of the two ends. So `out` is filled
+          from its largest value, at the back.
 
   - id: checkpoint-debug-unsorted
     heading: Which call does it fail on?

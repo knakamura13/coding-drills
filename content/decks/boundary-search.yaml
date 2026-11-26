@@ -1,6 +1,6 @@
 id: boundary-search
 title: Boundary search
-description: Find an insertion point, decide which side keeps an equal value, and search a rotated list. Each card asks for one decision, with a worked example on hand.
+description: Find an insertion point, decide which side keeps an equal value, find a peak, and search a rotated list. Each card asks for one decision, with a worked example on hand.
 heading: What happens next?
 
 questions:
@@ -487,6 +487,83 @@ questions:
         explanation: >-
           Sorted order allows more copies right of the probe. Only searching on shows where the
           copies end.
+
+  - id: peak-rising-step
+    format: drag-pointers
+    heading: Place the bounds
+    tags: [binary-search]
+    workedExample: |-
+      Consider `nums = [1, 8, 6, 4, 2, 3]` with `lo = 0` and `hi = 5`. A peak is larger than each
+      neighbor it has, neighbors always differ, and outside the list counts as lower.
+
+      1. The probe is `mid = (0 + 5) // 2 = 2`. `nums[2] = 6` is larger than `nums[3] = 4`, so the
+         step from index 2 to index 3 goes down.
+      2. Walk left from index 2 while the cell to the left is larger. The walk stops by index 0,
+         since outside counts as lower. Where it stops, both neighbors are smaller: the left one
+         by the stop rule, and the right one is the 4 or the cell the walk came from.
+      3. So a peak lies at index 2 or to its left, and `hi = mid` keeps indices 0 to 2, index 2
+         included. Here the walk stops on the 8 at index 1.
+    prompt: >-
+      A peak is a value larger than each neighbor it has. In `nums`, neighbors always differ,
+      and outside the list counts as lower than any value, so an end cell can be a peak.
+      `find_peak` returns the index of any one peak. Its range from `lo` to `hi` always holds a
+      peak, and `hi` starts on the last index, not past the end, because a peak is always a real
+      cell. The first pass probes `mid = 3` and finds `nums[3] < nums[4]`. Drag `lo` and `hi` to
+      the range that pass keeps.
+    code: |
+      def find_peak(nums):
+          lo, hi = 0, len(nums) - 1
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if nums[mid] < nums[mid + 1]:
+                  ...  # which update?
+              else:
+                  hi = mid
+          return lo
+    sequence:
+      kind: array
+      name: nums
+      cells: [3, 10, 6, 4, 5, 9, 7, 2]
+    markers:
+      - { name: mid, at: 3 }
+    pointers:
+      - name: lo
+        start: 0
+        correct: 4
+        explanation: >-
+          4 is below 5, so the step from index 3 to index 4 goes up. Walking right while the next
+          value is larger must stop on a peak by index 7, since outside counts as lower. So a peak
+          lies right of `mid`, and `lo = mid + 1` puts `lo` on 4. Index 3 can't be a peak, since
+          the 5 beside it is larger.
+        misses:
+          - index: 0
+            explanation: >-
+              Leaving `lo` on 0 drops nothing. 4 is below 5, so walking right from index 4 while
+              the next value is larger must stop on a peak: index 3 and everything left of it can
+              go. With `hi` still on 7, the next pass would probe index 3 again and the loop would
+              never end. The 10 at index 1 is a peak, but the loop has not read it.
+          - index: 3
+            explanation: >-
+              That is `lo = mid`. Index 3 holds 4, smaller than the 5 after it, so it can't be a
+              peak. In a two-cell range, `lo = mid` also leaves `lo` where it was, and the loop
+              never ends.
+          - index: 5
+            explanation: >-
+              The 9 at index 5 is a peak, but the loop has read only indices 3 and 4. One pass
+              drops only the part it has ruled out.
+        elsewhere: The step from 4 to 5 goes up, so a peak lies right of `mid`, and `lo` moves to index 4.
+      - name: hi
+        start: 7
+        correct: 7
+        explanation: >-
+          `hi` stays on 7. The step up says a peak lies to the right, so nothing on that side is
+          dropped.
+        misses:
+          - index: 3
+            explanation: >-
+              That is `hi = mid`, the update for a step that goes down. Here 4 is below 5, so the
+              search keeps the right part.
+        elsewhere: A step up keeps the right part, so `hi` stays on index 7.
 
   - id: which-half-sorted
     heading: Which part is sorted?

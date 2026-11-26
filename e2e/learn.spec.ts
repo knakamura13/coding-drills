@@ -870,7 +870,7 @@ test.describe('trace the steps', () => {
 		// The first load (in beforeEach) came before the setting, so always load once more.
 		await answeredWholeDeck(page);
 		await page.goto(URL);
-		for (let attempt = 0; attempt < 40 && (await onScreen(page)).id !== 'all-equal-trace'; attempt++) await page.goto(URL);
+		for (let attempt = 0; attempt < 60 && (await onScreen(page)).id !== 'all-equal-trace'; attempt++) await page.goto(URL);
 		await expect(stepCount(page)).toHaveText('Step 1 of 3');
 		await expect(page.getByRole('button', { name: 'Check' })).toHaveCount(0);
 		await page.getByRole('button', { name: /^Index 2,/ }).click();
