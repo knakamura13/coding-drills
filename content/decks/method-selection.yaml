@@ -1,6 +1,6 @@
 id: method-selection
 title: Method selection
-description: Name the fact that decides the method, contrast two methods that could work, and back one with a trace or a counterexample. Each card has a worked example on hand.
+description: Name the fact that decides the method, contrast two methods that could work, and justify one for the task asked. Each card has a worked example on hand.
 heading: Which method fits?
 
 questions:
@@ -8,18 +8,19 @@ questions:
     heading: Which fact decides it?
     tags: [sorting, arrays-strings]
     workedExample: |-
-      Consider `nums = [7, 2, 4]` with `k = 6` and the task "do any two values total 6?". Sorting
-      first is safe when the task has the same answer on the sorted list.
+      Several methods can fit one task, and one fact about the task or its input decides which is
+      safe. Consider `nums = [7, 2, 4]`, `k = 6` and the task "do any two values total 6?", which a
+      scan from both ends could answer once the list is sorted.
 
-      1. Sorting gives `[2, 4, 7]`. It moves values to new places, but it keeps every value.
-      2. A pair is any two of the values, wherever they sit. The values are the same after sorting,
-         so the pairs are the same, and `2 + 4 = 6` is in both lists.
+      1. Sorting gives `[2, 4, 7]`. It moves values to new indices, but it keeps every value.
+      2. A pair is any two values, wherever they sit. The values are unchanged, so the pairs are too,
+         and `2 + 4 = 6` is in both lists.
       3. So the answer cannot change, and sorting first is safe for this task.
     prompt: |-
-      Now take `nums = [1, 5, 2]` with `k = 3`, and two tasks:
+      Take `nums = [1, 5, 2]` with `k = 3`, and two tasks:
 
       1. Do any two values total 3?
-      2. Does some run of consecutive values total 3?
+      2. Does some subarray total 3?
 
       Sorted, the list is `[1, 2, 5]`. Which fact decides whether sorting first is safe for a task?
     options:
@@ -27,21 +28,21 @@ questions:
         text: Whether the task cares which values sit side by side
         explanation: >-
           Task 1 asks about values only, and 1 + 2 = 3 before and after sorting. Task 2 asks about
-          runs. In `[1, 5, 2]` the runs total 1, 5, 2, 6, 7 and 8, so none totals 3. Sorting puts
-          the 1 beside the 2 and invents the run `1, 2`.
+          subarrays. In `[1, 5, 2]` the subarrays total 1, 5, 2, 6, 7 and 8, so none totals 3.
+          Sorting puts the 1 beside the 2 and invents the subarray `1, 2`.
       - id: negatives
         text: Whether the list holds any negative values at all
         explanation: Nothing here is negative. Does task 2 still change its answer after sorting?
       - id: size
         text: Whether `k` is larger than every value in the list
-        explanation: Would the run `1, 2` exist in the original list for any `k`?
+        explanation: Would the subarray `1, 2` exist in the original list for any `k`?
       - id: cost
         text: Whether sorting fits in the time budget for the task
         explanation: Even if sorting were free, would task 2 give the same answer after it?
     correct: neighbors
     followUps:
       negatives:
-        prompt: Sorting `[1, 5, 2]` invents the run `1, 2`. What did sorting change?
+        prompt: Sorting `[1, 5, 2]` invents the subarray `1, 2`. What did sorting change?
         options:
           - { id: adjacency, text: Which values are neighbors }
           - { id: signs, text: The sign of some values }
@@ -49,46 +50,119 @@ questions:
         correct: adjacency
         explanation: >-
           Sorting keeps every value and the total, and it changes no sign. It gives values new
-          neighbors, and a run is defined by its neighbors.
+          neighbors, and a subarray is defined by its neighbors.
       size:
-        prompt: Is `1, 2` a run of the original list `[1, 5, 2]`?
+        prompt: Is `1, 2` a subarray of the original list `[1, 5, 2]`?
         options:
           - { id: no, text: 'No, the 5 sits between them' }
           - { id: values, text: 'Yes, both values are in the list' }
           - { id: k, text: 'Yes, once `k` is at least 3' }
         correct: no
         explanation: >-
-          A run is consecutive positions in the original list. The 1 and the 2 sit at positions 0
-          and 2, so any run holding both also holds the 5. Changing `k` does not change that.
+          A subarray is consecutive indices of the original list. The 1 and the 2 sit at indices 0
+          and 2, so any subarray holding both also holds the 5. Changing `k` does not change that.
       cost:
         prompt: Suppose sorting were free. Would sorting first be safe for task 2?
         options:
-          - { id: no, text: 'No, it changes which runs exist' }
+          - { id: no, text: 'No, it changes which subarrays exist' }
           - { id: free, text: 'Yes, a free step cannot change an answer' }
           - { id: positive, text: 'Yes, because every value is positive' }
         correct: no
         explanation: >-
           Cost and correctness are separate questions. Sorting changes which values are
-          neighbors, so it changes the answer to a task about runs, whatever it costs.
+          neighbors, so it changes the answer to a task about subarrays, whatever it costs.
+
+  - id: space-decides-pair
+    heading: Which fact rules it out?
+    tags: [two-pointers, hash-map, complexity]
+    workedExample: |-
+      Two methods find two values that total a target: a set of seen values, which looks up
+      `target - x` before it adds each `x`, and a scan from both ends, which needs a sorted list.
+      Consider an unsorted list of `n` values and a limit of O(n) time.
+
+      1. The set makes one pass, and each lookup costs O(1) on average, so it fits in O(n).
+      2. The scan needs the list sorted first, and a sort costs O(n log n), over the limit.
+      3. So both methods find the pair, and the time limit is the stated fact that rules out the
+         scan.
+    prompt: |-
+      Extra space is the memory a method uses beyond its input. The task: in a sorted list of `n`
+      values, do two values at different indices total `target`? The method must use O(1) extra
+      space.
+
+      A set of seen values and a scan from both ends would both find the pair. Which fact rules
+      out the set?
+    options:
+      - id: space
+        text: The O(1) extra space limit, since the set can grow to hold n values
+        explanation: >-
+          The set stores each value it passes, so on a list with no pair it ends up holding all n
+          of them, which is O(n) extra space. The scan from both ends keeps only two indices, and
+          the sorted order tells it which one to move.
+      - id: sorted
+        text: The sorted order, since a set of seen values needs an unsorted list
+        explanation: >-
+          The set never reads the order. On unsorted `[6, 1, 4, 3]` with target 10 it finds 6 + 4
+          when the 4 arrives, and it would find the pair on a sorted list too.
+      - id: indices
+        text: The two different indices, since a set can pair a value with itself
+        explanation: >-
+          The set looks up `target - x` before it adds `x`, so `x` is never paired with itself. On
+          `[3, 3]` with target 6, the second 3 finds the first one.
+      - id: time
+        text: The time, since each set lookup reads every value stored so far
+        explanation: >-
+          A set lookup costs O(1) on average, not a read of every value. One pass is O(n), the
+          same as the scan. No time limit is stated, and time is not what the set breaks.
+    correct: space
+    followUps:
+      sorted:
+        prompt: A set of seen values runs on unsorted `[6, 1, 4, 3]` with target 10. What does it return?
+        options:
+          - { id: found, text: '`True`, when the 4 finds the 6 already in the set' }
+          - { id: missed, text: '`False`, since the list is not sorted' }
+          - { id: error, text: 'An error, since a set needs its values in order' }
+        correct: found
+        explanation: >-
+          At the 4 it looks up 10 - 4 = 6, which it added first. A set answers "seen before?"
+          whatever the order, so sorting neither helps it nor rules it out.
+      indices:
+        prompt: On `[5, 2]` with target 10, the set reaches the 5 first. What does it look up, and what does it hold?
+        options:
+          - { id: empty, text: 'It looks up 5 in an empty set, so the 5 is not paired with itself' }
+          - { id: self, text: 'It looks up 5 after adding it, so it pairs the 5 with itself' }
+          - { id: skip, text: 'It skips the lookup for the first value' }
+        correct: empty
+        explanation: >-
+          The lookup comes before the add, so the set holds only earlier values. The 5 finds
+          nothing, then the 2 looks up 8 and finds nothing, so the call returns `False`.
+      time:
+        prompt: About how long does one lookup of `target - x` in a set take?
+        options:
+          - { id: constant, text: 'O(1) on average, however many values it holds' }
+          - { id: linear, text: 'O(n), one check per value stored' }
+          - { id: log, text: 'O(log n), as in a binary search' }
+        correct: constant
+        explanation: >-
+          A set finds a value by its hash, so a lookup costs O(1) on average. The whole pass is
+          O(n). What the set costs is memory, one entry per value it passes.
 
   - id: select-value-search
     heading: What does the search run over?
     tags: [binary-search]
     workedExample: |-
-      Consider sorted `prices = [12, 25, 31, 40, 58]` and the task of finding the index where 37
-      belongs. Binary search probes an index and uses the sorted order to drop half of what is left.
+      Binary search can run over any range where a yes-or-no test switches once, from false to
+      true. Consider sorted `prices = [12, 25, 31, 40, 58]` and the test "the value at index `i` is
+      at least 37".
 
-      1. The probe at index 2 reads 31, below 37. The list is sorted, so `prices[0]` and `prices[1]`
-         are below 37 too, and the search drops indexes 0 to 2.
-      2. The probe at index 4 reads 58, and then the probe at index 3 reads 40. Both are at least
-         37, so every value from index 3 on is at least 37.
-      3. So 37 belongs at index 3. Dropping half was legal because the test "at least 37" is false
-         at every index up to 2 and true at every index from 3 on, so each probe shows which side of
-         that switch it is on.
+      1. The test is false at indices 0 to 2 (12, 25 and 31) and true at indices 3 and 4 (40 and
+         58). The sorted order makes it switch exactly once.
+      2. So a probe at any index shows which side of the switch it is on, and the search can drop
+         the other side.
+      3. The search ends at the first index where the test is true, 3, which is where 37 belongs.
     prompt: |-
-      A different task: parcels ship in the order given. Each day a truck loads parcels in order until the next one would go over its capacity, then leaves. Find the smallest capacity that ships every parcel within `D` days.
+      Parcels ship in the order given. Each day a truck loads parcels in order until the next one would go over its capacity, then leaves. Find the smallest capacity that ships every parcel within `D` days.
 
-      Binary search fits this task too. What does it search over, and what makes that legal?
+      Binary search fits this task. What does it search over, and what makes that legal?
     options:
       - id: capacities
         text: Capacities from the largest parcel to the total; more room never adds days
@@ -96,18 +170,18 @@ questions:
           Below the largest parcel nothing ships, and at the total weight one day is enough. A
           bigger truck never needs an extra day, so the capacities that work form one block at the
           top, and the search finds where that block starts. The parcels are never sorted.
-      - id: indexes
-        text: Indexes of the parcel list, since binary search needs a list to probe
+      - id: indices
+        text: Indices of the parcel list, since binary search needs a list to probe
         explanation: What would an index of the parcel list tell you about a capacity?
-      - id: sorted-indexes
-        text: Indexes after sorting the parcels by weight, so the cut sits in one place
+      - id: sorted-indices
+        text: Indices after sorting the parcels by weight, so the cut sits in one place
         explanation: The trucks load in the given order. What could sorting do to the days needed?
       - id: sorted-only
         text: Capacities, but only when the parcels arrive sorted from light to heavy
         explanation: Take the parcels in any order. Can a larger capacity ever need more days?
     correct: capacities
     followUps:
-      indexes:
+      indices:
         prompt: The answer is a capacity. Is it always one of the parcel weights?
         options:
           - { id: between, text: 'No, it can fall between or above them' }
@@ -116,13 +190,13 @@ questions:
         correct: between
         explanation: >-
           Parcels `2, 4, 1, 5` with 2 days need capacity 6, which is no parcel's weight. The search
-          runs over a range of numbers, not over positions in the list.
-      sorted-indexes:
+          runs over a range of numbers, not over indices of the list.
+      sorted-indices:
         prompt: Parcels ship in order. Can sorting them change the days a capacity needs?
         options:
           - { id: yes, text: 'Yes, it changes which parcels share a day' }
           - { id: total, text: 'No, the total weight stays the same' }
-          - { id: positions, text: 'No, sorting only moves parcels around' }
+          - { id: moves, text: 'No, sorting only moves parcels around' }
         correct: yes
         explanation: >-
           At capacity 6, `2, 4, 1, 5` ships in 2 days (`2, 4` then `1, 5`). Sorted to `1, 2, 4,
@@ -145,7 +219,7 @@ questions:
     heading: Tap the value it drops first
     tags: [two-pointers, hash-map]
     workedExample: |-
-      Consider sorted `nums = [1, 3, 6, 9]` with `target = 9` and the opposite-ends scan, which
+      Consider sorted `nums = [1, 3, 6, 9]` with `target = 9` and a scan from both ends, which
       starts at `left = 0` and `right = 3`.
 
       1. The first sum is `nums[0] + nums[3] = 1 + 9 = 10`, over 9, so the scan drops `right`,
@@ -154,7 +228,7 @@ questions:
          `nums[left] = 1`, so the 9 plus any of them is at least 10, and the 9 pairs with nothing.
       3. Next, `1 + 6 = 7` is under 9, so `left` moves to the 3, and `3 + 6 = 9` is found.
     prompt: >-
-      Below, the same scan runs on a list that is not sorted, with `target = 4`. It
+      Below, a scan from both ends runs on a list that is not sorted, with `target = 4`. It
       returns `False`, though 1 + 3 = 4. Tap the value of that pair the scan drops first.
     code: |
       def has_pair(nums, target):
@@ -206,9 +280,9 @@ questions:
       3. A total of 9 is not over 9, so it stops with `left = 2`. A fixed width moves `left` one
          cell per pass, and a total limit moves it as many cells as the total needs.
     prompt: >-
-      This task is different: find the longest run with total at most
-      `S = 8`, where no value is negative. The window holds `2, 1, 3, 2` (total 8), and the next
-      pass adds the 6. Drag `left` and `right` to where they sit when that pass ends.
+      Below, the task is the longest subarray with total at most `S = 8`, where no value is
+      negative. The window holds `2, 1, 3, 2` (total 8), and the next pass adds the 6. Drag `left`
+      and `right` to where they sit when that pass ends.
     code: |
       best = total = left = 0
       for right in range(len(nums)):
@@ -313,178 +387,150 @@ questions:
           The heap is capped at 10, so each step is O(log 10), a constant. Over n readings that is
           O(n log 10), which is O(n).
 
-  - id: justify-trace-capacity
-    format: step-trace
-    heading: Predict each step
-    tags: [binary-search, python]
+  - id: greedy-or-table
+    heading: Which method gives the fewest?
+    tags: [greedy, dp]
     workedExample: |-
-      Consider parcels `2, 4` that ship in order with `D = 1`. The search runs over capacities, from
-      `lo = 4`, the largest parcel, to `hi = 6`, the total.
+      Consider coins of 1, 2 and 5, each usable any number of times, and the fewest coins that pay
+      9. Largest first takes the largest coin that fits until nothing is owed. A table fills
+      `few[a]` for every amount from 0 up, trying each coin as the last one.
 
-      1. No capacity below 4 can ship the 4, and capacity 6 ships both parcels in one day, so the
-         answer lies from `lo` to `hi`.
-      2. The first `mid` is `(4 + 6) // 2 = 5`. At capacity 5 the truck takes the 2, and adding the
-         4 would make 6, over 5, so the 4 waits for day 2. That is 2 days, over `D`, so `lo` moves
-         to `mid + 1 = 6`.
-      3. Now `lo == hi == 6`, so the search returns 6. A capacity that shipped in time would instead
-         have set `hi = mid`.
-    prompt: >-
-      Below, parcels `2, 4, 1, 5` ship in order with `D =
-      2`. The cells are the capacities 5 to 12. Predict each step.
-    code: |
-      def days_needed(parcels, cap):
-          days, load = 1, 0
-          for w in parcels:
-              if load + w > cap:
-                  days += 1
-                  load = 0
-              load += w
-          return days
-
-      def least_capacity(parcels, D):
-          lo, hi = max(parcels), sum(parcels)
-          while lo < hi:
-              mid = (lo + hi) // 2
-              if days_needed(parcels, mid) <= D:
-                  hi = mid
-              else:
-                  lo = mid + 1
-          return lo
-
-      least_capacity([2, 4, 1, 5], 2)
-    sequence: { kind: array, name: cap, cells: [5, 6, 7, 8, 9, 10, 11, 12] }
-    start:
-      - { name: lo, at: 0 }
-      - { name: hi, at: 7 }
-    steps:
-      - line: 13
-        ask: First pass, `mid` is 8. Where is `hi` after it?
-        pointer: hi
-        correct: 3
-        explanation: >-
-          At capacity 8 the truck takes `2, 4, 1` (7) and then `5`: 2 days, which meets `D`. So
-          `hi` drops to 8.
-        misses:
-          - index: 7
-            explanation: Capacity 8 ships in 2 days, which meets `D = 2`, so `hi` moves down.
-          - index: 4
-            explanation: '`hi` takes `mid` itself, not `mid + 1`. Only `lo` adds one.'
-        elsewhere: A capacity that works sets `hi` to `mid`, here 8.
-      - line: 13
-        ask: Next, `mid` is 6. Where is `hi` after this pass?
-        pointer: hi
-        correct: 1
-        explanation: >-
-          At 6 the truck takes `2, 4`, then `1, 5`: 2 days. Capacity 6 works, so `hi` drops to 6.
-        misses:
-          - index: 3
-            explanation: Capacity 6 also ships in 2 days, so `hi` moves again.
-          - index: 2
-            explanation: '`hi` takes `mid`, which is 6, not 7.'
-        elsewhere: Capacity 6 works, so `hi` drops to `mid`, which is 6.
-      - line: 13
-        ask: Next, `mid` is 5. Where is `lo` after this pass?
-        pointer: lo
-        correct: 1
-        explanation: >-
-          At 5 the truck takes `2`, then `4, 1`, then `5`: 3 days, over `D`. So `lo` moves to 6
-          and meets `hi`.
-        misses:
-          - index: 0
-            explanation: Capacity 5 needs 3 days, over `D = 2`, so `lo` moves past it.
-        elsewhere: A capacity that fails sets `lo` to `mid + 1`, here 6.
-      - line: 12
-        ask: What does the call return?
-        options:
-          - id: six
-            text: '6'
-            explanation: >-
-              `lo` and `hi` meet at 6. Capacity 6 ships in 2 days and 5 needs 3, so 6 is the
-              smallest that works.
-          - id: five
-            text: '5'
-            explanation: 'Capacity 5 needs 3 days: `2`, then `4, 1`, then `5`.'
-          - id: seven
-            text: '7'
-            explanation: Capacity 7 works, but 6 works too and is smaller.
-        correct: six
-
-  - id: justify-window-counterexample
-    heading: Which input rules it out?
-    tags: [prefix-sum, sliding-window, hash-map]
-    workedExample: |-
-      Consider a method for the largest total of any run of consecutive values that returns the
-      total of the whole list. One input where a method gives the wrong answer is enough to rule it
-      out.
-
-      1. Take `nums = [3, -5, 4]`. The method returns `3 - 5 + 4 = 2`.
-      2. The run `4` on its own totals 4, and 4 is larger than 2, so the right answer is at least 4.
-      3. So on this input the method's 2 is wrong. That one input rules the method out, whatever it
-         does on other lists.
+      1. Largest first pays 9 as 5 + 2 + 2, three coins.
+      2. The table builds `few[9]` from `few[8]`, `few[7]` and `few[4]`, one for each last coin 1,
+         2 and 5. Those hold 3, 2 and 2, so `few[9]` is 1 + 2, which is 3.
+      3. Both give 3 here. Largest first commits to one coin at each step, while the table keeps the
+         smallest count over every last coin.
     prompt: |-
-      The task: count the runs of consecutive values that total exactly `k`, where values can be negative. Prefix counts do it in O(n) expected time. A teammate offers this window instead:
+      Coins of 1, 5 and 6 can each be used any number of times, and the task is the fewest coins
+      that pay exactly 10. Largest first takes the largest coin that fits until nothing is owed.
+      The table below tries each coin as the last one.
 
       ```python
-      def window_count(nums, k):
-          count = total = left = 0
-          for right in range(len(nums)):
-              total += nums[right]
-              while total > k and left <= right:
-                  total -= nums[left]
-                  left += 1
-              if total == k:
-                  count += 1
-          return count
+      def fewest(coins, amount):
+          few = [0] + [float('inf')] * amount
+          for a in range(1, amount + 1):
+              for c in coins:
+                  if c <= a:
+                      few[a] = min(few[a], 1 + few[a - c])
+          return few[amount]
       ```
 
-      Which input shows the window gives the wrong count?
+      Which method gives the fewest coins for 10?
     options:
-      - id: signed
-        text: '`[1, -1, 1]` with `k = 1`'
+      - id: table
+        text: The table, which returns 2 (5 + 5), while largest first uses five coins
         explanation: >-
-          Three runs total 1: the first `1`, `1, -1, 1`, and the last `1`. The window counts 2.
-          The total never goes over 1, so it never drops the first 1, and the last `1` alone is
-          never its window. Prefix counts find all 3.
-      - id: mixed
-        text: '`[3, 1, 2]` with `k = 3`'
-        explanation: Which runs total 3, and does the window reach each one?
-      - id: pair
-        text: '`[3, -1, 1]` with `k = 3`'
-        explanation: This list has a negative value. Which runs total 3, and does the window reach each?
-      - id: repeats
-        text: '`[4, 4, 4]` with `k = 4`'
-        explanation: Every value here is positive. What does dropping from the left always do?
-    correct: signed
+          Largest first takes the 6 and owes 4, which only four 1s pay: 6 + 1 + 1 + 1 + 1, five
+          coins. The table reaches `few[10]` from `few[5]`, which is 1, plus a last 5, so it
+          returns 2. It tries every last coin, so a first pick that looks good cannot trap it.
+      - id: either
+        text: Either one, since the 1 coin lets largest first find 2 coins as well
+        explanation: Largest first takes the 6 first. What is left to pay, and which coins fit it?
+      - id: faster
+        text: Largest first, since it finds the same count in fewer steps
+        explanation: Count the coins largest first uses for 10. Is it the same as the table's?
+      - id: uses-six
+        text: Largest first, since the fewest coins always include the largest coin, 6
+        explanation: Does 5 + 5 use a 6? How many coins does it use?
+    correct: table
     followUps:
-      mixed:
-        prompt: On `[3, 1, 2]` with `k = 3` the window counts 2. How many runs total 3?
+      either:
+        prompt: Largest first takes a 6 from 10. How does it pay the 4 that is left?
         options:
-          - { id: two, text: '2, the `3` alone and `1, 2`' }
-          - { id: one, text: '1, the `3` alone' }
-          - { id: three, text: '3, adding the whole list' }
-        correct: two
+          - { id: ones, text: 'With four 1s, so it uses five coins in all' }
+          - { id: five, text: 'With a 5, since 5 is close to 4' }
+          - { id: backs-up, text: 'It backs up and pays 5 + 5 instead' }
+        correct: ones
         explanation: >-
-          The whole list totals 6, so only `3` and `1, 2` count. The window finds both, so this
-          input agrees with prefix counts and rules nothing out.
-      pair:
-        prompt: On `[3, -1, 1]` with `k = 3` the window counts 2. How many runs total 3?
+          Only coins that fit can be taken, and the 5 and 6 are larger than 4, so four 1s pay it.
+          A 1 coin lets largest first finish, but it does not make the count the fewest.
+      faster:
+        prompt: How many coins does largest first use for 10, against the table's 2?
         options:
-          - { id: two, text: '2, the `3` alone and the whole list' }
-          - { id: one, text: '1, the `3` alone' }
-          - { id: zero, text: '0, since the -1 hides every run' }
-        correct: two
+          - { id: five, text: 'Five, 6 + 1 + 1 + 1 + 1' }
+          - { id: two, text: 'Two, the same as the table' }
+          - { id: three, text: 'Three, 6 + 4' }
+        correct: five
         explanation: >-
-          `3, -1` totals 2 and `-1, 1` totals 0, so only `3` and the whole list count. The window's
-          totals are 3, 2 and 3, so it finds both. A negative value can break the window, but not on
-          this input.
-      repeats:
-        prompt: Every value in `[4, 4, 4]` is positive. Can the window miss a run on a list like that?
+          Speed matters only between methods that give the right answer. Largest first is quick,
+          but five coins is not the fewest, so its speed does not make up for a wrong count.
+      uses-six:
+        prompt: What is the fewest coins that pay 10 when the payment must include a 6?
         options:
-          - { id: no, text: 'No, so this input cannot show it is wrong' }
-          - { id: repeats, text: 'Yes, repeated values confuse the window' }
-          - { id: singles, text: 'Yes, it misses runs of length 1' }
-        correct: no
+          - { id: five, text: 'Five, since the 4 left takes four 1s' }
+          - { id: two, text: 'Two, a 6 and a 4' }
+          - { id: four, text: 'Four, a 6 and three 1s' }
+        correct: five
         explanation: >-
-          With positive values, dropping from the left always lowers the total, so the window stops
-          at the only start that can total `k`. It counts all 3 runs here, the same as prefix
-          counts.
+          After a 6, the 4 left can only be paid with 1s, since 5 and 6 are too big. That makes
+          five coins, and a 6 with three 1s pays only 9. Two coins, 5 + 5, use no 6 at all.
+
+  - id: list-or-count
+    heading: Which task can the cache shrink?
+    tags: [dp, backtracking, recursion]
+    workedExample: |-
+      A search can decide each index in turn, taking or skipping its value, with the state
+      `(i, left)`: the next index to decide and the total still needed. Consider `nums = [1, 1, 1]`
+      and a total of 2, starting from `(0, 2)`.
+
+      1. Taking index 0 leads to `(1, 1)`, and skipping it leads to `(1, 2)`.
+      2. From `(1, 1)`, skipping index 1 leads to `(2, 1)`. From `(1, 2)`, taking index 1 also
+         leads to `(2, 1)`.
+      3. Two routes reach the same state. Whatever came before, both face the same rest of the
+         problem: total 1 from index 2 on.
+    prompt: |-
+      A subset is any choice of a list's items. `nums = [2, 3, 5, 7, 8]` has 3 subsets that total
+      10: `[2, 3, 5]`, `[2, 8]` and `[3, 7]`. Task A lists those subsets, and task B counts them.
+
+      A take-or-skip search over the indices has the state `(i, left)`: the next index to decide
+      and the total still needed. A cache keyed by `(i, left)` runs each state's body once.
+
+      For which task can the cache keep the work from growing with the number of answers?
+    options:
+      - id: count
+        text: Task B, since a state's result is one number, however many subsets it covers
+        explanation: >-
+          Every call that reaches `(i, left)` gets back one stored count, so the work is one body
+          per state. With 40 values of 1 and a total of 20 there are 137,846,528,820 subsets, yet
+          `i` runs from 0 to 40 and `left` from 0 to 20, so the count needs at most 861 bodies.
+      - id: list
+        text: Task A, since each state's list of subsets is built once and reused
+        explanation: What does a stored list for a state hold when that state leads to many subsets?
+      - id: both
+        text: Both tasks, since each state's body runs only once in either one
+        explanation: In task A, what does one body have to build from the lists it gets back?
+      - id: neither
+        text: Neither task, since a count must still reach every subset it counts
+        explanation: When a body adds two counts, which subsets does it build?
+    correct: count
+    followUps:
+      list:
+        prompt: A state leads to 1,000 subsets. What must its stored list hold?
+        options:
+          - { id: all, text: 'All 1,000 subsets, so building it takes at least 1,000 steps' }
+          - { id: one, text: 'One subset, since the cache keeps one answer per state' }
+          - { id: count, text: 'The number 1,000, as a count would' }
+        correct: all
+        explanation: >-
+          Task A must hand back every subset, so a stored list is as long as the answers it covers.
+          Reusing it saves a second search, but the subsets still have to be written out once each.
+      both:
+        prompt: In task A, a body joins the lists from its take call and its skip call. What does that cost?
+        options:
+          - { id: grows, text: 'At least one step per subset in the two lists' }
+          - { id: one, text: 'One step, the same as adding two counts' }
+          - { id: free, text: 'Nothing, since both lists come from the cache' }
+        correct: grows
+        explanation: >-
+          Each subset in the result has to be put there, so joining costs as much as the lists are
+          long. In task B the same body adds two numbers in one step.
+      neither:
+        prompt: "A body of the count returns `count(i + 1, left - nums[i]) + count(i + 1, left)`. What does it build?"
+        options:
+          - { id: number, text: 'One number, the sum of two counts' }
+          - { id: subsets, text: 'Every subset that the two calls cover' }
+          - { id: lists, text: 'Two lists of subsets, one from each call' }
+        correct: number
+        explanation: >-
+          The count adds what the two choices lead to and never writes a subset down. A cached
+          count of 1,000 is reused as one number, without visiting the 1,000 subsets again.

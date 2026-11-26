@@ -61,7 +61,7 @@ const COUNTS: Record<string, Record<string, number>> = {
 	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
 	'data-structures': { keep: 9, rewrite: 0, exam: 0, retire: 12 },
 	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
-	'problem-solving-patterns': { keep: 0, rewrite: 3, exam: 1, retire: 18 }
+	'problem-solving-patterns': { keep: 0, rewrite: 0, exam: 0, retire: 22 }
 };
 
 /** The 16 decks audited for #9. Decks written later for a path are mapped too, but stay out of these counts. */

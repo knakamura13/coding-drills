@@ -1,6 +1,6 @@
 id: method-selection-checkpoint
 title: "Method selection: checkpoint"
-description: Choose a method, trace it on a fresh input, and name an input that rules out its closest alternative. Each item combines the Method selection skills.
+description: Choose a method, trace it on a fresh input, and name an input that rules out its closest alternative, from greedy and tables to listing and counting. Each item combines the skills.
 heading: Which one is right?
 
 questions:
@@ -10,7 +10,7 @@ questions:
     tags: [binary-search, python]
     prompt: >-
       Chapters with these page counts are read in order and split between 2 readers, each taking
-      one unbroken run of chapters. Find the smallest page limit such that no reader reads more
+      one group of consecutive chapters. Find the smallest page limit such that no reader reads more
       than it. The cells are the limits 4 to 11. Predict each step.
     code: |
       def readers_needed(pages, limit):
@@ -74,7 +74,7 @@ questions:
         pointer: lo
         correct: 2
         explanation: >-
-          At 5 the runs are `3, 2`, then `1, 1`, then `4`: 3 readers, one too many. Limit 5 fails,
+          At 5 the groups are `3, 2`, then `1, 1`, then `4`: 3 readers, one too many. Limit 5 fails,
           so `lo` moves to 6.
         misses:
           - index: 0
@@ -90,7 +90,7 @@ questions:
           - id: six
             text: '6'
             explanation: >-
-              At 6 the runs are `3, 2, 1` and `1, 4`: 2 readers. So `hi` drops to 6 and meets
+              At 6 the groups are `3, 2, 1` and `1, 4`: 2 readers. So `hi` drops to 6 and meets
               `lo`. Limit 5 needed 3 readers.
           - id: seven
             text: '7'
@@ -106,68 +106,69 @@ questions:
     heading: Which method, and which input?
     tags: [prefix-sum, hash-map, sliding-window]
     prompt: >-
-      Values can be negative. Count the runs of consecutive values that total exactly `k`, in O(n)
-      expected time. Pick the method, and an input that rules out its closest alternative: a
+      Values can be negative. Count the subarrays that total exactly `k`, in O(n) time on
+      average. Pick the method, and an input that rules out its closest alternative: a
       window that drops values from the left while its total is over `k` and counts each time the
       total equals `k`.
     options:
       - id: right
-        text: Prefix counts; on `[5, -4, 2, -1]` with `k = 1` the window counts 0 of the 2 runs
+        text: Prefix sums; on `[5, -4, 2, -1]` with `k = 1` the window finds 0 of 2 subarrays
         explanation: >-
           `5, -4` and `2, -1` each total 1. The 5 alone is over 1, so the window drops it before
           the -4 arrives. After that the totals are -4, -2 and -3, never over 1, so `left` never
-          moves again and the window never holds `2, -1` alone. Counting earlier running totals in
-          a map, seeded with 0, finds both runs.
+          moves again and the window never holds `2, -1` alone. Counting earlier prefix sums in a
+          dictionary, seeded with 0, finds both subarrays.
       - id: wrong-input
-        text: Prefix counts; on `[4, -2, 3]` with `k = 5` the window misses the whole list
+        text: Prefix sums; on `[4, -2, 3]` with `k = 5` the window misses the whole list
         explanation: Run the window on `[4, -2, 3]`. Does its total ever go over 5?
       - id: window
-        text: The window; dropping from the left while over `k` never loses a run
+        text: The window; dropping from the left while over `k` never loses a subarray
         explanation: Can a value further right pull the total back down?
       - id: sort
         text: Sort, then the window; sorted values make the totals easier to track
-        explanation: Which runs exist once the values are sorted?
+        explanation: Which subarrays exist once the values are sorted?
     correct: right
     followUps:
       wrong-input:
-        prompt: On `[4, -2, 3]` with `k = 5`, how many runs does the window count?
+        prompt: On `[4, -2, 3]` with `k = 5`, how many subarrays does the window count?
         options:
-          - { id: one, text: '1, the whole list, which is the only run' }
-          - { id: zero, text: '0, since the -2 hides the run' }
+          - { id: one, text: '1, the whole list, which is the only one that totals 5' }
+          - { id: zero, text: '0, since the -2 hides the subarray' }
           - { id: dropped, text: '1, but only after it drops the 4' }
         correct: one
         explanation: >-
           The totals are 4, 2 and 5, never over 5, so nothing is dropped and the window counts the
-          whole list. No other run totals 5, so the window is right here and the input rules
+          whole list. No other subarray totals 5, so the window is right here and the input rules
           nothing out.
       window:
         prompt: On `[5, -4, 2, -1]` with `k = 1`, what does the window do with the 5 on its first pass?
         options:
           - { id: last, text: 'Drops it for good, since 5 is over `k`' }
           - { id: first, text: Keeps it until the -4 brings the total to 1 }
-          - { id: whole, text: 'Counts it, then keeps it for the next run' }
+          - { id: whole, text: 'Counts it, then keeps it for the next subarray' }
         correct: last
         explanation: >-
           The drop rule fires as soon as the total is over `k`, so the 5 leaves before the -4 can
-          pull the total back down. The run `5, -4` is lost, and a value further right can never
+          pull the total back down. The subarray `5, -4` is lost, and a value further right can never
           bring it back.
       sort:
-        prompt: Why can't sorting come before counting runs?
+        prompt: Why can't sorting come before counting subarrays?
         options:
           - { id: neighbors, text: It gives values new neighbors }
           - { id: cost, text: It changes the total of the list }
           - { id: negatives, text: It drops the negative values }
         correct: neighbors
         explanation: >-
-          A run is consecutive positions in the original order. Sorting gives values new neighbors,
-          so it can create or destroy runs, and the count it gives belongs to a different list.
+          A subarray is consecutive indices in the original order. Sorting gives values new
+          neighbors, so it can create or destroy subarrays, and the count it gives belongs to a
+          different list.
 
   - id: method-exam-tap-set-pass
     format: tap-cell
     heading: Tap where it returns True
     tags: [hash-map, two-pointers]
     prompt: >-
-      The opposite-ends scan returns `False` on this unsorted list with `target = 5`, though 3 + 2
+      A scan from both ends returns `False` on this unsorted list with `target = 5`, though 3 + 2
       = 5. The set pass below is the method that fits. Tap the cell it is reading when it returns
       `True`.
     code: |
@@ -184,7 +185,7 @@ questions:
     correct: 3
     explanation: >-
       At the 2 the pass looks for 5 - 2 = 3, which it added two cells earlier, so it returns
-      `True`. The opposite-ends scan dropped the 2 early (7 + 8, then 7 + 5, then 7 + 2 are all
+      `True`. The scan from both ends dropped the 2 early (7 + 8, then 7 + 5, then 7 + 2 are all
       over 5) because it assumed the list was sorted.
     misses:
       - index: 0
@@ -202,48 +203,48 @@ questions:
     heading: Which method, and which input?
     tags: [sliding-window, sorting]
     prompt: >-
-      Every value is at least 1. Find whether some run of consecutive values totals exactly `k`,
-      in O(n) time and O(1) extra space. Pick the method, and an input that rules out sorting the
+      Every value is at least 1. Find whether some subarray totals exactly `k`, in O(n) time and
+      O(1) extra space. Pick the method, and an input that rules out sorting the
       values first.
     options:
       - id: right
-        text: Window in the given order; sorting `[6, 2, 7, 3]` invents the run `2, 3` for `k = 5`
+        text: Window in the given order; sorting `[6, 2, 7, 3]` invents `2, 3` for `k = 5`
         explanation: >-
           With every value at least 1, dropping from the left always lowers the total, so the
-          window is safe and needs O(1) space. `[6, 2, 7, 3]` has no run totaling 5, but sorted
+          window is safe and needs O(1) space. `[6, 2, 7, 3]` has no subarray totaling 5, but sorted
           to `[2, 3, 6, 7]` it starts with `2, 3`.
       - id: wrong-input
-        text: Window in the given order; sorting `[4, 1, 3]` invents the run `1, 3` for `k = 4`
-        explanation: Look at `[4, 1, 3]` before sorting. Is `1, 3` already a run?
+        text: Window in the given order; sorting `[4, 1, 3]` invents `1, 3` for `k = 4`
+        explanation: Look at `[4, 1, 3]` before sorting. Is `1, 3` already a subarray?
       - id: prefix
-        text: Prefix counts; sorting `[6, 2, 7, 3]` invents the run `2, 3` for `k = 5`
-        explanation: How much space does a set of running totals take?
+        text: Prefix sums; sorting `[6, 2, 7, 3]` invents `2, 3` for `k = 5`
+        explanation: How much space does a set of prefix sums take?
       - id: sort-first
         text: Sort first, then the window; sorting keeps every value and the total
-        explanation: What does a run depend on besides its values?
+        explanation: What does a subarray depend on besides its values?
     correct: right
     followUps:
       wrong-input:
-        prompt: Which runs of `[4, 1, 3]` total 4?
+        prompt: Which subarrays of `[4, 1, 3]` total 4?
         options:
           - { id: both, text: 'Both `4` and `1, 3`' }
           - { id: none, text: Neither of them }
           - { id: only-four, text: Only the single `4` }
         correct: both
         explanation: >-
-          The 1 and the 3 are already neighbors, so the run exists before sorting too, and
+          The 1 and the 3 are already neighbors, so the subarray exists before sorting too, and
           sorting changes nothing here. A counterexample needs the sorted answer and the true
           answer to differ.
       prefix:
-        prompt: Prefix counts give the right answer. Which part of the task do they miss?
+        prompt: Prefix sums give the right answer. Which part of the task do they miss?
         options:
           - { id: space, text: The O(1) space limit }
           - { id: time, text: The O(n) time limit }
           - { id: wrong, text: Both of those limits }
         correct: space
         explanation: >-
-          A set of running totals grows with the list, so it takes O(n) space. Each lookup is
-          O(1) expected, so the time fits. With every value at least 1, the window gives the
+          A set of prefix sums grows with the list, so it takes O(n) space. Each lookup is O(1)
+          on average, so the time fits. With every value at least 1, the window gives the
           same answer in O(1) space.
       sort-first:
         prompt: Sorting keeps every value. What does it change?
@@ -253,6 +254,271 @@ questions:
           - { id: minimum, text: Whether any value is below 1 }
         correct: neighbors
         explanation: >-
-          A run is a stretch of neighbors in the original order. Sorting keeps the values and the
-          total but gives them new neighbors, so it can create runs and answers a question about
-          a different list.
+          A subarray is consecutive indices in the original order. Sorting keeps the values and
+          the total but gives them new neighbors, so it can create subarrays and answers a
+          question about a different list.
+
+  - id: method-exam-coins-stuck
+    heading: Which method, and which amount?
+    tags: [greedy, dp]
+    prompt: >-
+      Coins of 4, 6 and 9 can each be used any number of times. Find the fewest coins that pay
+      exactly `amount`, or report that no mix of these coins pays it. Pick the method, and an
+      amount that rules out its closest alternative: taking the largest coin that fits until
+      nothing is owed.
+    options:
+      - id: right
+        text: A fewest-coins table; for 12, largest first is left owing 3, though 6 + 6 pays it
+        explanation: >-
+          Largest first takes the 9, and no coin fits in the 3 left, so it reports no way. A table
+          that tries every coin as the last one builds 12 from 6, which one coin pays, so it finds
+          6 + 6. Without a coin of 1, committing to the largest coin can turn a payable amount into
+          a dead end.
+      - id: no-way
+        text: A fewest-coins table; for 11, largest first is left owing 2, though a mix pays it
+        explanation: Which mixes of 4s, 6s and 9s total exactly 11?
+      - id: agrees
+        text: A fewest-coins table; for 13, largest first uses more coins than it needs
+        explanation: How does largest first pay 13, and can fewer coins do it?
+      - id: greedy
+        text: Largest first; with no coin of 1, an amount it cannot finish has no way to pay
+        explanation: Where does largest first stop on 12? Can some other mix pay 12?
+    correct: right
+    followUps:
+      no-way:
+        prompt: Can any mix of 4s, 6s and 9s pay exactly 11?
+        options:
+          - { id: no, text: 'No, so reporting no way is right, and 11 rules nothing out' }
+          - { id: four-six, text: 'Yes, a 4 and a 6 and one more coin' }
+          - { id: nine, text: 'Yes, a 9 and a 4, once the extra is given back' }
+        correct: no
+        explanation: >-
+          Without a 9, every mix of 4s and 6s is even, and 11 is odd. With one 9 the rest is 2,
+          which no coin pays, and two 9s are already 18. Largest first and the table both report
+          no way, so they agree on 11.
+      agrees:
+        prompt: How does largest first pay 13?
+        options:
+          - { id: best, text: '9 + 4, two coins, the fewest since no coin is 13' }
+          - { id: stuck, text: 'It takes the 9, then stops owing 4' }
+          - { id: three, text: '9 + 4, but 6 + 6 + 1 also works' }
+        correct: best
+        explanation: >-
+          After the 9 it owes 4, and the 4 fits. No single coin is 13, so two coins is the fewest,
+          and largest first matches the table here. A counterexample needs an amount where the two
+          differ.
+      greedy:
+        prompt: Coins 4, 6 and 9. What does largest first do with 12?
+        options:
+          - { id: stuck, text: 'Takes the 9 and is left owing 3, though 6 + 6 pays 12' }
+          - { id: sixes, text: 'Takes two 6s, since a 9 would leave a remainder' }
+          - { id: over, text: 'Takes the 9, then pays the 3 with a 4' }
+        correct: stuck
+        explanation: >-
+          The 9 fits in 12, so the rule takes it and never looks back. No coin fits in 3, and the
+          amount must be paid exactly. An amount it cannot finish can still be payable.
+
+  - id: method-exam-domino-tasks
+    heading: Which task can skip building?
+    tags: [dp, backtracking]
+    prompt: >-
+      Dominoes 1 cell by 2 cells cover a strip 2 cells tall and 10 cells wide, with no gaps or
+      overlaps. Each domino stands upright in one column or lies flat across two. Task A prints
+      every covering, and task B prints how many coverings there are. Which task can be done
+      without building the coverings one by one, and how?
+    options:
+      - id: count
+        text: Only B, with a table that counts the 89 coverings in about 10 additions
+        explanation: >-
+          Look at the right end. Either one upright domino fills the last column, leaving a strip
+          one shorter, or two flat dominoes lie stacked across the last two columns, leaving a
+          strip two shorter. So `ways[i] = ways[i - 1] + ways[i - 2]`, with `ways[0] = ways[1] =
+          1`, which gives 89 at width 10. Task A has to print all 89, so it builds each one.
+      - id: per-column
+        text: Only B, with a table that counts 1,024 coverings, two choices per column
+        explanation: >-
+          A flat domino spans two columns. What has to cover the cells below one that lies across
+          the last two columns?
+      - id: both
+        text: Both, with a table that stores the coverings for each width as it goes
+        explanation: For width 10, how many coverings does that stored list hold?
+      - id: neither
+        text: Neither, since task B has to build each covering before counting it
+        explanation: When a table adds `ways[i - 1]` and `ways[i - 2]`, which coverings does it build?
+    correct: count
+    followUps:
+      per-column:
+        prompt: >-
+          The columns on the left are filled, and a flat domino covers the top cells of the next
+          two columns. What must cover the two bottom cells?
+        options:
+          - { id: stacked, text: 'A second flat domino, stacked under the first' }
+          - { id: upright, text: 'An upright domino in each of the two columns' }
+          - { id: either, text: 'Either a flat domino or two upright ones' }
+        correct: stacked
+        explanation: >-
+          An upright domino fills both cells of a column, and the top cells are taken. So flat
+          dominoes come in stacked pairs, and the strip is a row of single upright columns and
+          double flat blocks. That gives 1, 1, 2, 3, 5 and on up to 89, not 2 for every column.
+      both:
+        prompt: For width 10, what does a stored list of every covering hold, and what does building it take?
+        options:
+          - { id: all, text: 'All 89 coverings, so building it takes at least 89 steps' }
+          - { id: ten, text: 'One covering per column, so about 10 steps' }
+          - { id: one, text: 'One covering, since a table keeps one answer per width' }
+        correct: all
+        explanation: >-
+          A list of coverings is as long as the answers it holds, so storing them per width still
+          writes each covering. Only a count can stand for all 89 with one number.
+      neither:
+        prompt: What does `ways[i] = ways[i - 1] + ways[i - 2]` build?
+        options:
+          - { id: number, text: 'One number for width `i`, from two earlier numbers' }
+          - { id: coverings, text: 'Every covering of width `i`' }
+          - { id: two, text: 'The two coverings that end the strip' }
+        correct: number
+        explanation: >-
+          The line adds two counts and never draws a domino. The count for width 10 comes out of
+          about 10 additions, though it stands for 89 coverings.
+
+  - id: method-exam-debug-sorted-indices
+    heading: Which call fails?
+    tags: [two-pointers, sorting]
+    prompt: |-
+      A suggested solution returns the indices `[i, j]`, with `i < j`, of the two values in `nums` that total `target`. Each list below holds exactly one such pair, and `sorted(nums)` returns a new sorted list.
+
+      ```python
+      def pair_indices(nums, target):
+          nums = sorted(nums)
+          left, right = 0, len(nums) - 1
+          while left < right:
+              total = nums[left] + nums[right]
+              if total == target:
+                  return [left, right]
+              if total < target:
+                  left += 1
+              else:
+                  right -= 1
+          return None
+      ```
+
+      Which call returns the wrong indices?
+    options:
+      - id: moved
+        text: '`pair_indices([7, 3, 9, 4], 7)`'
+        explanation: >-
+          Sorted, the list is `[3, 4, 7, 9]`, and 3 + 4 sit at indices 0 and 1 there, so the call
+          returns `[0, 1]`. In the list passed in, the 3 is at index 1 and the 4 at index 3, so
+          the answer is `[1, 3]`. Sorting finds the right values but moves them, and the task asks
+          where they sit.
+      - id: sorted
+        text: '`pair_indices([1, 4, 6, 9], 13)`'
+        explanation: The list is already sorted. Does sorting move the 4 or the 9?
+      - id: ends
+        text: '`pair_indices([1, 7, 5, 9], 10)`'
+        explanation: This list is not sorted. Where do the 1 and the 9 sit before and after sorting?
+      - id: front
+        text: '`pair_indices([2, 4, 8, 6], 6)`'
+        explanation: This list is not sorted. Where do the 2 and the 4 sit before and after sorting?
+    correct: moved
+    followUps:
+      sorted:
+        prompt: What does `pair_indices([1, 4, 6, 9], 13)` return, and is it right?
+        options:
+          - { id: right, text: '`[1, 3]`, which is right, since sorting moves nothing' }
+          - { id: wrong, text: '`[0, 3]`, which is wrong' }
+          - { id: none, text: '`None`, since the scan misses the pair' }
+        correct: right
+        explanation: >-
+          4 + 9 is the pair, at indices 1 and 3. The list is already sorted, so the sorted copy
+          puts every value where it was, and the indices match.
+      ends:
+        prompt: What does `pair_indices([1, 7, 5, 9], 10)` return, and is it right?
+        options:
+          - { id: right, text: '`[0, 3]`, which is right, since the 1 and the 9 do not move' }
+          - { id: wrong, text: '`[1, 2]`, which is wrong' }
+          - { id: none, text: '`None`, since the list is not sorted' }
+        correct: right
+        explanation: >-
+          Sorting gives `[1, 5, 7, 9]`. The 7 and the 5 swap, but the pair 1 + 9 stays at indices
+          0 and 3. Sorting is wrong here only when it moves a value of the pair.
+      front:
+        prompt: What does `pair_indices([2, 4, 8, 6], 6)` return, and is it right?
+        options:
+          - { id: right, text: '`[0, 1]`, which is right, since the 2 and the 4 do not move' }
+          - { id: wrong, text: '`[2, 3]`, which is wrong' }
+          - { id: none, text: '`None`, since the list is not sorted' }
+        correct: right
+        explanation: >-
+          Sorting gives `[2, 4, 6, 8]`. The 8 and the 6 swap, but 2 + 4 stays at indices 0 and 1.
+          The call goes wrong only on a list where sorting moves a value of the pair.
+
+  - id: wp-exam-equal-weights
+    heading: Which method fits?
+    tags: [graph, bfs, complexity]
+    prompt: >-
+      A transit map has V stations and E one-way links, and every link takes exactly 3 minutes.
+      You need the fewest minutes from one station to every other station, in O(V + E) time.
+      Which method fits?
+    options:
+      - id: bfs
+        text: Breadth-first search, then multiply each edge count by 3
+        explanation: >-
+          When every link costs the same, the fewest links is also the fewest minutes, and BFS
+          finds fewest links in O(V + E). Multiplying by 3 turns links into minutes.
+      - id: dijkstra
+        text: Dijkstra's algorithm with a `heapq` binary heap
+        explanation: >-
+          It returns the right minutes, but every push and pop costs O(log V), so it runs in
+          O((V + E) log V). That misses the O(V + E) limit, and equal weights need no heap.
+      - id: bellman-ford
+        text: Bellman-Ford, relaxing every link V - 1 times
+        explanation: >-
+          It also returns the right minutes, but V - 1 passes over E links cost O(V * E), far
+          above O(V + E). Its extra power is for negative weights, and there are none.
+      - id: dfs
+        text: Depth-first search, keeping the time each station is first reached
+        explanation: >-
+          DFS follows one branch as deep as it goes, so it can reach a station first by a long
+          detour. The time it records is not always the fewest.
+    correct: bfs
+    followUps:
+      dijkstra:
+        prompt: Dijkstra's algorithm gives the right answer here. What rules it out?
+        options:
+          - id: log-factor
+            text: Its heap makes it O((V + E) log V), above the O(V + E) limit
+          - id: equal-wrong
+            text: It returns wrong times when every link has the same weight
+          - id: per-station
+            text: It needs a separate heap for every station on the map
+        correct: log-factor
+        explanation: >-
+          With equal weights the heap's order matches the order BFS visits nodes in, so the heap
+          only adds its log factor. BFS gets the same answers within the limit.
+      bellman-ford:
+        prompt: What does Bellman-Ford cost on this map?
+        options:
+          - id: v-times-e
+            text: O(V * E), since each of its V - 1 passes relaxes all E links
+          - id: v-plus-e
+            text: O(V + E), since every link is relaxed only once in total
+          - id: e-log-v
+            text: O(E log V), the same as Dijkstra's algorithm with a heap
+        correct: v-times-e
+        explanation: >-
+          Bellman-Ford repeats a full pass over every link up to V - 1 times. That repetition is
+          what lets it handle negative weights, and this map has none.
+      dfs:
+        prompt: Why can DFS reach a station first by a route that is not the fewest links?
+        options:
+          - id: deep-first
+            text: It follows one branch to its end before it tries a nearer station
+          - id: same-order
+            text: It cannot. It finds the fewest links, just visiting in another order
+          - id: no-cycles
+            text: It works correctly only on maps that have no cycles in them
+        correct: deep-first
+        explanation: >-
+          DFS goes deep before wide, so a station two links away can be reached first through a
+          branch ten links long. BFS goes wide first, so its first visit is the closest.
