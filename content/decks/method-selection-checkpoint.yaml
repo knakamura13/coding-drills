@@ -102,67 +102,6 @@ questions:
         also:
           - { name: hi, at: 2 }
 
-  - id: method-exam-signed-count
-    heading: Which method, and which input?
-    tags: [prefix-sum, hash-map, sliding-window]
-    prompt: >-
-      Values can be negative. Count the subarrays that total exactly `k`, in O(n) time on
-      average. Pick the method, and an input that rules out its closest alternative: a
-      window that drops values from the left while its total is over `k` and counts each time the
-      total equals `k`.
-    options:
-      - id: right
-        text: Prefix sums; on `[5, -4, 2, -1]` with `k = 1` the window finds 0 of 2 subarrays
-        explanation: >-
-          `5, -4` and `2, -1` each total 1. The 5 alone is over 1, so the window drops it before
-          the -4 arrives. After that the totals are -4, -2 and -3, never over 1, so `left` never
-          moves again and the window never holds `2, -1` alone. Counting earlier prefix sums in a
-          dictionary, seeded with 0, finds both subarrays.
-      - id: wrong-input
-        text: Prefix sums; on `[4, -2, 3]` with `k = 5` the window misses the whole list
-        explanation: Run the window on `[4, -2, 3]`. Does its total ever go over 5?
-      - id: window
-        text: The window; dropping from the left while over `k` never loses a subarray
-        explanation: Can a value further right pull the total back down?
-      - id: sort
-        text: Sort, then the window; sorted values make the totals easier to track
-        explanation: Which subarrays exist once the values are sorted?
-    correct: right
-    followUps:
-      wrong-input:
-        prompt: On `[4, -2, 3]` with `k = 5`, how many subarrays does the window count?
-        options:
-          - { id: one, text: '1, the whole list, which is the only one that totals 5' }
-          - { id: zero, text: '0, since the -2 hides the subarray' }
-          - { id: dropped, text: '1, but only after it drops the 4' }
-        correct: one
-        explanation: >-
-          The totals are 4, 2 and 5, never over 5, so nothing is dropped and the window counts the
-          whole list. No other subarray totals 5, so the window is right here and the input rules
-          nothing out.
-      window:
-        prompt: On `[5, -4, 2, -1]` with `k = 1`, what does the window do with the 5 on its first pass?
-        options:
-          - { id: last, text: 'Drops it for good, since 5 is over `k`' }
-          - { id: first, text: Keeps it until the -4 brings the total to 1 }
-          - { id: whole, text: 'Counts it, then keeps it for the next subarray' }
-        correct: last
-        explanation: >-
-          The drop rule fires as soon as the total is over `k`, so the 5 leaves before the -4 can
-          pull the total back down. The subarray `5, -4` is lost, and a value further right can never
-          bring it back.
-      sort:
-        prompt: Why can't sorting come before counting subarrays?
-        options:
-          - { id: neighbors, text: It gives values new neighbors }
-          - { id: cost, text: It changes the total of the list }
-          - { id: negatives, text: It drops the negative values }
-        correct: neighbors
-        explanation: >-
-          A subarray is consecutive indices in the original order. Sorting gives values new
-          neighbors, so it can create or destroy subarrays, and the count it gives belongs to a
-          different list.
-
   - id: method-exam-tap-set-pass
     format: tap-cell
     heading: Tap where it returns True
@@ -268,21 +207,23 @@ questions:
       nothing is owed.
     options:
       - id: right
-        text: A fewest-coins table; for 12, largest first is left owing 3, though 6 + 6 pays it
+        text: A fewest-coins table; for 16, largest first is left owing 1, though a mix pays it
         explanation: >-
-          Largest first takes the 9, and no coin fits in the 3 left, so it reports no way. A table
-          that tries every coin as the last one builds 12 from 6, which one coin pays, so it finds
-          6 + 6. Without a coin of 1, committing to the largest coin can turn a payable amount into
-          a dead end.
+          Largest first takes the 9 and then the 6, and no coin fits in the 1 left, so it reports no
+          way. A table that tries every coin as the last one builds 16 from `few[12]`, which is 2
+          (6 + 6), plus a last 4, so it finds 4 + 6 + 6, three coins. Without a coin of 1, committing
+          to the largest coin can turn a payable amount into a dead end.
       - id: no-way
         text: A fewest-coins table; for 11, largest first is left owing 2, though a mix pays it
         explanation: Which mixes of 4s, 6s and 9s total exactly 11?
       - id: agrees
-        text: A fewest-coins table; for 13, largest first uses more coins than it needs
-        explanation: How does largest first pay 13, and can fewer coins do it?
+        text: Largest first; for 13 it pays 9 + 4, as few coins as any mix
+        explanation: >-
+          That is true for 13, since no coin is 13. One amount where it matches the table does not
+          make it safe. Does it finish on every amount some mix pays?
       - id: greedy
         text: Largest first; with no coin of 1, an amount it cannot finish has no way to pay
-        explanation: Where does largest first stop on 12? Can some other mix pay 12?
+        explanation: Where does largest first stop on 16? Can some other mix pay 16?
     correct: right
     followUps:
       no-way:
@@ -297,26 +238,27 @@ questions:
           which no coin pays, and two 9s are already 18. Largest first and the table both report
           no way, so they agree on 11.
       agrees:
-        prompt: How does largest first pay 13?
+        prompt: Coins 4, 6 and 9. What does largest first do with 16?
         options:
-          - { id: best, text: '9 + 4, two coins, the fewest since no coin is 13' }
-          - { id: stuck, text: 'It takes the 9, then stops owing 4' }
-          - { id: three, text: '9 + 4, but 6 + 6 + 1 also works' }
-        correct: best
-        explanation: >-
-          After the 9 it owes 4, and the 4 fits. No single coin is 13, so two coins is the fewest,
-          and largest first matches the table here. A counterexample needs an amount where the two
-          differ.
-      greedy:
-        prompt: Coins 4, 6 and 9. What does largest first do with 12?
-        options:
-          - { id: stuck, text: 'Takes the 9 and is left owing 3, though 6 + 6 pays 12' }
-          - { id: sixes, text: 'Takes two 6s, since a 9 would leave a remainder' }
-          - { id: over, text: 'Takes the 9, then pays the 3 with a 4' }
+          - { id: stuck, text: 'Takes the 9 and the 6, and is left owing 1' }
+          - { id: sixes, text: 'Takes two 6s and a 4, since a 9 would leave 7' }
+          - { id: over, text: 'Takes the 9 and the 6, then pays the 1 with a 4' }
         correct: stuck
         explanation: >-
-          The 9 fits in 12, so the rule takes it and never looks back. No coin fits in 3, and the
-          amount must be paid exactly. An amount it cannot finish can still be payable.
+          The 9 fits in 16 and the 6 fits in the 7 left, and the rule never looks back. No coin fits
+          in 1, and the amount must be paid exactly, though 4 + 6 + 6 pays 16. Matching the table on
+          13 does not make it safe on 16.
+      greedy:
+        prompt: Can any mix of 4s, 6s and 9s pay exactly 16?
+        options:
+          - { id: yes, text: 'Yes, 4 + 6 + 6, though largest first stops owing 1' }
+          - { id: no, text: 'No, since largest first stops owing 1' }
+          - { id: one, text: 'Yes, 9 + 6 + 1' }
+        correct: yes
+        explanation: >-
+          Largest first takes the 9 and the 6, and then nothing fits in the 1 left, yet 4 + 6 + 6 is
+          exactly 16. An amount it cannot finish can still be payable, which the table finds by
+          trying every coin as the last one.
 
   - id: method-exam-domino-tasks
     heading: Which task can skip building?
