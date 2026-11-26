@@ -1,6 +1,6 @@
 id: repeated-states-review
-title: "Repeated states: review"
-description: Fresh recursions for the Repeated states skills, for recall on later days. No worked examples this time.
+title: "Memoization: review"
+description: Fresh recursions for the Memoization skills, for recall on later days. No worked examples this time.
 heading: What does the call solve?
 
 questions:
@@ -10,13 +10,14 @@ questions:
     tags: [dp, recursion]
     prompt: >-
       `fewest(i)` returns the fewest hops from stone `i` to the last stone, where `reach[i]` is the
-      longest hop allowed from stone `i`. Drag `whole` to the call that answers the question for
-      the whole row, and `stop` to the call that returns 0 without looping.
+      longest hop allowed from stone `i`, and `float('inf')` is a value larger than any number.
+      Drag `whole` to the call that answers the question for the whole row, and `stop` to the call
+      that returns 0 without looping.
     code: |
       def fewest(i):
           if i == len(reach) - 1:
               return 0
-          best = float("inf")
+          best = float('inf')
           last = min(i + reach[i], len(reach) - 1)
           for j in range(i + 1, last + 1):
               best = min(best, 1 + fewest(j))
@@ -143,8 +144,9 @@ questions:
     heading: What does the cache return?
     tags: [dp, backtracking, recursion]
     prompt: |-
-      `count(i)` counts the rising selections from `nums[i:]` that can follow `path`. Without a
-      cache, `count(0)` returns 8. Someone adds `@cache` above `def count(i)`.
+      `count(i)` counts the ways to extend `path` with items from `nums[i:]`, taken in order, where
+      each item added must be larger than the current last item of `path`. Without a cache,
+      `count(0)` returns 8. Someone adds `@cache` above `def count(i)`.
 
       ```python
       nums = [3, 1, 4, 2]
@@ -166,9 +168,9 @@ questions:
         text: "16, since each stored count was found while `path` was empty"
         explanation: >-
           The skip branch runs first, so every `count(i)` is first computed with nothing taken.
-          Those counts ignore the rising rule and count every subset, and later calls reuse them.
-          The result is 16. The answer depends on `path[-1]`, which the key leaves
-          out, so the state should be `(i, last)`.
+          Those counts ignore the larger-than rule and count every choice of items, and later calls
+          reuse them. The result is 16. The answer depends on `path[-1]`, which is not an argument,
+          so it has to become one before the result can be reused.
       - id: eight
         text: "8, since a cache only skips work and never changes a result"
         explanation: >-
@@ -248,13 +250,14 @@ questions:
       - id: type-error
         text: "It raises `TypeError`, since a list cannot be a cache key"
         explanation: >-
-          `@cache` stores results in a dict keyed by the arguments, and a list is unhashable. The
-          first call raises `TypeError: unhashable type: 'list'`. Passing a tuple, or
-          an index into a fixed list, gives the cache a key it can hash.
+          `@cache` stores results in a dict keyed by the arguments, and a list cannot be a dict
+          key, since it can change. The first call raises `TypeError: unhashable type: 'list'`.
+          Passing a tuple, or an index into a fixed list, gives the cache a key it can use.
       - id: equal-share
         text: "It prints 8, and equal lists share one cache entry"
         explanation: >-
-          Lists compare by value, but a list is mutable, so Python refuses to hash lists at all.
+          Lists compare by value, but a list can change, so Python refuses to use one as a key at
+          all.
       - id: never-hits
         text: "It prints 8, and no call hits, since each slice is a new list"
         explanation: >-
@@ -277,8 +280,8 @@ questions:
             text: Its items have an order, and keys must be unordered
         correct: mutable
         explanation: >-
-          A key's hash has to stay the same while it is in the dict. Tuples of hashable items
-          cannot change, so they can be keys.
+          A key has to stay the same while it is in the dict. A tuple of numbers cannot change, so
+          it can be a key.
       never-hits:
         prompt: When does `@cache` hash the arguments?
         options:
@@ -290,7 +293,7 @@ questions:
             text: Only when an earlier call had the same arguments
         correct: before-body
         explanation: >-
-          Every call is looked up first, so an unhashable argument fails at once. With a tuple,
+          Every call is looked up first, so a list argument fails at once. With a tuple,
           `total((4, 1, 3))` prints 8.
       skipped:
         prompt: Which change lets `@cache` work here?
@@ -303,8 +306,8 @@ questions:
             text: Call `total(sorted(nums))`, so equal lists look the same
         correct: tuple
         explanation: >-
-          Slicing a tuple gives a tuple, so every call gets a hashable key. A copied or sorted
-          list is still a list and still unhashable.
+          Slicing a tuple gives a tuple, so every call gets a key that cannot change. A copied or
+          sorted list is still a list, and still cannot be a key.
 
   - id: first-repeat-split-review
     format: tap-cell
@@ -354,9 +357,9 @@ questions:
     heading: Which call is shared?
     tags: [dp, recursion]
     prompt: >-
-      `diff(i, j)` is the best lead the player to move can get from `v[i..j]`, taking from either
-      end. `diff(1, 6)` calls `diff(2, 6)` and `diff(1, 5)`. Drag `i` and `j` to the one call that
-      both of those make.
+      `diff(i, j)` is the best lead the player to move can get from the values `v[i]` to `v[j]`,
+      taking from either end. `diff(1, 6)` calls `diff(2, 6)` and `diff(1, 5)`. Drag `i` and `j` to
+      the one call that both of those make.
     code: |
       def diff(i, j):
           if i > j:
@@ -526,7 +529,7 @@ questions:
           Every index is stored, but storing is not the problem. The check never accepts a
           `False`, so the stored values are never used.
       - id: key-error
-        text: Raises `KeyError`, since `get` reads indexes that are not stored
+        text: Raises `KeyError`, since `get` reads indices that are not stored
         explanation: >-
           `get` hands back a default for a missing key instead of raising. That default fails the
           `if` just as a stored `False` does.
@@ -678,8 +681,9 @@ questions:
       print(fib.cache_info())
       ```
 
-      Plain recursion makes 2,692,537 calls for `fib(30)`. How many times does the body of the
-      cached `fib` run?
+      Plain recursion makes 2,692,537 calls for `fib(30)`. `fib.cache_info()` reports how many
+      calls were hits and how many were misses. How many times does the body of the cached `fib`
+      run?
     options:
       - id: thirty-one
         text: 31, once for each argument from 0 to 30
@@ -735,8 +739,8 @@ questions:
             text: A hit returns at once, so the calls below it never start
           - id: smaller-calls
             text: Each call does less arithmetic, so more fit in the same time
-          - id: depth
-            text: The cache lowers the recursion depth, so fewer frames are made
+          - id: fewer-live
+            text: The cache keeps fewer calls live at once, so fewer frames are made
         correct: subtree-skipped
         explanation: >-
           Without the cache, the repeated `fib(28)` alone would make 1,028,457 calls. With the

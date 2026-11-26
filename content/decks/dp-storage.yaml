@@ -1,5 +1,5 @@
 id: dp-storage
-title: DP storage
+title: "DP: saving space"
 description: Keep only the past entries a table still reads, update old and new values in a safe order, and count states times work. Each card has a worked example on hand.
 heading: Which one is right?
 
@@ -9,8 +9,10 @@ questions:
     heading: Which entry is still needed?
     tags: [dp, python]
     workedExample: |-
-      Consider a table where step `i` reads `dp[i-1]` and `dp[i-2]`, and `dp[5]` has just been
-      written. An entry is still needed only while some later step reads it.
+      This path saves memory in dynamic programming (DP). A table often reads only a few recent
+      entries, so the older ones can be dropped. An entry is still needed only while some later
+      step reads it. Here step `i` reads `dp[i-1]` and `dp[i-2]`, and `dp[5]` has just been
+      written.
 
       1. The next step computes `dp[6]`, so it reads `dp[5]` and `dp[4]`. Both are still needed.
       2. Every step after that has a larger `i`, so its older read, `dp[i-2]`, lands on index 5 or
@@ -18,8 +20,7 @@ questions:
       3. So `dp[4]` is the oldest entry still needed: the next index, 6, minus the farthest
          look-back, 2. `dp[3]` and everything before it can be dropped.
     prompt: >-
-      Below, a
-      climber takes 1 or 3 stairs at a time, and `ways[7]` has just been written. Tap the
+      A climber takes 1 or 3 stairs at a time, and `ways[7]` has just been written. Tap the
       **oldest** entry that some later step still reads.
     code: |
       ways = [1, 1, 1]
@@ -29,7 +30,7 @@ questions:
     correct: 5
     explanation: >-
       The next step computes `ways[8]` and reads `ways[7]` and `ways[5]`. Every step after that
-      reads higher indexes still, so `ways[5]` is the oldest entry left in use. Three values,
+      reads higher indices still, so `ways[5]` is the oldest entry left in use. Three values,
       `ways[5]` to `ways[7]`, are all the loop needs from here on.
     misses:
       - index: 0
@@ -88,6 +89,7 @@ questions:
       return ways[n]
       ```
 
+      Old entries can be dropped to save extra space, the memory a function uses beyond its input.
       What is the least the loop must keep from the past to compute every later entry?
     options:
       - id: two-reads
@@ -100,18 +102,18 @@ questions:
         text: The last five entries, `ways[i-5]` up to `ways[i-1]`, read now or later
         explanation: >-
           Every index from `i-5` to `i-1` is read either now or on a later step, and nothing older
-          is ever read again. Keeping those five entries takes O(1) slots, and the loop still
-          takes O(n) steps under unit-cost arithmetic.
+          is ever read again. Keeping those five entries takes O(1) extra space, and the loop
+          still takes O(n) steps under unit-cost arithmetic.
       - id: last-three
         text: The last three entries, because the two reads are 5 - 2 = 3 cells apart
         explanation: >-
-          Step `i` needs `ways[i-5]`. A three-entry window holds `ways[i-3]` through
+          Step `i` needs `ways[i-5]`. Keeping three entries holds only `ways[i-3]` through
           `ways[i-1]`, so it would have dropped that value too soon.
       - id: whole-table
         text: The whole table, because the two reads are not next to each other
         explanation: >-
           A gap between reads does not force the whole table. Everything older than `i-5` is never
-          read again, so a fixed window of five entries is enough.
+          read again, so keeping the last five entries is enough.
     correct: last-five
     followUps:
       two-reads:
@@ -128,9 +130,9 @@ questions:
         correct: next-step
         explanation: >-
           Step `i + 1` reads back two entries to `i - 1`. Step `i + 4` reads back five to
-          the same index. The window keeps that value until its last read.
+          the same index. The value must be kept until its last read.
       last-three:
-        prompt: What sets how many past entries a rolling version must keep?
+        prompt: What sets how many past entries a loop that drops old entries must keep?
         options:
           - id: gap
             text: The gap between the two look-backs
@@ -141,7 +143,7 @@ questions:
         correct: farthest
         explanation: >-
           Step `i` reads back as far as `i-5`. Every index between `i-5` and `i-1` takes that
-          position on some later step, so the window has to span all five.
+          position on some later step, so the loop has to keep all five.
       whole-table:
         prompt: After `ways[20]` is computed, which step ever reads `ways[14]` again?
         options:
@@ -170,9 +172,9 @@ questions:
          `a = 2` and set `b = 4`. The one-line form reads only old values, so it gives `a = 2` and
          `b = 3`.
     prompt: >-
-      Below, a walker starts on stair 0 or 1, climbs 1
-      or 2 stairs at a time, and pays the cost of every stair it stands on. `a` and `b` hold the
-      cheapest totals for the two stairs before `i`. Predict each step.
+      A walker starts on stair 0 or 1, climbs 1 or 2 stairs at a time, and pays the cost of every
+      stair it stands on. `a` and `b` hold the cheapest totals for the two stairs before `i`. Two
+      variables that slide along the table like this are rolling variables. Predict each step.
     code: |
       def cheapest(cost):
           a, b = cost[0], cost[1]
@@ -196,7 +198,7 @@ questions:
           - id: stay
             text: a = 2, b = 3
             explanation: >-
-              `a` does change. The tuple moves the old `b` into `a`, so the window slides one stair
+              `a` does change. The tuple moves the old `b` into `a`, so the pair slides one stair
               to the right.
           - id: new-a
             text: a = 7, b = 8
@@ -263,6 +265,170 @@ questions:
         also:
           - { name: i, at: 5 }
 
+  - id: rolling-row-paths
+    heading: Which cells do the reads stand for?
+    tags: [dp, grid, python]
+    workedExample: |-
+      Consider a grid with 4 columns where a piece moves right or down, so
+      `ways[r][c] = ways[r - 1][c] + ways[r][c - 1]`. One list `row` starts as row 0,
+      `[1, 1, 1, 1]`, and each pass rewrites it in place, left to right, into the next row.
+
+      1. On the pass for row 1, `c = 1` and `c = 2` have run, so `row` is `[1, 2, 3, 1]`. The
+         entries left of `c = 3` already hold row 1, and `row[3]` still holds row 0.
+      2. So in `row[3] += row[2]`, the old `row[3]`, 1, is `ways[0][3]`, the cell above, and
+         `row[2]`, 3, is `ways[1][2]`, the cell to the left.
+      3. Those are the two cells the full table adds, so `row[3]` becomes 4, which is `ways[1][3]`.
+    prompt: |-
+      A piece moves right or down on a grid with 3 columns, so
+      `ways[r][c] = ways[r - 1][c] + ways[r][c - 1]`, and column 0 is all 1s. One list `row`
+      replaces the table: it starts as row 0, and each pass rewrites it in place, left to right,
+      into the next row.
+
+      ```python
+      row = [1, 1, 1]
+      for r in range(1, R):
+          for c in range(1, 3):
+              row[c] += row[c - 1]
+      ```
+
+      On the pass for row 2, which cells of the full table do `row[2]` and `row[1]` stand for when
+      `row[2] += row[1]` runs?
+    options:
+      - id: above-and-left
+        text: "`row[2]` is `ways[1][2]`, the cell above; `row[1]` is `ways[2][1]`, the cell to the left"
+        explanation: >-
+          `row[2]` has not been rewritten on this pass, so it still holds row 1. `row[1]` was
+          rewritten one step earlier, so it already holds row 2. Those are the cells the table
+          adds: 3 + 3 = 6, which is `ways[2][2]`.
+      - id: both-old
+        text: "Both are row 1: `row[2]` is `ways[1][2]` and `row[1]` is `ways[1][1]`"
+        explanation: >-
+          `row[1]` was rewritten on this pass before `c` reached 2, so it no longer holds row 1.
+          Adding `ways[1][1]` would count the diagonal, a move the piece cannot make.
+      - id: both-new
+        text: "Both are row 2: `row[2]` is `ways[2][2]` and `row[1]` is `ways[2][1]`"
+        explanation: >-
+          `ways[2][2]` is the cell being computed, so the line cannot read it yet. Until the write,
+          `row[2]` still holds row 1's value, the cell above.
+      - id: needs-two-rows
+        text: "Row 1 is already gone, so the cell above needs a second list"
+        explanation: >-
+          A pass rewrites one entry at a time, left to right. Every entry the pass has not reached
+          yet, `row[2]` among them, still holds row 1, so one list is enough.
+    correct: above-and-left
+    followUps:
+      both-old:
+        prompt: On the pass for row 2, which entries of `row` hold row 2 just before `row[2] += row[1]` runs?
+        options:
+          - { id: left-of-c, text: "`row[0]` and `row[1]`, the entries left of `c`" }
+          - { id: none, text: "None, since the pass writes the row only when it ends" }
+          - { id: all, text: "All three, since the pass started with row 2" }
+        correct: left-of-c
+        explanation: >-
+          Each `row[c] += row[c - 1]` changes `row[c]` at once. Column 0 is 1 in every row, and
+          `row[1]` was rewritten at `c = 1`, so the left neighbor is already row 2's value.
+      both-new:
+        prompt: Just before `row[2] += row[1]` runs, what does `row[2]` hold?
+        options:
+          - { id: above, text: "Row 1's count at column 2, the cell above" }
+          - { id: this-cell, text: "Row 2's count at column 2, the cell being computed" }
+          - { id: zero, text: "0, cleared for the new row" }
+        correct: above
+        explanation: >-
+          The pass rewrites `row[2]` only when this line runs. Until then the entry holds what the
+          last pass left there, the cell above.
+      needs-two-rows:
+        prompt: When the pass for row 2 reaches `c = 2`, which row does `row[2]` hold?
+        options:
+          - { id: row-one, text: "Row 1, since the pass has not reached it yet" }
+          - { id: row-two, text: "Row 2, since the pass for row 2 has started" }
+          - { id: lost, text: "Neither, since `row[1]` was just overwritten" }
+        correct: row-one
+        explanation: >-
+          A pass overwrites an entry only when it reaches that entry. The cell above is read just
+          before it is overwritten, so a second list would hold nothing the one list lacks.
+
+  - id: knapsack-two-rows
+    heading: What does the cell hold?
+    tags: [dp, python]
+    workedExample: |-
+      Consider item 1, weight 2 and worth 3, and item 2, weight 3 and worth 4. `best[i][c]` is the
+      best value from the first `i` items in a bag that holds weight `c`, each item packed at most
+      once. Row 1 is `[0, 0, 3, 3, 3, 3]` for capacities 0 to 5.
+
+      1. For `best[2][5]`, leaving item 2 out gives `best[1][5]`, which is 3.
+      2. Packing item 2 uses 3 of the 5, which leaves room 2. The best for room 2 before item 2
+         was considered is in row 1: `best[1][2]`, which is 3. So packing gives `3 + 4 = 7`.
+      3. The cell keeps the larger choice, so `best[2][5]` is 7, both items.
+    prompt: |-
+      This is the 0/1 knapsack table: each item is packed whole or not at all, at most once.
+      `best[i][c]` is the best value from the first `i` items in a bag that holds weight `c`. Each
+      cell takes the larger of two choices: leave item `i` out, or pack it on top of the best for
+      the room left, from the items before it. Item 1 weighs 3 and is worth 6, and item 2 weighs 2
+      and is worth 4.
+
+      ```
+      c          0  1  2  3  4  5  6
+      best[0]    0  0  0  0  0  0  0
+      best[1]    0  0  0  6  6  6  6
+      best[2]    0  0  4  6  ?
+      ```
+
+      What is `best[2][4]`?
+    options:
+      - id: six
+        text: "6: leaving item 2 out beats packing it on `best[1][2]`"
+        explanation: >-
+          Leaving item 2 out gives `best[1][4]`, 6. Packing it leaves room 2, and the best for
+          room 2 from item 1 alone is `best[1][2]`, 0, so packing gives 4. The larger is 6.
+      - id: eight
+        text: "8: item 2 packed on `best[2][2]`, which is 4"
+        explanation: >-
+          `best[2][2]` already holds item 2, so packing it again on top counts item 2 twice. The
+          room left must come from row 1, the items before item 2.
+      - id: four
+        text: "4: item 2 packed on `best[1][2]`, which is 0"
+        explanation: >-
+          That is the packing choice, but the cell also has the choice to leave item 2 out, which
+          keeps item 1 and is worth 6.
+      - id: ten
+        text: "10: item 2 packed on `best[1][4]`, which is 6"
+        explanation: >-
+          `best[1][4]` already packs item 1, which uses 3 of the 4. Item 2 weighs 2 more, so both
+          together need room 5, and capacity 4 cannot hold them.
+    correct: six
+    followUps:
+      eight:
+        prompt: Which items can the value in `best[2][2]` already hold?
+        options:
+          - { id: item-two, text: "Item 2, which is why packing item 2 on it is wrong" }
+          - { id: item-one, text: "Only item 1, since row 2 is built from row 1" }
+          - { id: none, text: "None, since it is the empty bag" }
+        correct: item-two
+        explanation: >-
+          Row 2 may use items 1 and 2, and `best[2][2]` is item 2 alone. Each item is packed at
+          most once, so packing item 2 reads the room left in row 1.
+      four:
+        prompt: What are the two choices for `best[2][4]`?
+        options:
+          - { id: both, text: "Leave item 2 out, `best[1][4]`, or pack it, `best[1][2] + 4`" }
+          - { id: pack-only, text: "Only pack item 2, since row 2 is for item 2" }
+          - { id: skip-only, text: "Only leave item 2 out, since it does not fit" }
+        correct: both
+        explanation: >-
+          A row adds one item, and the best bag may or may not use it. Here leaving it out keeps
+          item 1, worth 6, which beats item 2 alone, worth 4.
+      ten:
+        prompt: Packing item 2 into a bag of capacity 4 leaves how much room for the items before it?
+        options:
+          - { id: two, text: "2, so the cell reads `best[1][2]`" }
+          - { id: four, text: "4, so the cell reads `best[1][4]`" }
+          - { id: six, text: "6, the capacity plus the item's weight" }
+        correct: two
+        explanation: >-
+          Item 2 takes 2 of the 4, so the rest of the bag holds weight 2 at most. The pack choice
+          reads the column `c - 2`, not `c`.
+
   - id: storage-tap-reused-item
     format: tap-cell
     heading: Where does the row go wrong?
@@ -280,10 +446,12 @@ questions:
          it would be `max(3, 0 + 2) = 3`, the right value, so capacity 2 is the first one that ends
          wrong.
     prompt: >-
-      Below, each
-      item may be packed once. The row holds the best value per capacity for an item of weight 3
-      worth 4. A pass now adds an item of weight 2 worth 3, going **left to right**. Tap the
-      first capacity that ends with a wrong value.
+      One row `dp` can replace the two-row knapsack table. Before a pass it holds the best value
+      per capacity for the items so far, and the pass rewrites it in place to add one item,
+      packed at most once. In `dp[w - wt] + val`, `dp[w - wt]` must be the best for the room left
+      before this item was considered, so it must be a value from before this pass. The row holds
+      the best for an item of weight 3 worth 4, and a pass adds an item of weight 2 worth 3, going
+      **left to right**. Tap the first capacity that ends with a wrong value.
     code: |
       wt, val = 2, 3
       for w in range(wt, len(dp)):
@@ -429,8 +597,9 @@ questions:
       3. So the total is `(A + 1) × k` checks, which is O(A × k). With `A = 100` and 3 coins that is
          `101 × 3 = 303` checks.
     prompt: |-
-      `dp[i]` is the length of the longest strictly rising run of picks that ends at `a[i]`, where
-      picks keep their order but need not be next to each other.
+      An increasing subsequence takes values from left to right, each larger than the one before,
+      and may skip values. `dp[i]` is the length of the longest increasing subsequence that ends
+      at `a[i]`.
 
       ```python
       dp = [1] * n
@@ -461,10 +630,10 @@ questions:
           smaller. A different method with binary search does reach O(n log n), but not this
           code.
       - id: exponential
-        text: O(2ⁿ), since every set of picks is a candidate
+        text: O(2ⁿ), which doubles with each added value, since every subsequence is a candidate
         explanation: >-
-          The table never lists sets of picks. It keeps one best length per end position and
-          builds it from earlier entries.
+          The table never lists subsequences. It keeps one best length per end index and builds
+          it from earlier entries.
     correct: quadratic
     followUps:
       linear:
@@ -505,23 +674,24 @@ questions:
             text: n² values
         correct: n
         explanation: >-
-          Many sets of picks end at the same position, and the table keeps only the best length
-          for each. That collapse is what makes it polynomial.
+          Many subsequences end at the same index, and the table keeps only the best length for
+          each. That is what keeps the work at O(n²) instead of O(2ⁿ).
 
   - id: storage-count-memo-calls
     heading: How much work and depth?
     tags: [dp, recursion, complexity]
     workedExample: |-
-      Consider `f(n)` under `@cache`, which returns `n` when `n <= 1` and `f(n // 2) + f(n // 3)`
-      otherwise, called as `f(12)`. The cache stores a result when its call returns, and a call
+      Consider `f(n)` under `@cache`, which returns 1 when `n <= 2` and `f(n - 2) + f(n - 3)`
+      otherwise, called as `f(10)`. The cache stores a result when its call returns, and a call
       whose argument is stored returns at once.
 
-      1. Starting from 12 and taking `n // 2` and `n // 3` again and again gives only seven
-         arguments: 12, 6, 4, 3, 2, 1 and 0.
+      1. Starting from 10 and taking `n - 2` and `n - 3` again and again reaches ten arguments: 0
+         to 8, and 10.
       2. The first call with each argument runs the body and stores the result, and a later call
-         with the same argument skips the body. So the body runs 7 times, once per argument.
-      3. Nothing is stored until a call returns, so the first chain, `f(12)`, `f(6)`, `f(3)`,
-         `f(1)`, is all on the stack at once. No chain is longer, so the deepest point is 4 frames.
+         with the same argument skips the body. So the body runs 10 times, once per argument.
+      3. Nothing is stored until a call returns, so the first chain, `f(10)`, `f(8)`, `f(6)`,
+         `f(4)`, `f(2)`, is live at once, one frame each on the stack. No chain is longer, so the
+         deepest point is 5 live calls.
     prompt: |-
       ```python
       from functools import cache
@@ -535,17 +705,17 @@ questions:
       ways(30)
       ```
 
-      How many times does the body run past the cache, and how many `ways` frames are on the stack
-      at the deepest point?
+      How many times does the body run past the cache, and how many `ways` calls are live (frames
+      on the stack) at the deepest point?
     options:
       - id: thirty-one-thirty
-        text: 31 body runs; at most 30 frames at once, one per value from 30 to 1
+        text: 31 body runs; at most 30 live calls, one per value from 30 to 1
         explanation: >-
           Arguments 0 to 30 are each computed once, 31 in all. The first chain goes 30, 29, ... down
-          to 1 before anything is cached, which is 30 frames. `ways(0)` is called later, from
-          `ways(2)`, at the same depth. So the time is O(n) and the stack is O(n) deep.
+          to 1 before anything is cached, which is 30 live calls. `ways(0)` is called later, from
+          `ways(2)`, with the same 30 calls live. So the time is O(n) and the stack is O(n) deep.
       - id: thirty-one-two
-        text: 31 body runs; at most 2 frames, since each call reads two cached values
+        text: 31 body runs; at most 2 live calls, since each call reads two cached values
         explanation: >-
           Nothing is in the cache when the first chain starts. Each call waits on `ways(n - 1)`
           before it returns, so the stack fills down to `ways(1)`.
@@ -555,10 +725,10 @@ questions:
           That is the count without the cache: 2,692,537 calls for `n = 30`. With the cache, a
           repeated argument is a lookup, so only 31 bodies run.
       - id: thirty-one-sixteen
-        text: 31 body runs; at most 16 frames, since half the calls step down by 2
+        text: 31 body runs; at most 16 live calls, since half the calls step down by 2
         explanation: >-
           The deepest chain always takes the `n - 1` call first. That chain steps down by 1 from 30
-          to 1, so it is 30 frames deep.
+          to 1, so 30 calls are live at once.
     correct: thirty-one-thirty
     followUps:
       thirty-one-two:
@@ -572,8 +742,8 @@ questions:
             text: The two base values, 0 and 1
         correct: empty
         explanation: >-
-          A cache fills from the bottom up as calls return. The first chain has to reach the base
-          case before any value exists, so the stack is about `n` frames deep at that point.
+          A cache fills from the bottom up as calls return. The first chain has to reach a stopping
+          case before any value exists, so about `n` calls are live at that point.
       millions:
         prompt: What happens on the second call to `ways(28)`?
         options:
@@ -599,4 +769,4 @@ questions:
         correct: minus-one
         explanation: >-
           Python evaluates the left operand first. Each call does the same, so the chain steps down
-          by 1 until it reaches a base case, 30 frames from the top.
+          by 1 until it reaches a stopping case, 30 live calls from the top.

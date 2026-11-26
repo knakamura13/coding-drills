@@ -177,36 +177,36 @@ New decks written for a skill path in the mastery tree. Each path splits into te
 | Problem-solving patterns #14 | Recursion: teaching levels | `recursive-calls` | done |
 | Problem-solving patterns #14 | Recursion: review variants | `recursive-calls-review` | done |
 | Problem-solving patterns #14 | Recursion: checkpoint | `recursive-calls-checkpoint` | done |
-| Problem-solving patterns #14 | Search state: teaching levels | `search-state` | done |
-| Problem-solving patterns #14 | Search state: review variants | `search-state-review` | done |
-| Problem-solving patterns #14 | Search state: checkpoint | `search-state-checkpoint` | done |
+| Problem-solving patterns #14 | Backtracking: teaching levels | `search-state` | done |
+| Problem-solving patterns #14 | Backtracking: review variants | `search-state-review` | done |
+| Problem-solving patterns #14 | Backtracking: checkpoint | `search-state-checkpoint` | done |
 | Problem-solving patterns #14 | Greedy choices: teaching levels | `greedy-choices` | done |
 | Problem-solving patterns #14 | Greedy choices: review variants | `greedy-choices-review` | done |
 | Problem-solving patterns #14 | Greedy choices: checkpoint | `greedy-choices-checkpoint` | done |
-| Problem-solving patterns #14 | Repeated states: teaching levels | `repeated-states` | done |
-| Problem-solving patterns #14 | Repeated states: review variants | `repeated-states-review` | done |
-| Problem-solving patterns #14 | Repeated states: checkpoint | `repeated-states-checkpoint` | done |
+| Problem-solving patterns #14 | Memoization: teaching levels | `repeated-states` | done |
+| Problem-solving patterns #14 | Memoization: review variants | `repeated-states-review` | done |
+| Problem-solving patterns #14 | Memoization: checkpoint | `repeated-states-checkpoint` | done |
 | Problem-solving patterns #14 | Method selection: teaching levels | `method-selection` | done |
 | Problem-solving patterns #14 | Method selection: review variants | `method-selection-review` | done |
 | Problem-solving patterns #14 | Method selection: checkpoint | `method-selection-checkpoint` | done |
-| Problem-solving patterns #14 | DP storage: teaching levels | `dp-storage` | done |
-| Problem-solving patterns #14 | DP storage: review variants | `dp-storage-review` | done |
-| Problem-solving patterns #14 | DP storage: checkpoint | `dp-storage-checkpoint` | done |
-| Problem-solving patterns #14 | Grid tables: teaching levels | `grid-tables` | done |
-| Problem-solving patterns #14 | Grid tables: review variants | `grid-tables-review` | done |
-| Problem-solving patterns #14 | Grid tables: checkpoint | `grid-tables-checkpoint` | done |
+| Problem-solving patterns #14 | DP: saving space (teaching levels) | `dp-storage` | done |
+| Problem-solving patterns #14 | DP: saving space (review variants) | `dp-storage-review` | done |
+| Problem-solving patterns #14 | DP: saving space (checkpoint) | `dp-storage-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (teaching levels) | `grid-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (review variants) | `grid-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: grids (checkpoint) | `grid-tables-checkpoint` | done |
 | Problem-solving patterns #14 | Greedy scheduling: teaching levels | `greedy-scheduling` | done |
 | Problem-solving patterns #14 | Greedy scheduling: review variants | `greedy-scheduling-review` | done |
 | Problem-solving patterns #14 | Greedy scheduling: checkpoint | `greedy-scheduling-checkpoint` | done |
-| Problem-solving patterns #14 | One-dimensional tables: teaching levels | `one-dimensional-tables` | done |
-| Problem-solving patterns #14 | One-dimensional tables: review variants | `one-dimensional-tables-review` | done |
-| Problem-solving patterns #14 | One-dimensional tables: checkpoint | `one-dimensional-tables-checkpoint` | done |
-| Problem-solving patterns #14 | Subsequence tables: teaching levels | `subsequence-tables` | done |
-| Problem-solving patterns #14 | Subsequence tables: review variants | `subsequence-tables-review` | done |
-| Problem-solving patterns #14 | Subsequence tables: checkpoint | `subsequence-tables-checkpoint` | done |
-| Problem-solving patterns #14 | Enumerating choices: teaching levels | `enumerating-choices` | done |
-| Problem-solving patterns #14 | Enumerating choices: review variants | `enumerating-choices-review` | done |
-| Problem-solving patterns #14 | Enumerating choices: checkpoint | `enumerating-choices-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (teaching levels) | `one-dimensional-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (review variants) | `one-dimensional-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: 1D tables (checkpoint) | `one-dimensional-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (teaching levels) | `subsequence-tables` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (review variants) | `subsequence-tables-review` | done |
+| Problem-solving patterns #14 | Dynamic programming: two strings (checkpoint) | `subsequence-tables-checkpoint` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (teaching levels) | `enumerating-choices` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (review variants) | `enumerating-choices-review` | done |
+| Problem-solving patterns #14 | Backtracking: subsets and orderings (checkpoint) | `enumerating-choices-checkpoint` | done |
 | Data structures #12 | Priority order: teaching levels | `priority-order` | done |
 | Data structures #12 | Priority order: review variants | `priority-order-review` | done |
 | Data structures #12 | Priority order: checkpoint | `priority-order-checkpoint` | done |

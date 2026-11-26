@@ -1,108 +1,31 @@
 id: greedy-choices
 title: Greedy choices
-description: Name the local rule a greedy loop applies, find a small input that breaks it, and state the fact that makes it safe. Each card has a worked example on hand.
+description: Name the local rule a greedy loop applies, find a small input that breaks it, and state the fact that makes it safe. Each card asks for one decision, with a worked example on hand.
 heading: Does the rule hold?
 
 questions:
-  - id: greedy-name-the-rule
-    heading: Which rule is it?
-    tags: [greedy, sorting, python]
-    workedExample: |-
-      Consider a cashier who owes 75 with coins `[50, 20, 10, 5]` and always hands over the largest
-      coin that is not more than what is still owed.
-
-      1. With 75 owed, the largest coin not above 75 is 50. The cashier hands it over, and 25 is
-         still owed.
-      2. The rule now looks only at the 25 still owed. 50 is too big and 20 fits, so the cashier
-         hands over 20, and 5 is still owed.
-      3. The same rule picks the 5, and nothing is owed. Each step looked only at the amount left
-         and never handed a coin back, so one local rule, applied again and again, did all the work.
-    prompt: |-
-      Below, each load is a `(weight, value)` pair, and any fraction of a load can be taken for
-      that fraction of its value.
-
-      ```python
-      def pack(loads, room):
-          total = 0
-          for weight, value in sorted(loads, key=lambda p: p[1] / p[0], reverse=True):
-              take = min(weight, room)
-              total += value * take / weight
-              room -= take
-          return total
-      ```
-
-      Which local rule does the loop apply at each step?
-    options:
-      - id: best-rate
-        text: Take as much as fits of the load worth the most per unit of weight
-        explanation: >-
-          The sort key is `value / weight`, largest first, so each pass takes from the load with
-          the best rate left. `min(weight, room)` takes all of it, or just the part that fits.
-      - id: most-valuable
-        text: Take as much as fits of the load with the largest total value
-        explanation: >-
-          The key divides the value by the weight. A load worth 21 over 6 kg (3.5 per kg) comes
-          after one worth 12 over 3 kg (4 per kg).
-      - id: lightest
-        text: Take as much as fits of the lightest load, so that more loads fit
-        explanation: >-
-          Weight appears only as the divisor in the key. A light load with a poor rate comes late.
-      - id: closest-fit
-        text: Take the load whose weight is closest to the room still left
-        explanation: >-
-          The order comes from one sort before the loop, by rate. `room` only decides how much of
-          each load is taken, never which load comes next.
-    correct: best-rate
-    followUps:
-      most-valuable:
-        prompt: For a load of 4 kg worth 20, what does the sort key `p[1] / p[0]` compute?
-        options:
-          - { id: rate, text: '5, the value per kg' }
-          - { id: value, text: '20, the value of the whole load' }
-          - { id: weight, text: '4, the weight of the load' }
-        correct: rate
-        explanation: >-
-          `p[0]` is the weight and `p[1]` is the value, so the key is value per kg. The loop ranks
-          loads by rate, not by total value.
-      lightest:
-        prompt: The keys are sorted with `reverse=True`. Which load does the loop reach first?
-        options:
-          - { id: best-rate, text: The one with the largest value per kg }
-          - { id: lightest, text: The one with the smallest weight }
-          - { id: worst-rate, text: The one with the smallest value per kg }
-        correct: best-rate
-        explanation: >-
-          `reverse=True` puts the largest key first, and the key is value per kg. A load's weight
-          matters only through that ratio.
-      closest-fit:
-        prompt: Does the order the loop visits loads change as `room` shrinks?
-        options:
-          - { id: fixed, text: 'No, one sort before the loop fixes the order' }
-          - { id: resorts, text: 'Yes, each pass re-sorts by how close a weight is to `room`' }
-          - { id: skips, text: 'Yes, loads that no longer fit move to the end' }
-        correct: fixed
-        explanation: >-
-          `sorted(...)` runs once. A greedy loop like this commits to its rule up front and never
-          revisits it, which is why the rule alone has to be safe.
-
   - id: greedy-trace-change
     format: step-trace
     heading: Predict each step
     tags: [greedy, python]
     workedExample: |-
-      Consider `make_change([10, 5, 1], 12)`. The loop takes `coins[i]` whenever it is not more than
-      `amount`, and moves `i` on only when that coin is too big.
+      A greedy algorithm applies one local rule at each step: take what looks best right now, and
+      never take a choice back. This path names the rule a greedy loop applies, finds inputs that
+      break it, and states the fact that makes it safe. `make_change([10, 5, 1], 12)` takes
+      `coins[i]` whenever it is not more than `amount`, and moves `i` on only when that coin is too
+      big.
 
-      1. `coins[0] = 10` is not more than 12, so the loop takes it and `amount` falls to 2. A take
-         leaves `i` where it is, at 0.
-      2. Now 10 is more than 2, so `i` moves to the 5. The 5 is more than 2 too, so `i` moves again,
-         to the 1.
-      3. The 1 fits in 2, so it is taken and `amount` falls to 1. The 1 still fits, so it is taken
-         again. The call returns `[10, 1, 1]`.
+      1. `coins[0] = 10` is not more than 12, so the loop takes it, and `amount` falls to 2. A take
+         leaves `i` at 0.
+      2. 10 is more than 2, so `i` moves to the 5. The 5 is more than 2 too, so `i` moves to the 1.
+      3. The 1 fits in 2, so it is taken, and it still fits in the 1 left, so it is taken again. The
+         call returns `[10, 1, 1]`: at each step, the largest coin that fit.
     prompt: >-
-      Below, the coins are sorted
-      largest first and 48 is owed. The first pass took the 25, so `amount` is 23 and `i` is
-      still 0. Predict each step before it is shown.
+      A greedy loop applies one local rule at each step and never takes a choice back. This one
+      takes the largest coin that fits: it takes `coins[i]` whenever it is not more than `amount`,
+      and moves `i` on only when that coin is too big. The coins are sorted largest first and 48
+      is owed. The first pass took the 25, so `amount` is 23 and `i` is still 0. Predict each step
+      before it is shown.
     code: |
       def make_change(coins, amount):
           used = []
@@ -172,11 +95,11 @@ questions:
             explanation: >-
               Three 1s pay the last 3. Each coin was the largest that fit at the moment it was
               taken.
-          - id: fives
-            text: '`[25, 10, 5, 5, 1, 1, 1]`'
+          - id: two-ones
+            text: '`[25, 10, 10, 1, 1]`'
             explanation: >-
-              After the first 10, 13 is owed and the 10 still fits, so the loop takes a second 10
-              rather than moving on to the 5.
+              With 1 still owed, `while amount > 0` runs once more and takes a third 1. The loop
+              stops only when nothing is owed.
           - id: short
             text: '`[25, 10, 10, 1]`'
             explanation: >-
@@ -240,6 +163,89 @@ questions:
           After 15, 4 and 9, only 2 is left, so the 12, the 3 and the 6 are all skipped. Cheapest
           first buys four, so the order changes the count.
 
+  - id: greedy-name-the-rule
+    heading: Which rule is it?
+    tags: [greedy, sorting, python]
+    workedExample: |-
+      Consider orders written as `(cost, price)` pairs and a loop that runs
+      `for cost, price in sorted(orders, key=lambda o: o[1] - o[0], reverse=True)`. A loop that
+      sorts once and then takes items in that order applies the rule its sort key spells out.
+
+      1. `o[0]` is the cost and `o[1]` is the price, so the key `o[1] - o[0]` is the profit on one
+         order.
+      2. `reverse=True` sorts from the largest key down, so the loop reaches the order with the
+         largest profit first, then the next largest, and so on.
+      3. So the rule is "take the order with the largest profit left". On
+         `[(4, 9), (2, 10), (5, 6)]` the keys are 5, 8 and 1, and the loop visits `(2, 10)`, then
+         `(4, 9)`, then `(5, 6)`.
+    prompt: |-
+      Below, each load is a `(weight, value)` pair, and any fraction of a load can be taken for
+      that fraction of its value.
+
+      ```python
+      def pack(loads, room):
+          total = 0
+          for weight, value in sorted(loads, key=lambda p: p[1] / p[0], reverse=True):
+              take = min(weight, room)
+              total += value * take / weight
+              room -= take
+          return total
+      ```
+
+      Which local rule does the loop apply at each step?
+    options:
+      - id: best-rate
+        text: Take as much as fits of the load worth the most per unit of weight
+        explanation: >-
+          The sort key is `value / weight`, largest first, so each pass takes from the load with
+          the best rate left. `min(weight, room)` takes all of it, or just the part that fits.
+      - id: most-valuable
+        text: Take as much as fits of the load with the largest total value
+        explanation: >-
+          The key divides the value by the weight. A load worth 21 over 6 kg (3.5 per kg) comes
+          after one worth 12 over 3 kg (4 per kg).
+      - id: lightest
+        text: Take as much as fits of the lightest load, so that more loads fit
+        explanation: >-
+          Weight appears only as the divisor in the key. A light load with a poor rate comes late.
+      - id: closest-fit
+        text: Take the load whose weight is closest to the room still left
+        explanation: >-
+          The order comes from one sort before the loop, by rate. `room` only decides how much of
+          each load is taken, never which load comes next.
+    correct: best-rate
+    followUps:
+      most-valuable:
+        prompt: For a load of 4 kg worth 20, what does the sort key `p[1] / p[0]` compute?
+        options:
+          - { id: rate, text: '5, the value per kg' }
+          - { id: value, text: '20, the value of the whole load' }
+          - { id: weight, text: '4, the weight of the load' }
+        correct: rate
+        explanation: >-
+          `p[0]` is the weight and `p[1]` is the value, so the key is value per kg. The loop ranks
+          loads by rate, not by total value.
+      lightest:
+        prompt: The keys are sorted with `reverse=True`. Which load does the loop reach first?
+        options:
+          - { id: best-rate, text: The one with the largest value per kg }
+          - { id: lightest, text: The one with the smallest weight }
+          - { id: worst-rate, text: The one with the smallest value per kg }
+        correct: best-rate
+        explanation: >-
+          `reverse=True` puts the largest key first, and the key is value per kg. A load's weight
+          matters only through that ratio.
+      closest-fit:
+        prompt: Does the order the loop visits loads change as `room` shrinks?
+        options:
+          - { id: fixed, text: 'No, one sort before the loop fixes the order' }
+          - { id: resorts, text: 'Yes, each pass re-sorts by how close a weight is to `room`' }
+          - { id: skips, text: 'Yes, loads that no longer fit move to the end' }
+        correct: fixed
+        explanation: >-
+          `sorted(...)` runs once. A greedy loop like this commits to its rule up front and never
+          revisits it, which is why the rule alone has to be safe.
+
   - id: greedy-tap-failing-amount
     format: tap-cell
     heading: Tap the amount that breaks the rule
@@ -254,8 +260,9 @@ questions:
       3. But `3 + 3` also makes 6, with two coins. So the rule uses more coins than it needs for 6,
          and it is not safe for these coins.
     prompt: >-
-      Now the coins are 1, 4 and 5. Each cell is an amount owed.
-      Tap the amount the rule pays with more coins than it needs.
+      The coins are 1, 4 and 5, and the rule takes the largest coin that fits until nothing is
+      owed. Each cell is an amount owed. Tap the amount the rule pays with more coins than it
+      needs.
     code: |
       coins = [5, 4, 1]   # largest first
       # take the largest coin that fits, until nothing is owed
@@ -293,7 +300,7 @@ questions:
       3. Packing the two 5s instead gives `5 + 5 = 10` kg, a full box. 10 is more than 6, so this
          list breaks the rule.
     prompt: >-
-      Now the box holds 12 kg, and the goal is to pack as much weight as possible. The rule packs
+      A box holds 12 kg, and the goal is to pack as much weight as possible. The rule packs
       the heaviest item that still fits, then the next, skipping any that do not fit. Which list
       of item weights makes the rule pack less than the best?
     options:
@@ -463,7 +470,7 @@ questions:
         prompt: Which fact shows that three boards is the fewest?
         options:
           - { id: pairs, text: 'The two longest boards total 12, so no pair reaches 13' }
-          - { id: fast, text: 'Sorting takes O(n log n) time, which is fast' }
+          - { id: fast, text: 'Sorting the boards first makes the rule quick to run' }
           - { id: natural, text: 'A person would also start with the longest board' }
         correct: pairs
         explanation: >-

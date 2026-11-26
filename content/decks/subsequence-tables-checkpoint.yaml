@@ -1,6 +1,6 @@
 id: subsequence-tables-checkpoint
-title: "Subsequence tables: checkpoint"
-description: Fill and walk back fresh LCS tables, find an unbroken shared run, and separate fill, storage and walk-back costs.
+title: "Dynamic programming: two strings (checkpoint)"
+description: Fill a fresh LCS table, find the call a near-miss fill gets wrong, and complete the table for a new two-string task. Each item combines the two-string table skills.
 heading: What does the table hold?
 
 questions:
@@ -92,7 +92,7 @@ questions:
               `cur[6]` is `dp[6][6]`, the larger of `prev[6]`, 2, and `cur[5]`, 3. `ant` and `mnt`
               are in order in both words.
           - id: two
-            text: "2, the run `nt`"
+            text: "2, the common substring `nt`"
             explanation: Check whether the table counts letters with gaps between them.
           - id: four
             text: "4, as `mantle` adds its `e`"
@@ -100,6 +100,165 @@ questions:
         correct: three
         also:
           - { name: j, at: 6 }
+
+  - id: checkpoint-subsequence-check-rule
+    heading: Which line completes the table?
+    tags: [dp, arrays-strings]
+    prompt: |-
+      This table tells whether `s` is a subsequence of `t`: every letter of `s` used once, in
+      order, with letters of `t` skipped between them. `ok[i][j]` is `True` when the first `i`
+      letters of `s` are a subsequence of the first `j` letters of `t`. Row 0 is all `True`, since
+      the empty string is a subsequence of anything, and the rest of column 0 is `False`.
+
+      ```python
+      ok = [[False] * (len(t) + 1) for _ in range(len(s) + 1)]
+      for j in range(len(t) + 1):
+          ok[0][j] = True
+      for i in range(1, len(s) + 1):
+          for j in range(1, len(t) + 1):
+              if s[i - 1] == t[j - 1]:
+                  ok[i][j] = ok[i - 1][j - 1]
+              else:
+                  ok[i][j] = ???
+      return ok[len(s)][len(t)]
+      ```
+
+      Which expression replaces `???` so that the call returns `True` exactly when `s` is a
+      subsequence of `t`?
+    options:
+      - id: skip-t
+        text: "`ok[i][j - 1]`"
+        explanation: >-
+          The two letters differ, so `t[j - 1]` cannot be the letter that matches `s[i - 1]`, and
+          `t` may skip it. `s` may skip nothing, so its prefix stays the same and only `j` drops.
+      - id: skip-either
+        text: "`ok[i - 1][j] or ok[i][j - 1]`"
+        explanation: >-
+          `ok[i - 1][j]` drops the letter `s[i - 1]` without matching it, so `s` could skip
+          letters. For `s = "ear"` and `t = "area"` it returns `True`, but `"area"` has no `r`
+          after its `e`.
+      - id: diagonal
+        text: "`ok[i - 1][j - 1]`"
+        explanation: >-
+          The diagonal drops `s[i - 1]` along with `t[j - 1]`, so that letter of `s` is never
+          found. In row 1 it reads row 0, which is all `True`. For `s = "lit"` and `t = "tail"`
+          it returns `True`, but `"tail"` has no `t` after its `i`.
+      - id: always-false
+        text: "`False`"
+        explanation: >-
+          A mismatch only means `t` skips a letter here. Writing `False` forgets the matches made
+          before it: for `s = "pat"` and `t = "plant"` it returns `False`, though `p`, `a` and `t`
+          appear in order with the `l` and the `n` skipped.
+    correct: skip-t
+    followUps:
+      skip-either:
+        prompt: Which of the two strings may skip letters?
+        options:
+          - { id: t-only, text: "Only `t`: every letter of `s` must be matched" }
+          - { id: both, text: "Both, as in the longest common subsequence table" }
+          - { id: s-only, text: "Only `s`, since it is the shorter string" }
+        correct: t-only
+        explanation: >-
+          In the longest common subsequence table either string may leave a letter out. Here `s`
+          must be found whole, so on a mismatch only the letter of `t` is dropped.
+      diagonal:
+        prompt: On a mismatch, which letter is certain not to help match `s[i - 1]`?
+        options:
+          - { id: t-letter, text: "`t[j - 1]`, since it differs from `s[i - 1]`" }
+          - { id: both, text: "Both `s[i - 1]` and `t[j - 1]`, since they differ" }
+          - { id: s-letter, text: "`s[i - 1]`, since it is the letter being looked for" }
+        correct: t-letter
+        explanation: >-
+          `s[i - 1]` still has to be matched by some earlier letter of `t`. Only `t[j - 1]` is
+          ruled out, so the cell reads `ok[i][j - 1]`.
+      always-false:
+        prompt: "For `s = \"pat\"` and `t = \"plant\"`, where is the `a` of `s` matched?"
+        options:
+          - { id: index-two, text: "At `t[2]`, after the `l` of `t` is skipped" }
+          - { id: nowhere, text: "Nowhere, since `t[1]` is an `l`" }
+          - { id: index-one, text: "At `t[1]`, since letters are matched index by index" }
+        correct: index-two
+        explanation: >-
+          A subsequence may skip letters of `t` between matches. So a mismatch passes the count
+          from the cell to the left instead of starting again.
+
+  - id: checkpoint-debug-match-neighbor
+    heading: Which call goes wrong?
+    tags: [dp, python]
+    prompt: |-
+      A suggested solution fills the LCS table to return the length of the longest common
+      subsequence of `a` and `b`.
+
+      ```python
+      def lcs_length(a, b):
+          dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+          for i in range(1, len(a) + 1):
+              for j in range(1, len(b) + 1):
+                  if a[i - 1] == b[j - 1]:
+                      dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]) + 1
+                  else:
+                      dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+          return dp[len(a)][len(b)]
+      ```
+
+      Which call returns a wrong length?
+    options:
+      - id: seen-tone
+        text: '`lcs_length("seen", "tone")`'
+        explanation: >-
+          It returns 2, but the answer is 1. At `dp[3][4]` the first `e` of `seen` is already
+          matched with the `e` of `tone`, so the cell above holds 1. The second `e` matches that
+          same `e` again, and adding 1 to the cell above counts it twice. The diagonal, 0, would
+          give the right 1.
+      - id: moon-tent
+        text: '`lcs_length("moon", "tent")`'
+        explanation: >-
+          It returns 1, which is right. Both words repeat a letter, but neither repeated letter is
+          in the other word, so no letter can be matched twice.
+      - id: plan-lane
+        text: '`lcs_length("plan", "lane")`'
+        explanation: >-
+          It returns 3, which is right, for `lan`. No letter repeats, so at each match the cell
+          above and the cell to the left equal the diagonal, and adding 1 to them is safe.
+      - id: wing-twig
+        text: '`lcs_length("wing", "twig")`'
+        explanation: >-
+          It returns 3, which is right, for `wig`. At the `g` match the cell above, the cell to
+          the left and the diagonal all hold 2, so adding 1 to the larger neighbor gives the same
+          3 as the diagonal.
+    correct: seen-tone
+    followUps:
+      moon-tent:
+        prompt: "For adding 1 to the larger neighbor to go wrong, what must be true at a match?"
+        options:
+          - { id: used, text: "The larger neighbor already used one of the two matched letters" }
+          - { id: repeat, text: "Either word repeats any letter at all" }
+          - { id: long, text: "The words are longer than four letters" }
+        correct: used
+        explanation: >-
+          The cell above has used the letter of `b` only if a letter of `a` equal to it came
+          earlier. That needs a repeated letter that the other word also holds.
+      plan-lane:
+        prompt: At a match, when are the cell above and the cell to the left larger than the diagonal?
+        options:
+          - { id: reused, text: "Only when one of them has already matched one of the two letters" }
+          - { id: always, text: "Always, since they cover more letters" }
+          - { id: never, text: "Never, since a match cell's neighbors are equal" }
+        correct: reused
+        explanation: >-
+          A neighbor beats the diagonal only by matching a letter the diagonal leaves out, one of
+          the two letters this cell compares. Without a repeated letter, nothing else can match
+          them.
+      wing-twig:
+        prompt: "In `lcs_length(\"wing\", \"twig\")`, what does the match of the two `g`s add 1 to?"
+        options:
+          - { id: two, text: "2, which the diagonal also holds, so the result is right" }
+          - { id: three, text: "3, so the result is 4, one too many" }
+          - { id: one, text: "1, so the result is 2, one too few" }
+        correct: two
+        explanation: >-
+          `win` and `twig` share `wi`, and so do `wing` and `twi`, and `win` and `twi`. With all
+          three cells at 2, the larger neighbor is no larger than the diagonal.
 
   - id: checkpoint-walk-ties-left
     heading: What does the walk back return?

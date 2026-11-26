@@ -1,6 +1,6 @@
 id: subsequence-tables-review
-title: "Subsequence tables: review"
-description: Fresh strings for telling gaps from unbroken runs, reading a cell's prefixes, filling a row and walking back an LCS table.
+title: "Dynamic programming: two strings (review)"
+description: Fresh strings for telling a subsequence from a substring, reading which prefixes a cell covers and filling an LCS table, for recall on later days. No worked examples this time.
 heading: What does the table hold?
 
 questions:
@@ -12,21 +12,22 @@ questions:
       - id: pot
         text: '`"pot"`'
         explanation: >-
-          `p`, `o` and `t` appear in that order, at positions 0, 1 and 5. The gap before the `t`
-          means they are not all adjacent.
+          `p`, `o` and `t` appear in that order, at indices 0, 1 and 5. The gap before the `t`
+          means they are not all next to each other.
       - id: ock
         text: '`"ock"`'
         explanation: >-
-          `"ock"` sits at positions 1 to 3 with no gaps, so it is a substring. The question asks for
+          `"ock"` sits at indices 1 to 3 with no gaps, so it is a substring. The question asks for
           one that is not.
       - id: top
         text: '`"top"`'
         explanation: >-
-          All three letters are in `"pocket"`, but check the order they appear in.
+          All three letters are in `"pocket"`, but its only `t` is the last letter, so no `o` or
+          `p` comes after it.
       - id: pop
         text: '`"pop"`'
         explanation: >-
-          Count how many `p`s the pattern needs and how many the word has.
+          `"pop"` needs two `p`s, and `"pocket"` has only one.
     correct: pot
     followUps:
       ock:
@@ -53,13 +54,13 @@ questions:
             text: Yes, because the letters are close together
         correct: order
         explanation: >-
-          A subsequence reads its letters left to right. After the `k` at position 3 there is no
-          `o`, so the pattern cannot finish.
+          A subsequence reads its letters left to right. After the `k` at index 3 there is no `o`,
+          so the pattern cannot finish.
       pop:
         prompt: Can a subsequence of `"pocket"` use its single `p` twice?
         options:
           - id: once
-            text: No, each position is used at most once
+            text: No, each index is used at most once
           - id: order
             text: Yes, if the order is kept
           - id: start
@@ -84,8 +85,8 @@ questions:
       - id: three
         text: "3, `ver`"
         explanation: >-
-          `ver` is the longest stretch with no gaps, the common substring. Skipped letters are
-          allowed here, so `s` and `i` can join it.
+          `ver` is the longest common substring, whose letters sit next to each other in both
+          words. Skipped letters are allowed here, so `s` and `i` can join it.
       - id: six
         text: 6, since both words use the same six letters
         explanation: >-
@@ -106,8 +107,8 @@ questions:
           - { id: half, text: "Only partly: a letter skipped in one word counts as half a match" }
         correct: allowed
         explanation: >-
-          A subsequence may skip letters as long as the rest keep their order. The longest
-          stretch with no gaps, `ver`, answers a different question.
+          A subsequence may skip letters as long as the rest keep their order. The longest common
+          substring, `ver`, answers a different question.
       six:
         prompt: >-
           `silver` has `i` before `l`, and `sliver` has `l` before `i`. How many of those two
@@ -181,30 +182,32 @@ questions:
       - id: pasted
         text: Longest block of text pasted unchanged into two documents
         explanation: >-
-          A pasted block is unbroken, so this is the longest common substring. Its table resets to
-          0 on a mismatch.
+          A pasted block skips no letters, so this is the longest common substring. This table
+          carries a count across a gap, so it would also count letters that were never next to
+          each other.
       - id: contains
         text: Whether one word appears unbroken inside the other
         explanation: >-
           That is a substring check, which Python's `in` answers directly. No table of counts is
           needed.
       - id: same-place
-        text: Longest run of positions where two equal-length words agree
+        text: Most indices in a row where two equal-length words hold the same letter
         explanation: >-
-          Comparing position by position pairs `a[k]` with `b[k]` only, so one scan with a counter
-          is enough.
+          Comparing index by index pairs `a[k]` with `b[k]` only, so one scan with a counter is
+          enough.
     correct: deletions
     followUps:
       pasted:
-        prompt: A pasted block cannot be missing letters from its middle. Which table rule fits that?
+        prompt: A pasted block cannot be missing letters from its middle. What kind of shared text is it?
         options:
-          - { id: reset, text: "Reset to 0 on a mismatch, so a gap ends the count" }
-          - { id: carry, text: "Carry the larger neighbor, so the count survives a gap" }
-          - { id: diagonal, text: "Copy the diagonal, so the count steps over the mismatch" }
-        correct: reset
+          - { id: substring, text: "A common substring, since its letters sit next to each other" }
+          - { id: subsequence, text: "A common subsequence, since its letters keep their order" }
+          - { id: either, text: "Either one, since both keep the letters in order" }
+        correct: substring
         explanation: >-
-          An unbroken block is a substring. Carrying a count past a mismatch would let letters with
-          gaps between them add up, which a pasted block cannot have.
+          A block with nothing missing from its middle is a substring. The subsequence table
+          carries a count past a mismatch, so it lets letters with gaps between them add up, which
+          a pasted block cannot have.
       contains:
         prompt: What does checking whether `word` appears unbroken in `text` need?
         options:
@@ -216,15 +219,15 @@ questions:
           An LCS of `len(word)` says only that `word` is a subsequence, with gaps allowed.
           *Unbroken* calls for a substring test.
       same-place:
-        prompt: Which letters does a position-by-position comparison pair up?
+        prompt: Which letters does an index-by-index comparison pair up?
         options:
           - { id: same-index, text: "`a[k]` with `b[k]`, the same index in each word" }
           - { id: any-later, text: "Any letter of `a` with any later letter of `b`" }
           - { id: prefixes, text: "Every prefix of `a` with every prefix of `b`" }
         correct: same-index
         explanation: >-
-          Positions that agree are pairs at one index, so one loop over `k` counts the run. A table
-          over every pair of prefixes is for matches that may shift.
+          Indices that agree are pairs at one index, so one loop over `k` counts them in a row. A
+          table over every pair of prefixes is for matches that may shift.
 
   - id: last-column-letter-review
     format: tap-cell
@@ -343,7 +346,7 @@ questions:
       - id: first-row
         text: "`IndexError` while `i` is 1, once `j` reaches 4"
         explanation: >-
-          The table has 4 columns, indexes 0 to 3. With `i = 1` and `j = 4`, `k` matches `k` and
+          The table has 4 columns, indices 0 to 3. With `i = 1` and `j = 4`, `k` matches `k` and
           the code writes `dp[1][4]`, which raises `IndexError: list assignment index out of
           range`.
       - id: last-row
@@ -370,7 +373,7 @@ questions:
           - { id: none, text: "None: the first row fits, and only row 4 is missing" }
         correct: four
         explanation: >-
-          `[0] * 4` has indexes 0 to 3, and the inner loop runs `j` up to 4 on every pass of `i`,
+          `[0] * 4` has indices 0 to 3, and the inner loop runs `j` up to 4 on every pass of `i`,
           the first one included.
       at-return:
         prompt: With `n = 4`, what is the largest column index the table has, and how far does `j` go?
@@ -428,8 +431,8 @@ questions:
           - id: zero
             text: '0'
             explanation: >-
-              Resetting to 0 is the substring rule. A subsequence may skip the `n`, so earlier
-              matches still count.
+              Starting again at 0 would throw away the earlier matches. A subsequence may skip the
+              `n`, so they still count.
         correct: two
         also:
           - { name: j, at: 3 }
@@ -559,7 +562,8 @@ questions:
       - id: zero
         text: "0: a mismatch breaks the count and resets it"
         explanation: >-
-          Resetting to 0 is the substring rule. A subsequence keeps `imb` across the mismatch.
+          Starting again at 0 would throw away `imb`. A subsequence may skip letters, so `imb`
+          carries across the mismatch.
     correct: three
     followUps:
       two:
@@ -591,7 +595,7 @@ questions:
         correct: keeps
         explanation: >-
           Subsequence counts carry across a mismatch, which is why the cell copies its larger
-          neighbor. Only the substring table, which needs unbroken runs, resets to 0.
+          neighbor instead of starting again.
 
   - id: walk-back-review
     format: step-trace

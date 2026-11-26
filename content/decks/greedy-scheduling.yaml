@@ -1,6 +1,6 @@
 id: greedy-scheduling
 title: Greedy scheduling
-description: Keep the most intervals that never overlap. Pick a compatible interval, compare the room each choice leaves, and apply earliest finish. Each card has a worked example on hand.
+description: Keep the most intervals that never overlap. Pick a compatible interval, compare the room each choice leaves, and apply earliest finish. Each card asks for one decision, with a worked example on hand.
 heading: Which interval is kept?
 
 questions:
@@ -9,16 +9,21 @@ questions:
     heading: Tap the next interval kept
     tags: [intervals, greedy]
     workedExample: |-
-      Consider a schedule that has kept `[1, 3]`, where touching intervals may both be kept. A new
-      interval `[s, e]` is compatible when `s >= 3`, the kept end.
+      This path keeps as many intervals as possible with no two overlapping. Its loop sorts them by
+      end and keeps each one that starts at or after the last kept end. Here touching intervals may
+      both be kept, the list sorted by end is `[1, 3]`, `[3, 4]`, `[2, 6]`, and the loop has kept
+      `[1, 3]`.
 
-      1. `[2, 6]` starts at 2, and `2 >= 3` is false. It would run from 2 to 3 alongside `[1, 3]`,
-         so it clashes.
-      2. `[3, 4]` starts at 3, exactly where `[1, 3]` ends. Touching intervals share no time, and
-         `3 >= 3` holds.
-      3. So `[3, 4]` is compatible and can be kept after `[1, 3]`, while `[2, 6]` cannot.
+      1. `[3, 4]` starts at 3, exactly where `[1, 3]` ends. Touching intervals share no time, and
+         `3 >= 3` holds, so `[3, 4]` is kept, and its end, 4, is what the next interval has to
+         clear.
+      2. `[2, 6]` starts at 2, and `2 >= 4` is false. It would run from 2 to 4 alongside the kept
+         intervals, so it clashes and is skipped.
+      3. So the loop keeps `[1, 3]` and `[3, 4]`. Each interval is tested against the end of the
+         last one kept, not against every kept interval.
     prompt: >-
-      Below, `spans` is sorted
+      An interval is compatible with a schedule when it overlaps none of the intervals kept. The
+      loop below keeps an interval when it starts at or after the last kept end. `spans` is sorted
       by end, touching intervals may both be kept, and the loop has kept `[0, 2]` and `[2, 5]`.
       Tap the interval it keeps next.
     code: |
@@ -71,6 +76,7 @@ questions:
          the test is `s > last_end`.
     prompt: |-
       Here each booking `[a, b]` holds the room on days `a` through `b`, both included.
+      `float('-inf')` is smaller than every number, so the first booking always passes the test.
 
       ```python
       def most_bookings(days):
@@ -117,8 +123,8 @@ questions:
           - { id: yes-sorted, text: "Yes. They are in end order" }
         correct: no-day-three
         explanation: >-
-          When both ends are included, touching ranges share their end point. Only a start after
-          the last end is free, so the test is `s > last_end`.
+          When both ends are included, touching intervals share their end point. Only a start
+          after the last end is free, so the test is `s > last_end`.
       two-already:
         prompt: "`last_end` is 3 and the next booking starts at 3. What does `3 >= last_end` give?"
         options:
@@ -223,8 +229,8 @@ questions:
         text: B, since what fits after A also fits after B, and more besides
         explanation: >-
           After A only `[8, 10]` fits, for 3 intervals in all. After B, `[5, 7]` and `[8, 10]`
-          fit, for 4: `[0, 2]`, `[3, 5]`, `[5, 7]`, `[8, 10]`. A brute force over every subset
-          agrees that 4 is the most.
+          fit, for 4: `[0, 2]`, `[3, 5]`, `[5, 7]`, `[8, 10]`. A brute force over every choice of
+          intervals agrees that 4 is the most.
       - id: a-no-gap
         text: A, since it starts right where `[0, 2]` ends and wastes no time
         explanation: >-
@@ -272,6 +278,186 @@ questions:
         explanation: >-
           Whatever can follow the later end can also follow the sooner one. So the sooner end is
           never worse, and here B is strictly better.
+
+  - id: sched-trace-earliest-finish
+    format: step-trace
+    heading: Predict each step
+    tags: [intervals, greedy, python]
+    workedExample: |-
+      Consider `most_meetings` on spans already in end order, `[[1, 2], [1, 3], [2, 4]]`. `last` is
+      the index of the last kept interval and starts at 0, with `count = 1`.
+
+      1. With `i` at 1, `[1, 3]` starts at 1. The kept end is `spans[0][1] = 2`, and `1 >= 2` is
+         false, so `last` stays at 0.
+      2. With `i` at 2, `[2, 4]` starts at 2. The kept end is still 2, and `2 >= 2` holds, so `last`
+         moves to 2 and `count` becomes 2.
+      3. The loop ends there, so the call returns 2, for `[1, 2]` and `[2, 4]`.
+    prompt: >-
+      Below, the board shows `spans`
+      after the sort. Predict each step before it is shown.
+    code: |
+      def most_meetings(spans):
+          spans = sorted(spans, key=lambda iv: iv[1])
+          last, count = 0, 1
+          for i in range(1, len(spans)):
+              if spans[i][0] >= spans[last][1]:
+                  last = i
+                  count += 1
+          return count
+
+      most_meetings([[4, 7], [9, 12], [1, 3], [6, 8], [3, 5], [8, 10], [2, 4], [5, 9]])
+    sequence:
+      kind: array
+      name: spans
+      cells: ['[1,3]', '[2,4]', '[3,5]', '[4,7]', '[6,8]', '[5,9]', '[8,10]', '[9,12]']
+    start:
+      - { name: last, at: 0 }
+      - { name: i, at: 1 }
+    steps:
+      - line: 4
+        ask: After the passes with `i` at 1 and 2, where is `last`?
+        pointer: last
+        correct: 2
+        explanation: >-
+          `[2, 4]` starts at 2, before the kept end 3, so it is skipped. `[3, 5]` starts at 3,
+          and `3 >= 3`, so `last` moves to 2.
+        misses:
+          - index: 1
+            explanation: "`[2, 4]` starts at 2, before `[1, 3]` ends at 3, so the test fails and `last` does not move there."
+          - index: 0
+            explanation: >-
+              `[3, 5]` starts at 3, where `[1, 3]` ends. `3 >= 3` is True, so `last` moves on.
+        elsewhere: The loop has read only indices 1 and 2, and keeps the one that starts at 3 or later.
+        also:
+          - { name: i, at: 2 }
+      - line: 4
+        ask: After the passes with `i` at 3 and 4, where is `last`?
+        pointer: last
+        correct: 4
+        explanation: >-
+          `[4, 7]` starts at 4, before the kept end 5, so it is skipped. `[6, 8]` starts at 6,
+          after 5, so `last` moves to 4.
+        misses:
+          - index: 3
+            explanation: "`[4, 7]` starts at 4, before `[3, 5]` ends at 5, so it overlaps and is skipped."
+          - index: 2
+            explanation: "`[6, 8]` starts at 6, after the kept end 5, so the test passes and `last` moves."
+        elsewhere: The kept end is 5, and only `[6, 8]` among indices 3 and 4 starts at 5 or later.
+        also:
+          - { name: i, at: 4 }
+      - line: 4
+        ask: After the passes with `i` at 5 and 6, where is `last`?
+        pointer: last
+        correct: 6
+        explanation: >-
+          `[5, 9]` starts at 5, before the kept end 8. `[8, 10]` starts at 8, and touching is
+          allowed, so `last` moves to 6.
+        misses:
+          - index: 5
+            explanation: "`[5, 9]` starts at 5, before `[6, 8]` ends at 8, so it is skipped."
+          - index: 4
+            explanation: >-
+              `[8, 10]` starts at 8, exactly where `[6, 8]` ends. `8 >= 8` is True, so `last`
+              moves on.
+        elsewhere: The kept end is 8, and `[8, 10]` starts there.
+        also:
+          - { name: i, at: 6 }
+      - line: 8
+        ask: The pass with `i` at 7 reads `[9, 12]`. What does the call return?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              `[9, 12]` starts at 9, before the kept end 10, so it is skipped. The loop kept
+              `[1, 3]`, `[3, 5]`, `[6, 8]` and `[8, 10]`.
+          - id: five
+            text: '5'
+            explanation: "`[9, 12]` starts at 9, before `[8, 10]` ends at 10, so it is not kept."
+          - id: three
+            text: '3'
+            explanation: >-
+              Each touching pair counts: `[3, 5]` after `[1, 3]`, and `[8, 10]` after `[6, 8]`.
+              Together with `[1, 3]` and `[6, 8]` that is 4.
+          - id: two
+            text: '2'
+            explanation: >-
+              `count` grows every time `last` moves. It moved three times after starting at 1,
+              so it is 4.
+        correct: four
+        also:
+          - { name: i, at: 7 }
+
+  - id: sched-which-kept
+    heading: Which meetings stay?
+    tags: [intervals, greedy, sorting]
+    workedExample: |-
+      Consider meetings `[[3, 5], [1, 4], [4, 6]]`, where touching meetings may both stay. The loop
+      sorts them by end and keeps each meeting that starts at or after the last kept end.
+
+      1. The ends are 5, 4 and 6, so sorting by end gives `[1, 4]`, `[3, 5]`, `[4, 6]`.
+      2. The loop keeps `[1, 4]`, so the last kept end is 4. `[3, 5]` starts at 3, before 4, so it
+         is skipped.
+      3. `[4, 6]` starts at 4, and `4 >= 4` holds, so it is kept. The loop keeps `[1, 4]` and
+         `[4, 6]`.
+    prompt: >-
+      Below, touching meetings may both stay. Sort
+      `[[6, 9], [1, 5], [2, 3], [4, 7], [3, 6], [8, 10], [7, 8]]` by end and keep each meeting
+      that starts at or after the last kept end. Which meetings does that keep?
+    options:
+      - id: earliest-finish
+        text: "`[2, 3]`, `[3, 6]`, `[7, 8]`, `[8, 10]`"
+        explanation: >-
+          In end order the loop keeps `[2, 3]`, skips `[1, 5]`, keeps `[3, 6]`, skips `[4, 7]`,
+          keeps `[7, 8]`, skips `[6, 9]` and keeps `[8, 10]`. That is 4 meetings, so 3 are
+          removed, and a brute force over every choice of meetings confirms 4 is the most.
+      - id: another-best
+        text: "`[2, 3]`, `[4, 7]`, `[7, 8]`, `[8, 10]`"
+        explanation: >-
+          This is a valid schedule of 4, but not the one the loop keeps. `[3, 6]` ends at 6,
+          before `[4, 7]`, so it is read first and kept, and `[4, 7]` then clashes with it.
+      - id: earliest-start
+        text: "`[1, 5]`, `[6, 9]`"
+        explanation: >-
+          That is what sorting by start and keeping what fits gives. `[1, 5]` starts first but
+          runs long and shuts out `[2, 3]`, `[3, 6]` and `[4, 7]`.
+      - id: next-start
+        text: "`[2, 3]`, `[3, 6]`, `[6, 9]`"
+        explanation: >-
+          After `[3, 6]` this picks the meeting that starts soonest, `[6, 9]`. The loop takes the
+          one that ends soonest, `[7, 8]`, which leaves room for `[8, 10]`.
+    correct: earliest-finish
+    followUps:
+      another-best:
+        prompt: Both `[3, 6]` and `[4, 7]` fit after `[2, 3]`. Which does the loop keep, and why?
+        options:
+          - { id: three-six, text: "`[3, 6]`. It ends first, so it is read first" }
+          - { id: four-seven, text: "`[4, 7]`. It starts later, so it wastes less" }
+          - { id: both, text: "Both. Each one fits after `[2, 3]`" }
+        correct: three-six
+        explanation: >-
+          The loop reads in end order and keeps the first interval that fits. A list can have
+          several best schedules, and the loop always builds the one whose picks end soonest.
+      earliest-start:
+        prompt: Why does sorting by start keep only 2 here?
+        options:
+          - { id: long-first, text: "`[1, 5]` is kept first and shuts out three meetings" }
+          - { id: same-count, text: "It keeps 4, the same count as sorting by end" }
+          - { id: needs-merge, text: "Sorting by start works only after a merge step" }
+        correct: long-first
+        explanation: >-
+          `[1, 5]` starts first, so it is kept, and it shuts out `[2, 3]`, `[3, 6]` and `[4, 7]`.
+          An early start says nothing about how long a meeting runs. Sorting by end puts the
+          meeting that frees the room soonest first.
+      next-start:
+        prompt: After `[3, 6]`, which next meeting leaves more room, `[6, 9]` or `[7, 8]`?
+        options:
+          - { id: seven-eight, text: "`[7, 8]`. It frees the room at 8, not 9" }
+          - { id: six-nine, text: "`[6, 9]`. It starts right at 6, so no time is wasted" }
+          - { id: same, text: "They leave the same room, since both start after 6" }
+        correct: seven-eight
+        explanation: >-
+          The next choice should end soonest, not start soonest. Ending at 8 lets `[8, 10]`
+          follow, while ending at 9 does not.
 
   - id: sched-swap-first
     heading: Why does the swap work?
@@ -344,183 +530,3 @@ questions:
         explanation: >-
           The earliest end always ends no later than the interval it replaces, so it always ends
           at or before the next one starts. Where it starts does not matter.
-
-  - id: sched-trace-earliest-finish
-    format: step-trace
-    heading: Predict each step
-    tags: [intervals, greedy, python]
-    workedExample: |-
-      Consider `most_meetings` on spans already in end order, `[[1, 2], [1, 3], [2, 4]]`. `last` is
-      the index of the last kept interval and starts at 0, with `count = 1`.
-
-      1. With `i` at 1, `[1, 3]` starts at 1. The kept end is `spans[0][1] = 2`, and `1 >= 2` is
-         false, so `last` stays at 0.
-      2. With `i` at 2, `[2, 4]` starts at 2. The kept end is still 2, and `2 >= 2` holds, so `last`
-         moves to 2 and `count` becomes 2.
-      3. The loop ends there, so the call returns 2, for `[1, 2]` and `[2, 4]`.
-    prompt: >-
-      Below, the board shows `spans`
-      after the sort. Predict each step before it is shown.
-    code: |
-      def most_meetings(spans):
-          spans = sorted(spans, key=lambda iv: iv[1])
-          last, count = 0, 1
-          for i in range(1, len(spans)):
-              if spans[i][0] >= spans[last][1]:
-                  last = i
-                  count += 1
-          return count
-
-      most_meetings([[4, 7], [9, 12], [1, 3], [6, 8], [3, 5], [8, 10], [2, 4], [5, 9]])
-    sequence:
-      kind: array
-      name: spans
-      cells: ['[1,3]', '[2,4]', '[3,5]', '[4,7]', '[6,8]', '[5,9]', '[8,10]', '[9,12]']
-    start:
-      - { name: last, at: 0 }
-      - { name: i, at: 1 }
-    steps:
-      - line: 4
-        ask: After the passes with `i` at 1 and 2, where is `last`?
-        pointer: last
-        correct: 2
-        explanation: >-
-          `[2, 4]` starts at 2, before the kept end 3, so it is skipped. `[3, 5]` starts at 3,
-          and `3 >= 3`, so `last` moves to 2.
-        misses:
-          - index: 1
-            explanation: "`[2, 4]` starts at 2, before `[1, 3]` ends at 3, so the test fails and `last` does not move there."
-          - index: 0
-            explanation: >-
-              `[3, 5]` starts at 3, where `[1, 3]` ends. `3 >= 3` is True, so `last` moves on.
-        elsewhere: The loop has read only indexes 1 and 2, and keeps the one that starts at 3 or later.
-        also:
-          - { name: i, at: 2 }
-      - line: 4
-        ask: After the passes with `i` at 3 and 4, where is `last`?
-        pointer: last
-        correct: 4
-        explanation: >-
-          `[4, 7]` starts at 4, before the kept end 5, so it is skipped. `[6, 8]` starts at 6,
-          after 5, so `last` moves to 4.
-        misses:
-          - index: 3
-            explanation: "`[4, 7]` starts at 4, before `[3, 5]` ends at 5, so it overlaps and is skipped."
-          - index: 2
-            explanation: "`[6, 8]` starts at 6, after the kept end 5, so the test passes and `last` moves."
-        elsewhere: The kept end is 5, and only `[6, 8]` among indexes 3 and 4 starts at 5 or later.
-        also:
-          - { name: i, at: 4 }
-      - line: 4
-        ask: After the passes with `i` at 5 and 6, where is `last`?
-        pointer: last
-        correct: 6
-        explanation: >-
-          `[5, 9]` starts at 5, before the kept end 8. `[8, 10]` starts at 8, and touching is
-          allowed, so `last` moves to 6.
-        misses:
-          - index: 5
-            explanation: "`[5, 9]` starts at 5, before `[6, 8]` ends at 8, so it is skipped."
-          - index: 4
-            explanation: >-
-              `[8, 10]` starts at 8, exactly where `[6, 8]` ends. `8 >= 8` is True, so `last`
-              moves on.
-        elsewhere: The kept end is 8, and `[8, 10]` starts there.
-        also:
-          - { name: i, at: 6 }
-      - line: 8
-        ask: The pass with `i` at 7 reads `[9, 12]`. What does the call return?
-        options:
-          - id: four
-            text: '4'
-            explanation: >-
-              `[9, 12]` starts at 9, before the kept end 10, so it is skipped. The loop kept
-              `[1, 3]`, `[3, 5]`, `[6, 8]` and `[8, 10]`.
-          - id: five
-            text: '5'
-            explanation: "`[9, 12]` starts at 9, before `[8, 10]` ends at 10, so it is not kept."
-          - id: three
-            text: '3'
-            explanation: >-
-              Each touching pair counts: `[3, 5]` after `[1, 3]`, and `[8, 10]` after `[6, 8]`.
-              Together with `[1, 3]` and `[6, 8]` that is 4.
-          - id: two
-            text: '2'
-            explanation: >-
-              `count` grows every time `last` moves. It moved three times after starting at 1,
-              so it is 4.
-        correct: four
-        also:
-          - { name: i, at: 7 }
-
-  - id: sched-which-kept
-    heading: Which meetings stay?
-    tags: [intervals, greedy, sorting]
-    workedExample: |-
-      Consider meetings `[[3, 5], [1, 4], [4, 6]]`, where touching meetings may both stay. The loop
-      sorts them by end and keeps each meeting that starts at or after the last kept end.
-
-      1. The ends are 5, 4 and 6, so sorting by end gives `[1, 4]`, `[3, 5]`, `[4, 6]`.
-      2. The loop keeps `[1, 4]`, so the last kept end is 4. `[3, 5]` starts at 3, before 4, so it
-         is skipped.
-      3. `[4, 6]` starts at 4, and `4 >= 4` holds, so it is kept. The loop keeps `[1, 4]` and
-         `[4, 6]`.
-    prompt: >-
-      Below, touching meetings may both stay. Sort
-      `[[6, 9], [1, 5], [2, 3], [4, 7], [3, 6], [8, 10], [7, 8]]` by end and keep each meeting
-      that starts at or after the last kept end. Which meetings does that keep?
-    options:
-      - id: earliest-finish
-        text: "`[2, 3]`, `[3, 6]`, `[7, 8]`, `[8, 10]`"
-        explanation: >-
-          In end order the loop keeps `[2, 3]`, skips `[1, 5]`, keeps `[3, 6]`, skips `[4, 7]`,
-          keeps `[7, 8]`, skips `[6, 9]` and keeps `[8, 10]`. That is 4 meetings, so 3 are
-          removed, and a brute force over every subset confirms 4 is the most.
-      - id: another-best
-        text: "`[2, 3]`, `[4, 7]`, `[7, 8]`, `[8, 10]`"
-        explanation: >-
-          This is a valid schedule of 4, but not the one the loop keeps. `[3, 6]` ends at 6,
-          before `[4, 7]`, so it is read first and kept, and `[4, 7]` then clashes with it.
-      - id: earliest-start
-        text: "`[1, 5]`, `[6, 9]`"
-        explanation: >-
-          That is what sorting by start and keeping what fits gives. `[1, 5]` starts first but
-          runs long and shuts out `[2, 3]`, `[3, 6]` and `[4, 7]`.
-      - id: next-start
-        text: "`[2, 3]`, `[3, 6]`, `[6, 9]`"
-        explanation: >-
-          After `[3, 6]` this picks the meeting that starts soonest, `[6, 9]`. The loop takes the
-          one that ends soonest, `[7, 8]`, which leaves room for `[8, 10]`.
-    correct: earliest-finish
-    followUps:
-      another-best:
-        prompt: Both `[3, 6]` and `[4, 7]` fit after `[2, 3]`. Which does the loop keep, and why?
-        options:
-          - { id: three-six, text: "`[3, 6]`. It ends first, so it is read first" }
-          - { id: four-seven, text: "`[4, 7]`. It starts later, so it wastes less" }
-          - { id: both, text: "Both. Each one fits after `[2, 3]`" }
-        correct: three-six
-        explanation: >-
-          The loop reads in end order and keeps the first interval that fits. A list can have
-          several best schedules, and the loop always builds the one whose picks end soonest.
-      earliest-start:
-        prompt: Why does sorting by start keep only 2 here?
-        options:
-          - { id: long-first, text: "`[1, 5]` is kept first and shuts out three meetings" }
-          - { id: same-count, text: "It keeps 4, the same count as sorting by end" }
-          - { id: needs-merge, text: "Sorting by start works only after a merge step" }
-        correct: long-first
-        explanation: >-
-          `[1, 5]` starts first, so it is kept, and it shuts out `[2, 3]`, `[3, 6]` and `[4, 7]`.
-          An early start says nothing about how long a meeting runs. Sorting by end puts the
-          meeting that frees the room soonest first.
-      next-start:
-        prompt: After `[3, 6]`, which next meeting leaves more room, `[6, 9]` or `[7, 8]`?
-        options:
-          - { id: seven-eight, text: "`[7, 8]`. It frees the room at 8, not 9" }
-          - { id: six-nine, text: "`[6, 9]`. It starts right at 6, so no time is wasted" }
-          - { id: same, text: "They leave the same room, since both start after 6" }
-        correct: seven-eight
-        explanation: >-
-          The next choice should end soonest, not start soonest. Ending at 8 lets `[8, 10]`
-          follow, while ending at 9 does not.

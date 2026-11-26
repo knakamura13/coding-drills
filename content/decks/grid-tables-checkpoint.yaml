@@ -1,6 +1,6 @@
 id: grid-tables-checkpoint
-title: "Grid tables: checkpoint"
-description: Count paths on new blocked grids, from the cells each entry reads to the edges and blocks. Each item combines the Grid tables skills.
+title: "Dynamic programming: grids (checkpoint)"
+description: Count paths on new blocked grids, from the cells each entry reads to the edges and blocks. Each item combines the grid table skills.
 heading: Which one is right?
 
 questions:
@@ -180,11 +180,13 @@ questions:
           Undo the move: up one row and left one column. `(r-1, c+1)` would need a move down and to the
           left.
 
-  - id: grid-exam-fix-edges
-    heading: Which change fixes it?
+  - id: grid-exam-debug-diagonal-wrap
+    heading: Which call does it fail on?
     tags: [dp, grid, python]
     prompt: |-
-      The walker moves right or down. On this grid the code returns 14, but only 12 paths exist.
+      A suggested `count_paths(grid)` should count the paths from `(0, 0)` to the bottom-right
+      cell, where each move goes one cell right or one cell diagonally down and to the right, `#`
+      is blocked, and the start is open. One detail is slightly off:
 
       ```python
       def count_paths(grid):
@@ -193,67 +195,69 @@ questions:
           for r in range(rows):
               for c in range(cols):
                   if grid[r][c] == '#':
-                      ways[r][c] = 0
-                  elif r == 0 or c == 0:
+                      continue
+                  if r == 0 and c == 0:
                       ways[r][c] = 1
-                  else:
-                      ways[r][c] = ways[r - 1][c] + ways[r][c - 1]
+                      continue
+                  left = ways[r][c - 1] if c > 0 else 0
+                  diag = ways[r - 1][c - 1] if r > 0 else 0
+                  ways[r][c] = left + diag
           return ways[-1][-1]
-
-      count_paths(["..#.", "....", "#...", "...."])
       ```
 
-      Which change makes it return 12?
+      Which call returns a wrong answer?
     options:
-      - id: seed-start
-        text: Seed only `(0, 0)`, and let edge cells add their one real neighbor
+      - id: open
+        text: "`count_paths(['...', '...'])`"
         explanation: >-
-          The edge rule gave 1 to `(0, 3)` and `(3, 0)`, which sit past blocks. With only the start
-          seeded and off-grid reads as 0, they hold 0, and the goal comes out as 12.
-      - id: block-after
-        text: Set blocked cells to 0 after the loop instead of during it
+          No move enters column 0 below row 0, so `(1, 0)` should hold 0. But there `c - 1` is -1,
+          and `ways[0][-1]` is the last cell of row 0, which holds 1. That wrong 1 carries to the
+          right, and the call returns 3, though only 2 paths exist. Guarding the read with
+          `r > 0 and c > 0` fixes it.
+      - id: corner-blocked
+        text: "`count_paths(['..#', '...'])`"
         explanation: >-
-          The interior would then build on the blocks as if they were open, and zeroing them later
-          does not undo that. The goal comes out as 20.
-      - id: add-diagonal
-        text: Add `ways[r - 1][c - 1]` to every cell inside the edges
+          `(1, 0)` still makes the unguarded diagonal read, but here the cell it lands on adds
+          nothing to the count. The call returns 2, the true count.
+      - id: column-block
+        text: "`count_paths(['...', '#..'])`"
         explanation: >-
-          The walker never moves diagonally, so this counts routes it cannot take. The goal comes out
-          as 51.
-      - id: swap-loops
-        text: Loop over columns on the outside and rows on the inside
+          `(1, 0)` is blocked, so the loop skips it before any read. The call returns 2, the true
+          count.
+      - id: one-row
+        text: "`count_paths(['....'])`"
         explanation: >-
-          Each cell still reads cells filled before it, so the order is fine and changes nothing. The
-          edge 1s are still wrong, and the goal stays 14.
-    correct: seed-start
+          With one row, `r > 0` never holds, so the diagonal is never read. The call returns 1, the
+          true count.
+    correct: open
     followUps:
-      block-after:
-        prompt: When `(1, 2)` is filled, what does it read from the block at `(0, 2)` if blocks are zeroed after the loop?
+      corner-blocked:
+        prompt: "At `(1, 0)`, which cell does `ways[0][-1]` read in `['..#', '...']`?"
         options:
-          - { id: one, text: "1, the edge value, so routes through the block are counted" }
-          - { id: zero, text: "0, since the block will be zeroed later anyway" }
-          - { id: skip, text: "Nothing, since blocked cells are skipped when they are read" }
-        correct: one
+          - { id: blocked, text: "The blocked `(0, 2)`, which holds 0, so nothing is added" }
+          - { id: start, text: "The start `(0, 0)`, which holds 1" }
+          - { id: error, text: "No cell, so Python raises `IndexError`" }
+        correct: blocked
         explanation: >-
-          A table entry is final once it is written, and later cells copy it. Blocks have to hold 0
-          before anything reads them.
-      add-diagonal:
-        prompt: Can a right-or-down walker reach `(r, c)` straight from `(r-1, c-1)`?
+          A negative index counts back from the end of the row, so -1 is the last column. Here that
+          cell is blocked and holds 0, which hides the mistake.
+      column-block:
+        prompt: "In `['...', '#..']`, does the loop ever read the diagonal at `(1, 0)`?"
         options:
-          - { id: no, text: "No, it has to pass through `(r-1, c)` or `(r, c-1)` first" }
-          - { id: yes, text: "Yes, a right move and a down move together count as one" }
-          - { id: edges, text: "Only on the edges, where one neighbor is missing" }
+          - { id: no, text: "No. `(1, 0)` is blocked, and `continue` skips it first" }
+          - { id: yes, text: "Yes. Every cell reads both of its neighbors" }
+          - { id: later, text: "Yes, once the row is finished" }
         correct: no
         explanation: >-
-          With moves right and down, a path through `(r-1, c-1)` reaches `(r, c)` by way of one of the
-          two neighbors, and is already counted there.
-      swap-loops:
-        prompt: What do `(0, 3)` and `(3, 0)` hold after the loops are swapped?
+          Only an open cell in column 0, below row 0, makes the wrong read. Here that cell is
+          blocked, so the call is right.
+      one-row:
+        prompt: "With one row, when does `diag` read `ways[r - 1][c - 1]`?"
         options:
-          - { id: still-one, text: "Still 1, since the edge rule does not depend on loop order" }
-          - { id: zero, text: "0, since the block is now filled before them" }
-          - { id: two, text: "2, since columns are now added up first" }
-        correct: still-one
+          - { id: never, text: "Never, since `r > 0` is never true" }
+          - { id: first, text: "At `(0, 0)`, where `r - 1` is -1" }
+          - { id: each, text: "At every cell after the start" }
+        correct: never
         explanation: >-
-          The bug is the rule, not the order. `r == 0 or c == 0` sets an edge cell to 1 whatever comes
-          before it, even past a block.
+          The read is guarded by `r > 0`, and a single row only has `r` equal to 0. The mistake
+          needs an open cell below row 0 in column 0.

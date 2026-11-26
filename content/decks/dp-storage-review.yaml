@@ -1,6 +1,6 @@
 id: dp-storage-review
-title: "DP storage: review"
-description: Fresh inputs for the DP storage skills, for recall on later days. No worked examples this time.
+title: "DP: saving space (review)"
+description: Fresh inputs for the skills of saving space in dynamic programming, for recall on later days. No worked examples this time.
 heading: Which one is right?
 
 questions:
@@ -19,7 +19,7 @@ questions:
     correct: 6
     explanation: >-
       The next step computes `ways[10]` from `ways[9]` and `ways[6]`. Later steps reach back from
-      higher indexes, so nothing below 6 is read again. Four values, `ways[6]` to `ways[9]`, carry
+      higher indices, so nothing below 6 is read again. Four values, `ways[6]` to `ways[9]`, carry
       the rest of the loop.
     misses:
       - index: 0
@@ -84,8 +84,8 @@ questions:
       - id: three-steps
         text: Return the cheapest total when a move can climb 1, 2 or 3 stairs
         explanation: >-
-          The farthest look-back becomes 3, so three variables are enough. The window grows with
-          the look-back, not with the input.
+          The farthest look-back becomes 3, so three variables are enough. The number kept grows
+          with the look-back, not with the input.
       - id: negative
         text: Return the cheapest total when some stairs pay you, with negative costs
         explanation: >-
@@ -119,8 +119,8 @@ questions:
             text: Two, since one of the three is always the smallest
         correct: three
         explanation: >-
-          The window is as wide as the farthest read. Three reads back means three variables, and
-          the space stays O(1).
+          The loop keeps as many entries as its farthest read reaches back. Three reads back means
+          three variables, and the space stays O(1).
       negative:
         prompt: What decides how many past entries the loop must keep?
         options:
@@ -184,8 +184,8 @@ questions:
             text: The first read in the line
         correct: farthest-row
         explanation: >-
-          As with a one-dimensional table, the farthest look-back sets the window. Two rows up
-          means two earlier rows stay.
+          As with a one-dimensional table, the farthest look-back sets how much is kept. Two rows
+          up means two earlier rows stay.
       all-rows:
         prompt: When row `r` is filled, which row is the oldest that any later row reads?
         options:
@@ -762,7 +762,7 @@ questions:
             text: Every second value
         correct: none
         explanation: >-
-          The cache fills from the bottom as calls return. The first chain reaches the base case
+          The cache fills from the bottom as calls return. The first chain reaches a stopping case
           with nothing cached, so the stack is about `n` frames deep at that moment.
       both-n:
         prompt: How many numbers does `ways_loop` hold at the end of each pass?
@@ -777,3 +777,77 @@ questions:
         explanation: >-
           Each pass replaces both names. Time counts the passes, and space counts what is held at
           once.
+
+  - id: storage-review-rolling-subarray
+    heading: What must stay?
+    tags: [dp, python]
+    prompt: |-
+      This table solves the maximum subarray problem: `end[i]` is the largest total of a subarray
+      that ends exactly at index `i`, and the answer is the largest entry.
+
+      ```python
+      def best_sum(nums):
+          end = [nums[0]]
+          for i in range(1, len(nums)):
+              end.append(max(nums[i], end[i - 1] + nums[i]))
+          return max(end)
+
+      best_sum([-2, 6, -1, 4, -8, 3])   # end is [-2, 6, 5, 9, 1, 4], returns 9
+      ```
+
+      A rolling version replaces `end` with variables and makes one pass. What is the least it
+      must keep while the loop runs?
+    options:
+      - id: cur-and-best
+        text: "`cur` for `end[i - 1]`, and `best`, the largest entry so far"
+        explanation: >-
+          Each entry reads only the one before it, so `cur` can stand for `end[i - 1]`. The answer
+          is the largest entry, not the last one, so `best = max(best, cur)` after each pass keeps
+          it. For this input `best` ends at 9.
+      - id: cur-only
+        text: "Only `cur` for `end[i - 1]`, since each entry reads only the one before it"
+        explanation: >-
+          That is enough to build every entry, but the loop would end holding `end[5]`, 4. The
+          answer is the largest entry, `end[3]`, 9, which `cur` has already passed.
+      - id: last-two
+        text: "The last two entries, `end[i - 1]` and `end[i - 2]`"
+        explanation: >-
+          No entry reads `end[i - 2]`, so the second value is never used. And two recent entries
+          lose `end[3]`, 9, as soon as `end[5]` is made.
+      - id: whole-list
+        text: "The whole list, since `max(end)` reads every entry"
+        explanation: >-
+          `max(end)` reads every entry, but a running maximum can take each one as it is made.
+          Two variables give the same 9 in O(1) extra space.
+    correct: cur-and-best
+    followUps:
+      cur-only:
+        prompt: "For `[-2, 6, -1, 4, -8, 3]`, what does `cur` hold when the loop ends?"
+        options:
+          - { id: four, text: "4, `end[5]`, though the answer is 9" }
+          - { id: nine, text: "9, the largest entry" }
+          - { id: three, text: "3, the last value of `nums`" }
+        correct: four
+        explanation: >-
+          `cur` follows the newest entry. The largest one, `end[3]`, was made earlier, so a second
+          variable has to remember it.
+      last-two:
+        prompt: Which earlier entry does `end[i]` read?
+        options:
+          - { id: one, text: "Only `end[i - 1]`" }
+          - { id: two, text: "`end[i - 1]` and `end[i - 2]`" }
+          - { id: all, text: "Every earlier entry" }
+        correct: one
+        explanation: >-
+          The recurrence extends the subarray counted in `end[i - 1]` or starts fresh. Nothing
+          older is read, so one variable carries the entries, and the answer needs one more.
+      whole-list:
+        prompt: How can `max(end)` be found without keeping the list?
+        options:
+          - { id: running, text: "Compare each new entry with the largest so far, and keep the larger" }
+          - { id: last, text: "Return the last entry, which is always the largest" }
+          - { id: sort, text: "Sort the entries at the end" }
+        correct: running
+        explanation: >-
+          A maximum only needs the largest value seen so far. Updating it as each entry is made
+          means no entry has to stay once the next one is built.

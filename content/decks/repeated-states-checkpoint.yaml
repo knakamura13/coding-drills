@@ -1,5 +1,5 @@
 id: repeated-states-checkpoint
-title: "Repeated states: checkpoint"
+title: "Memoization: checkpoint"
 description: Tell calls that meet the same state again from calls that split the work into disjoint parts, on recursions you have not seen.
 heading: Does a cache help?
 
@@ -119,7 +119,7 @@ questions:
           `walks(6, 6)` runs its body 1,847 times without a cache and 48 times with one.
           `size` hands each index to exactly one parent, so it runs 33 times either way.
       - id: only-split
-        text: Only `size`, since its calls fan out to the same indexes
+        text: Only `size`, since its calls fan out to the same indices
         explanation: >-
           Each index belongs to one parent only. Look for an index that two different calls of
           `size` would both ask for.
@@ -250,8 +250,9 @@ questions:
           return total
       ```
 
-      `count(0, "")` returns 144, and `count.cache_info()` reports `hits=0, misses=375`. Which
-      change makes the cache save calls and keeps the answer 144?
+      `count(0, "")` returns 144, and `count.cache_info()` reports `hits=0, misses=375`: no call
+      found its arguments stored, and 375 calls ran the body. Which change makes the cache save
+      calls and keeps the answer 144?
     options:
       - id: last-bit
         text: Pass only the last digit, as `count(i, last)`, so equal states meet
@@ -267,7 +268,7 @@ questions:
       - id: tuple
         text: Pass the prefix as a tuple of digits instead of a string
         explanation: >-
-          A tuple is hashable, but so is a string. Each call still carries a different prefix,
+          A tuple can be a key, but so can a string. Each call still carries a different prefix,
           so the key never repeats.
       - id: no-cache
         text: Nothing, since every call has its own prefix and no cache can help
@@ -295,8 +296,8 @@ questions:
         options:
           - id: unique-prefixes
             text: Each call is reached by one path, and its prefix records that whole path
-          - id: strings-unhashable
-            text: Strings cannot be hashed, so every lookup fails
+          - id: strings-not-keys
+            text: Strings cannot be dict keys, so every lookup fails
           - id: too-many
             text: The cache is too small to hold 375 entries
         correct: unique-prefixes
@@ -316,3 +317,94 @@ questions:
         explanation: >-
           Renaming the state to what the rest truly depends on turns disjoint calls into
           overlapping ones: the cache stores 21 states instead of 375 prefixes.
+
+  - id: checkpoint-debug-twos-key
+    heading: Which call does it fail on?
+    tags: [dp, hash-map, recursion]
+    prompt: |-
+      A suggested `climbs(n, twos)` should count the ways to climb `n` steps, 1 or 2 at a time,
+      using at most `twos` moves of 2. Each call of `climbs` starts a fresh `memo`. One detail is
+      slightly off:
+
+      ```python
+      def climbs(n, twos):
+          memo = {}
+          def ways(k, left):          # k steps to go, left moves of 2 allowed
+              if k == 0:
+                  return 1
+              if k in memo:
+                  return memo[k]
+              total = ways(k - 1, left)
+              if k >= 2 and left > 0:
+                  total += ways(k - 2, left - 1)
+              memo[k] = total
+              return total
+          return ways(n, twos)
+      ```
+
+      Which call returns a wrong answer?
+    options:
+      - id: four-one
+        text: "`climbs(4, 1)`"
+        explanation: >-
+          `ways(2, 1)` stores 2 under the key 2, counting `1+1` and `2`. Later `ways(2, 0)`, with
+          no move of 2 left, finds that key and returns 2, though only `1+1` is allowed. The call
+          returns 5 instead of 4. The state is `(k, left)`, so the key must be too.
+      - id: four-two
+        text: "`climbs(4, 2)`"
+        explanation: >-
+          Its two hits, `ways(1, 1)` and `ways(2, 1)`, read values stored by calls with
+          `left == 2`. One move of 2 is enough for 1 or 2 steps, so the stored 1 and 2 are right
+          for them too. The call returns 5, which is right: `1+1+1+1`, `1+1+2`, `1+2+1`, `2+1+1`
+          and `2+2`.
+      - id: three-one
+        text: "`climbs(3, 1)`"
+        explanation: >-
+          The one hit is `ways(1, 0)` reading the 1 stored by `ways(1, 1)`. One step can only be
+          `1`, whatever `left` is, so the hit is right and the call returns 3.
+      - id: six-zero
+        text: "`climbs(6, 0)`"
+        explanation: >-
+          With `twos = 0`, `left` is 0 in every call, so each key is reached with one state only.
+          The call returns 1, which is right: six moves of 1.
+    correct: four-one
+    followUps:
+      four-two:
+        prompt: How many ways are there to climb 2 steps with 1 move of 2 allowed, and with 2 allowed?
+        options:
+          - id: two-two
+            text: 2 either way, `1+1` and `2`
+          - id: two-three
+            text: 2 with one allowed and 3 with two allowed
+          - id: one-two
+            text: 1 with one allowed and 2 with two allowed
+        correct: two-two
+        explanation: >-
+          Two steps hold at most one move of 2, so a limit of 1 or 2 changes nothing. A key that
+          leaves out `left` goes wrong only when `left` changes the answer.
+      three-one:
+        prompt: What do `ways(1, 1)` and `ways(1, 0)` return?
+        options:
+          - id: both-one
+            text: 1 each, since one step is only `1`
+          - id: one-zero
+            text: 1 and 0, since `left` is spent
+          - id: two-one
+            text: 2 and 1, one more with a move of 2 allowed
+        correct: both-one
+        explanation: >-
+          A move of 2 needs `k >= 2`, so `left` cannot change the answer for one step. Sharing the
+          key 1 is harmless here.
+      six-zero:
+        prompt: In `climbs(6, 0)`, which values does `left` take?
+        options:
+          - id: only-zero
+            text: Only 0, since no call ever subtracts from it
+          - id: zero-to-six
+            text: Every value from 0 to 6
+          - id: zero-and-one
+            text: 0 and 1
+        correct: only-zero
+        explanation: >-
+          With no move of 2 allowed, every call passes `left` on unchanged. One value of `left`
+          per key means the key `k` names the whole state.
