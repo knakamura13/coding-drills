@@ -58,19 +58,36 @@
 		max-width: 1120px;
 	}
 
-	/* Wraps rather than truncates, so the name survives larger text spacing (WCAG 1.4.12). */
+	/* Wraps rather than truncates, so the name survives larger text spacing (WCAG 1.4.12). The link
+	   is as wide as the mark and name, and the auto margin keeps the rest of the bar on the right.
+	   Its 8px padding is taken back by the margin, so the mark stays on the page's edge. */
 	.brand {
 		gap: 6px;
-		flex: 1;
+		flex: 0 1 auto;
 		min-width: 0;
 		min-height: 44px;
 		display: flex;
 		align-items: center;
+		margin-left: -8px;
+		margin-right: auto;
+		padding: 0 8px;
+		border-radius: 12px;
 		color: var(--text);
 		font-size: 17px;
 		font-weight: 800;
 		letter-spacing: 0.2px;
 		text-decoration: none;
+	}
+
+	/* The site menu's link hover. Focus shows it too, under the focus ring. */
+	.brand:focus-visible {
+		background: var(--accent-soft);
+	}
+
+	@media (hover: hover) {
+		.brand:hover {
+			background: var(--accent-soft);
+		}
 	}
 
 	.offline {
