@@ -1,3 +1,6 @@
+// Relative, so e2e specs can import this file outside Vite.
+import { isDepth, type Depth } from '../content/depth.ts';
+
 /**
  * Device-local preferences. Appearance can differ per device, so this stays
  * out of the synced attempt and flag log.
@@ -25,6 +28,12 @@ export interface Preferences {
 	/** Default off. When on, picking an option checks it immediately. */
 	immediateFeedback: boolean;
 	theme: ThemeChoice;
+	/**
+	 * How deep the curriculum goes (#155). Present only once the learner picks a level, so a
+	 * learner who never picked follows `DEFAULT_LEVEL` when it changes. Read it through
+	 * `learnerDepth()`.
+	 */
+	depth?: Depth;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -58,7 +67,8 @@ export function readPreferences(raw: string | null): Preferences {
 				typeof record.immediateFeedback === 'boolean'
 					? record.immediateFeedback
 					: DEFAULT_PREFERENCES.immediateFeedback,
-			theme: isThemeChoice(record.theme) ? record.theme : DEFAULT_PREFERENCES.theme
+			theme: isThemeChoice(record.theme) ? record.theme : DEFAULT_PREFERENCES.theme,
+			...(isDepth(record.depth) ? { depth: record.depth } : {})
 		};
 	} catch {
 		return { ...DEFAULT_PREFERENCES };

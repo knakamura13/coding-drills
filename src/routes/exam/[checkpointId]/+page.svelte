@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Lesson from '$lib/components/Lesson.svelte';
+	import { curriculum } from 'virtual:curriculum';
 	import { APP_NAME } from '$lib/config';
-	import { PASS_RULE, examPassed } from '$lib/domain/exam';
+	import { checkpointPassed } from '$lib/domain/depth';
+	import { passRule, sittingSize } from '$lib/domain/exam';
 	import { createReviewLesson, type Summary } from '$lib/domain/lesson';
 	import { skillsChecked } from '$lib/domain/mastery';
 	import { getRepository } from '$lib/storage';
@@ -14,7 +16,8 @@
 
 	/** What the sitting means: passed, or which skills to review first. Read after the last answer is saved. */
 	function result(summary: Summary) {
-		const passed = examPassed(data.pool, data.mix, getRepository().attempts());
+		// Passed at any depth level counts (#155), as the tree shows it.
+		const passed = checkpointPassed(curriculum, data.checkpointId, getRepository().attempts());
 		const missedIds = new Set(summary.missed.map((miss) => miss.questionId));
 		const checked = skillsChecked(data.pool.filter((drill) => missedIds.has(drill.questionId)));
 		const reviewHref = `${resolve('/exam/[checkpointId]/review', { checkpointId: data.checkpointId })}${
@@ -28,7 +31,7 @@
 	<title>Checkpoint: {data.title} · {APP_NAME}</title>
 </svelte:head>
 
-<Lesson {source} title="Checkpoint: {data.title}" subtitle={PASS_RULE} summaryExtra={outcome} />
+<Lesson {source} title="Checkpoint: {data.title}" subtitle={passRule(sittingSize(data.pool.length))} summaryExtra={outcome} />
 
 {#snippet outcome(summary: Summary)}
 	{@const verdict = result(summary)}

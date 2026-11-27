@@ -1,5 +1,7 @@
 import type { Curriculum } from '$lib/content/curriculum';
+import type { Depth } from '$lib/content/depth';
 import type { Attempt } from '$lib/storage/types';
+import { curriculumAt } from './depth';
 import { projectCurriculum, rollup } from './mastery';
 
 /**
@@ -7,7 +9,8 @@ import { projectCurriculum, rollup } from './mastery';
  * lesson, ending at it. A lesson is a path on its branch; the nodes before it are the branch, then
  * the branch's earlier paths, of which the summary shows the last two. An older topic deck can
  * hold drills from several paths: it is no one path, so it shows only its branch, when they share
- * one, before a leaf with the deck's own title.
+ * one, before a leaf with the deck's own title. Only paths and drills visible at the learner's
+ * depth `level` count (#155); `full` is the unfiltered curriculum.
  */
 
 export interface TrailNode {
@@ -25,9 +28,9 @@ export interface LessonTrail {
 	title: string;
 }
 
-export function lessonTrail(curriculum: Curriculum, attempts: readonly Attempt[], deckId: string, deckTitle: string): LessonTrail {
-	const pathIds = new Set(curriculum.drills.filter((drill) => drill.deckId === deckId).map((drill) => drill.pathId));
-	const branches = projectCurriculum(curriculum, attempts).branches.filter((candidate) => candidate.paths.some((path) => pathIds.has(path.id)));
+export function lessonTrail(full: Curriculum, attempts: readonly Attempt[], deckId: string, deckTitle: string, level: Depth): LessonTrail {
+	const pathIds = new Set(curriculumAt(full, level).drills.filter((drill) => drill.deckId === deckId).map((drill) => drill.pathId));
+	const branches = projectCurriculum(full, attempts, level).branches.filter((candidate) => candidate.paths.some((path) => pathIds.has(path.id)));
 	if (branches.length !== 1) return { earlier: [], title: deckTitle };
 	const branch = branches[0]!;
 	if (pathIds.size > 1) return { earlier: [{ kind: 'branch', id: branch.id, title: branch.title, mastered: false }], title: deckTitle };

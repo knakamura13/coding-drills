@@ -2,8 +2,10 @@ import { error, redirect } from '@sveltejs/kit';
 import { curriculum } from 'virtual:curriculum';
 import type { LessonEntry } from '$lib/domain/lesson';
 import { EXAM_SIZE, drawExam } from '$lib/domain/exam';
+import { curriculumAt } from '$lib/domain/depth';
 import { examDrills, projectCurriculum } from '$lib/domain/mastery';
 import { cardKey } from '$lib/domain/srs';
+import { learnerDepth } from '$lib/preferences/store.svelte';
 import { getRepository } from '$lib/storage';
 import type { PageLoad } from './$types';
 
@@ -17,11 +19,19 @@ export const load: PageLoad = async ({ params }) => {
 	const checkpoint = path?.checkpoints.find((item) => item.id === params.checkpointId);
 	if (!path || !checkpoint) error(404, 'Checkpoint not found');
 
-	const view = projectCurriculum(curriculum, getRepository().attempts())
+	// The pool and mix are the ones the learner's depth level shows (#155). A checkpoint that level
+	// hides goes back to the tree, as a locked one does.
+	const level = learnerDepth();
+	const shown = curriculumAt(curriculum, level);
+	const shownPath = shown.branches.flatMap((branch) => branch.paths).find((item) => item.id === path.id);
+	const shownCheckpoint = shownPath?.checkpoints.find((item) => item.id === checkpoint.id);
+	if (!shownPath || !shownCheckpoint) redirect(307, '/tree');
+
+	const view = projectCurriculum(curriculum, getRepository().attempts(), level)
 		.branches.flatMap((branch) => branch.paths)
 		.flatMap((item) => item.checkpoints)
 		.find((item) => item.id === checkpoint.id);
-	const pool = examDrills(path, curriculum.drills).get(checkpoint.id) ?? [];
+	const pool = examDrills(shownPath, shown.drills).get(checkpoint.id) ?? [];
 	if (view?.state === 'locked' || pool.length === 0) redirect(307, '/tree');
 
 	const { decks } = await import('virtual:decks');
@@ -34,13 +44,12 @@ export const load: PageLoad = async ({ params }) => {
 		)
 	);
 	// The sitting is fixed when the page loads, so retrying replays the same items.
-	const entries = drawExam(pool, checkpoint.mix, EXAM_SIZE, Math.random).map((drill) => questions.get(cardKey(drill.deckId, drill.questionId))!);
+	const entries = drawExam(pool, shownCheckpoint.mix, EXAM_SIZE, Math.random).map((drill) => questions.get(cardKey(drill.deckId, drill.questionId))!);
 	return {
 		title: checkpoint.title,
 		checkpointId: checkpoint.id,
 		entries,
 		pool,
-		mix: checkpoint.mix,
 		/** Skill titles by id, to name what a failed sitting should review. */
 		skillTitles: Object.fromEntries(path.skills.map((skill) => [skill.id, skill.title]))
 	};

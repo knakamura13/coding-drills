@@ -7,7 +7,7 @@ import MasteryTree from './MasteryTree.svelte';
 
 const curriculum = loadCurriculum('content/curriculum', 'content/decks');
 const deckTitles = new Map(loadDecks('content/decks').map((deck) => [deck.id, deck.title]));
-const tree = projectCurriculum(curriculum, [], deckTitles, '2026-01-01');
+const tree = projectCurriculum(curriculum, [], 'deep', deckTitles, '2026-01-01');
 
 describe('MasteryTree text', () => {
 	const { body } = render(MasteryTree, { props: { tree, ready: true } });

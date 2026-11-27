@@ -54,6 +54,12 @@ const forkSchema = z
 		title: text(80),
 		/** Main-line skill this fork splits from. Omit to split at the path entrance. */
 		after: id.optional(),
+		/**
+		 * Skills on other paths that only this fork builds on: its first skill waits on them too.
+		 * Unlike a path's `needs`, they stay out of the checkpoint's `requires`, so a level that
+		 * hides the fork hides the prerequisite with it (#155).
+		 */
+		needs: z.array(id).optional(),
 		levels: z.array(levelSchema).min(1).max(4)
 	})
 	.strict();
@@ -369,6 +375,9 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 				throw new ContentError(`fork "${fork.id}" repeats a skill id`);
 			}
 			for (const level of fork.levels) claim(level.id, 'a skill');
+			if (dedupe(fork.needs ?? []).length !== (fork.needs?.length ?? 0)) {
+				throw new ContentError(`fork "${fork.id}" lists a needed skill twice`);
+			}
 		}
 
 		if ((path.needs?.length ?? 0) > 0 && path.checkpoints.length > 1) {
@@ -423,7 +432,7 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 					pathId,
 					branchId: branch.id,
 					line: fork.id,
-					after: index === 0 ? (fork.after ? [fork.after] : [...entrance]) : [fork.levels[index - 1]!.id],
+					after: index === 0 ? dedupe([...(fork.after ? [fork.after] : entrance), ...(fork.needs ?? [])]) : [fork.levels[index - 1]!.id],
 					depth: level.depth ?? pathDepth
 				};
 				skills.push(skill);
@@ -438,6 +447,14 @@ export function compileCurriculum(files: readonly BranchFile[], questions: reado
 		for (const needed of dedupe(path.needs ?? [])) {
 			if (!skillIndex.has(needed)) {
 				throw new ContentError(`path "${pathId}" needs "${needed}", which is not a skill`);
+			}
+		}
+		for (const fork of path.forks ?? []) {
+			for (const needed of fork.needs ?? []) {
+				if (!skillIndex.has(needed)) throw new ContentError(`fork "${fork.id}" needs "${needed}", which is not a skill`);
+				if (skillIndex.get(needed)!.pathId === pathId) {
+					throw new ContentError(`fork "${fork.id}" needs "${needed}", which is on its own path; use the fork's after`);
+				}
 			}
 		}
 	}

@@ -3,7 +3,7 @@ import type { CurriculumDrill } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
 import { curriculum } from 'virtual:curriculum';
 import { examDrills, projectCurriculum } from './mastery';
-import { EXAM_SIZE, drawExam, examPassed, orderForReview } from './exam';
+import { EXAM_SIZE, PASS_RULE, drawExam, examPassed, orderForReview, passRule } from './exam';
 import { seededRng } from './shuffle';
 
 function drill(questionId: string, covers: string[] = []): CurriculumDrill {
@@ -60,7 +60,7 @@ describe('examPassed', () => {
 		const sitting = drills.map(answered);
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 
-		const projected = (events: Attempt[]) => projectCurriculum(curriculum, events).branches.flatMap((branch) => branch.paths);
+		const projected = (events: Attempt[]) => projectCurriculum(curriculum, events, 'deep').branches.flatMap((branch) => branch.paths);
 		const view = projected(sitting);
 		expect(view.find((entry) => entry.id === 'reachability')?.checkpoints[0].state).toBe('passed');
 		expect(view.find((entry) => entry.id === 'traversal-layers')?.main[0].lockedBy).toEqual([]);
@@ -133,5 +133,19 @@ describe('orderForReview', () => {
 
 	it('is stable for equal ranks', () => {
 		expect(orderForReview([drill('a'), drill('b'), drill('c')], []).map((item) => item.questionId)).toEqual(['a', 'b', 'c']);
+	});
+});
+
+describe('passRule', () => {
+	it('states the size of the sitting a pool gives, so a smaller pool does not promise five items', () => {
+		expect(passRule(EXAM_SIZE)).toBe(
+			'A sitting is 5 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
+		);
+		// The legend speaks for every checkpoint, so it allows for a smaller pool.
+		expect(PASS_RULE).toMatch(/^A sitting is 5 exam items, or every item when a checkpoint has fewer\./);
+		expect(passRule(4)).toBe(
+			'A sitting is 4 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
+		);
+		expect(passRule(1)).toBe('A sitting is 1 exam item. It passes when none is wrong on the first try and every kind of item the checkpoint requires was answered right.');
 	});
 });

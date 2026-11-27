@@ -60,6 +60,24 @@ describe('readPreferences', () => {
 	});
 });
 
+describe('the depth preference', () => {
+	it('is absent until the learner picks a level, and an invalid value is dropped', () => {
+		expect(readPreferences(JSON.stringify({ sound: true }))).not.toHaveProperty('depth');
+		expect(readPreferences(JSON.stringify({ depth: 'shallow' }))).not.toHaveProperty('depth');
+		expect(readPreferences(JSON.stringify({ depth: 3 }))).not.toHaveProperty('depth');
+		expect(readPreferences(JSON.stringify({ depth: 'interview' })).depth).toBe('interview');
+		expect(readPreferences(JSON.stringify({ depth: 'deep', theme: 'sepia' }))).toEqual({ ...DEFAULT_PREFERENCES, depth: 'deep' });
+	});
+
+	it('round-trips through a store, and is not written when it was never set', () => {
+		const store = memoryStore();
+		savePreferences(store, { ...DEFAULT_PREFERENCES, depth: 'interview' });
+		expect(loadPreferences(store).depth).toBe('interview');
+		savePreferences(store, DEFAULT_PREFERENCES);
+		expect(store.raw).not.toContain('depth');
+	});
+});
+
 describe('loadPreferences and savePreferences', () => {
 	it('round-trips through a store', () => {
 		const store = memoryStore();

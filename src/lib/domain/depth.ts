@@ -3,6 +3,7 @@ import { DEFAULT_DEPTH, DEPTHS, visibleAt, type Depth, type DepthMap } from '$li
 import type { Attempt } from '$lib/storage/types';
 import { examPassed } from './exam';
 import { examDrills, teachingBySkill } from './mastery';
+// mastery.ts imports this module too. The cycle is safe while every use across it sits inside a function.
 
 /**
  * The curriculum and decks a learner sees at a depth level (#155). Pure: the

@@ -3,7 +3,7 @@
 	import { tick } from 'svelte';
 	import Markdown from '$lib/components/Markdown.svelte';
 	import { plainText } from '$lib/markdown/render';
-	import { PASS_RULE } from '$lib/domain/exam';
+	import { passRule } from '$lib/domain/exam';
 	import { EXAM_RULE, MASTERY_RULE, type CheckpointView, type SkillView, type TreeView } from '$lib/domain/mastery';
 
 	let { tree, ready }: { tree: TreeView; ready: boolean } = $props();
@@ -235,7 +235,7 @@
 						{/each}
 					</ul>
 				{:else if checkpoint.state === 'available'}
-					<p>Every skill that leads here is mastered. {PASS_RULE}</p>
+					<p>Every skill that leads here is mastered. {passRule(checkpoint.sitting)}</p>
 					<a class="practice" href={resolve('/exam/[checkpointId]', { checkpointId: checkpoint.id })}>Start the exam</a>
 				{:else}
 					<p>Passed. A passed checkpoint stays passed.</p>

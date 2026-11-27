@@ -112,11 +112,11 @@ describe('mastery decay', () => {
 	it('locks an exam that has not been passed when a skill decays, and keeps a passed one', () => {
 		const curriculum = tree();
 		const skills = ['a1q', 'a2q', 'b1q', 'forkq'].map((id, index) => attempt(id, true, `2026-01-0${index + 1}`, id));
-		expect(projectCurriculum(curriculum, skills).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
+		expect(projectCurriculum(curriculum, skills, 'deep').branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
 		const decayed = [...skills, attempt('b1q', false, '2026-02-01', 'late-miss')];
-		expect(projectCurriculum(curriculum, decayed).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
+		expect(projectCurriculum(curriculum, decayed, 'deep').branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
 		const passed = [...decayed, attempt('beta-exam-q', true, '2026-02-02', 'exam')];
-		expect(projectCurriculum(curriculum, passed).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
+		expect(projectCurriculum(curriculum, passed, 'deep').branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
 	});
 });
 
@@ -245,7 +245,7 @@ describe('projectCurriculum', () => {
 				drill('a3q', 'alpha', 'keep')
 			]
 		};
-		const alpha = projectCurriculum(named, []).branches[0]!.paths[0]!;
+		const alpha = projectCurriculum(named, [], 'deep').branches[0]!.paths[0]!;
 		expect(alpha.main.map((skill) => skill.drills.map((item) => item.questionId))).toEqual([
 			['a2q'],
 			['a3q', 'a1q']
@@ -261,7 +261,7 @@ describe('projectCurriculum', () => {
 				{ ...drill('a3q', 'alpha', 'keep'), skillId: 'a2' }
 			]
 		};
-		const alpha = projectCurriculum(named, [attempt('a1q', true)]).branches[0]!.paths[0]!;
+		const alpha = projectCurriculum(named, [attempt('a1q', true)], 'deep').branches[0]!.paths[0]!;
 		expect(alpha.main.map((skill) => skill.state)).toEqual(['mastered', 'unexplored']);
 	});
 
@@ -271,13 +271,13 @@ describe('projectCurriculum', () => {
 			attempt('a2q', true, '2026-01-02', 'a2'),
 			attempt('b1q', true, '2026-01-03', 'b1')
 		];
-		const locked = projectCurriculum(curriculum, almost);
+		const locked = projectCurriculum(curriculum, almost, 'deep');
 		const beta = locked.branches[1]!.paths[0]!;
 		expect(beta.checkpoints[0]).toMatchObject({ state: 'locked', lit: false });
 		expect(beta.checkpoints[0]!.remaining.map((skill) => skill.id)).toEqual(['b-fork']);
 		expect(beta.after[0]).toMatchObject({ id: 'alpha', cross: true, mastered: true });
 
-		const open = projectCurriculum(curriculum, [...almost, attempt('forkq', true, '2026-01-04', 'fork')]);
+		const open = projectCurriculum(curriculum, [...almost, attempt('forkq', true, '2026-01-04', 'fork')], 'deep');
 		expect(open.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
 		expect(open.branches[1]!.paths[0]!.main[0]).toMatchObject({ state: 'mastered', lit: true });
 	});
@@ -286,20 +286,20 @@ describe('projectCurriculum', () => {
 		const skills = ['a1q', 'a2q', 'b1q', 'forkq'].map((id, index) =>
 			attempt(id, true, `2026-01-0${index + 1}`, id)
 		);
-		expect(projectCurriculum(curriculum, skills).branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
-		const passed = projectCurriculum(curriculum, [...skills, attempt('beta-exam-q', true, '2026-01-08', 'exam')]);
+		expect(projectCurriculum(curriculum, skills, 'deep').branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('available');
+		const passed = projectCurriculum(curriculum, [...skills, attempt('beta-exam-q', true, '2026-01-08', 'exam')], 'deep');
 		expect(passed.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
 		// A full sitting answered right is evidence enough, so it passes even before the skills are mastered.
 		// The lock only gates the exam link in the tree.
-		const early = projectCurriculum(curriculum, [attempt('beta-exam-q', true)]);
+		const early = projectCurriculum(curriculum, [attempt('beta-exam-q', true)], 'deep');
 		expect(early.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('passed');
-		const wrongEarly = projectCurriculum(curriculum, [attempt('beta-exam-q', false)]);
+		const wrongEarly = projectCurriculum(curriculum, [attempt('beta-exam-q', false)], 'deep');
 		expect(wrongEarly.branches[1]!.paths[0]!.checkpoints[0]!.state).toBe('locked');
 	});
 
 	it('locks a path\'s entrance skills until every checkpoint of the path before it is passed', () => {
 		const mastered = [attempt('a1q', true), attempt('a2q', true, '2026-01-02', 'a2')];
-		const beta = (attempts: Attempt[]) => projectCurriculum(curriculum, attempts).branches[1]!.paths[0]!;
+		const beta = (attempts: Attempt[]) => projectCurriculum(curriculum, attempts, 'deep').branches[1]!.paths[0]!;
 		const before = beta(mastered);
 		expect(before.main[0]!.lockedBy).toEqual([{ id: 'alpha', title: 'Alpha' }]);
 		expect(before.after[0]).toMatchObject({ id: 'alpha', mastered: true, cleared: false });
@@ -310,26 +310,26 @@ describe('projectCurriculum', () => {
 	});
 
 	it('never locks a root path, a later skill in a path, or a path that has no exam drill to sit', () => {
-		const alpha = projectCurriculum(curriculum, []).branches[0]!.paths[0]!;
+		const alpha = projectCurriculum(curriculum, [], 'deep').branches[0]!.paths[0]!;
 		expect(alpha.main.map((skill) => skill.lockedBy)).toEqual([[], []]);
 		const noExam: Curriculum = { ...curriculum, drills: curriculum.drills.filter((item) => item.questionId !== 'alpha-exam-q') };
-		const beta = projectCurriculum(noExam, []).branches[1]!.paths[0]!;
+		const beta = projectCurriculum(noExam, [], 'deep').branches[1]!.paths[0]!;
 		expect(beta.main[0]!.lockedBy).toEqual([]);
 		expect(beta.after[0]).toMatchObject({ cleared: true });
 	});
 
 	it('ignores retired drills and leaves an unexplored root unlit', () => {
-		const view = projectCurriculum(curriculum, [attempt('retired', true)]);
+		const view = projectCurriculum(curriculum, [attempt('retired', true)], 'deep');
 		expect(view.branches[0]!.paths[0]!.main[0]!.state).toBe('unexplored');
 		expect(view.branches[0]!.paths[0]!.main[0]!.lit).toBe(false);
 		expect(view.state).toBe('unexplored');
 	});
 
 	it('lights the next skill only after the previous one is mastered', () => {
-		const started = projectCurriculum(curriculum, [attempt('a1q', false)]);
+		const started = projectCurriculum(curriculum, [attempt('a1q', false)], 'deep');
 		expect(started.branches[0]!.paths[0]!.main[0]).toMatchObject({ state: 'practicing', lit: true });
 		expect(started.branches[0]!.paths[0]!.main[1]!.lit).toBe(false);
-		const done = projectCurriculum(curriculum, [attempt('a1q', true)]);
+		const done = projectCurriculum(curriculum, [attempt('a1q', true)], 'deep');
 		expect(done.branches[0]!.paths[0]!.main[1]!.lit).toBe(true);
 	});
 });
@@ -362,11 +362,11 @@ describe('due drills in the tree', () => {
 	const answered = [attempt('a1q', true, '2026-01-01', 'a1'), attempt('a2q', true, '2026-01-01', 'a2')];
 
 	it('counts the drills of a skill that are due today, and none without a date', () => {
-		const withDate = projectCurriculum(curriculum, answered, new Map(), '2026-02-01').branches[0]!.paths[0]!;
+		const withDate = projectCurriculum(curriculum, answered, 'deep', new Map(), '2026-02-01').branches[0]!.paths[0]!;
 		expect(withDate.main.map((skill) => skill.due)).toEqual([1, 1]);
-		const notYet = projectCurriculum(curriculum, answered, new Map(), '2026-01-01').branches[0]!.paths[0]!;
+		const notYet = projectCurriculum(curriculum, answered, 'deep', new Map(), '2026-01-01').branches[0]!.paths[0]!;
 		expect(notYet.main.map((skill) => skill.due)).toEqual([0, 0]);
-		const noDate = projectCurriculum(curriculum, answered).branches[0]!.paths[0]!;
+		const noDate = projectCurriculum(curriculum, answered, 'deep').branches[0]!.paths[0]!;
 		expect(noDate.main.map((skill) => skill.due)).toEqual([0, 0]);
 	});
 

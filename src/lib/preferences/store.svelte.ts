@@ -1,3 +1,4 @@
+import { DEFAULT_LEVEL, type Depth } from '$lib/content/depth';
 import {
 	DEFAULT_PREFERENCES,
 	THEME_COLOR,
@@ -27,8 +28,19 @@ function snapshot(): Preferences {
 		sound: preferences.sound,
 		haptics: preferences.haptics,
 		immediateFeedback: preferences.immediateFeedback,
-		theme: preferences.theme
+		theme: preferences.theme,
+		// Written only once the learner picked a level, so saving another preference never pins the default.
+		...(preferences.depth ? { depth: preferences.depth } : {})
 	};
+}
+
+/**
+ * The curriculum level this learner sees (#155). Read from localStorage on each call, not from
+ * `preferences`, because loaders and child effects run before the layout's `initPreferences()`.
+ * `DEFAULT_LEVEL` during prerendering and when nothing valid is stored.
+ */
+export function learnerDepth(): Depth {
+	return loadPreferences(browserStore()).depth ?? DEFAULT_LEVEL;
 }
 
 /** Applies the choice to the document. System leaves the theme-color meta tags to follow the OS. */
@@ -65,12 +77,16 @@ export function initPreferences(): void {
 	preferences.haptics = stored.haptics;
 	preferences.immediateFeedback = stored.immediateFeedback;
 	preferences.theme = stored.theme;
+	preferences.depth = stored.depth;
 	applyDocumentTheme(preferences.theme);
 	listenForSystemTheme();
 }
 
 export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]): void {
 	preferences[key] = value;
+	// The level is read from storage on every use (`learnerDepth`), and until the Settings control
+	// ships it is set outside this page, so carry the stored one over rather than drop it.
+	if (key !== 'depth') preferences.depth = loadPreferences(browserStore()).depth;
 	savePreferences(browserStore(), snapshot());
 	if (key === 'theme') applyDocumentTheme(preferences.theme);
 }
