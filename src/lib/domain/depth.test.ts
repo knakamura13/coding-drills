@@ -3,7 +3,7 @@ import { compileCurriculum, type BranchFile, type Curriculum, type Depth } from 
 import type { Attempt } from '$lib/storage/types';
 import { checkpointPassed, curriculumAt, deckAt, decksAt } from './depth.ts';
 import { examPassed } from './exam.ts';
-import { examDrills, teachingBySkill } from './mastery.ts';
+import { examDrills, projectCurriculum, teachingBySkill } from './mastery.ts';
 
 type PathFile = BranchFile['paths'][number];
 type DrillFile = BranchFile['drills'][number];
@@ -271,5 +271,53 @@ describe('checkpointPassed', () => {
 	it('is false for a checkpoint with no exam drill at any level', () => {
 		const bare = compile([pathFile('bare', [level('bare-a'), level('bare-b')], [checkpoint('bare-exam')])], [drill('b1', 'bare', 'keep')]);
 		expect(checkpointPassed(bare, 'bare-exam', sitting(['b1']))).toBe(false);
+	});
+});
+
+describe('projectCurriculum at a level', () => {
+	const pathsOf = (tree: ReturnType<typeof projectCurriculum>) => tree.branches.flatMap((branch) => branch.paths);
+	const viewOf = (tree: ReturnType<typeof projectCurriculum>, id: string) => pathsOf(tree).find((path) => path.id === id)!;
+	const coreSkills = sitting(['t-core-a', 't-core-b', 't-side-a']);
+
+	it('shows only the paths, skills, forks, checkpoints and drills the level shows', () => {
+		const tree = projectCurriculum(curriculum, [], 'interview');
+		expect(pathsOf(tree).map((path) => path.id)).toEqual(['core', 'plain', 'split']);
+		const core = viewOf(tree, 'core');
+		expect(core.forks.map((fork) => fork.skills.map((skill) => skill.id))).toEqual([['side-a']]);
+		expect(core.checkpoints[0]!.drills.map((item) => item.questionId)).toEqual(['x-trace']);
+		expect(viewOf(tree, 'split').checkpoints.map((item) => item.id)).toEqual(['split-early']);
+		expect(viewOf(tree, 'plain').main.map((skill) => skill.drills.map((item) => item.questionId))).toEqual([['p1'], [], ['p3', 'p4']]);
+		expect(pathsOf(projectCurriculum(curriculum, [], 'deep')).map((path) => path.id)).toEqual(['core', 'plain', 'split', 'deeper', 'hollow']);
+	});
+
+	it('opens a checkpoint once its interview skills are mastered, while the deep level still waits on the deep one', () => {
+		expect(viewOf(projectCurriculum(curriculum, coreSkills, 'interview'), 'core').checkpoints[0]!.state).toBe('available');
+		const deep = viewOf(projectCurriculum(curriculum, coreSkills, 'deep'), 'core').checkpoints[0]!;
+		expect(deep.state).toBe('locked');
+		expect(deep.remaining.map((item) => item.id)).toEqual(['side-b']);
+	});
+
+	it('shows a checkpoint passed at either level as passed at both', () => {
+		// The interview pool is x-trace alone, a one-item sitting; the deep pool needs x-proof too.
+		const interviewPass = [...coreSkills, attempt('x-trace', true, '2026-01-02')];
+		expect(viewOf(projectCurriculum(curriculum, interviewPass, 'deep'), 'core').checkpoints[0]!.state).toBe('passed');
+		const deepPass = sitting(['x-trace', 'x-proof'], [], '2026-01-02');
+		expect(viewOf(projectCurriculum(curriculum, deepPass, 'interview'), 'core').checkpoints[0]!.state).toBe('passed');
+		expect(viewOf(projectCurriculum(curriculum, deepPass, 'deep'), 'deeper').after[0]).toEqual(expect.objectContaining({ id: 'core', cleared: true }));
+	});
+
+	it('clears a path whose only unpassed checkpoint has no exam drill at the level', () => {
+		// split comes after plain. At interview plain-first has no exam drill (e1 is deep), so passing plain-second clears plain.
+		const paths = curriculum.branches[0]!.paths.map((path) => (path.id === 'split' ? { ...path, after: ['plain'] } : path));
+		const chained: Curriculum = { ...curriculum, branches: [{ ...curriculum.branches[0]!, paths }] };
+		const passedSecond = sitting(['e2', 'e3']);
+		expect(viewOf(projectCurriculum(chained, passedSecond, 'interview'), 'split').after[0]!.cleared).toBe(true);
+		expect(viewOf(projectCurriculum(chained, passedSecond, 'deep'), 'split').after[0]!.cleared).toBe(false);
+	});
+
+	it('leaves a skill whose only drills are deep not started at interview', () => {
+		const plainB = viewOf(projectCurriculum(curriculum, [attempt('p2', true)], 'interview'), 'plain').main[1]!;
+		expect(plainB.state).toBe('unexplored');
+		expect(viewOf(projectCurriculum(curriculum, [attempt('p2', true)], 'deep'), 'plain').main[1]!.state).toBe('mastered');
 	});
 });

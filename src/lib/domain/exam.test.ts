@@ -60,7 +60,7 @@ describe('examPassed', () => {
 		const sitting = drills.map(answered);
 		expect(examPassed(drills, checkpoint.mix, sitting)).toBe(true);
 
-		const projected = (events: Attempt[]) => projectCurriculum(curriculum, events).branches.flatMap((branch) => branch.paths);
+		const projected = (events: Attempt[]) => projectCurriculum(curriculum, events, 'deep').branches.flatMap((branch) => branch.paths);
 		const view = projected(sitting);
 		expect(view.find((entry) => entry.id === 'reachability')?.checkpoints[0].state).toBe('passed');
 		expect(view.find((entry) => entry.id === 'traversal-layers')?.main[0].lockedBy).toEqual([]);

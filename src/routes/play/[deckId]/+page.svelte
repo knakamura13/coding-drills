@@ -18,7 +18,7 @@
 			outdated: () => answered().size !== plannedWith.size
 		};
 	});
-	const trail = () => lessonTrail(curriculum, getRepository().attempts(), data.deck.id, data.deck.title);
+	const trail = () => lessonTrail(curriculum, getRepository().attempts(), data.deck.id, data.deck.title, data.level);
 	const opensExample = (screen: LessonView | null) => opensWorkedExample(screen, getRepository().attempts(), data.deck.id);
 </script>
 

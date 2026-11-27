@@ -46,21 +46,21 @@ function attempt(id: string, correct: boolean): Attempt {
 
 describe('lessonTrail', () => {
 	it('leads from the branch to the first lesson on it', () => {
-		expect(lessonTrail(curriculum, [], 'exact-deck', 'Exact search deck')).toEqual({
+		expect(lessonTrail(curriculum, [], 'exact-deck', 'Exact search deck', 'deep')).toEqual({
 			earlier: [{ kind: 'branch', id: 'search', title: 'Sequences and search', mastered: false }],
 			title: 'Exact search'
 		});
 	});
 
 	it('shows at most two earlier nodes, dropping the branch once two lessons precede', () => {
-		expect(lessonTrail(curriculum, [], 'boundary-deck', '').earlier.map((node) => node.title)).toEqual(['Sequences and search', 'Exact search']);
-		expect(lessonTrail(curriculum, [], 'rotated-deck', '').earlier.map((node) => node.title)).toEqual(['Exact search', 'Boundary search']);
+		expect(lessonTrail(curriculum, [], 'boundary-deck', '', 'deep').earlier.map((node) => node.title)).toEqual(['Sequences and search', 'Exact search']);
+		expect(lessonTrail(curriculum, [], 'rotated-deck', '', 'deep').earlier.map((node) => node.title)).toEqual(['Exact search', 'Boundary search']);
 	});
 
 	it('marks an earlier lesson mastered only while its skills are', () => {
-		const mastered = lessonTrail(curriculum, [attempt('exact', true)], 'boundary-deck', '').earlier[1];
+		const mastered = lessonTrail(curriculum, [attempt('exact', true)], 'boundary-deck', '', 'deep').earlier[1];
 		expect(mastered).toMatchObject({ id: 'exact', mastered: true });
-		const slipped = lessonTrail(curriculum, [attempt('exact', false)], 'boundary-deck', '').earlier[1];
+		const slipped = lessonTrail(curriculum, [attempt('exact', false)], 'boundary-deck', '', 'deep').earlier[1];
 		expect(slipped).toMatchObject({ id: 'exact', mastered: false });
 	});
 
@@ -69,13 +69,30 @@ describe('lessonTrail', () => {
 			...curriculum,
 			drills: [...curriculum.drills, { ...curriculum.drills[0]!, questionId: 'mixed-1', deckId: 'mixed-deck' }, { ...curriculum.drills[2]!, questionId: 'mixed-2', deckId: 'mixed-deck' }]
 		};
-		expect(lessonTrail(mixed, [], 'mixed-deck', 'Searching')).toEqual({
+		expect(lessonTrail(mixed, [], 'mixed-deck', 'Searching', 'deep')).toEqual({
 			earlier: [{ kind: 'branch', id: 'search', title: 'Sequences and search', mastered: false }],
 			title: 'Searching'
 		});
 	});
 
+	it('leaves out paths and drills the level hides', () => {
+		const deeper: Curriculum = {
+			...curriculum,
+			branches: [{ ...curriculum.branches[0]!, paths: [path('exact', 'Exact search'), { ...path('fallback', 'Search with fallbacks'), depth: 'deep' }, path('boundary', 'Boundary search')] }],
+			drills: [
+				...curriculum.drills,
+				{ questionId: 'fallback-q', deckId: 'fallback-deck', disposition: 'keep', pathId: 'fallback', skillId: 'fallback-skill', covers: [], depth: 'deep', note: 'Noted.' },
+				{ questionId: 'boundary-deep-q', deckId: 'exact-deck', disposition: 'keep', pathId: 'boundary', skillId: 'boundary-skill', covers: [], depth: 'deep', note: 'Noted.' }
+			]
+		};
+		expect(lessonTrail(deeper, [], 'boundary-deck', '', 'deep').earlier.map((node) => node.title)).toEqual(['Exact search', 'Search with fallbacks']);
+		expect(lessonTrail(deeper, [], 'boundary-deck', '', 'interview').earlier.map((node) => node.title)).toEqual(['Sequences and search', 'Exact search']);
+		// At Deep exact-deck holds a Boundary search drill too, so it is no one path; at Interview it is Exact search.
+		expect(lessonTrail(deeper, [], 'exact-deck', 'Exact deck', 'deep').title).toBe('Exact deck');
+		expect(lessonTrail(deeper, [], 'exact-deck', 'Exact deck', 'interview').title).toBe('Exact search');
+	});
+
 	it('is just the deck for a deck no path maps', () => {
-		expect(lessonTrail(curriculum, [], 'loose-deck', 'Loose deck')).toEqual({ earlier: [], title: 'Loose deck' });
+		expect(lessonTrail(curriculum, [], 'loose-deck', 'Loose deck', 'deep')).toEqual({ earlier: [], title: 'Loose deck' });
 	});
 });

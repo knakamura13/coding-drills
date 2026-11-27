@@ -1,7 +1,9 @@
 import type { Curriculum, CurriculumDrill, CurriculumPath, Disposition } from '$lib/content/curriculum';
+import type { Depth } from '$lib/content/depth';
 import { compareAttempts } from '$lib/storage/guards';
 import type { Attempt } from '$lib/storage/types';
-import { PASS_RULE, examPassed } from './exam';
+import { checkpointPassed, curriculumAt } from './depth';
+import { PASS_RULE } from './exam';
 import { cardKey, countedAttempts, dueCards, replay } from './srs';
 
 /**
@@ -283,15 +285,20 @@ function toDrillView(drill: CurriculumDrill, deckTitles: ReadonlyMap<string, str
 }
 
 /**
- * The tree as the screen shows it: skill states from the placeholder rule,
- * and each checkpoint's gate from `examGate`.
+ * The tree as the screen shows it at a depth `level` (#155): skill states from
+ * the placeholder rule over the drills visible at that level, and each
+ * checkpoint's gate from `examGate`. `full` is the unfiltered curriculum: the
+ * level's view comes from `curriculumAt`, and a checkpoint passed at any level
+ * counts as passed (`checkpointPassed`).
  */
 export function projectCurriculum(
-	curriculum: Curriculum,
+	full: Curriculum,
 	attempts: readonly Attempt[],
+	level: Depth,
 	deckTitles: ReadonlyMap<string, string> = new Map(),
 	today?: string
 ): TreeView {
+	const curriculum = curriculumAt(full, level);
 	const dueKeys = new Set(
 		today ? dueCards(replay([...attempts].sort(compareAttempts)).values(), today).map((card) => cardKey(card.deckId, card.questionId)) : []
 	);
@@ -315,8 +322,14 @@ export function projectCurriculum(
 	}
 	const mastered = new Set([...stateOf].filter(([, state]) => state === 'mastered').map(([id]) => id));
 
-	// A path is cleared when every checkpoint it has is passed. A checkpoint with no exam drill
-	// cannot be sat, so it counts as passed rather than locking the paths after it forever.
+	const passedAt = new Map<string, boolean>();
+	const passed = (checkpointId: string) => {
+		if (!passedAt.has(checkpointId)) passedAt.set(checkpointId, checkpointPassed(full, checkpointId, attempts));
+		return passedAt.get(checkpointId)!;
+	};
+
+	// A path is cleared when every checkpoint it shows is passed. A checkpoint with no exam drill at
+	// this level cannot be sat, so it counts as passed rather than locking the paths after it forever.
 	const pathTitles = new Map<string, string>();
 	const cleared = new Map<string, boolean>();
 	for (const branch of curriculum.branches) {
@@ -325,10 +338,7 @@ export function projectCurriculum(
 			const pools = examDrills(path, curriculum.drills);
 			cleared.set(
 				path.id,
-				path.checkpoints.every((checkpoint) => {
-					const pool = pools.get(checkpoint.id) ?? [];
-					return pool.length === 0 || examPassed(pool, checkpoint.mix, attempts);
-				})
+				path.checkpoints.every((checkpoint) => (pools.get(checkpoint.id) ?? []).length === 0 || passed(checkpoint.id))
 			);
 		}
 	}
@@ -376,8 +386,7 @@ export function projectCurriculum(
 			};
 			const checkpoints: CheckpointView[] = path.checkpoints.map((checkpoint) => {
 				const drillViews = (examPaired.get(checkpoint.id) ?? []).map((drill) => toDrillView(drill, deckTitles));
-				const passed = examPassed(examPaired.get(checkpoint.id) ?? [], checkpoint.mix, attempts);
-				const gate = examGate(checkpoint.requires, mastered, passed);
+				const gate = examGate(checkpoint.requires, mastered, passed(checkpoint.id));
 				return {
 					id: checkpoint.id,
 					title: checkpoint.title,

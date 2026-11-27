@@ -19,6 +19,11 @@ export type DepthMap = Readonly<Record<string, Depth>>;
 /** The level a learner who has not picked one sees. Deep until the Settings control ships (#155). */
 export const DEFAULT_LEVEL: Depth = 'deep';
 
+/** Whether a stored value is a depth level (preferences are read from localStorage). */
+export function isDepth(value: unknown): value is Depth {
+	return typeof value === 'string' && (DEPTHS as readonly string[]).includes(value);
+}
+
 /** Whether an item at depth `item` shows to a learner at `level`. */
 export function visibleAt(item: Depth, level: Depth): boolean {
 	return DEPTHS.indexOf(item) <= DEPTHS.indexOf(level);

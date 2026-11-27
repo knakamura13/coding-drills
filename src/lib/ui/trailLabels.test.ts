@@ -11,7 +11,7 @@ import { LABEL_FORMS, NODE_R, TREE_HEIGHT, TREE_WIDTH, fitLeaf, labelScene, trai
 
 const curriculum = loadCurriculum('content/curriculum', 'content/decks');
 const decks = loadDecks('content/decks');
-const trails = decks.map((deck) => lessonTrail(curriculum, [], deck.id, deck.title));
+const trails = decks.map((deck) => lessonTrail(curriculum, [], deck.id, deck.title, 'deep'));
 
 function measure(text: string, size: number, line: number, wrap: number | null) {
 	const char = size * 0.62;
