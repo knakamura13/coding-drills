@@ -8,11 +8,9 @@
 	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { APP_NAME } from '$lib/config';
 	import { status } from '$lib/nav/status.svelte';
+	import { topics } from '$lib/review/practice';
 	import { REVIEW_SIZE } from '$lib/review/queue';
 	import { WEAK_SIZE } from '$lib/review/weak';
-	import type { PageData } from './$types';
-
-	let { data }: { data: PageData } = $props();
 
 	let notice = $state('');
 
@@ -27,6 +25,11 @@
 	const nextStat = $derived(next ? snap.progress.get(next.id) : undefined);
 	const nextPercent = $derived(nextStat && next ? Math.round((nextStat.learned / next.questions.length) * 100) : 0);
 	const weakTaking = $derived(Math.min(snap.weak, WEAK_SIZE));
+	// The decks at the learner's level (#155). Prerendered at the default level, then read on the device.
+	// The list keeps its identity while the level stays put, so the practice card is not rebuilt on every refresh.
+	const decks = $derived(snap.decks);
+	const practiceTopics = $derived(topics(decks));
+	const totalQuestions = $derived(decks.reduce((sum, deck) => sum + deck.questions.length, 0));
 </script>
 
 <svelte:head>
@@ -80,7 +83,7 @@
 		</div>
 
 		<div class="full">
-			<PracticeCard topics={data.topics} total={data.totalQuestions} />
+			<PracticeCard topics={practiceTopics} total={totalQuestions} />
 		</div>
 
 		<!-- Appended below the practice card, so when it appears nothing above it moves. -->
@@ -97,7 +100,7 @@
 	</div>
 
 	<p class="browse">
-		<a href={resolve('/decks')}>Browse all {data.deckCount} decks</a>
+		<a href={resolve('/decks')}>Browse all {decks.length} decks</a>
 		<a href={resolve('/tree')}>View the mastery tree</a>
 	</p>
 </main>

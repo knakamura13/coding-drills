@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { decksAt } from '$lib/domain/depth';
 import { attempt, deck } from '$lib/testing/fixtures';
-import { WEAK_SIZE, weakStatus } from './weak';
+import { WEAK_SIZE, weakCount, weakStatus } from './weak';
 
 const decks = [deck('alpha', [{ id: 'a1' }, { id: 'a2' }, { id: 'a3' }], 'Alpha?'), deck('beta', [{ id: 'b1' }])];
 
@@ -43,5 +44,13 @@ describe('weakStatus', () => {
 		const status = weakStatus([many], attempts);
 		expect(status.count).toBe(14);
 		expect(status.entries).toHaveLength(WEAK_SIZE);
+	});
+
+	it('offers no deeper question once the decks are filtered to a level (#155)', () => {
+		const attempts = [attempt('alpha', 'a1', '2026-10-01', 'again'), attempt('beta', 'b1', '2026-10-02', 'again')];
+		const shown = decksAt(decks, 'interview', { b1: 'deep' });
+		expect(weakStatus(decks, attempts).count).toBe(2);
+		expect(weakStatus(shown, attempts).entries.map((entry) => entry.question.id)).toEqual(['a1']);
+		expect(weakCount(shown, attempts)).toBe(1);
 	});
 });

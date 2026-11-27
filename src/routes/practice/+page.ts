@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { decksAtLearnerLevel } from '$lib/review/level';
 import { practiceEntries } from '$lib/review/practice';
 import type { PageLoad } from './$types';
 
@@ -10,7 +11,8 @@ export const prerender = false;
 export const load: PageLoad = async ({ url }) => {
 	const { decks } = await import('virtual:decks');
 	const tag = url.searchParams.get('tag');
-	const entries = practiceEntries(decks, tag);
+	// Only questions at the learner's level (#155).
+	const entries = practiceEntries(decksAtLearnerLevel(decks), tag);
 	if (entries.length === 0) redirect(307, '/');
 	return { entries, tag };
 };
