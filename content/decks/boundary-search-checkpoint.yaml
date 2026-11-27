@@ -380,7 +380,8 @@ questions:
         correct: five
         explanation: >-
           `bisect_right` returns the first index whose value is larger than 9, which is the 12.
-          A count that must stop before `high` ends at `bisect_left(a, high)`, the first copy.
+          A count that must stop before `high` ends at `bisect_left(a, high)`, the first index at or
+          past `high`.
       right-low:
         prompt: In `[2, 5, 5, 7, 9, 12]`, which index does `bisect_right(a, 5)` return?
         options:
@@ -400,55 +401,60 @@ questions:
         correct: open-closed
         explanation: >-
           Starting past the copies of `low` drops them, and ending past the copies of `high` adds
-          them. The two match only when neither end has a copy in `a`.
+          them. The two counts agree when neither end has a copy in `a`, and can differ otherwise.
 
-  - id: checkpoint-read-two-boundaries
-    heading: What must the list hold?
+  - id: checkpoint-tap-returned-peak
+    format: tap-cell
+    heading: Which peak does it return?
     tags: [binary-search]
     prompt: >-
-      `bisect_left(a, x)` returns the first index with `a[i] >= x`, and `bisect_right(a, x)` the
-      first index with `a[i] > x`. On a sorted list `a` of 7 values, `bisect_left(a, x)` is 2 and
-      `bisect_right(a, x)` is 5. Which statement must be true?
-    options:
-      - id: three-copies
-        text: "`a[2]`, `a[3]` and `a[4]` equal `x`, and `a[1] < x < a[5]`"
+      A peak is a value larger than each neighbor it has. In `nums`, neighbors always differ, and
+      outside the list counts as lower than any value, so an end cell can be a peak. This list has
+      three peaks. Tap the index the call returns.
+    code: |
+      def find_peak(nums):
+          lo, hi = 0, len(nums) - 1
+          while lo < hi:
+              mid = (lo + hi) // 2
+              if nums[mid] < nums[mid + 1]:
+                  lo = mid + 1
+              else:
+                  hi = mid
+          return lo
+
+      find_peak([4, 2, 5, 7, 15, 9, 1, 20])
+    sequence:
+      kind: array
+      name: nums
+      cells: [4, 2, 5, 7, 15, 9, 1, 20]
+    correct: 4
+    explanation: >-
+      Pass 1 probes index 3, and 7 is below 15, so `lo = 4`. Pass 2 probes index 5, and 9 is not
+      below 1, so `hi = 5`. Pass 3 probes index 4, and 15 is not below 9, so `hi = 4`, and the call
+      returns 4, the 15.
+    misses:
+      - index: 0
         explanation: >-
-          Index 2 is the first value at least `x`, so `a[1]` is below `x`. Index 5 is the first
-          value above `x`, so `a[2]` to `a[4]` are at most `x`, and being at least `x` too, they
-          equal it. `a[5]` is above `x`.
-      - id: four-copies
-        text: "`a[2]` to `a[5]` equal `x`, four copies"
+          The 4 is a peak, since outside counts as lower, but pass 1 sees 7 below 15 and moves `lo`
+          past it, to index 4.
+      - index: 7
         explanation: >-
-          `bisect_right` returns the first index past the copies, not the last copy. `a[5]` is
-          already above `x`, so the copies stop at index 4.
-      - id: shifted
-        text: "`a[3]`, `a[4]` and `a[5]` equal `x`, and `a[2] < x`"
+          The 20 is a peak and the largest value, but the loop never looks for the largest. Pass 2
+          sees 9 above 1 and moves `hi` to 5, which drops index 7.
+      - index: 1
+        explanation: '2 is below both neighbors, so it is not a peak. Pass 1 drops it with `lo = 4`.'
+      - index: 2
+        explanation: '5 is below the 7 after it, so it is not a peak. Pass 1 drops it with `lo = 4`.'
+      - index: 3
         explanation: >-
-          This reads `bisect_left` as the last index below `x` and `bisect_right` as the last copy.
-          But `bisect_left` returns the first copy itself, so `a[2]` equals `x`, and `a[5]` is
-          already above it.
-    correct: three-copies
-    followUps:
-      four-copies:
-        prompt: What value sits at the index `bisect_right(a, x)` returns, when that index is inside `a`?
-        options:
-          - { id: larger, text: "The first value larger than `x`" }
-          - { id: last-copy, text: "The last copy of `x`" }
-          - { id: smaller, text: "The last value smaller than `x`" }
-        correct: larger
+          7 is below the 15 after it, so it is not a peak. That step up is why pass 1 moves `lo`
+          past index 3.
+      - index: 5
         explanation: >-
-          `bisect_right` returns the first index with `a[i] > x`. So the copies of `x` end just
-          before it, at index 4 here.
-      shifted:
-        prompt: When `x` is in `a`, what does `a[bisect_left(a, x)]` hold?
-        options:
-          - { id: first-copy, text: "`x` itself, its first copy" }
-          - { id: below, text: "The last value below `x`" }
-          - { id: above, text: "The first value above `x`" }
-        correct: first-copy
-        explanation: >-
-          `bisect_left` returns the first index with `a[i] >= x`. When `x` is present, that value
-          is `x`, so the first copy sits at index 2 here.
+          9 is below the 15 before it, so it is not a peak. Pass 3 keeps index 4 with `hi = mid`,
+          and index 5 goes.
+      - index: 6
+        explanation: '1 is below both neighbors, so it is not a peak. Pass 2 drops it with `hi = 5`.'
 
   - id: checkpoint-rotated-trace
     format: step-trace
@@ -718,7 +724,7 @@ questions:
           shrinks a two-cell range, because `mid` rounds down to `lo`.
 
   - id: checkpoint-pick-sorted-run
-    heading: Which run holds the target?
+    heading: Which test picks the run?
     tags: [binary-search]
     prompt: |-
       `a` is a sorted list of distinct values that may have been rotated: some values, possibly
@@ -750,7 +756,8 @@ questions:
         text: "`t <= a[-1]`"
         explanation: >-
           Every value from `k` to the end is at most `a[-1]`, and every value before `k` is larger
-          than `a[-1]`, since that run was moved from the front of the sorted list. So `t` can only
+          than `a[-1]`, since the run from `k` to the end holds the values that were moved from the
+          front of the sorted list, the smaller ones. So `t` can only
           be in the run from `k` when `t <= a[-1]`. On a list that was not rotated, `k` is 0 and
           the test sends every present `t` to the whole list.
       - id: lt-first
@@ -824,8 +831,8 @@ questions:
         start: 0
         correct: 4
         explanation: >-
-          Pass 1 probes the 66. 44 to 66 is in order and 2 is below it, so `lo = 4`. Pass 2 probes
-          the 9 and keeps the left part, so `lo` stays on 4.
+          Pass 1 probes the 66. 44 to 66 is in order and 2 is below 44, so 2 is not in that part
+          and `lo = 4`. Pass 2 probes the 9 and keeps the left part, so `lo` stays on 4.
         misses:
           - index: 3
             explanation: '`lo` moves past the probe, to `mid + 1`. Index 3 holds 66, already ruled out.'
@@ -844,7 +851,7 @@ questions:
         start: 7
         correct: 4
         explanation: >-
-          Pass 1 keeps the right part, so `hi` stays on 7. Pass 2 probes the 9, the part 2 to 9 is
+          Pass 1 keeps the right part, so `hi` stays on 7. Pass 2 probes the 9. The part 2 to 9 is
           in order and holds 2, so `hi = mid - 1 = 4`.
         misses:
           - index: 7
@@ -902,7 +909,7 @@ questions:
         prompt: Which values of `[2, 5, 6, 7, 9]` move to the back to give `[9, 2, 5, 6, 7]`?
         options:
           - { id: four, text: "The first four, `2, 5, 6, 7`" }
-          - { id: one, text: "Only the 9, which moves to the front" }
+          - { id: one, text: "Only the 9, the last value" }
           - { id: none, text: "None: values move from the back, so this is not a rotation" }
         correct: four
         explanation: >-
