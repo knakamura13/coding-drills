@@ -5,7 +5,7 @@
 // effects.test.ts checks the two agree.
 (function () {
 	try {
-		const stored = localStorage.getItem('cd-reduce-effects');
+		const stored = localStorage.getItem('facet:v1:reduce-effects');
 		if (stored === '1' || stored === '0') {
 			document.documentElement.dataset.effects = stored === '1' ? 'reduced' : 'full';
 		}

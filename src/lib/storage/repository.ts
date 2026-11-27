@@ -10,9 +10,9 @@ export interface KeyValueStore {
 }
 
 export const KEYS = {
-	attempts: 'coding-drills:v1:attempts',
-	flags: 'coding-drills:v1:flags',
-	sync: 'coding-drills:v1:sync'
+	attempts: 'facet:v1:attempts',
+	flags: 'facet:v1:flags',
+	sync: 'facet:v1:sync'
 } as const;
 
 /**

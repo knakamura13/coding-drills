@@ -21,7 +21,7 @@ function appOf(resources: { type: string }[]): ServiceNode {
 
 async function evaluate() {
 	const definition = await program(
-		createRailwayContext({ command: 'plan', environment: 'production', projectName: 'coding-drills' }),
+		createRailwayContext({ command: 'plan', environment: 'production', projectName: 'facet-learning' }),
 		project
 	);
 	const resources = (definition.resources ?? []).flat();
@@ -31,10 +31,10 @@ async function evaluate() {
 describe('.railway/railway.ts', () => {
 	it('defines the app, its Postgres database, and the database volume', async () => {
 		const { definition, resources } = await evaluate();
-		expect(definition.name).toBe('coding-drills');
+		expect(definition.name).toBe('facet-learning');
 		expect(resources.map((resource) => `${resource.type}.${resource.name}`).sort()).toEqual([
 			'database.Postgres',
-			'service.Coding Drills App',
+			'service.Facet Learning App',
 			'volume.postgres-volume'
 		]);
 	});

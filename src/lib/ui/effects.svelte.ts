@@ -7,7 +7,7 @@
  * Svelte `in:`/`out:` transitions run on the Web Animations API, which CSS cannot override, so a
  * transition that moves must scale its distance by `effects.shift` in code.
  *
- * A saved choice is kept in localStorage under `cd-reduce-effects` ('1' or '0') and marked on
+ * A saved choice is kept in localStorage under `facet:v1:reduce-effects` ('1' or '0') and marked on
  * <html> as `data-effects`. With no saved choice there is no attribute: tokens.css then follows the
  * OS reduced-motion setting through its media query, live, and this store follows the same setting
  * through a change listener. `static/effects.js` marks a saved choice before first paint; keep the
@@ -16,7 +16,7 @@
 
 import { MOTION } from './tokens';
 
-export const STORAGE_KEY = 'cd-reduce-effects';
+export const STORAGE_KEY = 'facet:v1:reduce-effects';
 
 const OS_QUERY = '(prefers-reduced-motion: reduce)';
 

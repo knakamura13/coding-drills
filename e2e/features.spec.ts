@@ -99,7 +99,7 @@ test.describe('mixed practice', () => {
 		await expect(page.getByText('10 of 10 right on the first try')).toBeVisible();
 
 		// Practice answers are recorded like any other session.
-		const attempts = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
+		const attempts = await page.evaluate(() => JSON.parse(localStorage.getItem('facet:v1:attempts') ?? '[]').length);
 		expect(attempts).toBe(10);
 	});
 

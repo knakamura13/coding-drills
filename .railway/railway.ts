@@ -1,7 +1,7 @@
 import { defineRailway, github, postgres, preserve, project, service, volume } from 'railway/iac';
 
 /**
- * Railway infrastructure for coding-drills, as code.
+ * Railway infrastructure for Facet Learning, as code.
  * See https://docs.railway.com/infrastructure-as-code
  *
  * Two resources: the app and a Postgres database for cross-device sync. Decks
@@ -18,7 +18,7 @@ import { defineRailway, github, postgres, preserve, project, service, volume } f
  *   Google redirect URI and the API's origin check use it, so sign-in and sync
  *   work only on this host.
  *
- * The other hosts (www.facetlearning.app and coding-drills.up.railway.app)
+ * The other hosts (www.facetlearning.app and the generated `*.up.railway.app` domain)
  * redirect to the apex with 308 edge rules set in the dashboard (service →
  * Networking → Edge rules). Neither this file nor the CLI manages edge rules.
  * They run before the app, so they also cover prerendered pages, which
@@ -53,8 +53,8 @@ export default defineRailway(() => {
 		sizeMB: 5000
 	});
 
-	const app = service('Coding Drills App', {
-		source: github('knakamura13/coding-drills', { branch: 'main' }),
+	const app = service('Facet Learning App', {
+		source: github('knakamura13/facet-learning', { branch: 'main' }),
 		build: {
 			builder: 'DOCKERFILE',
 			dockerfilePath: 'Dockerfile',
@@ -91,5 +91,5 @@ export default defineRailway(() => {
 		}
 	});
 
-	return project('coding-drills', { resources: [database, app, databaseVolume] });
+	return project('facet-learning', { resources: [database, app, databaseVolume] });
 });

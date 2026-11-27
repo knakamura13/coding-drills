@@ -16,7 +16,7 @@ const followUpFlag: Flag = { ...flag, stage: 'followUp', optionId: 'two-pointers
 describe('issueUrl', () => {
 	it('points at the repository new-issue form with the content label', () => {
 		const url = new URL(issueUrl(flag));
-		expect(url.origin + url.pathname).toBe('https://github.com/knakamura13/coding-drills/issues/new');
+		expect(url.origin + url.pathname).toBe('https://github.com/knakamura13/facet-learning/issues/new');
 		expect(url.searchParams.get('labels')).toBe('content');
 	});
 

@@ -141,7 +141,7 @@ test.describe('the lesson loop', () => {
 		await expect(page.locator('.miss')).toHaveCount(2);
 
 		const attempts = (
-			await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]'))
+			await page.evaluate(() => JSON.parse(localStorage.getItem('facet:v1:attempts') ?? '[]'))
 		).filter((attempt: { id: string }) => !attempt.id.startsWith('seed-'));
 		expect(attempts).toHaveLength(deck.questions.length);
 		expect(attempts.filter((attempt: { correct: boolean }) => !attempt.correct)).toHaveLength(2);
@@ -181,7 +181,7 @@ test.describe('flagging', () => {
 		const link = page.getByRole('link', { name: 'Open as GitHub issue' });
 		const href = (await link.getAttribute('href'))!;
 		const url = new URL(href);
-		expect(url.origin + url.pathname).toBe('https://github.com/knakamura13/coding-drills/issues/new');
+		expect(url.origin + url.pathname).toBe('https://github.com/knakamura13/facet-learning/issues/new');
 		expect(url.searchParams.get('title')).toContain(question.id);
 		expect(url.searchParams.get('body')).toContain('The explanation overclaims.');
 		await expect(link).toHaveAttribute('target', '_blank');

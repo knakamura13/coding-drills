@@ -103,7 +103,7 @@ Challenges marked out of scope are implementation or data tasks rather than deci
 | --- | --- | --- | --- |
 | `machine_learning_engineering_prep/` | Statistics crash course | – | planned |
 
-## Mastery curriculum ([#9](https://github.com/knakamura13/coding-drills/issues/9))
+## Mastery curriculum ([#9](https://github.com/knakamura13/facet-learning/issues/9))
 
 New decks written for a skill path in the mastery tree. Each path splits into teaching cards (worked example, then one decision), review variants on fresh inputs, and a checkpoint pool whose inputs appear nowhere else.
 

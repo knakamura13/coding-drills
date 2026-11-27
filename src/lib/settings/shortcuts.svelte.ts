@@ -7,7 +7,7 @@
  * blocked, in which case the default (on) applies for the visit.
  */
 
-const KEY = 'coding-drills:v1:single-key-shortcuts';
+const KEY = 'facet:v1:single-key-shortcuts';
 
 export const shortcuts = $state({ enabled: true });
 

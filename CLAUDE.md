@@ -1,4 +1,4 @@
-# coding-drills
+# Facet Learning
 
 SvelteKit 3 (Svelte 5, TypeScript 6) quiz app for coding-interview drills. Local-first, with optional Google sign-in that syncs attempts and flags to Postgres. Decks live in `content/decks/*.yaml`. README.md has the product overview and `content/README.md` has the authoring guide.
 

@@ -1,6 +1,6 @@
 // Sets the theme before CSS paints. Keep the colors in step with THEME_COLOR.
 (function () {
-	var key = 'coding-drills:v1:preferences';
+	var key = 'facet:v1:preferences';
 	var colors = { light: '#f6f7fb', dark: '#1c1c25' };
 	var choice = 'system';
 	try {

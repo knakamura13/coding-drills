@@ -50,7 +50,7 @@ export function decksPlugin(contentDir = 'content/decks', curriculumContentDir =
 	const decks = () => (parsed ??= loadDecks(dir));
 
 	return {
-		name: 'coding-drills:decks',
+		name: 'facet:decks',
 		configResolved(config) {
 			dir = join(config.root, contentDir);
 			curriculumDir = join(config.root, curriculumContentDir);

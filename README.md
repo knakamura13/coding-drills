@@ -4,7 +4,7 @@ Quiz drills for coding-interview topics, built around one rule: **a wrong answer
 
 Each question asks for a pattern, a complexity, or an output. Pick wrongly and the lesson does not stop at showing the answer. It asks a second question aimed at the misconception behind your pick. Choose Two Pointers for a fixed-width window sum and the follow-up asks which detail points to a sliding window instead.
 
-Live: https://coding-drills.up.railway.app
+Live: https://facetlearning.app
 
 Status: early. Sixteen decks, spaced review, weak-spot and mixed practice, a progress screen, offline support, and optional Google sign-in that syncs progress between devices automatically.
 
@@ -69,7 +69,7 @@ Signed out, the app is fully local: attempts and flags live in `localStorage`. S
    | --- | --- |
    | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | from the OAuth client |
    | `ALLOWED_EMAILS` | your Google address, comma-separated for several |
-   | `ORIGIN` | the public origin, for example `https://coding-drills.up.railway.app` |
+   | `ORIGIN` | the public origin, for example `https://facetlearning.app` |
 
 Local development with accounts: put the same variables in `.env` plus a `DATABASE_URL`. `node e2e/pg-server.mjs` starts a throwaway Postgres engine (PGlite) on port 54329, so Docker is not needed.
 
@@ -110,7 +110,7 @@ The Railway project is described in code in [`.railway/railway.ts`](.railway/rai
 First deploy of a new Railway project:
 
 ```bash
-railway init --name coding-drills   # creates the empty project and links this directory
+railway init --name facet-learning   # creates the empty project and links this directory
 railway config plan                 # read-only preview
 railway config apply                # creates the service from the file
 railway domain                      # generates the public *.up.railway.app domain, once
