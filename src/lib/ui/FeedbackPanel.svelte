@@ -4,6 +4,8 @@
 	Correct: 12% branch tint, branch-border top edge, branch check and title. Not quite: Night with
 	the soft rose top edge and a rose '!'. It never repeats the answer, since the tiles show it.
 	Focus moves to Continue when it appears, because the Check button it replaces is gone.
+	The rise must not move the page (#186): the sticky slot clips the panel to the place it settles
+	in, so the panel below the edge never makes the page taller, and focus never scrolls to reach it.
 -->
 <script lang="ts">
 	import Button from './Button.svelte';
@@ -28,26 +30,35 @@
 	let actionWrap: HTMLDivElement;
 
 	$effect(() => {
-		actionWrap.querySelector('button')?.focus();
+		// Continue starts below the edge, mid-rise; scrolling to it would throw the page up.
+		actionWrap.querySelector('button')?.focus({ preventScroll: true });
 	});
 </script>
 
-<section class="panel" class:correct bind:this={panel} aria-label={correct ? 'Correct' : 'Not quite'}>
-	<div class="actions-column">
-		<p class="title">
-			<Icon name={correct ? 'correct' : 'missed'} />
-			{correct ? 'Correct' : 'Not quite'}
-		</p>
-		{#if explanation}<Prose source={explanation} />{/if}
-		<div bind:this={actionWrap}><Button onclick={oncontinue}>{action}</Button></div>
-	</div>
-</section>
+<div class="slot">
+	<section class="panel" class:correct bind:this={panel} aria-label={correct ? 'Correct' : 'Not quite'}>
+		<div class="actions-column">
+			<p class="title">
+				<Icon name={correct ? 'correct' : 'missed'} />
+				{correct ? 'Correct' : 'Not quite'}
+			</p>
+			{#if explanation}<Prose source={explanation} />{/if}
+			<div bind:this={actionWrap}><Button onclick={oncontinue}>{action}</Button></div>
+		</div>
+	</section>
+</div>
 
 <style>
-	.panel {
+	/* A transform still counts toward the page's scroll height; clipping here keeps the rising panel
+	   out of it. Clip makes no scroll box, so the slot still sticks to the screen's bottom edge. */
+	.slot {
 		position: sticky;
 		bottom: 0;
 		z-index: 1;
+		overflow: clip;
+	}
+
+	.panel {
 		border-top: 1px solid var(--color-feedback-wrong-border);
 		background: var(--color-surface-card);
 		padding: var(--space-4) var(--space-screen-edge) max(var(--space-4), env(safe-area-inset-bottom));
