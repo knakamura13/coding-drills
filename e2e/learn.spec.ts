@@ -419,16 +419,22 @@ async function checkHoldsStill(page: Page) {
 			frames.push(read());
 		}
 		const moved = (key: 'scrollY' | 'bar' | 'heading' | 'answers') => Math.max(...frames.map((frame) => Math.abs(frame[key] - before[key])));
+		// Once the rise ends, the whole panel shows: on screen, and not cut by the slot that clips it.
+		const panel = document.querySelector('section.panel')!;
+		await Promise.all(panel.getAnimations().map((animation) => animation.finished));
+		const box = panel.getBoundingClientRect();
+		const slot = panel.parentElement!.getBoundingClientRect();
 		return {
 			moved: { scrollY: moved('scrollY'), bar: moved('bar'), heading: moved('heading'), answers: moved('answers') },
-			tallerWhileRising: Math.max(...frames.map((frame) => frame.height)) - frames.at(-1)!.height
+			tallerWhileRising: Math.max(...frames.map((frame) => frame.height)) - frames.at(-1)!.height,
+			settled: { onScreen: box.top >= 0 && box.bottom <= innerHeight + 0.5, unclipped: slot.top <= box.top + 0.5 && slot.bottom >= box.bottom - 0.5 }
 		};
 	});
 }
 
 test('checking an answer moves nothing while the feedback panel rises', async ({ page }) => {
 	await page.emulateMedia({ reducedMotion: 'no-preference' });
-	const still = { moved: { scrollY: 0, bar: 0, heading: 0, answers: 0 }, tallerWhileRising: 0 };
+	const still = { moved: { scrollY: 0, bar: 0, heading: 0, answers: 0 }, tallerWhileRising: 0, settled: { onScreen: true, unclipped: true } };
 	for (const right of [true, false]) {
 		await page.goto(URL);
 		const question = await firstChoice(page);
