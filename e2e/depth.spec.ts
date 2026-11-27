@@ -103,20 +103,22 @@ test.describe('at the Interview level', () => {
 		await expect(page).toHaveURL(/\/tree$/);
 	});
 
-	test('an exam draws only interview items, and four right pass it', async ({ page }) => {
+	test('an exam draws only interview items, and five right pass it', async ({ page }) => {
 		await seed(page, interviewMastered());
 		await page.goto(`/exam/${WEIGHTED}`);
-		await expect(page.getByText(/^A sitting is 4 exam items\./)).toBeVisible();
+		await expect(page.getByText(/^A sitting is 5 exam items\./)).toBeVisible();
 		const interviewIds = weightedExam.filter((drill) => drill.depth === 'interview').map((drill) => drill.questionId);
+		expect(interviewIds).toHaveLength(6);
 		const seen: string[] = [];
-		for (let item = 0; item < interviewIds.length; item++) {
+		for (let item = 0; item < 5; item++) {
 			const { question } = await currentQuestionAny(page);
 			seen.push(question.id);
 			await answerCorrectly(page, question);
 			await continueButton(page).click();
 		}
 		await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
-		expect(seen.sort()).toEqual([...interviewIds].sort());
+		expect(new Set(seen).size).toBe(5);
+		expect(seen.filter((id) => !interviewIds.includes(id))).toEqual([]);
 		await expect(page.getByRole('region', { name: 'Checkpoint passed' })).toBeVisible();
 	});
 
@@ -207,10 +209,10 @@ test.describe('at the Deep level', () => {
 		await expect(deckRow(page, weightedDeck.title)).toContainText(`1 of ${weightedDeck.questions.length} learned`);
 	});
 
-	test('a 4-item sitting from the Interview level counts as passed', async ({ page }) => {
+	test('a sitting of interview items alone counts as passed', async ({ page }) => {
 		const interviewItems = weightedExam.filter((drill) => drill.depth === 'interview');
-		expect(interviewItems).toHaveLength(4);
-		await seed(page, rightOn(interviewItems, 2));
+		expect(interviewItems).toHaveLength(6);
+		await seed(page, rightOn(interviewItems.slice(0, 5), 2));
 		await page.goto('/tree');
 		await expect(checkpointNode(page, WEIGHTED)).toContainText('Passed');
 	});

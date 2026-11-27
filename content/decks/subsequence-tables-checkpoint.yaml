@@ -327,6 +327,142 @@ questions:
           A replace swaps one letter for another in a single edit, which is why the diagonal counts
           only 1 more. A delete and an insert do the same work in two.
 
+  - id: checkpoint-swapped-loops
+    heading: What does the swapped fill return?
+    tags: [dp, python]
+    prompt: |-
+      A suggested solution fills the LCS table column by column, with `j` as the outer loop.
+      `lcs_cell` is the usual LCS rule for one cell: it compares `a[i - 1]` with `b[j - 1]` and
+      reads only `dp[i - 1][j - 1]`, `dp[i - 1][j]` and `dp[i][j - 1]`.
+
+      ```python
+      def lcs_length(a, b):
+          dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+          for j in range(1, len(b) + 1):
+              for i in range(1, len(a) + 1):
+                  dp[i][j] = lcs_cell(dp, a, b, i, j)
+          return dp[len(a)][len(b)]
+      ```
+
+      Compared with the usual fill, where `i` is the outer loop, what does it return?
+    options:
+      - id: same
+        text: The same length for every `a` and `b`
+        explanation: >-
+          Each cell reads the cell above, the cell to the left and the diagonal. The outer loop
+          fills all of column `j - 1` first, and within column `j` row `i - 1` comes before row
+          `i`, so all three hold their final values when the cell reads them.
+      - id: left-unset
+        text: A length too small for some words, since `dp[i][j - 1]` is not filled yet
+        explanation: >-
+          `dp[i][j - 1]` is in column `j - 1`, and the outer loop finishes that whole column before
+          it starts column `j`. So the cell to the left always holds its final value.
+      - id: above-unset
+        text: A length too small for some words, since `dp[i - 1][j]` is not filled yet
+        explanation: >-
+          `dp[i - 1][j]` is one row up in the same column, and the inner loop counts `i` up from 1,
+          so it was filled on the pass before. Row 0 is the empty prefix and stays 0, its right
+          value.
+      - id: index-error
+        text: It raises `IndexError` whenever `a` and `b` differ in length
+        explanation: >-
+          `j` still runs to `len(b)` and `i` to `len(a)`, the sizes the table was built with, so
+          every index stays in range. Swapping the loops changes only the order of the passes.
+    correct: same
+    followUps:
+      left-unset:
+        prompt: With `j` as the outer loop, when is column `j - 1` finished?
+        options:
+          - { id: before, text: "Before column `j` starts" }
+          - { id: after, text: "Only after the whole table is filled" }
+          - { id: together, text: "Pass by pass, alongside column `j`" }
+        correct: before
+        explanation: >-
+          The outer loop fills every row of one column before it moves to the next. So a cell in
+          column `j` reads a column that is already complete.
+      above-unset:
+        prompt: Within one column, which row does the inner loop fill first?
+        options:
+          - { id: row-one, text: "Row 1, then rows 2, 3 and on, in order" }
+          - { id: last-row, text: "The last row, then each row above it" }
+          - { id: row-zero, text: "Row 0, which it resets before row 1" }
+        correct: row-one
+        explanation: >-
+          `range(1, len(a) + 1)` counts up, so `dp[i - 1][j]` is filled one pass before `dp[i][j]`
+          reads it. Row 0 is never written by the loops and keeps its 0.
+      index-error:
+        prompt: Which bound decides the largest value of `i`?
+        options:
+          - { id: len-a, text: "`len(a)`, in the inner loop's `range`" }
+          - { id: len-b, text: "`len(b)`, since `j` is now the outer loop" }
+          - { id: longer, text: "The longer of the two words" }
+        correct: len-a
+        explanation: >-
+          Each loop keeps its own `range`. Moving one loop inside the other changes the order of
+          the passes, not how far each index goes.
+
+  - id: checkpoint-edit-prefix-cell
+    heading: What does the cell hold?
+    tags: [dp]
+    prompt: >-
+      Edit distance is the fewest edits that turn one string into another, where an edit inserts,
+      deletes or replaces one letter. `dp[i][j]` is the edit distance from `a[:i]` to `b[:j]`. For
+      `a = "trust"` and `b = "stone"`, what does `dp[2][4]` hold?
+    options:
+      - id: three
+        text: "3: insert `s`, keep the `t`, replace `r` with `o`, insert `n`"
+        explanation: >-
+          The cell turns `tr` into `ston`. Keeping the shared `t` costs nothing, and the other
+          letters take one edit each. Two edits cannot do it: two inserts are needed to reach four
+          letters, and they leave the `r`, which `ston` does not have.
+      - id: one
+        text: "1: the one letter, `t`, that the two prefixes share"
+        explanation: >-
+          1 is the longest common subsequence of `tr` and `ston`, a count of shared letters. Edit
+          distance counts the edits still needed, and turning `tr` into `ston` takes 3.
+      - id: two
+        text: "2: the two letters that `ston` has beyond `tr`"
+        explanation: >-
+          Two inserts make the lengths equal, but an insert changes no letter, so the `r` is still
+          there and `ston` has none. One more edit is needed, which makes 3.
+      - id: four
+        text: "4: replace both letters of `tr`, then insert two more"
+        explanation: >-
+          Replacing letter by letter pairs `t` with `s` and `r` with `t`, so the shared `t` is never
+          kept. Inserting `s` first lines the two `t`s up and saves an edit: 3.
+    correct: three
+    followUps:
+      one:
+        prompt: Does an edit distance cell count letters kept or edits made?
+        options:
+          - { id: edits, text: "Edits made, so a smaller cell is better" }
+          - { id: kept, text: "Letters kept, as in the LCS table" }
+          - { id: both, text: "Both, added together" }
+        correct: edits
+        explanation: >-
+          The LCS table counts shared letters and keeps the larger count. Edit distance counts
+          inserts, deletes and replaces, so it looks for the fewest.
+      two:
+        prompt: After two inserts into `tr`, which of its letters are still there?
+        options:
+          - { id: both, text: "Both `t` and `r`, so the `r` still has to change" }
+          - { id: t-only, text: "Only the `t`" }
+          - { id: neither, text: "Neither, since an insert writes over a letter" }
+        correct: both
+        explanation: >-
+          An insert adds a letter and leaves the others alone. `ston` has no `r`, so a replace or
+          a delete is still needed.
+      four:
+        prompt: Must an edit pair `a[k]` with `b[k]`, the letters at the same index?
+        options:
+          - { id: shift, text: "No. An insert shifts the later letters, so equal letters can line up" }
+          - { id: in-place, text: "Yes. Each letter can only change where it is" }
+          - { id: same-length, text: "Only when the two strings have the same length" }
+        correct: shift
+        explanation: >-
+          Inserting `s` before `tr` moves the `t` to index 1, where `ston` has its `t`. Edit
+          distance finds the cheapest way to line the letters up.
+
   - id: checkpoint-walk-ties-left
     heading: What does the walk back return?
     tags: [dp]

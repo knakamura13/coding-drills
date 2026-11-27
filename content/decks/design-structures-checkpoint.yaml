@@ -305,6 +305,158 @@ questions:
           Both items crossed on the first pop, and nothing was pushed after it. With `inbox` empty,
           the `while` loop moves nothing and the order stays right.
 
+  - id: checkpoint-first-unique-design
+    heading: Which design meets every cost?
+    tags: [hash-map, complexity]
+    prompt: >-
+      A stream takes in items one at a time and must report the earliest item that has arrived
+      exactly once so far. Adding an item and reporting must each cost O(1) on average. A set or a
+      dict finds, adds or deletes a key in O(1) on average. An `OrderedDict` also deletes any key in O(1) on average, and
+      `next(iter(od))` reads its first key in O(1). Removing an item from the middle of a list
+      moves every later item. Which design meets every cost?
+    options:
+      - id: ordered
+        text: An `OrderedDict` of items seen once, and a set of items seen more than once
+        explanation: >-
+          An item's first arrival adds it at the end of the `OrderedDict`. Its second deletes it
+          there and adds it to the set, and later arrivals find it in the set and change nothing.
+          Each step is O(1) on average, and the first key is the earliest item seen once.
+      - id: list-remove
+        text: A list of items seen once, and a set of items seen, calling `remove` on a second arrival
+        explanation: >-
+          The answers are right, but `remove` searches the list for the item and then closes the
+          gap by moving every later item, so a second arrival costs O(n).
+      - id: scan-counts
+        text: An `OrderedDict` of counts, scanned from the front for the first count of 1 on each report
+        explanation: >-
+          The keys are in arrival order, but a report walks past every repeated key before it
+          finds a count of 1. After `1, 1, 2, 2, 3, 3, 4` it passes three keys, and each report
+          walks them again, so the cost grows with `n`.
+      - id: two-sets
+        text: A set of items seen once, and a set of items seen more than once
+        explanation: >-
+          Adding is O(1): an item moves from the first set to the second on its second arrival.
+          But nothing records when each item in the first set came, so finding the earliest one
+          means going back over the stream, which is O(n).
+    correct: ordered
+    followUps:
+      list-remove:
+        prompt: What does `remove` cost on a list of `n` items seen once?
+        options:
+          - id: linear
+            text: O(n), to find the item and to move every later item
+          - id: constant
+            text: O(1), since the set already found the item
+          - id: log
+            text: O(log n), by halving the list
+        correct: linear
+        explanation: >-
+          The set says that an item was seen, not where it sits in the list. Deleting a key from
+          an `OrderedDict` needs no search and moves nothing.
+      scan-counts:
+        prompt: On one report, how many keys can the scan pass before it finds a count of 1?
+        options:
+          - id: all
+            text: Up to every key, when the early items have all repeated
+          - id: one
+            text: One, since a dict lookup is O(1)
+          - id: none
+            text: None, since the keys are in arrival order
+        correct: all
+        explanation: >-
+          A dict finds a given key fast, but finding the first key with a count of 1 means checking
+          keys in order. Deleting an item from an ordered store on its second arrival means no
+          report ever passes it.
+      two-sets:
+        prompt: Can a set tell which of its items was added first?
+        options:
+          - id: no-order
+            text: No. A set keeps no arrival order
+          - id: added-order
+            text: Yes. Like a dict, it keeps items in the order they were added
+          - id: smallest
+            text: Yes. Its smallest item is the one added first
+        correct: no-order
+        explanation: >-
+          A dict keeps its keys in the order they were first added, but a set makes no such
+          promise: adding 3, 1 and 2 to an empty set and listing it gives `[1, 2, 3]`. The
+          `OrderedDict` of items seen once is what keeps that order.
+
+  - id: checkpoint-newest-item
+    heading: Which expression reads the newest item?
+    tags: [stack, queue, python]
+    prompt: >-
+      A queue is built from two stacks, `inbox` and `outbox`, Python lists used only at their ends.
+      `push` appends to `inbox`. `pop` returns `outbox.pop()`, and before that it may move every
+      item of `inbox` across, one `outbox.append(inbox.pop())` at a time. On every run, pops return
+      items in the order they were pushed. A `back` operation must return the newest item in O(1)
+      without moving anything. Which expression returns it after any run that leaves the queue
+      not empty?
+    options:
+      - id: inbox-top
+        text: '`inbox[-1] if inbox else outbox[0]`'
+        explanation: >-
+          A move takes all of `inbox`, so an item still in `inbox` was pushed after every item in
+          `outbox`, and the newest push is on top. When `inbox` is empty, pops take `outbox`'s top
+          in the order items came, so the newest item is at the bottom, index 0.
+      - id: outbox-top
+        text: '`inbox[-1] if inbox else outbox[-1]`'
+        explanation: >-
+          The top of `outbox` is the item the next `pop` returns. After push 1, push 2, push 3 and
+          a pop, `outbox` is `[3, 2]`, and this returns 2 instead of 3.
+      - id: outbox-first
+        text: '`outbox[0] if outbox else inbox[-1]`'
+        explanation: >-
+          It reads `outbox` even when `inbox` holds newer items. After push 1, push 2, push 3, a
+          pop, a pop and push 4, `outbox` is `[3]` and `inbox` is `[4]`, and this returns 3 instead
+          of 4.
+      - id: inbox-bottom
+        text: '`inbox[0] if inbox else outbox[0]`'
+        explanation: >-
+          `inbox[0]` is the earliest item still in `inbox`. After push 1 and push 2, `inbox` is
+          `[1, 2]`, and this returns 1 instead of 2.
+    correct: inbox-top
+    followUps:
+      outbox-top:
+        prompt: After items move from `inbox` to `outbox`, which one sits on top of `outbox`?
+        options:
+          - id: oldest
+            text: The oldest, which the next pop returns
+          - id: newest
+            text: The newest, as on top of `inbox`
+          - id: second
+            text: Whichever was pushed second
+        correct: oldest
+        explanation: >-
+          Moving reverses the order, so the item pushed first ends on top and the item pushed last
+          ends at the bottom, index 0.
+      outbox-first:
+        prompt: When both lists hold items, which list holds the newest one?
+        options:
+          - id: inbox
+            text: '`inbox`, since every push goes there'
+          - id: outbox
+            text: '`outbox`, since its items moved last'
+          - id: either
+            text: Either one, depending on the last pop
+        correct: inbox
+        explanation: >-
+          The items in `outbox` were moved there before any item now in `inbox` was pushed. So
+          when `inbox` holds anything, its top is the newest item.
+      inbox-bottom:
+        prompt: In `inbox`, which end holds the newest item?
+        options:
+          - id: end
+            text: The end, `inbox[-1]`, where `append` puts it
+          - id: front
+            text: The front, `inbox[0]`
+          - id: neither
+            text: Neither, since `inbox` holds its items reversed
+        correct: end
+        explanation: >-
+          `append` adds at the end, so `inbox` runs from oldest to newest. Only `outbox` holds its
+          items in reverse order.
+
   - id: checkpoint-token-expiry
     heading: Which tokens are live?
     tags: [hash-map]
