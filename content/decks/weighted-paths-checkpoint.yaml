@@ -426,38 +426,49 @@ questions:
           A start with a cost only makes a route possible. The line runs only when that route
           costs less than `dist[v]`, and 9 is not less than 9.
 
-  - id: wp-exam-tap-stop-limit
+  - id: wp-exam-tap-removed-flight
     format: tap-cell
-    heading: Where does the stop limit cost more?
+    heading: Which flight does only the stop limit need?
     tags: [graph]
     prompt: >-
-      Each flight is one-way, written as `(from, to, price)`. A stop is a city a trip passes
-      through between where it starts and where it ends. For each city, compare its cheapest
-      price from `S` with at most 1 stop against its cheapest price with any number of stops.
-      Tap the city where the two prices differ.
+      Each cell is a one-way flight, written `from->to price`. A stop is a city a trip passes
+      through between where it starts and where it ends. Removing which one flight raises the
+      cheapest price from `S` to `T` with at most 1 stop, but leaves the cheapest price with any
+      number of stops as it is? Tap it.
     code: |
-      flights = [("S", "A", 2), ("S", "B", 7), ("A", "B", 3),
-                 ("B", "C", 1), ("A", "C", 9), ("S", "C", 12),
-                 ("C", "D", 1), ("A", "D", 5), ("B", "D", 4)]
+      # Every trip starts at S and ends at T.
+      # Each cell is one flight: from->to price.
     sequence:
       kind: array
-      name: cities
-      cells: [A, B, C, D]
-    correct: 2
+      name: flights
+      cells: [S->P 4, P->T 8, S->Q 1, Q->R 2, R->T 3, S->R 5, P->R 1]
+    correct: 5
     explanation: >-
-      With at most 1 stop, `C` costs 8, by `S -> B -> C`. With no limit, `S -> A -> B -> C` costs
-      2 + 3 + 1 = 6, but it stops at both `A` and `B`.
+      With `S->R`, the cheapest trip with at most 1 stop is `S->R->T` for 8. Without it, the best
+      such trip is `S->P->T` for 12. The cheapest trip of all, `S->Q->R->T` for 6, does not use
+      `S->R`, so it stays 6.
     misses:
       - index: 0
-        explanation: '`S -> A` is a direct flight for 2, and no route to `A` is cheaper, so both prices are 2.'
+        explanation: >-
+          `S->P` is on `S->P->T` for 12 and on `S->P->R->T` for 8, which has two stops. Neither is
+          a cheapest trip, so both prices stay.
       - index: 1
         explanation: >-
-          The cheapest route to `B`, `S -> A -> B` for 5, has one stop, so the limit allows it and
-          both prices are 5.
+          `S->P->T` costs 12, more than `S->R->T` at 8, so removing `P->T` changes neither price.
+      - index: 2
+        explanation: >-
+          `S->Q` starts `S->Q->R->T`, the cheapest trip at 6, so that price rises to 8. The trip
+          has two stops, so the price with at most 1 stop was never using it.
       - index: 3
         explanation: >-
-          `S -> A -> B -> C -> D` costs 7 with three stops, but `S -> A -> D` also costs 7 with one
-          stop, so both prices are 7.
+          `Q->R` is on `S->Q->R->T`, the cheapest trip, so that price rises to 8. The price with at
+          most 1 stop stays 8.
+      - index: 4
+        explanation: '`R->T` ends both `S->R->T` and `S->Q->R->T`, so both prices rise, to 12.'
+      - index: 6
+        explanation: >-
+          `P->R` is only on `S->P->R->T`, 8 with two stops, which is neither cheapest trip, so both
+          prices stay.
 
   - id: wp-exam-free-road-stop
     heading: Can the search stop at the target?

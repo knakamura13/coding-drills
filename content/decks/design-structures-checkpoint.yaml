@@ -307,53 +307,53 @@ questions:
 
   - id: checkpoint-first-unique-design
     heading: Which design meets every cost?
-    tags: [hash-map, queue, complexity]
+    tags: [hash-map, complexity]
     prompt: >-
       A stream takes in items one at a time and must report the earliest item that has arrived
-      exactly once so far. Adding an item and reporting must each cost amortized O(1), counting a
-      dict operation as O(1). A dict keeps its keys in the order they were first added. On a
-      `deque`, `popleft()` is O(1), but `remove(x)` searches from the front, which is O(n). Which
-      design meets every cost?
+      exactly once so far. Adding an item and reporting must each cost O(1) on average. A set or a
+      dict finds, adds or deletes a key in O(1) on average, and a dict keeps its keys in the order
+      they were first added. An `OrderedDict` also deletes any key in O(1) on average, and
+      `next(iter(od))` reads its first key in O(1). Removing an item from the middle of a list
+      moves every later item. Which design meets every cost?
     options:
-      - id: pop-front
-        text: A dict of counts, and a `deque` of first arrivals, popping repeated items off its front
+      - id: ordered
+        text: An `OrderedDict` of items seen once, and a set of items seen more than once
         explanation: >-
-          Each item joins the `deque` once, on its first arrival, and leaves at most once, since
-          counts never drop. So a whole run pops no more items than it adds, and each report is
-          amortized O(1). The front left standing has a count of 1.
-      - id: remove-repeat
-        text: A dict of counts, and a `deque` of first arrivals, calling `remove` when a count reaches 2
+          An item's first arrival adds it at the end of the `OrderedDict`. Its second deletes it
+          there and adds it to the set, and later arrivals find it in the set and change nothing.
+          Each step is O(1) on average, and the first key is the earliest item seen once.
+      - id: list-remove
+        text: A list of items seen once, and a set of items seen, calling `remove` on a second arrival
         explanation: >-
-          The answers are right, but `remove` searches the `deque` from the front. If the items
-          repeat from newest to oldest, every search walks the whole `deque`, so even the average
-          cost is O(n). An item that waits until it reaches the front leaves by `popleft()`.
+          The answers are right, but `remove` searches the list for the item and then closes the
+          gap by moving every later item, so a second arrival costs O(n).
       - id: scan-counts
         text: A dict of counts, scanned in key order for the first count of 1 on each report
         explanation: >-
           The keys are in arrival order, but a report walks past every repeated key before it
           finds a count of 1. After `1, 1, 2, 2, 3, 3, 4` it passes three keys, and each report
           walks them again, so the cost grows with `n`.
-      - id: one-variable
-        text: A set of items seen, and one variable holding the earliest item seen once
+      - id: two-sets
+        text: A set of items seen once, and a set of items seen more than once
         explanation: >-
-          Adding is O(1) until the held item arrives again. Then the next item seen once has to be
-          found, and a set keeps neither arrival order nor counts, so finding it means going back
-          over the stream, which is O(n).
-    correct: pop-front
+          Adding is O(1): an item moves from the first set to the second on its second arrival.
+          But nothing records when each item in the first set came, so finding the earliest one
+          means going back over the stream, which is O(n).
+    correct: ordered
     followUps:
-      remove-repeat:
-        prompt: What does `remove` cost when the repeated item sits near the back of the `deque`?
+      list-remove:
+        prompt: What does `remove` cost on a list of `n` items seen once?
         options:
           - id: linear
-            text: O(n), since it searches from the front
+            text: O(n), to find the item and to move every later item
           - id: constant
-            text: O(1), since the dict finds the item
+            text: O(1), since the set already found the item
           - id: log
-            text: O(log n), by halving the `deque`
+            text: O(log n), by halving the list
         correct: linear
         explanation: >-
-          The dict holds counts, not places in the `deque`, so `remove` has to search for the
-          item. Taking items only from the front never searches.
+          The set says that an item was seen, not where it sits in the list. Deleting a key from
+          an `OrderedDict` needs no search and moves nothing.
       scan-counts:
         prompt: On one report, how many keys can the scan pass before it finds a count of 1?
         options:
@@ -366,42 +366,32 @@ questions:
         correct: all
         explanation: >-
           A dict finds a given key fast, but finding the first key with a count of 1 means checking
-          keys in order. Dropping repeated items from a queue once means no later report passes
-          them again.
-      one-variable:
-        prompt: The held item arrives a second time. What does the design need next?
+          keys in order. Deleting an item from an ordered store on its second arrival means no
+          report ever passes it.
+      two-sets:
+        prompt: Can a set tell which of its items was added first?
         options:
-          - id: next-once
-            text: The next item seen once, which only a pass over the stream finds
-          - id: nothing
-            text: Nothing, since the held item still arrived first
-          - id: newest
-            text: The newest item, since it has arrived only once
-        correct: next-once
+          - id: no-order
+            text: No. A set keeps no arrival order
+          - id: added-order
+            text: Yes. Like a dict, it keeps items in the order they were added
+          - id: smallest
+            text: Yes. Its smallest item is the one added first
+        correct: no-order
         explanation: >-
-          One variable remembers one item. Once that item repeats, the answer moves to a later
-          item, and a set of items seen cannot tell which of them arrived only once.
+          A dict keeps its keys in the order they were first added, but a set makes no such
+          promise: adding 3, 1 and 2 to an empty set and listing it gives `[1, 2, 3]`. The
+          `OrderedDict` of items seen once is what keeps that order.
 
   - id: checkpoint-newest-item
     heading: Which expression reads the newest item?
     tags: [stack, queue, python]
-    prompt: |-
-      This queue is built from two stacks, `inbox` and `outbox`, each a Python list used only at
-      its end:
-
-      ```python
-      def push(inbox, x):
-          inbox.append(x)
-
-      def pop(inbox, outbox):
-          if not outbox:
-              while inbox:
-                  outbox.append(inbox.pop())
-          return outbox.pop()
-      ```
-
-      A `back` operation must return the newest item in O(1) without moving anything. Which
-      expression returns it after any run that leaves the queue not empty?
+    prompt: >-
+      This queue is the two-stack queue this path builds: `inbox` and `outbox` are Python lists
+      used only at their ends, `push` appends to `inbox`, and `pop` returns `outbox.pop()` after
+      the usual refill from `inbox`. A `back` operation must return the newest item in O(1)
+      without moving anything. Which expression returns it after any run that leaves the queue
+      not empty?
     options:
       - id: inbox-top
         text: '`inbox[-1] if inbox else outbox[0]`'
