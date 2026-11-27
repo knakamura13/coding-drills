@@ -28,3 +28,12 @@ declare module 'virtual:curriculum' {
 	import type { Curriculum } from '$lib/content/curriculum';
 	export const curriculum: Curriculum;
 }
+
+/**
+ * Question id to depth, only for questions deeper than `DEFAULT_DEPTH` (a few KB), so deck-shaped
+ * views can filter at a level without loading `virtual:curriculum`. Question ids are unique across decks.
+ */
+declare module 'virtual:depths' {
+	import type { DepthMap } from '$lib/content/depth';
+	export const depths: DepthMap;
+}

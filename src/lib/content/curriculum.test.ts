@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadDecks } from './loadDecks.ts';
 import { loadCurriculum } from './loadCurriculum.ts';
 import { branchSchema, compileCurriculum, MAX_PATH_SKILLS, type BranchFile, type SourceQuestion } from './curriculum.ts';
+import { DEFAULT_DEPTH, DEPTHS, depthMap, visibleAt, type Depth } from './depth.ts';
+import { depths } from 'virtual:depths';
+import { curriculumAt } from '$lib/domain/depth';
+import { EXAM_SIZE } from '$lib/domain/exam';
+import { examDrills, teachingBySkill } from '$lib/domain/mastery';
 
 const PATH_TITLES = [
 	'Arrays and strings',
@@ -296,6 +301,119 @@ describe('shipped curriculum', () => {
 		for (const kind of checkpoint!.mix) {
 			expect(exams.some((drill) => drill.covers.includes(kind)), kind).toBe(true);
 		}
+	});
+});
+
+describe('shipped curriculum at each depth level', () => {
+	const curriculum = loadCurriculum('content/curriculum', 'content/decks');
+	const fullPaths = curriculum.branches.flatMap((item) => item.paths);
+	const views = new Map(DEPTHS.map((level) => [level, curriculumAt(curriculum, level)]));
+	const pathsAt = (level: Depth) => views.get(level)!.branches.flatMap((item) => item.paths);
+
+	describe.each(DEPTHS)('at %s', (level) => {
+		const at = views.get(level)!;
+		const paths = pathsAt(level);
+		const pathIds = new Set(paths.map((item) => item.id));
+		const skillIds = new Set(paths.flatMap((item) => item.skills.map((skill) => skill.id)));
+		const checkpointIds = new Set(paths.flatMap((item) => item.checkpoints.map((checkpoint) => checkpoint.id)));
+
+		it('gates each checkpoint on visible skills, from a non-empty pool of visible items that covers its mix', () => {
+			for (const item of paths) {
+				const pools = examDrills(item, at.drills);
+				for (const checkpoint of item.checkpoints) {
+					for (const id of checkpoint.requires) expect(skillIds.has(id), `${checkpoint.id} requires ${id}`).toBe(true);
+					const pool = pools.get(checkpoint.id) ?? [];
+					expect(pool.length, checkpoint.id).toBeGreaterThan(0);
+					for (const drill of pool) expect(visibleAt(drill.depth, level), drill.questionId).toBe(true);
+					for (const kind of checkpoint.mix) expect(pool.some((drill) => drill.covers.includes(kind)), `${checkpoint.id} ${kind}`).toBe(true);
+				}
+			}
+		});
+
+		it('gives every skill at least 3 visible teaching drills', () => {
+			for (const item of paths) {
+				for (const [skillId, drills] of teachingBySkill(item, at.drills)) expect(drills.length, `${item.id}/${skillId}`).toBeGreaterThanOrEqual(3);
+			}
+		});
+
+		it('drops no drill its depth shows, so deck filtering by the depth map agrees', () => {
+			const byDepth = curriculum.drills.filter((drill) => visibleAt(drill.depth, level)).map((drill) => drill.questionId);
+			expect(at.drills.map((drill) => drill.questionId).sort()).toEqual(byDepth.sort());
+		});
+
+		it('names no hidden path, skill or checkpoint', () => {
+			for (const item of paths) {
+				for (const id of item.after) expect(pathIds.has(id), `${item.id} after ${id}`).toBe(true);
+				for (const skill of item.skills) for (const id of skill.after) expect(skillIds.has(id), `${skill.id} after ${id}`).toBe(true);
+			}
+			for (const drill of at.drills) {
+				expect(visibleAt(drill.depth, level) && pathIds.has(drill.pathId), drill.questionId).toBe(true);
+				for (const id of [drill.skillId, ...(drill.tests ?? [])].filter((value) => value !== undefined)) {
+					expect(skillIds.has(id), `${drill.questionId} names ${id}`).toBe(true);
+				}
+				if (drill.checkpointId) expect(checkpointIds.has(drill.checkpointId), drill.questionId).toBe(true);
+			}
+		});
+	});
+
+	it('keeps every pairing, in order, at the deepest level', () => {
+		const deepest = views.get(DEPTHS[DEPTHS.length - 1]!)!;
+		const order = (pairs: Map<string, readonly { questionId: string }[]>) => [...pairs].map(([id, drills]) => [id, drills.map((drill) => drill.questionId)]);
+		for (const item of fullPaths) {
+			expect(order(teachingBySkill(item, deepest.drills)), item.id).toEqual(order(teachingBySkill(item, curriculum.drills)));
+			expect(order(examDrills(item, deepest.drills)), item.id).toEqual(order(examDrills(item, curriculum.drills)));
+		}
+	});
+
+	it('leaves these checkpoints with an interview pool under a full sitting', () => {
+		const under = (level: Depth) =>
+			pathsAt(level).flatMap((item) => {
+				const pools = examDrills(item, views.get(level)!.drills);
+				return item.checkpoints.filter((checkpoint) => (pools.get(checkpoint.id)?.length ?? 0) < EXAM_SIZE).map((checkpoint) => checkpoint.id);
+			});
+		const small = ['repair-boundary-update', 'rotated-search-variant', 'unlink-or-cycle', 'count-blocked-paths'];
+		expect(under('deep').sort()).toEqual([...small].sort());
+		expect(under('interview').sort()).toEqual([...small, 'meet-stated-costs', 'cheapest-within-stops', 'trace-lcs'].sort());
+	});
+
+	it('changes only these checkpoints at interview (#155 plan, section 2)', () => {
+		// A deliberate snapshot of the plan's table, so a content change that moves an interview pool is seen.
+		// Update it with any change to the exam items or depths of these paths.
+		const interview = views.get('interview')!;
+		const changed: Record<string, { pool: [number, number]; dropped: string[] }> = {};
+		const hidden: string[] = [];
+		for (const item of fullPaths) {
+			const shown = pathsAt('interview').find((candidate) => candidate.id === item.id);
+			const before = examDrills(item, curriculum.drills);
+			const after = shown ? examDrills(shown, interview.drills) : new Map();
+			for (const checkpoint of item.checkpoints) {
+				const visible = shown?.checkpoints.find((candidate) => candidate.id === checkpoint.id);
+				if (!visible) {
+					hidden.push(checkpoint.id);
+					continue;
+				}
+				expect(visible.mix, checkpoint.id).toEqual(checkpoint.mix);
+				const pool: [number, number] = [before.get(checkpoint.id)!.length, after.get(checkpoint.id)!.length];
+				const dropped = checkpoint.requires.filter((id) => !visible.requires.includes(id));
+				if (pool[0] !== pool[1] || dropped.length > 0) changed[checkpoint.id] = { pool, dropped };
+			}
+		}
+		expect(hidden).toEqual(['trace-and-choose-bits', 'search-with-fallbacks', 'build-minimum-tree', 'validate-or-ancestor']);
+		expect(changed).toEqual({
+			'meet-stated-costs': { pool: [5, 4], dropped: ['replay-operations'] },
+			'components-or-links': { pool: [7, 6], dropped: [] },
+			'cheapest-within-stops': { pool: [9, 4], dropped: ['finalize-distance'] },
+			'optimal-schedule': { pool: [6, 5], dropped: [] },
+			'preserve-valid-outputs': { pool: [7, 6], dropped: [] },
+			'trace-lcs': { pool: [7, 4], dropped: [] },
+			'choose-a-method': { pool: [7, 6], dropped: ['finalize-distance'] }
+		});
+	});
+
+	it('builds virtual:depths from every drill deeper than the default', () => {
+		expect(depths).toEqual(depthMap(curriculum));
+		expect(Object.keys(depths).sort()).toEqual(curriculum.drills.filter((drill) => drill.depth !== DEFAULT_DEPTH).map((drill) => drill.questionId).sort());
+		expect(Object.values(depths).every((value) => value !== DEFAULT_DEPTH)).toBe(true);
 	});
 });
 

@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
+import { depthMap } from './depth.ts';
 import { curriculumFiles, loadCurriculum } from './loadCurriculum.ts';
 import { deckFiles, loadDecks } from './loadDecks.ts';
 import type { Deck, DeckSummary } from './schema.ts';
@@ -12,6 +13,7 @@ import type { Deck, DeckSummary } from './schema.ts';
  *   virtual:deck/<id>     one deck in full, behind that lazy import
  *   virtual:decks         every deck in full (the routes that mix decks, and the server)
  *   virtual:curriculum    the mastery map (branches, skills, checkpoints, drill decisions)
+ *   virtual:depths        question id to depth for questions deeper than the default (deck-shaped views at a level)
  *
  * Validation happens here, so `pnpm dev`, `pnpm build`, and the test run all
  * fail with a file-and-path error when a deck breaks the content rules. The
@@ -22,10 +24,11 @@ const INDEX = 'virtual:deck-index';
 const LOADERS = 'virtual:deck-loaders';
 const ALL = 'virtual:decks';
 const CURRICULUM = 'virtual:curriculum';
+const DEPTHS = 'virtual:depths';
 const DECK_PREFIX = 'virtual:deck/';
 
 const isVirtual = (id: string) =>
-	id === INDEX || id === LOADERS || id === ALL || id === CURRICULUM || id.startsWith(DECK_PREFIX);
+	id === INDEX || id === LOADERS || id === ALL || id === CURRICULUM || id === DEPTHS || id.startsWith(DECK_PREFIX);
 
 function summarize(deck: Deck): DeckSummary {
 	return {
@@ -63,9 +66,10 @@ export function decksPlugin(contentDir = 'content/decks', curriculumContentDir =
 		load(id) {
 			if (!id.startsWith('\0virtual:')) return undefined;
 			const name = id.slice(1);
-			if (name === CURRICULUM) {
+			if (name === CURRICULUM || name === DEPTHS) {
 				for (const file of curriculumFiles(curriculumDir)) this.addWatchFile(file);
 				const curriculum = loadCurriculum(curriculumDir, dir);
+				if (name === DEPTHS) return `export const depths = ${JSON.stringify(depthMap(curriculum))};\n`;
 				return `export const curriculum = ${JSON.stringify(curriculum)};\n`;
 			}
 			for (const file of deckFiles(dir)) this.addWatchFile(file);
@@ -101,6 +105,7 @@ export function decksPlugin(contentDir = 'content/decks', curriculumContentDir =
 					LOADERS,
 					ALL,
 					CURRICULUM,
+					DEPTHS,
 					...(parsed ?? []).map((deck) => DECK_PREFIX + deck.id)
 				];
 				parsed = null;
