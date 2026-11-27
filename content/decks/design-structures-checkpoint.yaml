@@ -311,8 +311,7 @@ questions:
     prompt: >-
       A stream takes in items one at a time and must report the earliest item that has arrived
       exactly once so far. Adding an item and reporting must each cost O(1) on average. A set or a
-      dict finds, adds or deletes a key in O(1) on average, and a dict keeps its keys in the order
-      they were first added. An `OrderedDict` also deletes any key in O(1) on average, and
+      dict finds, adds or deletes a key in O(1) on average. An `OrderedDict` also deletes any key in O(1) on average, and
       `next(iter(od))` reads its first key in O(1). Removing an item from the middle of a list
       moves every later item. Which design meets every cost?
     options:
@@ -328,7 +327,7 @@ questions:
           The answers are right, but `remove` searches the list for the item and then closes the
           gap by moving every later item, so a second arrival costs O(n).
       - id: scan-counts
-        text: A dict of counts, scanned in key order for the first count of 1 on each report
+        text: An `OrderedDict` of counts, scanned from the front for the first count of 1 on each report
         explanation: >-
           The keys are in arrival order, but a report walks past every repeated key before it
           finds a count of 1. After `1, 1, 2, 2, 3, 3, 4` it passes three keys, and each report
@@ -387,18 +386,19 @@ questions:
     heading: Which expression reads the newest item?
     tags: [stack, queue, python]
     prompt: >-
-      This queue is the two-stack queue this path builds: `inbox` and `outbox` are Python lists
-      used only at their ends, `push` appends to `inbox`, and `pop` returns `outbox.pop()` after
-      the usual refill from `inbox`. A `back` operation must return the newest item in O(1)
+      A queue is built from two stacks, `inbox` and `outbox`, Python lists used only at their ends.
+      `push` appends to `inbox`. `pop` returns `outbox.pop()`, and before that it may move every
+      item of `inbox` across, one `outbox.append(inbox.pop())` at a time. On every run, pops return
+      items in the order they were pushed. A `back` operation must return the newest item in O(1)
       without moving anything. Which expression returns it after any run that leaves the queue
       not empty?
     options:
       - id: inbox-top
         text: '`inbox[-1] if inbox else outbox[0]`'
         explanation: >-
-          Every item in `inbox` was pushed after every item in `outbox`, and the newest push is on
-          top of `inbox`. When `inbox` is empty, the newest item was the first one moved across,
-          since a move pops `inbox` from its top, so it lands at the bottom of `outbox`, index 0.
+          A move takes all of `inbox`, so an item still in `inbox` was pushed after every item in
+          `outbox`, and the newest push is on top. When `inbox` is empty, pops take `outbox`'s top
+          in the order items came, so the newest item is at the bottom, index 0.
       - id: outbox-top
         text: '`inbox[-1] if inbox else outbox[-1]`'
         explanation: >-
@@ -407,8 +407,9 @@ questions:
       - id: outbox-first
         text: '`outbox[0] if outbox else inbox[-1]`'
         explanation: >-
-          It reads `outbox` even when `inbox` holds newer items. After push 1, push 2, a pop and
-          push 3, `outbox` is `[2]` and `inbox` is `[3]`, and this returns 2 instead of 3.
+          It reads `outbox` even when `inbox` holds newer items. After push 1, push 2, push 3, a
+          pop, a pop and push 4, `outbox` is `[3]` and `inbox` is `[4]`, and this returns 3 instead
+          of 4.
       - id: inbox-bottom
         text: '`inbox[0] if inbox else outbox[0]`'
         explanation: >-
