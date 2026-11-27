@@ -88,7 +88,11 @@ test.describe('accounts and sync', () => {
 		await signIn(other, account, baseURL!);
 		const phone = await other.newPage();
 		await phone.goto(learnURL);
-		await expect.poll(async () => (await onScreen(phone)).id).toBe(learnDeck.questions[1]!.id);
+		// The replan can swap the question between onScreen's reads (one question's cells, the next one's
+		// pointers), so a read that matches no question counts as "not yet" instead of ending the poll.
+		await expect
+			.poll(async () => (await onScreen(phone).catch((error: Error) => ({ id: error.message }))).id)
+			.toBe(learnDeck.questions[1]!.id);
 		await expect(phone.getByRole('dialog')).toHaveCount(0);
 		await other.close();
 	});

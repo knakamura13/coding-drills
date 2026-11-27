@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { loadDecks } from '../src/lib/content/loadDecks.ts';
 import { isCellStep, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuestion, isTapCellQuestion, type ChoiceQuestion, type Question } from '../src/lib/content/schema.ts';
 import { markdownBlocks, plainText } from '../src/lib/markdown/render.ts';
@@ -175,6 +175,17 @@ export async function openMenu(page: Page): Promise<void> {
 	await expect(async () => {
 		if (!(await drawer.isVisible())) await page.getByRole('button', { name: /^Menu/ }).click();
 		await expect(drawer).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 15_000 });
+}
+
+/**
+ * Opens a tree node's detail. The tree is prerendered too, so a click that lands before it hydrates is ignored
+ * (WebKit can hydrate after the load event). The click is repeated until the node reports itself expanded.
+ */
+export async function expandNode(node: Locator): Promise<void> {
+	await expect(async () => {
+		if ((await node.getAttribute('aria-expanded')) !== 'true') await node.click();
+		await expect(node).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
 	}).toPass({ timeout: 15_000 });
 }
 
