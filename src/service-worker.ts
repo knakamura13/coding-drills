@@ -5,6 +5,7 @@
 
 import { version } from '$app/env';
 import { assets, immutable, prerendered } from '$app/manifest';
+import { VERSION_QUERY } from '$lib/pwa/protocol';
 
 /**
  * Makes the app work with no connection.
@@ -17,8 +18,9 @@ import { assets, immutable, prerendered } from '$app/manifest';
  * - Page loads go to the network first and fall back to the cache, so a deploy
  *   shows up on the next load. Requests to /api are never touched: answers are
  *   saved on the device first and the sync engine retries them online.
- * - A new version takes over at once (skipWaiting and claim) and the page
- *   reloads when the controller changes.
+ * - A new version takes over at once (skipWaiting and claim). An open page asks
+ *   the worker that took over for its build and reloads when it is not its own
+ *   (`src/lib/pwa/register.ts`).
  */
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
@@ -71,6 +73,11 @@ sw.addEventListener('activate', (event) => {
 			await sw.clients.claim();
 		})()
 	);
+});
+
+// An open page asks which build took over, to decide whether it must reload.
+sw.addEventListener('message', (event) => {
+	if (event.data === VERSION_QUERY) event.ports[0]?.postMessage(version);
 });
 
 /** `AbortSignal.timeout` is missing in older Safari. Without it a request just waits for the network. */

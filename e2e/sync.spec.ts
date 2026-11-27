@@ -3,6 +3,7 @@ import { createAccount, serverState, signIn } from './account';
 import { answerMain, continuePastWrong, currentQuestion, deck, firstWrongId, openMenu, playDeck } from './helpers';
 import { URL as learnURL, deck as learnDeck, onScreen, playThrough } from './learn-helpers';
 import { openOldLesson, seed } from './seed';
+import { VERSION_TIMEOUT_MS } from '../src/lib/pwa/protocol.ts';
 
 const TWO_DAYS_MS = 2 * 86_400_000;
 
@@ -25,10 +26,23 @@ test.describe('accounts and sync', () => {
 	test('a client ID that is not a Google client ID is reported instead of failing at Google', async ({ page }) => {
 		// The e2e server is configured with a bogus ID, so the hop returns straight to the app.
 		await page.goto('/settings');
+		let loads = 0;
+		page.on('load', () => loads++);
 		await page.getByRole('link', { name: 'Sign in with Google' }).click();
 		await expect(page.getByText(/GOOGLE_CLIENT_ID should be the Client ID/)).toBeVisible();
 		// The message is shown once and the URL is cleaned.
 		await expect(page).toHaveURL('/');
+		// The service worker, installing since /settings, can take over this page around now. A first
+		// install must not reload it, or the notice is gone a moment after it shows (#191). The race behind
+		// #191 shows up here only some of the time; `src/lib/pwa/register.test.ts` pins it. The page
+		// asks the worker for its build and reloads if it gets no answer in time, so wait past that too.
+		// The install caches every page, which can take a while with many browsers running at once.
+		await expect
+			.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null), { timeout: 30_000 })
+			.toBe(true);
+		await page.waitForTimeout(VERSION_TIMEOUT_MS + 500);
+		expect(loads).toBe(1);
+		await expect(page.getByText(/GOOGLE_CLIENT_ID should be the Client ID/)).toBeVisible();
 	});
 
 	test('answers made on one device show up on another with no save step', async ({ browser, page, request, baseURL }) => {
