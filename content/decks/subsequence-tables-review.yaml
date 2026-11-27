@@ -1,6 +1,6 @@
 id: subsequence-tables-review
 title: "Dynamic programming: two strings (review)"
-description: Fresh strings for telling a subsequence from a substring, reading which prefixes a cell covers and filling an LCS table, for recall on later days. No worked examples this time.
+description: Fresh strings for telling a subsequence from a substring, reading which prefixes a cell covers and filling LCS and edit distance tables, for recall on later days. No worked examples this time.
 heading: What does the table hold?
 
 questions:
@@ -562,6 +562,93 @@ questions:
         explanation: >-
           Subsequence counts carry across a mismatch, which is why the cell copies its larger
           neighbor instead of starting again.
+
+  - id: edit-distance-row-review
+    format: step-trace
+    heading: Predict each step
+    tags: [dp, python]
+    prompt: >-
+      Edit distance is the fewest edits that turn one string into another, where an edit inserts,
+      deletes or replaces one letter. `dp[i][j]` is the edit distance from `a[:i]` to `b[:j]`. Here
+      `a = "wheel"`, `b = "eagle"` and `i = 5`, so `a[i - 1]` is `l`. The board is `prev`, row 4
+      of the edit distance table. The passes with `j` at 1 and 2 have run, so `cur` starts
+      `[5, 4, 4]`. Predict each step.
+    code: |
+      cur = [i] + [0] * len(b)
+      for j in range(1, len(b) + 1):
+          if a[i - 1] == b[j - 1]:
+              cur[j] = ...   # the rule for a match
+          else:
+              cur[j] = ...   # the rule for a mismatch
+    sequence: { kind: array, name: prev, cells: [4, 3, 3, 4, 4, 4] }
+    start:
+      - { name: j, at: 2 }
+    steps:
+      - line: 3
+        ask: On the pass with `j` at 3, `b[2]` is `g`. What is `cur[3]`?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              `g` is not `l`, so the cell is 1 plus the smallest of the diagonal `prev[2]`, 3, the
+              cell above `prev[3]`, 4, and the cell to the left `cur[2]`, 4. The diagonal turns
+              `whee` into `ea` in 3 edits, and replacing the `l` with a `g` makes 4.
+          - id: three
+            text: '3'
+            explanation: >-
+              3 is the diagonal copied with no edit added. Copying needs a match, and `l` and `g`
+              differ, so the last letters cost one more edit.
+          - id: five
+            text: '5'
+            explanation: >-
+              5 is 1 plus the cell above or the cell to the left, both 4. The table keeps the
+              fewest edits, and the diagonal, 3, is smaller.
+        correct: four
+        also:
+          - { name: j, at: 3 }
+      - line: 3
+        ask: On the pass with `j` at 4, `b[3]` is `l`. What is `cur[4]`?
+        options:
+          - id: four
+            text: '4'
+            explanation: >-
+              Both letters are `l`, so no edit is needed for them and the cell copies the diagonal,
+              `prev[3]`, 4: the edits that turn `whee` into `eag`.
+          - id: five
+            text: '5'
+            explanation: >-
+              5 adds an edit for letters that already match. A match copies the diagonal, 4, with
+              nothing added.
+          - id: three
+            text: '3'
+            explanation: >-
+              3 takes 1 off for the match. A match only saves the edit for the last letters, and
+              the 4 edits that turn `whee` into `eag` are still needed.
+        correct: four
+        also:
+          - { name: j, at: 4 }
+      - line: 3
+        ask: The pass with `j` at 5 compares `l` with `e`. What is `cur[5]`?
+        options:
+          - id: five
+            text: '5'
+            explanation: >-
+              `l` is not `e`, and the diagonal, the cell above and the cell to the left all hold 4.
+              So replacing the `l`, deleting it or inserting the `e` each costs 1 more: 5, which is
+              `dp[5][5]`.
+          - id: four
+            text: '4'
+            explanation: >-
+              4 copies the three neighbors because they agree, with no edit added. `l` and `e`
+              differ, so one more edit is needed.
+          - id: six
+            text: '6'
+            explanation: >-
+              6 deletes the `l` and inserts the `e`, two edits on the diagonal's 4. One replace does
+              the same work in a single edit.
+        correct: five
+        also:
+          - { name: j, at: 5 }
 
   - id: walk-back-review
     format: step-trace
