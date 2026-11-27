@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { decksAt } from '$lib/domain/depth';
 import { seededRng } from '$lib/domain/shuffle';
 import { deck } from '$lib/testing/fixtures';
 import { PRACTICE_SIZE, practiceEntries, tagLabel, topics } from './practice';
@@ -47,6 +48,14 @@ describe('practiceEntries', () => {
 		const first = practiceEntries(decks, null, seededRng(9));
 		expect(practiceEntries(decks, null, seededRng(9)).map((e) => e.question.id)).toEqual(first.map((e) => e.question.id));
 		expect(first.find((e) => e.deckId === 'alpha')!.heading).toBe('Alpha?');
+	});
+
+	it('draws no deeper question, and lists no deeper topic, once the decks are filtered to a level (#155)', () => {
+		const shown = decksAt(decks, 'interview', { a2: 'deep', b1: 'deep' });
+		const entries = practiceEntries(shown, null, seededRng(4));
+		expect(entries.map((e) => `${e.deckId}/${e.question.id}`).sort()).toEqual(['alpha/a1', 'alpha/a3']);
+		expect(practiceEntries(shown, 'sorting', seededRng(4))).toEqual([]);
+		expect(topics(shown)).toEqual([{ tag: 'hash-map', count: 1 }]);
 	});
 });
 

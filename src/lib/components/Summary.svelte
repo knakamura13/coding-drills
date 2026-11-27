@@ -3,6 +3,7 @@
 	import { focusOnMount } from '$lib/actions';
 	import { localDay } from '$lib/domain/days';
 	import type { Summary } from '$lib/domain/lesson';
+	import { decksAtLearnerLevel } from '$lib/review/level';
 	import { scheduleCounts, type ScheduleCounts } from '$lib/review/queue';
 	import { getRepository } from '$lib/storage';
 	import { decks } from 'virtual:deck-index';
@@ -26,10 +27,10 @@
 
 	const perfect = $derived(summary.total > 0 && summary.correctFirstTry === summary.total);
 
-	// What the schedule holds now that this session's answers are in it.
+	// What the schedule holds now that this session's answers are in it, at the learner's level (#155).
 	let upcoming = $state<ScheduleCounts | null>(null);
 	onMount(() => {
-		upcoming = scheduleCounts(decks, getRepository().attempts(), localDay(new Date()));
+		upcoming = scheduleCounts(decksAtLearnerLevel(decks), getRepository().attempts(), localDay(new Date()));
 	});
 </script>
 

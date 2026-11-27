@@ -3,15 +3,19 @@
 	import { status } from '$lib/nav/status.svelte';
 	import { filterDecks } from '$lib/review/decks';
 	import { shortcuts } from '$lib/settings/shortcuts.svelte';
-	import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	// The decks at the learner's level, with their visible question counts (#155). The list is
+	// prerendered at the default level and read again on the device once the page has mounted.
+	const visible = $derived(status.snapshot.decks);
+	const decks = $derived(
+		visible.map(({ id, title, description, questions }) => ({ id, title, description, count: questions.length }))
+	);
 
 	let query = $state('');
 	let search: HTMLInputElement | undefined = $state();
 
-	const shown = $derived(filterDecks(data.decks, query));
-	const questionCount = $derived(data.decks.reduce((sum, deck) => sum + deck.count, 0));
+	const shown = $derived(filterDecks(decks, query));
+	const questionCount = $derived(decks.reduce((sum, deck) => sum + deck.count, 0));
 
 	function percent(part: number, whole: number) {
 		return whole === 0 ? 0 : Math.round((part / whole) * 100);
@@ -35,7 +39,7 @@
 
 <main class="page wide">
 	<h1>Decks</h1>
-	<p class="lede">{data.decks.length} decks, {questionCount} questions.</p>
+	<p class="lede">{decks.length} decks, {questionCount} questions.</p>
 
 	<div class="search">
 		<label for="deck-filter" class="sr-only">Filter decks</label>

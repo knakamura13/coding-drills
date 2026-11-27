@@ -1,14 +1,16 @@
 <script lang="ts">
 	import Calendar from '$lib/components/Calendar.svelte';
 	import { APP_NAME } from '$lib/config';
+	import type { DeckSummary } from '$lib/content/schema';
 	import { localDay } from '$lib/domain/days';
 	import { activity, calendar, topicStats, totals, type DayCell, type TopicStat, type Totals } from '$lib/domain/stats';
 	import { streak } from '$lib/domain/streak';
+	import { decksAtLearnerLevel } from '$lib/review/level';
 	import { deckProgress, type DeckProgress } from '$lib/review/queue';
 	import { tagLabel } from '$lib/review/practice';
 	import { getRepository } from '$lib/storage';
 	import { account } from '$lib/sync/store.svelte';
-	import { decks } from 'virtual:deck-index';
+	import { decks as allDecks } from 'virtual:deck-index';
 
 	const WEEKS = 12;
 
@@ -19,6 +21,7 @@
 	let activeDays = $state(0);
 	let topics = $state<TopicStat[]>([]);
 	let byDeck = $state<Map<string, DeckProgress>>(new Map());
+	let decks = $state.raw<DeckSummary[]>([]);
 
 	function load() {
 		const attempts = getRepository().attempts();
@@ -30,8 +33,12 @@
 		activeDays = grid.flat().filter((cell) => cell !== null && cell.count > 0).length;
 		summary = totals(attempts);
 		streakDays = streak(counts.keys(), today);
-		topics = topicStats(decks, attempts);
-		byDeck = deckProgress(decks, attempts, today);
+		// History above counts every answer. Topics and decks count only the questions at the
+		// learner's level (#155), so a deeper question never sits in a total as unlearned.
+		const shown = decksAtLearnerLevel(allDecks);
+		decks = shown;
+		topics = topicStats(shown, attempts);
+		byDeck = deckProgress(shown, attempts, today);
 		ready = true;
 	}
 

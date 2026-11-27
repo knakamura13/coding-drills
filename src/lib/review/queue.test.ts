@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CurriculumDrill, CurriculumPath, CurriculumSkill } from '$lib/content/curriculum';
+import { decksAt } from '$lib/domain/depth';
 import { advance, check, createReviewLesson, select } from '$lib/domain/lesson';
 import { teachingBySkill } from '$lib/domain/mastery';
 import { replay } from '$lib/domain/srs';
@@ -244,5 +245,18 @@ describe('fresh review variants', () => {
 		const status = reviewStatus(decks, log, '2026-10-10', undefined, undefined, bySkill);
 		expect(status.entries.map((entry) => entry.question.id)).toEqual(['older', 'a1']);
 		expect(status.entries.every((entry) => !entry.reviewOf)).toBe(true);
+	});
+
+	it('offers no deeper card, due or fresh, once the decks are filtered to a level (#155)', () => {
+		const depths = { a2: 'deep', fresh: 'deep' } as const;
+		const log = [attempt('alpha', 'a1', '2026-10-08'), attempt('alpha', 'a2', '2026-10-08')];
+		expect(reviewStatus(decks, log, '2026-10-10', undefined, undefined, bySkill).dueCount).toBe(2);
+		const shown = decksAt(decks, 'interview', depths);
+		const status = reviewStatus(shown, log, '2026-10-10', undefined, undefined, bySkill);
+		// a2 is due but deep, and the deep sibling `fresh` would have been a1's variant.
+		expect(status.dueCount).toBe(1);
+		expect(status.entries.map((entry) => entry.question.id)).toEqual(['older']);
+		expect(scheduleCounts(shown, log, '2026-10-10').dueCount).toBe(1);
+		expect(deckProgress(shown, log, '2026-10-10').get('alpha')).toEqual({ seen: 1, learned: 0, due: 1 });
 	});
 });

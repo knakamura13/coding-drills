@@ -432,6 +432,20 @@ describe('shipped curriculum at each depth level', () => {
 		expect(Object.keys(depths).sort()).toEqual(curriculum.drills.filter((drill) => drill.depth !== DEFAULT_DEPTH).map((drill) => drill.questionId).sort());
 		expect(Object.values(depths).every((value) => value !== DEFAULT_DEPTH)).toBe(true);
 	});
+
+	it('pairs every teaching drill with the same skill at the deepest level as the raw curriculum does (review variants)', () => {
+		const bySkill = (source: typeof curriculum) =>
+			new Map(
+				source.branches.flatMap((branch) =>
+					branch.paths.flatMap((path) =>
+						[...teachingBySkill(path, source.drills)].map(
+							([skill, drills]) => [skill, drills.map((drill) => `${drill.deckId}/${drill.questionId}${drill.variant ? '*' : ''}`).sort()] as const
+						)
+					)
+				)
+			);
+		expect(bySkill(curriculumAt(curriculum, DEPTHS[DEPTHS.length - 1]!))).toEqual(bySkill(curriculum));
+	});
 });
 
 describe('compileCurriculum', () => {

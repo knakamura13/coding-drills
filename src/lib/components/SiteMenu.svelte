@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { decks } from 'virtual:deck-index';
 	import { status } from '$lib/nav/status.svelte';
 	import { dismissIosHint, install, promptInstall } from '$lib/pwa/install.svelte';
 	import Button from './Button.svelte';
@@ -37,7 +36,7 @@
 			{/if}
 			<li><a href={resolve('/practice')} aria-current={current('/practice')}>Mixed practice</a></li>
 			<li>
-				<a href={resolve('/decks')} aria-current={current('/decks')}>All decks <span class="count">{decks.length}</span></a>
+				<a href={resolve('/decks')} aria-current={current('/decks')}>All decks <span class="count">{snap.decks.length}</span></a>
 			</li>
 			<li><a href={resolve('/tree')} aria-current={current('/tree')}>Mastery tree</a></li>
 		</ul>
