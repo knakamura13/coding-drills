@@ -113,10 +113,17 @@ test.describe('mixed practice', () => {
 		);
 		const topic = options.find((option) => option.value !== '')!;
 		const count = Number(/\((\d+)\)/.exec(topic.label)![1]);
-		await select.selectOption(topic.value);
 		const size = Math.min(10, count);
-		await card.getByRole('link', { name: `Practice ${size}` }).click();
-		await expect(page).toHaveURL(`/practice?tag=${encodeURIComponent(topic.value)}`);
+		const link = card.getByRole('link', { name: `Practice ${size}` });
+		const url = `/practice?tag=${encodeURIComponent(topic.value)}`;
+		// The page is prerendered, so a topic chosen before it hydrates never reaches the link. WebKit can
+		// hydrate after the load event, so choose again until the link carries the topic.
+		await expect(async () => {
+			await select.selectOption(topic.value);
+			await expect(link).toHaveAttribute('href', url, { timeout: 500 });
+		}).toPass({ timeout: 10_000 });
+		await link.click();
+		await expect(page).toHaveURL(url);
 
 		for (let index = 0; index < size; index++) {
 			const { question } = await currentQuestionAny(page);
