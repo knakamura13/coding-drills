@@ -18,7 +18,20 @@ export const EXAM_SIZE = 5;
 /** First-try misses a sitting can carry and still pass, when it has more than one item. */
 export const EXAM_MAX_MISSES = 1;
 
-export const PASS_RULE = `A sitting is ${EXAM_SIZE} exam items. It passes when at most ${EXAM_MAX_MISSES} is wrong on the first try and every kind of item the checkpoint requires was answered right.`;
+/** Items a sitting needs from a pool of `poolSize`: `EXAM_SIZE`, or the whole pool when it is smaller. */
+export function sittingSize(poolSize: number): number {
+	return Math.min(EXAM_SIZE, poolSize);
+}
+
+/** The pass rule for a sitting of `size` items. A pool smaller than `EXAM_SIZE` (some depth levels, #155) gives a smaller sitting. */
+export function passRule(size: number): string {
+	const misses = Math.min(EXAM_MAX_MISSES, size - 1);
+	const items = size === 1 ? '1 exam item' : `${size} exam items`;
+	const allowed = misses > 0 ? `at most ${misses} is wrong` : 'none is wrong';
+	return `A sitting is ${items}. It passes when ${allowed} on the first try and every kind of item the checkpoint requires was answered right.`;
+}
+
+export const PASS_RULE = passRule(EXAM_SIZE);
 
 /**
  * The items for one sitting. Every kind in `mix` gets at least one item that
@@ -64,7 +77,7 @@ export function drawExam<T extends { covers: readonly string[] }>(
  * counts once, so a retake is a later day.
  */
 export function examPassed(drills: readonly CurriculumDrill[], mix: readonly string[], attempts: readonly Attempt[]): boolean {
-	const needed = Math.min(EXAM_SIZE, drills.length);
+	const needed = sittingSize(drills.length);
 	if (needed === 0) return false;
 	const byKey = new Map(drills.map((drill) => [cardKey(drill.deckId, drill.questionId), drill]));
 	const allowedMisses = Math.min(EXAM_MAX_MISSES, needed - 1);

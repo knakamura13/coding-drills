@@ -285,6 +285,8 @@ describe('projectCurriculum at a level', () => {
 		const core = viewOf(tree, 'core');
 		expect(core.forks.map((fork) => fork.skills.map((skill) => skill.id))).toEqual([['side-a']]);
 		expect(core.checkpoints[0]!.drills.map((item) => item.questionId)).toEqual(['x-trace']);
+		expect(core.checkpoints[0]!.sitting).toBe(1);
+		expect(viewOf(projectCurriculum(curriculum, [], 'deep'), 'core').checkpoints[0]!.sitting).toBe(2);
 		expect(viewOf(tree, 'split').checkpoints.map((item) => item.id)).toEqual(['split-early']);
 		expect(viewOf(tree, 'plain').main.map((skill) => skill.drills.map((item) => item.questionId))).toEqual([['p1'], [], ['p3', 'p4']]);
 		expect(pathsOf(projectCurriculum(curriculum, [], 'deep')).map((path) => path.id)).toEqual(['core', 'plain', 'split', 'deeper', 'hollow']);

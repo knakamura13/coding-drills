@@ -4,7 +4,7 @@
 	import { curriculum } from 'virtual:curriculum';
 	import { APP_NAME } from '$lib/config';
 	import { checkpointPassed } from '$lib/domain/depth';
-	import { PASS_RULE } from '$lib/domain/exam';
+	import { passRule, sittingSize } from '$lib/domain/exam';
 	import { createReviewLesson, type Summary } from '$lib/domain/lesson';
 	import { skillsChecked } from '$lib/domain/mastery';
 	import { getRepository } from '$lib/storage';
@@ -31,7 +31,7 @@
 	<title>Checkpoint: {data.title} · {APP_NAME}</title>
 </svelte:head>
 
-<Lesson {source} title="Checkpoint: {data.title}" subtitle={PASS_RULE} summaryExtra={outcome} />
+<Lesson {source} title="Checkpoint: {data.title}" subtitle={passRule(sittingSize(data.pool.length))} summaryExtra={outcome} />
 
 {#snippet outcome(summary: Summary)}
 	{@const verdict = result(summary)}

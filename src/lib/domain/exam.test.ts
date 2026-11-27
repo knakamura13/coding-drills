@@ -3,7 +3,7 @@ import type { CurriculumDrill } from '$lib/content/curriculum';
 import type { Attempt } from '$lib/storage/types';
 import { curriculum } from 'virtual:curriculum';
 import { examDrills, projectCurriculum } from './mastery';
-import { EXAM_SIZE, drawExam, examPassed, orderForReview } from './exam';
+import { EXAM_SIZE, PASS_RULE, drawExam, examPassed, orderForReview, passRule } from './exam';
 import { seededRng } from './shuffle';
 
 function drill(questionId: string, covers: string[] = []): CurriculumDrill {
@@ -133,5 +133,18 @@ describe('orderForReview', () => {
 
 	it('is stable for equal ranks', () => {
 		expect(orderForReview([drill('a'), drill('b'), drill('c')], []).map((item) => item.questionId)).toEqual(['a', 'b', 'c']);
+	});
+});
+
+describe('passRule', () => {
+	it('states the size of the sitting a pool gives, so a smaller pool does not promise five items', () => {
+		expect(passRule(EXAM_SIZE)).toBe(PASS_RULE);
+		expect(PASS_RULE).toBe(
+			'A sitting is 5 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
+		);
+		expect(passRule(4)).toBe(
+			'A sitting is 4 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
+		);
+		expect(passRule(1)).toBe('A sitting is 1 exam item. It passes when none is wrong on the first try and every kind of item the checkpoint requires was answered right.');
 	});
 });

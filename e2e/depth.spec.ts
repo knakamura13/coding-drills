@@ -76,6 +76,7 @@ test.describe('at the Interview level', () => {
 	test('an exam draws only interview items, and four right pass it', async ({ page }) => {
 		await seed(page, interviewMastered());
 		await page.goto(`/exam/${WEIGHTED}`);
+		await expect(page.getByText(/^A sitting is 4 exam items\./)).toBeVisible();
 		const interviewIds = weightedExam.filter((drill) => drill.depth === 'interview').map((drill) => drill.questionId);
 		const seen: string[] = [];
 		for (let item = 0; item < interviewIds.length; item++) {

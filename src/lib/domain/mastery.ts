@@ -3,7 +3,7 @@ import type { Depth } from '$lib/content/depth';
 import { compareAttempts } from '$lib/storage/guards';
 import type { Attempt } from '$lib/storage/types';
 import { checkpointPassed, curriculumAt } from './depth';
-import { PASS_RULE } from './exam';
+import { PASS_RULE, sittingSize } from './exam';
 import { cardKey, countedAttempts, dueCards, replay } from './srs';
 
 /**
@@ -219,6 +219,8 @@ export interface CheckpointView {
 	state: ExamState;
 	status: string;
 	lit: boolean;
+	/** Items in one sitting at this level: fewer than `EXAM_SIZE` when the level's pool is smaller. */
+	sitting: number;
 	remaining: readonly { id: string; title: string; pathTitle: string; branchTitle: string }[];
 	drills: readonly DrillView[];
 }
@@ -394,6 +396,7 @@ export function projectCurriculum(
 					state: gate.state,
 					status: examLabel(gate),
 					lit: gate.state !== 'locked',
+					sitting: sittingSize((examPaired.get(checkpoint.id) ?? []).length),
 					remaining: gate.remaining.map((id) => {
 						const meta = skillMeta.get(id);
 						return {

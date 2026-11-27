@@ -9,7 +9,7 @@ import { DEFAULT_DEPTH, DEPTHS, depthMap, visibleAt, type Depth } from './depth.
 import { depths } from 'virtual:depths';
 import { curriculumAt } from '$lib/domain/depth';
 import { EXAM_SIZE } from '$lib/domain/exam';
-import { examDrills, teachingBySkill } from '$lib/domain/mastery';
+import { examDrills, projectCurriculum, teachingBySkill } from '$lib/domain/mastery';
 
 const PATH_TITLES = [
 	'Arrays and strings',
@@ -306,6 +306,23 @@ describe('shipped curriculum', () => {
 
 describe('shipped curriculum at each depth level', () => {
 	const curriculum = loadCurriculum('content/curriculum', 'content/decks');
+
+	it('opens Weighted paths after Traversal layers at every level, and only its deep Dijkstra fork waits on Priority order', () => {
+		const weighted = (level: Depth) =>
+			projectCurriculum(curriculum, [], level)
+				.branches.flatMap((item) => item.paths)
+				.find((item) => item.id === 'weighted-paths')!;
+		for (const level of DEPTHS) {
+			expect(weighted(level).main[0]!.lockedBy.map((item) => item.id), level).toEqual(['traversal-layers']);
+			expect(weighted(level).after.map((item) => item.id), level).toEqual(['traversal-layers']);
+		}
+		expect(weighted('interview').forks).toEqual([]);
+		expect(weighted('deep').forks[0]!.skills[0]!.lockedBy.map((item) => item.id)).toEqual(['priority-order']);
+		// The interview pool holds 4 exam items, so its sitting is 4.
+		expect(weighted('interview').checkpoints[0]!.sitting).toBe(4);
+		expect(weighted('deep').checkpoints[0]!.sitting).toBe(EXAM_SIZE);
+	});
+
 	const fullPaths = curriculum.branches.flatMap((item) => item.paths);
 	const views = new Map(DEPTHS.map((level) => [level, curriculumAt(curriculum, level)]));
 	const pathsAt = (level: Depth) => views.get(level)!.branches.flatMap((item) => item.paths);
@@ -418,6 +435,25 @@ describe('shipped curriculum at each depth level', () => {
 });
 
 describe('compileCurriculum', () => {
+	it('makes the first skill of a fork wait on the skills it needs, and keeps them out of requires', () => {
+		const alpha = path('alpha');
+		const beta = { ...path('beta', ['alpha']), forks: [{ id: 'side', title: 'Side', after: 'beta-a', needs: ['gamma-b'], levels: [level('side-a')] }] };
+		const compiled = compileCurriculum([branch('foundations', 1, [alpha, beta, path('gamma')])], []);
+		const compiledBeta = compiled.branches[0]!.paths[1]!;
+		expect(compiledBeta.skills.find((skill) => skill.id === 'side-a')!.after).toEqual(['beta-a', 'gamma-b']);
+		expect(compiledBeta.skills[0]!.after).toEqual(['alpha-b']);
+		expect(compiledBeta.checkpoints[0]!.requires).toEqual(['beta-a', 'beta-b', 'side-a']);
+	});
+
+	it('rejects a fork that needs an unknown skill, a skill on its own path, or one skill twice', () => {
+		const withNeeds = (needs: string[]) => [
+			branch('foundations', 1, [path('alpha'), { ...path('beta'), forks: [{ id: 'side', title: 'Side', needs, levels: [level('side-a')] }] }])
+		];
+		expect(() => compileCurriculum(withNeeds(['nope']), [])).toThrow('fork "side" needs "nope", which is not a skill');
+		expect(() => compileCurriculum(withNeeds(['beta-a']), [])).toThrow('fork "side" needs "beta-a", which is on its own path');
+		expect(() => compileCurriculum(withNeeds(['alpha-b', 'alpha-b']), [])).toThrow('fork "side" lists a needed skill twice');
+	});
+
 	it('rejects a question that is mapped twice or not at all', () => {
 		const files = [branch('foundations', 1, [path('arrays')], [{ questionId: 'only', disposition: 'keep', path: 'arrays', note: 'Keep it.' }])];
 		expect(() => compileCurriculum(files, questions('only', 'other'))).toThrow(/other.*not mapped/);
