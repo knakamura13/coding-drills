@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { ContentError } from './contentError.ts';
+import { DEFAULT_DEPTH, DEPTHS, type Depth } from './depth.ts';
+
+export { DEFAULT_LEVEL, DEPTHS, visibleAt, type Depth } from './depth.ts';
 
 /**
  * The mastery curriculum compiled from `content/curriculum/*.yaml`.
@@ -26,15 +29,6 @@ const id = z
 	.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'use lowercase kebab-case (letters, digits, hyphens)');
 
 const text = (max: number) => z.string().trim().min(1).max(max);
-
-/**
- * How deep an item goes, shallowest first. A learner will see every item at or
- * below the level they choose (#155). Keep the order when adding a level.
- */
-export const DEPTHS = ['interview', 'deep'] as const;
-export type Depth = (typeof DEPTHS)[number];
-/** The depth of a path that does not set one. A skill or drill without one takes its parent's. */
-const DEFAULT_DEPTH: Depth = 'interview';
 
 const depth = z.enum(DEPTHS).optional();
 
