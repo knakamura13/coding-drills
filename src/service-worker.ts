@@ -23,7 +23,7 @@ import { assets, immutable, prerendered } from '$app/manifest';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE = `drills-${version}`;
+const CACHE = `facet-${version}`;
 const CLIENT_ROUTES = ['/review', '/weak', '/practice'];
 const NETWORK_TIMEOUT_MS = 4000;
 // Font subsets for scripts the app does not use are left out; the browser only fetches the subsets a page needs.
@@ -65,7 +65,8 @@ sw.addEventListener('activate', (event) => {
 	event.waitUntil(
 		(async () => {
 			for (const key of await caches.keys()) {
-				if (key.startsWith('drills-') && key !== CACHE) await caches.delete(key);
+				// Every cache on this origin is the app's, so any other key is an older version.
+				if (key !== CACHE) await caches.delete(key);
 			}
 			await sw.clients.claim();
 		})()

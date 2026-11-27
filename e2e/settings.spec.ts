@@ -107,7 +107,7 @@ test.describe('settings', () => {
 	test('immediate feedback checks the pick and still requires the follow-up', async ({ page }) => {
 		await page.addInitScript(() => {
 			localStorage.setItem(
-				'coding-drills:v1:preferences',
+				'facet:v1:preferences',
 				JSON.stringify({ sound: false, haptics: false, immediateFeedback: true, theme: 'dark' })
 			);
 		});
@@ -126,7 +126,7 @@ test.describe('settings', () => {
 		test(`${theme} theme passes the axe scans`, async ({ page }) => {
 			await page.addInitScript((choice) => {
 				localStorage.setItem(
-					'coding-drills:v1:preferences',
+					'facet:v1:preferences',
 					JSON.stringify({ sound: false, haptics: false, immediateFeedback: false, theme: choice })
 				);
 			}, theme);

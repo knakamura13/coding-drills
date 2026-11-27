@@ -71,7 +71,7 @@ test('a signed-in device waits for its first sync, so an answer from another dev
 	await signIn(page.context(), account, baseURL!);
 
 	await page.goto(URL);
-	const synced = () => page.evaluate(() => localStorage.getItem('coding-drills:v1:attempts') ?? '');
+	const synced = () => page.evaluate(() => localStorage.getItem('facet:v1:attempts') ?? '');
 	await expect.poll(synced).toContain('other-device-1');
 	await expect(exampleLink(page)).toBeVisible();
 	await expect(sheet(page)).toBeHidden();

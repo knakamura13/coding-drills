@@ -11,7 +11,7 @@ interface InstallPromptEvent extends Event {
 	userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const DISMISSED_KEY = 'coding-drills:v1:install-dismissed';
+const DISMISSED_KEY = 'facet:v1:install-dismissed';
 
 export const install = $state({
 	/** A held browser prompt is ready, so an Install button can be shown. */

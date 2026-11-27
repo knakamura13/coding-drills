@@ -57,7 +57,7 @@ test.describe('installable and offline', () => {
 		await primary(page).click();
 		await primary(page).click();
 		await page.getByText('Follow-up', { exact: true }).waitFor();
-		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
+		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('facet:v1:attempts') ?? '[]').length);
 		expect(saved).toBe(0); // The attempt is written when the follow-up finishes.
 
 		// Other pages load from the cache too, and the API is not served from it.
@@ -79,7 +79,7 @@ test.describe('installable and offline', () => {
 		await context.setOffline(true);
 
 		await playThrough(page, deck.id);
-		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('coding-drills:v1:attempts') ?? '[]').length);
+		const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('facet:v1:attempts') ?? '[]').length);
 		expect(saved).toBe(deck.questions.length);
 		await context.setOffline(false);
 	});

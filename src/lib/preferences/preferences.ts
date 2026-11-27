@@ -3,7 +3,7 @@
  * out of the synced attempt and flag log.
  */
 
-export const PREFERENCES_KEY = 'coding-drills:v1:preferences';
+export const PREFERENCES_KEY = 'facet:v1:preferences';
 
 export const THEME_COLOR = {
 	light: '#f6f7fb',

@@ -3,7 +3,7 @@ import { Repository, type KeyValueStore } from './repository';
 function browserStore(): KeyValueStore | null {
 	try {
 		if (typeof localStorage === 'undefined') return null;
-		const probe = 'coding-drills:probe';
+		const probe = 'facet:probe';
 		localStorage.setItem(probe, '1');
 		localStorage.removeItem(probe);
 		return localStorage;

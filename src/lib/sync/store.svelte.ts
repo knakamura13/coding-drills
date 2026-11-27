@@ -26,7 +26,7 @@ export const account = $state({
 
 const api = createSyncApi();
 const DEBOUNCE_MS = 1500;
-const HINT_KEY = 'coding-drills:v1:account';
+const HINT_KEY = 'facet:v1:account';
 
 /** Who was signed in last time, so an offline start still knows. The server remains the authority. */
 function readHint(): Me | null {

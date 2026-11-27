@@ -30,7 +30,7 @@ questions:
 const scratch: string[] = [];
 
 function scratchDir(): string {
-	const dir = mkdtempSync(join(tmpdir(), 'coding-drills-'));
+	const dir = mkdtempSync(join(tmpdir(), 'facet-'));
 	scratch.push(dir);
 	return dir;
 }
