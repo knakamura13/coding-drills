@@ -344,6 +344,121 @@ questions:
           Chaining set `T` to 10, but the direct flight is cheaper and comes later. The bug shows
           only when the chained trip is the cheaper one.
 
+  - id: wp-exam-count-lowerings
+    heading: How many times does the line run?
+    tags: [graph, python]
+    prompt: |-
+      One pass relaxes every edge once, in list order. `float('inf')` marks a node with no known
+      route yet. During this one pass, how many times does the assignment
+      `dist[v] = dist[u] + w` run?
+
+      ```python
+      INF = float('inf')
+      edges = [("A", "C", 2), ("S", "A", 3), ("S", "B", 8),
+               ("A", "B", 2), ("B", "D", 4), ("S", "D", 9),
+               ("B", "C", 1), ("C", "D", 2), ("A", "D", 7)]
+      dist = {"S": 0, "A": INF, "B": INF, "C": INF, "D": INF}
+      for u, v, w in edges:  # one pass
+          if dist[u] + w < dist[v]:
+              dist[v] = dist[u] + w
+      ```
+    options:
+      - id: six
+        text: '`6`'
+        explanation: >-
+          It runs for `S -> A`, `S -> B`, `A -> B`, `B -> D`, `B -> C` and `C -> D`, so `B` and
+          `D` each drop twice. `A -> C` reads `A` at `inf`, `S -> D` offers 9 when `D` is already
+          9, and `A -> D` offers 10 when `D` is 8.
+      - id: four
+        text: '`4`'
+        explanation: >-
+          4 counts the nodes that drop: `A`, `B`, `C` and `D`. But `B` drops to 8 and then to 5,
+          and `D` drops to 9 and then to 8, so the line runs 6 times.
+      - id: seven
+        text: '`7`'
+        explanation: >-
+          7 also counts `S -> D`, which offers 9 when `D` is already 9. The test asks for a
+          smaller cost, so an equal one writes nothing.
+      - id: eight
+        text: '`8`'
+        explanation: >-
+          8 counts every edge whose start already has a cost. The test must still pass: `S -> D`
+          only ties `D` at 9, and `A -> D` offers 10 when `D` is 8, so neither writes.
+    correct: six
+    followUps:
+      four:
+        prompt: Can one pass lower the same node more than once?
+        options:
+          - id: again
+            text: Yes, when a later edge in the list offers a cheaper route to it
+          - id: once
+            text: No, each node is set at most once in a pass
+          - id: start-only
+            text: Only the start node, which every pass resets
+        correct: again
+        explanation: >-
+          Each edge is checked on its own. `S -> B` sets `B` to 8, and `A -> B`, later in the
+          list, offers 3 + 2 = 5 and lowers it again.
+      seven:
+        prompt: When `dist[u] + w` equals `dist[v]`, does the assignment run?
+        options:
+          - id: skipped
+            text: No. `<` is false when the two are equal
+          - id: runs
+            text: Yes. An equal route counts as a lowering
+          - id: start
+            text: Only when `u` is the start node
+        correct: skipped
+        explanation: >-
+          A route that costs the same is no cheaper, so the test fails and `dist[v]` keeps its
+          value without a write.
+      eight:
+        prompt: '`S -> D` is checked with `S` at 0 and `D` at 9. What decides whether the line runs?'
+        options:
+          - id: cheaper
+            text: Whether `0 + 9` is less than 9
+          - id: has-cost
+            text: Whether `S` already has a cost
+          - id: set-before
+            text: Whether `D` was set earlier in the pass
+        correct: cheaper
+        explanation: >-
+          A start with a cost only makes a route possible. The line runs only when that route
+          costs less than `dist[v]`, and 9 is not less than 9.
+
+  - id: wp-exam-tap-stop-limit
+    format: tap-cell
+    heading: Where does the stop limit cost more?
+    tags: [graph]
+    prompt: >-
+      Each flight is one-way, written as `(from, to, price)`. A stop is a city a trip passes
+      through between where it starts and where it ends. For each city, compare its cheapest
+      price from `S` with at most 1 stop against its cheapest price with any number of stops.
+      Tap the city where the two prices differ.
+    code: |
+      flights = [("S", "A", 2), ("S", "B", 7), ("A", "B", 3),
+                 ("B", "C", 1), ("A", "C", 9), ("S", "C", 12),
+                 ("C", "D", 1), ("A", "D", 5), ("B", "D", 4)]
+    sequence:
+      kind: array
+      name: cities
+      cells: [A, B, C, D]
+    correct: 2
+    explanation: >-
+      With at most 1 stop, `C` costs 8, by `S -> B -> C`. With no limit, `S -> A -> B -> C` costs
+      2 + 3 + 1 = 6, but it stops at both `A` and `B`.
+    misses:
+      - index: 0
+        explanation: '`S -> A` is a direct flight for 2, and no route to `A` is cheaper, so both prices are 2.'
+      - index: 1
+        explanation: >-
+          The cheapest route to `B`, `S -> A -> B` for 5, has one stop, so the limit allows it and
+          both prices are 5.
+      - index: 3
+        explanation: >-
+          `S -> A -> B -> C -> D` costs 7 with three stops, but `S -> A -> D` also costs 7 with one
+          stop, so both prices are 7.
+
   - id: wp-exam-free-road-stop
     heading: Can the search stop at the target?
     tags: [graph, heap, python]

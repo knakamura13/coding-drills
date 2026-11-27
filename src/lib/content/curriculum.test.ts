@@ -318,8 +318,8 @@ describe('shipped curriculum at each depth level', () => {
 		}
 		expect(weighted('interview').forks).toEqual([]);
 		expect(weighted('deep').forks[0]!.skills[0]!.lockedBy.map((item) => item.id)).toEqual(['priority-order']);
-		// The interview pool holds 4 exam items, so its sitting is 4.
-		expect(weighted('interview').checkpoints[0]!.sitting).toBe(4);
+		// The interview pool holds 6 exam items (#185), so its sitting is full at both levels.
+		expect(weighted('interview').checkpoints[0]!.sitting).toBe(EXAM_SIZE);
 		expect(weighted('deep').checkpoints[0]!.sitting).toBe(EXAM_SIZE);
 	});
 
@@ -390,7 +390,7 @@ describe('shipped curriculum at each depth level', () => {
 			});
 		const small = ['repair-boundary-update', 'rotated-search-variant', 'unlink-or-cycle', 'count-blocked-paths'];
 		expect(under('deep').sort()).toEqual([...small].sort());
-		expect(under('interview').sort()).toEqual([...small, 'meet-stated-costs', 'cheapest-within-stops', 'trace-lcs'].sort());
+		expect(under('interview').sort()).toEqual([...small].sort());
 	});
 
 	it('changes only these checkpoints at interview (#155 plan, section 2)', () => {
@@ -417,12 +417,12 @@ describe('shipped curriculum at each depth level', () => {
 		}
 		expect(hidden).toEqual(['trace-and-choose-bits', 'search-with-fallbacks', 'build-minimum-tree', 'validate-or-ancestor']);
 		expect(changed).toEqual({
-			'meet-stated-costs': { pool: [5, 4], dropped: ['replay-operations'] },
+			'meet-stated-costs': { pool: [7, 6], dropped: ['replay-operations'] },
 			'components-or-links': { pool: [7, 6], dropped: [] },
-			'cheapest-within-stops': { pool: [9, 4], dropped: ['finalize-distance'] },
+			'cheapest-within-stops': { pool: [11, 6], dropped: ['finalize-distance'] },
 			'optimal-schedule': { pool: [6, 5], dropped: [] },
 			'preserve-valid-outputs': { pool: [7, 6], dropped: [] },
-			'trace-lcs': { pool: [7, 4], dropped: [] },
+			'trace-lcs': { pool: [9, 6], dropped: [] },
 			'choose-a-method': { pool: [7, 6], dropped: ['finalize-distance'] }
 		});
 	});
