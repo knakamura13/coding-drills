@@ -397,6 +397,55 @@ test('the feedback panel rises in 150 ms, and only fades with reduced motion', a
 	}
 });
 
+// Checks in the page and reads the screen on every frame of the panel's rise (#186). Nothing above
+// the panel may move, and the rising panel may not make the page taller than it settles at, which
+// would flash a scrollbar and let focus scroll the page.
+async function checkHoldsStill(page: Page) {
+	return page.evaluate(async () => {
+		const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top;
+		const read = () => ({
+			scrollY,
+			height: document.documentElement.scrollHeight,
+			bar: top('.top'),
+			heading: top('.content:not([data-leaving]) h1'),
+			answers: top('.content:not([data-leaving]) fieldset')
+		});
+		const before = read();
+		[...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Check')!.click();
+		const frames = [];
+		const start = performance.now();
+		while (performance.now() - start < 400) {
+			await new Promise(requestAnimationFrame);
+			frames.push(read());
+		}
+		const moved = (key: 'scrollY' | 'bar' | 'heading' | 'answers') => Math.max(...frames.map((frame) => Math.abs(frame[key] - before[key])));
+		return {
+			moved: { scrollY: moved('scrollY'), bar: moved('bar'), heading: moved('heading'), answers: moved('answers') },
+			tallerWhileRising: Math.max(...frames.map((frame) => frame.height)) - frames.at(-1)!.height
+		};
+	});
+}
+
+test('checking an answer moves nothing while the feedback panel rises', async ({ page }) => {
+	await page.emulateMedia({ reducedMotion: 'no-preference' });
+	const still = { moved: { scrollY: 0, bar: 0, heading: 0, answers: 0 }, tallerWhileRising: 0 };
+	for (const right of [true, false]) {
+		await page.goto(URL);
+		const question = await firstChoice(page);
+		const wrong = question.options.find((option) => option.id !== question.correct)!;
+		await pick(page, right ? optionLabel(question, question.correct) : plainText(wrong.text, 1000));
+		expect(await checkHoldsStill(page), right ? 'a right answer' : 'a wrong answer').toEqual(still);
+		await expect(primary(page)).toBeFocused();
+		if (right) continue;
+		await primary(page).click();
+		await expect(page.getByText('Follow-up', { exact: true })).toBeVisible();
+		await expect(page.locator('[data-leaving]')).toHaveCount(0);
+		const followUp = question.followUps[wrong.id]!;
+		await pick(page, plainText(followUp.options.find((option) => option.id !== followUp.correct)!.text, 1000));
+		expect(await checkHoldsStill(page), 'a follow-up').toEqual(still);
+	}
+});
+
 test('a long code pick wraps in the recap instead of widening the card', async ({ page }) => {
 	const heaps = decks.find((candidate) => candidate.id === 'bounded-heaps-checkpoint')!;
 	const pool = heaps.questions;
