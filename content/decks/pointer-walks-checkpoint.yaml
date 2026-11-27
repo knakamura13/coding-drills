@@ -348,3 +348,158 @@ questions:
         elsewhere: '`slow` takes one hop from the 7, to the second 3, where `fast` also lands.'
         also:
           - { name: fast, at: 4 }
+
+  - id: walk-exam-delete-middle
+    heading: Where must fast start?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      The middle of a list of `n` nodes is the node at index `n // 2`, the second of the two
+      middles when `n` is even. This function should delete it from any list of at least 2 nodes.
+
+      ```python
+      def delete_middle(head):
+          before = Node(0, head)
+          slow = before
+          fast = ____
+          while fast.next and fast.next.next:
+              slow = slow.next
+              fast = fast.next.next
+          slow.next = slow.next.next
+          return before.next
+      ```
+
+      Which start for `fast` makes it correct?
+    options:
+      - id: at-dummy
+        text: "`before`"
+        explanation: >-
+          `slow` must stop on the node before the middle. With both on `before`, each pass moves
+          `slow` one node and `fast` two, and the loop stops when `fast` cannot make two more
+          hops. On 4 nodes it makes 2 passes and `slow` stops on index 1, before index 2. On 5
+          nodes it also makes 2 passes, before index 2.
+      - id: at-head
+        text: "`head`"
+        explanation: >-
+          This is right on odd lengths but not on even ones. On 4 nodes the loop makes one pass,
+          so `slow` stops on index 0 and index 1 is deleted, the first of the two middles.
+      - id: one-ahead
+        text: "`head.next`"
+        explanation: >-
+          Starting `fast` further ahead costs `slow` passes. On 5 nodes the loop makes one pass,
+          so `slow` stops on index 0 and index 1 is deleted instead of index 2.
+      - id: two-ahead
+        text: "`head.next.next`"
+        explanation: >-
+          On 2 nodes, `head.next.next` is `None`, and the loop test reads `fast.next` from it,
+          which raises `AttributeError`. On longer lists `slow` stops too early.
+    correct: at-dummy
+    followUps:
+      at-head:
+        prompt: On a 4-node list with `fast` starting on the head, how many passes does the loop make?
+        options:
+          - { id: one, text: "One, since `fast` then sits on index 2 with only one node after it" }
+          - { id: two, text: "Two, one for each middle" }
+          - { id: none, text: "None, since `fast.next.next` is the last node" }
+        correct: one
+        explanation: >-
+          `slow` starts one node behind `fast`, on `before`. Starting `fast` on `before` as well
+          gives `slow` the extra pass an even length needs.
+      one-ahead:
+        prompt: Each node that `fast` starts further ahead does what to the passes `slow` makes?
+        options:
+          - { id: fewer, text: "It can cost a pass, so `slow` stops earlier" }
+          - { id: more, text: "It adds a pass, so `slow` goes further" }
+          - { id: same, text: "Nothing, since the loop only tests `fast`" }
+        correct: fewer
+        explanation: >-
+          The loop stops when `fast` nears the tail. A head start brings that moment sooner, and
+          `slow` moves only once per pass.
+      two-ahead:
+        prompt: What does the loop test read when `fast` is `None`?
+        options:
+          - { id: raises, text: "`None.next`, which raises `AttributeError`" }
+          - { id: just-false, text: "Nothing, the test is just false" }
+          - { id: before-link, text: "The link out of `before`" }
+        correct: raises
+        explanation: >-
+          The test starts with `fast.next`, so `fast` must be a node. On 2 nodes, two hops from the
+          head land on `None` before the loop starts.
+
+  - id: walk-exam-rotate-right
+    heading: What does this print?
+    tags: [linked-list, two-pointers, python]
+    prompt: |-
+      `values(n)` lists the values a walk from `n` reaches.
+
+      ```python
+      def rotate_right(head, k):  # 1 <= k < number of nodes
+          fast = head
+          for _ in range(k):
+              fast = fast.next
+          slow = head
+          while fast.next:
+              slow = slow.next
+              fast = fast.next
+          new_head = slow.next
+          slow.next = None
+          fast.next = head
+          return new_head
+
+      print(values(rotate_right(Node(6, Node(2, Node(9, Node(4, Node(7))))), 2)))
+      ```
+
+      What does this print?
+    options:
+      - id: right
+        text: "`[4, 7, 6, 2, 9]`"
+        explanation: >-
+          `fast` starts 2 nodes ahead and stops on the tail, the 7, so `slow` stops on the 9, two
+          nodes before the end. The 4 becomes the head, the 9's link is cut, and the 7 links to the
+          old head.
+      - id: one-late
+        text: "`[7, 6, 2, 9, 4]`"
+        explanation: >-
+          That has `slow` stop on the 4, the 2nd node from the end. The loop stops when `fast` is
+          on the tail, which leaves `slow` on the node before the last 2, the 9.
+      - id: left
+        text: "`[9, 4, 7, 6, 2]`"
+        explanation: >-
+          That moves the first two values to the back. The code cuts the list two nodes before the
+          end and puts those last two nodes in front.
+      - id: raises
+        text: It raises `AttributeError`
+        explanation: >-
+          `while fast.next` stops with `fast` on the tail, a real node, so `fast.next = head` is
+          safe. `fast` would be `None` only if the loop tested `fast`.
+    correct: right
+    followUps:
+      one-late:
+        prompt: When the loop ends, `fast` is on the tail and `k` nodes ahead of `slow`. Where is `slow`?
+        options:
+          - { id: before, text: "On the node just before the last `k` nodes" }
+          - { id: kth, text: "On the `k`th node from the end" }
+          - { id: tail, text: "On the tail as well" }
+        correct: before
+        explanation: >-
+          With `k = 2`, the tail is 2 nodes after `slow`, so `slow` is 3rd from the end, the 9.
+          The last 2 nodes, 4 and 7, start the new list.
+      left:
+        prompt: Which nodes does the code move to the front?
+        options:
+          - { id: last-k, text: "The last `k` nodes, from `slow.next` on" }
+          - { id: first-k, text: "The first `k` nodes" }
+          - { id: middle, text: "The middle node" }
+        correct: last-k
+        explanation: >-
+          `new_head` is `slow.next`, the first of the last `k` nodes. The tail then links to the
+          old head, so the first nodes follow them.
+      raises:
+        prompt: Where is `fast` when `while fast.next` stops?
+        options:
+          - { id: tail, text: "On the tail, whose link is `None`" }
+          - { id: none, text: "On `None`, past the tail" }
+          - { id: head, text: "Back on the head" }
+        correct: tail
+        explanation: >-
+          The loop tests the link out of `fast`, so it stops while `fast` is still a node. Writing
+          `fast.next` then links the tail, which is what joins the two parts.

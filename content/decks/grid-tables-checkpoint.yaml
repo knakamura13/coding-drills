@@ -261,3 +261,110 @@ questions:
         explanation: >-
           The read is guarded by `r > 0`, and a single row only has `r` equal to 0. The mistake
           needs an open cell below row 0 in column 0.
+
+  - id: grid-exam-cheapest-total
+    heading: What is the cheapest total?
+    tags: [dp, grid]
+    prompt: |-
+      A walker starts at `(0, 0)` and must reach the bottom-right cell `(3, 3)`, moving one cell
+      right or one cell down. Each number is the cost of that cell, and a path's total adds the
+      cost of every cell it visits, the start and the goal included. Cells marked `#` are blocked.
+
+      ```
+      4 2 1 #
+      8 9 6 1
+      8 # 2 5
+      7 7 1 1
+      ```
+
+      What is the smallest total of any path?
+    options:
+      - id: seventeen
+        text: '17'
+        explanation: >-
+          Each cell's cheapest total is its cost plus the smaller total of the cell above and the
+          cell to its left, with a blocked or missing neighbor left out. That gives 17 at the goal,
+          by `4, 2, 1, 6, 2, 1, 1`.
+      - id: twenty
+        text: '20'
+        explanation: >-
+          20 is the path that always steps to the cheaper next cell: `4, 2, 1, 6, 1, 5, 1`. Going
+          down from the 6 to the 2 costs more at first but leads to the 1s, for 17.
+      - id: fourteen
+        text: '14'
+        explanation: >-
+          14 treats the `#` at `(0, 3)` as a free cell: `4, 2, 1, 0, 1, 5, 1`. A blocked cell can't
+          be visited, so its total must lose every comparison.
+      - id: thirteen
+        text: '13'
+        explanation: >-
+          13 leaves out the start's cost of 4. Every path visits `(0, 0)`, so its 4 counts, which
+          makes 17.
+    correct: seventeen
+    followUps:
+      twenty:
+        prompt: Can the cheaper next cell lead to a dearer total?
+        options:
+          - { id: later-cells, text: "Yes, the cells after it can cost more" }
+          - { id: always-cheaper, text: "No, a cheaper step always gives a cheaper path" }
+          - { id: ties, text: "Only when two next cells cost the same" }
+        correct: later-cells
+        explanation: >-
+          From the 6, the 1 to the right leads to the 5, while the 2 below leads to two 1s. The
+          table compares whole totals, so it sees the later cells too.
+      fourteen:
+        prompt: In a cheapest-total table, what must a blocked cell hold?
+        options:
+          - { id: inf, text: "`float('inf')`, so it never wins the `min`" }
+          - { id: zero, text: "0, since no cost is paid there" }
+          - { id: minus, text: "-1, to mark it" }
+        correct: inf
+        explanation: >-
+          A smaller total wins, so 0 or -1 would make the blocked cell the best neighbor.
+          `float('inf')` loses every comparison.
+      thirteen:
+        prompt: Does the start cell's cost count toward a path's total?
+        options:
+          - { id: counts, text: "Yes, the path visits it, so its cost is the first cell of every total" }
+          - { id: free, text: "No, the walker is already there" }
+          - { id: goal-only, text: "Only the goal's cost counts" }
+        correct: counts
+        explanation: >-
+          The prompt adds every cell a path visits, the start included. So the table's start cell
+          holds its own cost, 4, and every total builds on it.
+
+  - id: grid-exam-tap-most-paths
+    format: tap-cell
+    heading: Which cell do the most paths reach?
+    tags: [dp, grid]
+    prompt: >-
+      A walker starts at `(0, 2)` in the top row. Each move goes one row down: straight down, down
+      and to the left, or down and to the right, never off the grid. Cells marked `#` are blocked.
+      The board is the bottom row. Tap the cell that the most paths from the start reach.
+    code: |
+      . . . . .
+      . . . . .
+      . . . . #
+      . . # . .
+    sequence:
+      kind: string
+      name: row3
+      cells: ['.', '.', '#', '.', '.']
+    correct: 1
+    explanation: >-
+      Each cell's count is the sum of the three cells above it that step into it. Row 2 holds
+      `1, 2, 3, 2, 0`, so `(3, 1)` adds 1 + 2 + 3 = 6, more than any other cell.
+    misses:
+      - index: 0
+        explanation: >-
+          `(3, 0)` reads only the two cells above it, `(2, 0)` and `(2, 1)`, which hold 1 and 2,
+          so 3 paths reach it.
+      - index: 2
+        explanation: '`(3, 2)` is blocked, so no path reaches it, though it is straight below the start.'
+      - index: 3
+        explanation: >-
+          `(3, 3)` adds `(2, 2)`, `(2, 3)` and `(2, 4)`. `(2, 4)` is blocked, so it gets
+          3 + 2 + 0 = 5, one fewer than `(3, 1)`.
+      - index: 4
+        explanation: >-
+          `(3, 4)` reads `(2, 3)` and the blocked `(2, 4)`, so only 2 paths reach it.
