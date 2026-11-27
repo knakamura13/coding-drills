@@ -335,6 +335,121 @@ questions:
           A four-item list has indices 0 to 3. `bisect_left` returns `len(a)` only when no value is
           at least `x`, and 22 is in the list.
 
+  - id: checkpoint-count-in-range
+    heading: Which expression counts the range?
+    tags: [binary-search]
+    prompt: >-
+      `a` is sorted and may hold copies. `bisect_left(a, x)` returns the first index with
+      `a[i] >= x`, and `bisect_right(a, x)` the first index with `a[i] > x`, each `len(a)` when no
+      index qualifies. Which expression returns how many values `v` in `a` have
+      `low <= v < high`, for every sorted list and every `low <= high`?
+    options:
+      - id: left-left
+        text: "`bisect_left(a, high) - bisect_left(a, low)`"
+        explanation: >-
+          `bisect_left(a, low)` is the first index of a value at least `low`, and
+          `bisect_left(a, high)` the first index of a value at least `high`. The values between
+          those two slots are exactly the ones from `low` up to, but not including, `high`. For
+          `[2, 5, 5, 7, 9, 12]` with `low = 5` and `high = 9` it gives 4 - 1 = 3: the two 5s and
+          the 7.
+      - id: right-high
+        text: "`bisect_right(a, high) - bisect_left(a, low)`"
+        explanation: >-
+          `bisect_right(a, high)` steps past every copy of `high`, so they are counted though
+          `v < high` leaves them out. For `[2, 5, 5, 7, 9, 12]` with `low = 5` and `high = 9` it
+          gives 5 - 1 = 4, counting the 9.
+      - id: right-low
+        text: "`bisect_left(a, high) - bisect_right(a, low)`"
+        explanation: >-
+          `bisect_right(a, low)` starts past every copy of `low`, so they are left out though
+          `low <= v` keeps them. For `[2, 5, 5, 7, 9, 12]` with `low = 5` and `high = 9` it gives
+          4 - 3 = 1, only the 7.
+      - id: right-right
+        text: "`bisect_right(a, high) - bisect_right(a, low)`"
+        explanation: >-
+          Both ends step past their copies, so this counts `low < v <= high`. For
+          `[2, 5, 5, 7, 9, 12]` with `low = 5` and `high = 9` it gives 5 - 3 = 2, the 7 and the 9.
+    correct: left-left
+    followUps:
+      right-high:
+        prompt: In `[2, 5, 5, 7, 9, 12]`, which index does `bisect_right(a, 9)` return?
+        options:
+          - { id: five, text: "5, past the 9, so the 9 is inside the count" }
+          - { id: four, text: "4, the index of the 9" }
+          - { id: three, text: "3, the index of the 7" }
+        correct: five
+        explanation: >-
+          `bisect_right` returns the first index whose value is larger than 9, which is the 12.
+          A count that must stop before `high` ends at `bisect_left(a, high)`, the first copy.
+      right-low:
+        prompt: In `[2, 5, 5, 7, 9, 12]`, which index does `bisect_right(a, 5)` return?
+        options:
+          - { id: three, text: "3, past both 5s, so they fall outside the count" }
+          - { id: one, text: "1, the first 5" }
+          - { id: two, text: "2, the second 5" }
+        correct: three
+        explanation: >-
+          `bisect_right` skips every copy of 5. A count that keeps `low` must start at the first
+          copy, which is what `bisect_left(a, low)` returns.
+      right-right:
+        prompt: Which values does `bisect_right(a, high) - bisect_right(a, low)` count?
+        options:
+          - { id: open-closed, text: "Those with `low < v <= high`" }
+          - { id: same, text: "Those with `low <= v < high`, the same values" }
+          - { id: all-copies, text: "Every copy of `low` and of `high`, and the values between" }
+        correct: open-closed
+        explanation: >-
+          Starting past the copies of `low` drops them, and ending past the copies of `high` adds
+          them. The two match only when neither end has a copy in `a`.
+
+  - id: checkpoint-read-two-boundaries
+    heading: What must the list hold?
+    tags: [binary-search]
+    prompt: >-
+      `bisect_left(a, x)` returns the first index with `a[i] >= x`, and `bisect_right(a, x)` the
+      first index with `a[i] > x`. On a sorted list `a` of 7 values, `bisect_left(a, x)` is 2 and
+      `bisect_right(a, x)` is 5. Which statement must be true?
+    options:
+      - id: three-copies
+        text: "`a[2]`, `a[3]` and `a[4]` equal `x`, and `a[1] < x < a[5]`"
+        explanation: >-
+          Index 2 is the first value at least `x`, so `a[1]` is below `x`. Index 5 is the first
+          value above `x`, so `a[2]` to `a[4]` are at most `x`, and being at least `x` too, they
+          equal it. `a[5]` is above `x`.
+      - id: four-copies
+        text: "`a[2]` to `a[5]` equal `x`, four copies"
+        explanation: >-
+          `bisect_right` returns the first index past the copies, not the last copy. `a[5]` is
+          already above `x`, so the copies stop at index 4.
+      - id: shifted
+        text: "`a[3]`, `a[4]` and `a[5]` equal `x`, and `a[2] < x`"
+        explanation: >-
+          This reads `bisect_left` as the last index below `x` and `bisect_right` as the last copy.
+          But `bisect_left` returns the first copy itself, so `a[2]` equals `x`, and `a[5]` is
+          already above it.
+    correct: three-copies
+    followUps:
+      four-copies:
+        prompt: What value sits at the index `bisect_right(a, x)` returns, when that index is inside `a`?
+        options:
+          - { id: larger, text: "The first value larger than `x`" }
+          - { id: last-copy, text: "The last copy of `x`" }
+          - { id: smaller, text: "The last value smaller than `x`" }
+        correct: larger
+        explanation: >-
+          `bisect_right` returns the first index with `a[i] > x`. So the copies of `x` end just
+          before it, at index 4 here.
+      shifted:
+        prompt: When `x` is in `a`, what does `a[bisect_left(a, x)]` hold?
+        options:
+          - { id: first-copy, text: "`x` itself, its first copy" }
+          - { id: below, text: "The last value below `x`" }
+          - { id: above, text: "The first value above `x`" }
+        correct: first-copy
+        explanation: >-
+          `bisect_left` returns the first index with `a[i] >= x`. When `x` is present, that value
+          is `x`, so the first copy sits at index 2 here.
+
   - id: checkpoint-rotated-trace
     format: step-trace
     heading: Predict each step
@@ -601,3 +716,205 @@ questions:
         explanation: >-
           `a[mid] > a[hi]` rules `mid` out, so the update must step past it. `lo = mid` never
           shrinks a two-cell range, because `mid` rounds down to `lo`.
+
+  - id: checkpoint-pick-sorted-run
+    heading: Which run holds the target?
+    tags: [binary-search]
+    prompt: |-
+      `a` is a sorted list of distinct values that may have been rotated: some values, possibly
+      none, moved in order from its front to its back. So `a` is one sorted run from `k`, the
+      index of its smallest value, to the end, and another from 0 to `k - 1`, which is empty when
+      `k` is 0. `find` runs a plain binary search on one run.
+
+      ```python
+      def find(a, t):
+          k = smallest(a)  # index of the smallest value
+          if ____:
+              lo, hi = k, len(a) - 1
+          else:
+              lo, hi = 0, k - 1
+          while lo <= hi:
+              mid = (lo + hi) // 2
+              if a[mid] == t:
+                  return mid
+              if a[mid] < t:
+                  lo = mid + 1
+              else:
+                  hi = mid - 1
+          return -1
+      ```
+
+      Which test fills the blank so that `find` returns the index of `t`, or -1, on every such list?
+    options:
+      - id: le-last
+        text: "`t <= a[-1]`"
+        explanation: >-
+          Every value from `k` to the end is at most `a[-1]`, and every value before `k` is larger
+          than `a[-1]`, since that run was moved from the front of the sorted list. So `t` can only
+          be in the run from `k` when `t <= a[-1]`. On a list that was not rotated, `k` is 0 and
+          the test sends every present `t` to the whole list.
+      - id: lt-first
+        text: "`t < a[0]`"
+        explanation: >-
+          On a rotated list this works, since the run before `k` starts at `a[0]`. On a list that
+          was not rotated, `k` is 0, so every present `t` fails the test and goes to the empty run
+          from 0 to -1. `find([3, 8, 14], 8)` returns -1.
+      - id: ge-smallest
+        text: "`t >= a[k]`"
+        explanation: >-
+          `a[k]` is the smallest value, so every value in `a` passes this test, and `find` always
+          searches the run from `k`. A value in the other run is never found:
+          `find([14, 20, 3, 8], 20)` returns -1.
+      - id: lt-last
+        text: "`t < a[-1]`"
+        explanation: >-
+          This sends `a[-1]` itself to the run before `k`, which holds only larger values.
+          `find([14, 20, 3, 8], 8)` returns -1, though 8 is at index 3.
+    correct: le-last
+    followUps:
+      lt-first:
+        prompt: On a list that was not rotated, which values does the run from 0 to `k - 1` hold?
+        options:
+          - { id: none, text: "None, since `k` is 0" }
+          - { id: all, text: "All of them" }
+          - { id: first, text: "Only `a[0]`" }
+        correct: none
+        explanation: >-
+          With no rotation the smallest value is at index 0, so the run from `k` is the whole list
+          and the other run is empty. A test against `a[0]` sends every present `t` to the empty
+          run.
+      ge-smallest:
+        prompt: Which values in `a` are at least `a[k]`?
+        options:
+          - { id: every, text: "Every value, since `a[k]` is the smallest" }
+          - { id: run-k, text: "Only those in the run from `k`" }
+          - { id: run-zero, text: "Only those in the run before `k`" }
+        correct: every
+        explanation: >-
+          A test every value passes cannot tell the two runs apart. The run before `k` holds the
+          values larger than `a[-1]`, so compare `t` with `a[-1]`.
+      lt-last:
+        prompt: For `find([14, 20, 3, 8], 8)`, which run holds the 8?
+        options:
+          - { id: from-k, text: "The run from `k`, as its last value" }
+          - { id: before-k, text: "The run before `k`, with 14 and 20" }
+          - { id: neither, text: "Neither, since 8 is the last value" }
+        correct: from-k
+        explanation: >-
+          `a[-1]` ends the run from `k`, so `t == a[-1]` belongs there. A strict `<` sends it to
+          the other run, which holds only 14 and 20.
+
+  - id: checkpoint-two-pass-drag
+    format: drag-pointers
+    heading: Where are the bounds after two passes?
+    tags: [binary-search]
+    prompt: >-
+      A search on a rotated sorted list of distinct values runs while `lo <= hi`. Each pass probes
+      `mid = (lo + hi) // 2` and returns it if `a[mid] == t`. Otherwise it finds which part,
+      `lo` to `mid` or `mid` to `hi`, is in order, keeps the part that may hold `t`, and sets
+      `hi = mid - 1` or `lo = mid + 1`. Drag `lo` and `hi` to where they are after two passes.
+    code: |
+      a = [44, 51, 59, 66, 2, 9, 17, 30]
+      t = 2
+      lo, hi = 0, 7
+      # two passes run
+    sequence: { kind: array, name: a, cells: [44, 51, 59, 66, 2, 9, 17, 30] }
+    pointers:
+      - name: lo
+        start: 0
+        correct: 4
+        explanation: >-
+          Pass 1 probes the 66. 44 to 66 is in order and 2 is below it, so `lo = 4`. Pass 2 probes
+          the 9 and keeps the left part, so `lo` stays on 4.
+        misses:
+          - index: 3
+            explanation: '`lo` moves past the probe, to `mid + 1`. Index 3 holds 66, already ruled out.'
+          - index: 5
+            explanation: >-
+              Pass 2 probes index 5, the 9. 2 to 9 is in order and holds 2, so the search keeps
+              the left part and `hi` moves, not `lo`.
+          - index: 6
+            explanation: >-
+              That treats 2 as outside 2 to 9 on pass 2. `a[lo]` is 2 itself, so the in-order part
+              may hold `t`, and `lo` stays on 4.
+        elsewhere: >-
+          Pass 1 moves `lo` past the 66, because 2 is not in the in-order part 44 to 66. Pass 2
+          keeps the left part, so `lo` stays on 4.
+      - name: hi
+        start: 7
+        correct: 4
+        explanation: >-
+          Pass 1 keeps the right part, so `hi` stays on 7. Pass 2 probes the 9, the part 2 to 9 is
+          in order and holds 2, so `hi = mid - 1 = 4`.
+        misses:
+          - index: 7
+            explanation: '`hi` stays on pass 1 only. Pass 2 keeps the left part, 2 to 9, and moves `hi`.'
+          - index: 5
+            explanation: '`hi` moves past the probe, to `mid - 1`. Index 5 holds 9, which was just compared.'
+          - index: 0
+            explanation: >-
+              That follows the plain rule twice: 2 is below 66, then below 51. But 44 to 66 is in
+              order and 2 is not in it, so pass 1 goes right.
+        elsewhere: Pass 1 leaves `hi` on 7, and pass 2 moves it to `mid - 1`, which is 4.
+
+  - id: checkpoint-not-a-rotation
+    heading: Which list is not a rotation?
+    tags: [binary-search]
+    prompt: >-
+      A rotated sorted list is a sorted list of distinct values with some values, possibly none,
+      moved in order from its front to its back. Which of these lists cannot be one?
+    options:
+      - id: ends-high
+        text: "`[6, 9, 2, 5, 7]`"
+        explanation: >-
+          It drops once, from 9 to 2, but its last value, 7, is above its first, 6. In a rotation
+          the values after the drop come from the start of the sorted list, so all of them are
+          below the first value. Sorted, the values are `[2, 5, 6, 7, 9]`, and no rotation of that
+          starts with 6 and ends with 7.
+      - id: unrotated
+        text: "`[2, 5, 6, 7, 9]`"
+        explanation: >-
+          Moving no values is allowed, so the sorted list itself is a rotation. It has no drop, so
+          its whole range is in order.
+      - id: drop-first
+        text: "`[9, 2, 5, 6, 7]`"
+        explanation: >-
+          Moving the first four values of `[2, 5, 6, 7, 9]` to the back gives this list. Its drop
+          comes right after the first value.
+      - id: drop-last
+        text: "`[5, 6, 7, 9, 2]`"
+        explanation: >-
+          Moving the first value of `[2, 5, 6, 7, 9]` to the back gives this list. Its drop comes
+          just before the last value.
+    correct: ends-high
+    followUps:
+      unrotated:
+        prompt: Does moving no values from the front give a rotated sorted list?
+        options:
+          - { id: allowed, text: "Yes, the rule allows none, so a sorted list counts" }
+          - { id: needs-drop, text: "No, a rotation needs at least one drop" }
+          - { id: only-short, text: "Only when the list has fewer than three values" }
+        correct: allowed
+        explanation: >-
+          The definition says some values, possibly none. A search on a rotated list has to handle
+          that case too, where every part is in order.
+      drop-first:
+        prompt: Which values of `[2, 5, 6, 7, 9]` move to the back to give `[9, 2, 5, 6, 7]`?
+        options:
+          - { id: four, text: "The first four, `2, 5, 6, 7`" }
+          - { id: one, text: "Only the 9, which moves to the front" }
+          - { id: none, text: "None: values move from the back, so this is not a rotation" }
+        correct: four
+        explanation: >-
+          Moving `2, 5, 6, 7` in order to the back leaves the 9 first. Any place for the drop works,
+          including right after the first value.
+      drop-last:
+        prompt: Which values of `[2, 5, 6, 7, 9]` move to the back to give `[5, 6, 7, 9, 2]`?
+        options:
+          - { id: one, text: "Only the first one, the 2" }
+          - { id: four, text: "The last four, `5, 6, 7, 9`" }
+          - { id: none, text: "None: a list cannot end on its smallest value" }
+        correct: one
+        explanation: >-
+          Moving the 2 to the back puts the drop just before the last value. The smallest value
+          can sit anywhere, the last index included.

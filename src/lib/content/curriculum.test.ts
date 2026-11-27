@@ -382,15 +382,14 @@ describe('shipped curriculum at each depth level', () => {
 		}
 	});
 
-	it('leaves these checkpoints with an interview pool under a full sitting', () => {
+	it('gives every checkpoint a pool of at least a full sitting at every level', () => {
 		const under = (level: Depth) =>
 			pathsAt(level).flatMap((item) => {
 				const pools = examDrills(item, views.get(level)!.drills);
 				return item.checkpoints.filter((checkpoint) => (pools.get(checkpoint.id)?.length ?? 0) < EXAM_SIZE).map((checkpoint) => checkpoint.id);
 			});
-		const small = ['repair-boundary-update', 'rotated-search-variant', 'unlink-or-cycle', 'count-blocked-paths'];
-		expect(under('deep').sort()).toEqual([...small].sort());
-		expect(under('interview').sort()).toEqual([...small].sort());
+		expect(under('deep')).toEqual([]);
+		expect(under('interview')).toEqual([]);
 	});
 
 	it('changes only these checkpoints at interview (#155 plan, section 2)', () => {
