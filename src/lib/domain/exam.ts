@@ -31,7 +31,8 @@ export function passRule(size: number): string {
 	return `A sitting is ${items}. It passes when ${allowed} on the first try and every kind of item the checkpoint requires was answered right.`;
 }
 
-export const PASS_RULE = passRule(EXAM_SIZE);
+/** The rule for every checkpoint at once, as the tree's legend states it. A pool can be smaller at some levels. */
+export const PASS_RULE = `A sitting is ${EXAM_SIZE} exam items, or every item when a checkpoint has fewer. It passes when at most ${EXAM_MAX_MISSES} is wrong on the first try and every kind of item the checkpoint requires was answered right.`;
 
 /**
  * The items for one sitting. Every kind in `mix` gets at least one item that

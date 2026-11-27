@@ -138,10 +138,11 @@ describe('orderForReview', () => {
 
 describe('passRule', () => {
 	it('states the size of the sitting a pool gives, so a smaller pool does not promise five items', () => {
-		expect(passRule(EXAM_SIZE)).toBe(PASS_RULE);
-		expect(PASS_RULE).toBe(
+		expect(passRule(EXAM_SIZE)).toBe(
 			'A sitting is 5 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
 		);
+		// The legend speaks for every checkpoint, so it allows for a smaller pool.
+		expect(PASS_RULE).toMatch(/^A sitting is 5 exam items, or every item when a checkpoint has fewer\./);
 		expect(passRule(4)).toBe(
 			'A sitting is 4 exam items. It passes when at most 1 is wrong on the first try and every kind of item the checkpoint requires was answered right.'
 		);
