@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { loadCurriculum } from '../src/lib/content/loadCurriculum.ts';
 import { addDays, localDay } from '../src/lib/domain/days.ts';
-import { answerCorrectly, answerMain, continueButton, continuePastWrong, currentQuestionAny, firstWrongId } from './helpers';
+import { answerCorrectly, answerMain, continueButton, continuePastWrong, currentQuestionAny, expandNode, firstWrongId } from './helpers';
 import { seed } from './seed';
 
 const curriculum = loadCurriculum('content/curriculum', 'content/decks');
@@ -28,8 +28,7 @@ const masteredPath = () => attempts(teaching, true, 5);
 
 async function openCheckpoint(page: Page) {
 	await page.goto('/tree');
-	const node = page.getByRole('button', { name: new RegExp(CHECKPOINT.title) });
-	await node.click();
+	await expandNode(page.getByRole('button', { name: new RegExp(CHECKPOINT.title) }));
 	return page.locator(`#detail-${CHECKPOINT.id}`);
 }
 
@@ -86,7 +85,7 @@ test.describe('checkpoint exam', () => {
 		// Mastering every skill of Arrays and strings is not enough to open Pointer scans.
 		await seed(page, masteredPath());
 		await page.goto('/tree');
-		await page.locator('#skill-choose-moving-end').getByRole('button').click();
+		await expandNode(page.locator('#skill-choose-moving-end').getByRole('button'));
 		const detail = page.locator('#detail-choose-moving-end');
 		await expect(detail).toContainText('Locked until the checkpoint is passed on Arrays and strings');
 		await expect(detail.getByRole('link', { name: /^Practice in/ })).toHaveCount(0);
@@ -95,7 +94,7 @@ test.describe('checkpoint exam', () => {
 	test('passing the checkpoint opens the next path', async ({ page }) => {
 		await seed(page, [...masteredPath(), ...attempts(exam, true, 2)]);
 		await page.goto('/tree');
-		await page.locator('#skill-choose-moving-end').getByRole('button').click();
+		await expandNode(page.locator('#skill-choose-moving-end').getByRole('button'));
 		const detail = page.locator('#detail-choose-moving-end');
 		await expect(detail).not.toContainText('Locked until');
 		await expect(detail.getByRole('link', { name: /^Practice in/ }).first()).toBeVisible();
@@ -156,7 +155,7 @@ test.describe('checkpoint exam', () => {
 		const drill = teaching.find((item) => item.skillId)!;
 		await seed(page, attempts(teaching, true, 10));
 		await page.goto('/tree');
-		await page.locator(`#skill-${drill.skillId}`).getByRole('button').click();
+		await expandNode(page.locator(`#skill-${drill.skillId}`).getByRole('button'));
 		const detail = page.locator(`#detail-${drill.skillId}`);
 		await expect(detail).toContainText('due for review today');
 		await detail.getByRole('link', { name: 'Review this skill' }).click();

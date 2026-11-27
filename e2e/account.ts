@@ -20,8 +20,8 @@ export async function createAccount(request: APIRequestContext, email = 'me@exam
 	const probe = await request.get('/api/me');
 	if (probe.status() !== 200) throw new Error(`the app has no database in this run: ${probe.status()}`);
 
-	// The simple query protocol, with generated values only: PGlite's connection multiplexer can
-	// lose the unnamed portal of an extended-protocol statement when several workers connect at once.
+	// One connection on the simple query protocol, with generated values only. `e2e/pg-server.mjs`
+	// gives the shared PGlite backend to one connection's batch at a time, so this no longer races the app.
 	const sql = postgres(DATABASE_URL, { max: 1, onnotice: () => {}, prepare: false });
 	try {
 		const token = randomBytes(32).toString('base64url');
