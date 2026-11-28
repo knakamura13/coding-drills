@@ -65,6 +65,37 @@ test.describe('progress', () => {
 		await expect(page.getByText(deck.title, { exact: true })).toBeVisible();
 	});
 
+	test('active calendar levels increase in contrast and each meets 3:1 in both themes', async ({ page }) => {
+		await seed(page, history(0));
+		await page.goto('/progress');
+		const swatches = page.locator('figure figcaption .key');
+		await expect(swatches).toHaveCount(5);
+		for (const theme of ['light', 'dark']) {
+			const ratios = await swatches.evaluateAll((cells, theme) => {
+				document.documentElement.dataset.theme = theme;
+				const context = document.createElement('canvas').getContext('2d')!;
+				function luminance(color: string) {
+					context.fillStyle = color;
+					context.fillRect(0, 0, 1, 1);
+					const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data, (byte) => {
+						const value = byte / 255;
+						return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+					});
+					return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+				}
+				const background = luminance(getComputedStyle(document.body).backgroundColor);
+				return cells.map((cell) => {
+					const level = luminance(getComputedStyle(cell).backgroundColor);
+					return (Math.max(level, background) + 0.05) / (Math.min(level, background) + 0.05);
+				});
+			}, theme);
+			for (let level = 1; level < ratios.length; level++) {
+				expect(ratios[level], theme).toBeGreaterThanOrEqual(3);
+				expect(ratios[level], theme).toBeGreaterThan(ratios[level - 1]);
+			}
+		}
+	});
+
 	test('has no accessibility violations with history', async ({ page }) => {
 		await seed(page, [...history(2, true), ...history(1), ...history(0)]);
 		await page.goto('/progress');
