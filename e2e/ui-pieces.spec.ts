@@ -92,3 +92,44 @@ test('the footer stays pinned while its content scrolls under it', async ({ page
 	const after = await footer.boundingBox();
 	expect(after?.y).toBeCloseTo(before?.y ?? 0, 0);
 });
+
+test('views replace nested content in place and keep accessible controls', async ({ page }) => {
+	await page.getByRole('button', { name: 'Open Settings' }).click();
+	const drawer = page.getByRole('dialog');
+	await expect(drawer).toHaveAccessibleName('Settings');
+	expect(await violations(page)).toEqual([]);
+	await drawer.getByRole('button', { name: 'Depth' }).click();
+	await expect(drawer).toHaveAccessibleName('Depth');
+	expect(await violations(page)).toEqual([]);
+	await drawer.getByRole('button', { name: 'Back' }).click();
+	await expect(drawer).toHaveAccessibleName('Settings');
+	await drawer.getByRole('button', { name: 'Close' }).click();
+	await expect(drawer).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Open Settings' })).toBeFocused();
+});
+
+test('rotating and resizing an open surface selects its matching layout', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.getByRole('button', { name: 'Open Settings' }).click();
+	const view = page.getByRole('dialog', { name: 'Settings' });
+	await expect(view).toHaveCSS('width', '390px');
+	await page.setViewportSize({ width: 844, height: 390 });
+	await expect(view).toHaveCSS('width', '400px');
+	// Playwright reports zero physical insets. Only the notch simulation reserves 44px.
+	await expect(page.locator('html')).toHaveCSS('--safe-left', '0px');
+	await page.setViewportSize({ width: 420, height: 390 });
+	await page.addStyleTag({ content: ':root { --safe-left: 44px; }' });
+	const heading = view.getByRole('heading', { name: 'Settings' });
+	expect((await heading.boundingBox())!.x).toBeGreaterThanOrEqual(44);
+	await page.setViewportSize({ width: 844, height: 390 });
+	expect(await violations(page)).toEqual([]);
+	await view.getByRole('button', { name: 'Close' }).click();
+	await page.getByRole('button', { name: 'Open the quit sheet' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Quit this lesson?' });
+	await expect(dialog).toHaveCSS('width', '560px');
+	expect(await violations(page)).toEqual([]);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await expect(dialog).toHaveCSS('width', '560px');
+	await page.setViewportSize({ width: 390, height: 844 });
+	await expect(dialog).toHaveCSS('width', '390px');
+});

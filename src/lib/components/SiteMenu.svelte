@@ -137,7 +137,7 @@
 
 	ul a[aria-current='page'] {
 		background: var(--accent-soft);
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 	}
 
 	.count {
@@ -148,7 +148,7 @@
 	}
 
 	.count.due {
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 	}
 
 	.section {
@@ -173,7 +173,7 @@
 		padding: 0;
 		border: 0;
 		background: none;
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font: inherit;
 		font-weight: 700;
 		text-decoration: underline;

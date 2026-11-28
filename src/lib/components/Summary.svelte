@@ -207,7 +207,7 @@
 
 	.upcoming a {
 		margin-left: 4px;
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font-weight: 700;
 	}
 

@@ -669,8 +669,8 @@
 
 	.page.tree {
 		max-width: 1120px;
-		padding-right: max(var(--gutter), env(safe-area-inset-right));
-		padding-left: max(var(--gutter), env(safe-area-inset-left));
+		padding-right: max(var(--gutter), var(--safe-right));
+		padding-left: max(var(--gutter), var(--safe-left));
 		padding-bottom: max(28px, env(safe-area-inset-bottom));
 	}
 

@@ -54,7 +54,7 @@
 	}
 
 	select:focus-visible {
-		outline: 2px solid var(--accent-glow);
+		outline: 2px solid var(--legacy-link);
 		outline-offset: 2px;
 	}
 </style>

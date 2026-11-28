@@ -1,9 +1,7 @@
 <script lang="ts">
-	import '@fontsource-variable/nunito';
 	import '../app.css';
-	// The Latin subset is needed for every page. Preloading it keeps the fallback font on screen
-	// for less time, so the swap to Nunito moves less text (Cumulative Layout Shift).
-	import nunitoLatin from '@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2?url';
+	import geistLatin from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
+	import { shellLayout } from '$lib/ui/layout';
 	import { afterNavigate, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount, type Snippet } from 'svelte';
@@ -53,11 +51,21 @@
 	});
 
 	onMount(() => {
+		const root = document.documentElement;
+		function resize() {
+			const { layout, dialog, view } = shellLayout(window.innerWidth, window.innerHeight);
+			root.dataset.layout = layout;
+			root.dataset.dialog = dialog;
+			root.dataset.view = view;
+		}
+		resize();
+		window.addEventListener('resize', resize);
 		initPreferences();
 		registerServiceWorker();
 		watchInstall();
 		loadShortcuts();
 		void initSync();
+		return () => window.removeEventListener('resize', resize);
 	});
 
 	// Page changes cross-fade where the browser supports it. Reduced motion skips the fade.
@@ -73,7 +81,7 @@
 </script>
 
 <svelte:head>
-	<link rel="preload" href={nunitoLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+	<link rel="preload" href={geistLatin} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 <a class="skip-link" href="#content">Skip to content</a>

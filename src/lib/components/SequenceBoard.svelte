@@ -365,7 +365,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font-family: var(--mono);
 		font-size: 12px;
 		font-weight: 800;
@@ -377,7 +377,7 @@
 		margin-top: 2px;
 		border-left: 5px solid transparent;
 		border-right: 5px solid transparent;
-		border-top: 6px solid var(--accent-glow);
+		border-top: 6px solid var(--legacy-link);
 	}
 
 	/* The value and its index are one target, comfortably above 44px on a phone. */
@@ -421,9 +421,9 @@
 	}
 
 	.cell:focus-visible {
-		border-color: var(--accent-glow);
+		border-color: var(--legacy-link);
 		background: var(--accent-soft);
-		outline: 3px solid var(--accent-glow);
+		outline: 3px solid var(--legacy-link);
 		outline-offset: 3px;
 	}
 
@@ -559,13 +559,13 @@
 	}
 
 	.handle.armed {
-		border-color: var(--accent-glow);
-		outline: 3px solid var(--accent-glow);
+		border-color: var(--legacy-link);
+		outline: 3px solid var(--legacy-link);
 		outline-offset: 2px;
 	}
 
 	.handle:focus-visible {
-		outline: 3px solid var(--accent-glow);
+		outline: 3px solid var(--legacy-link);
 		outline-offset: 3px;
 	}
 
@@ -601,7 +601,7 @@
 	}
 
 	.cell.drop {
-		border-color: var(--accent-glow);
+		border-color: var(--legacy-link);
 		background: var(--accent-soft);
 	}
 

@@ -50,7 +50,7 @@
 	}
 
 	.kicker {
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font-size: 10px;
 		font-weight: 700;
 		line-height: 15px;

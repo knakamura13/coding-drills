@@ -49,8 +49,8 @@
 		gap: 10px;
 		max-width: var(--wide);
 		margin: 0 auto;
-		padding: max(8px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 8px
-			max(var(--gutter), env(safe-area-inset-left));
+		padding: max(8px, env(safe-area-inset-top)) max(var(--gutter), var(--safe-right)) 8px
+			max(var(--gutter), var(--safe-left));
 	}
 
 	/* The mastery tree is wider than the other pages. Keep this in step with .page.tree. */
@@ -126,6 +126,6 @@
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
-		background: var(--accent-glow);
+		background: var(--legacy-link);
 	}
 </style>
