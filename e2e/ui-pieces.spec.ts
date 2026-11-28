@@ -115,6 +115,13 @@ test('rotating and resizing an open surface selects its matching layout', async 
 	await expect(view).toHaveCSS('width', '390px');
 	await page.setViewportSize({ width: 844, height: 390 });
 	await expect(view).toHaveCSS('width', '400px');
+	// Playwright reports zero physical insets. Only the notch simulation reserves 44px.
+	await expect(page.locator('html')).toHaveCSS('--safe-left', '0px');
+	await page.setViewportSize({ width: 420, height: 390 });
+	await page.addStyleTag({ content: ':root { --safe-left: 44px; }' });
+	const heading = view.getByRole('heading', { name: 'Settings' });
+	expect((await heading.boundingBox())!.x).toBeGreaterThanOrEqual(44);
+	await page.setViewportSize({ width: 844, height: 390 });
 	expect(await violations(page)).toEqual([]);
 	await view.getByRole('button', { name: 'Close' }).click();
 	await page.getByRole('button', { name: 'Open the quit sheet' }).click();
