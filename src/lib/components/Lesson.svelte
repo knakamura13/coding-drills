@@ -330,8 +330,8 @@
 
 	main {
 		flex: 1;
-		padding: 8.25px max(var(--gutter), env(safe-area-inset-right)) calc(24px + var(--sheet-h, 0px))
-			max(var(--gutter), env(safe-area-inset-left));
+		padding: 8.25px max(var(--gutter), var(--safe-right)) calc(24px + var(--sheet-h, 0px))
+			max(var(--gutter), var(--safe-left));
 	}
 
 	/* The page's name and goal stay on screen for the whole sitting. */
@@ -495,8 +495,8 @@
 	}
 
 	.footer {
-		padding: 12px max(var(--gutter), env(safe-area-inset-right)) max(24px, calc(env(safe-area-inset-bottom) + 14px))
-			max(var(--gutter), env(safe-area-inset-left));
+		padding: 12px max(var(--gutter), var(--safe-right)) max(24px, calc(env(safe-area-inset-bottom) + 14px))
+			max(var(--gutter), var(--safe-left));
 	}
 
 	/* The whole answer line is bold, not just the answer. */

@@ -10,6 +10,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import LessonFooter from '$lib/ui/LessonFooter.svelte';
 	import LessonTopBar from '$lib/ui/LessonTopBar.svelte';
+	import ViewDrawer from '$lib/ui/ViewDrawer.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import { applyBranch } from '$lib/ui/branch';
 
@@ -29,6 +30,8 @@
         pick(j + 1)
         path.pop()`;
 
+	let view = $state<'Settings' | 'Depth' | 'List'>('Settings');
+	let viewOpen = $state(false);
 	let quitOpen = $state(false);
 	let exampleOpen = $state(false);
 	let quitCount = $state(0);
@@ -103,13 +106,27 @@
 
 	<section aria-labelledby="sheets">
 		<h2 id="sheets">Sheet and dialog</h2>
-		<p class="note">A bottom sheet on phones, a centered dialog from 1024px wide.</p>
+		<p class="note">Dialogs center on desktop and landscape phones.</p>
 		<div class="stack">
 			<Button variant="secondary" onclick={() => (quitOpen = true)}>Open the quit sheet</Button>
 			<Button variant="secondary" onclick={() => (exampleOpen = true)}>Open the worked example</Button>
 		</div>
 	</section>
+	<section aria-labelledby="views">
+		<h2 id="views">Views</h2>
+		<div class="stack">
+			<Button variant="secondary" onclick={() => { view = 'Settings'; viewOpen = true; }}>Open Settings</Button>
+			<Button variant="secondary" onclick={() => { view = 'List'; viewOpen = true; }}>Open list</Button>
+		</div>
+	</section>
 </main>
+
+<ViewDrawer bind:open={viewOpen} title={view} surface={view === 'List' ? 'page' : 'card'}
+	onback={view === 'Depth' ? () => { view = 'Settings'; } : undefined}>
+	{#if view === 'Settings'}
+		<Button variant="secondary" onclick={() => { view = 'Depth'; }}>Depth</Button>
+	{/if}
+</ViewDrawer>
 
 <Sheet bind:open={quitOpen} title="Quit this lesson?">
 	<p>Your answers so far are saved on this device. The lesson won't count as finished.</p>

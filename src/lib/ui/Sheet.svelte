@@ -1,6 +1,6 @@
 <!--
-	The app's dialog (lesson Round 2 rule): a bottom sheet on phones, a centered 560px dialog from
-	1024px wide, over a 70% Midnight scrim. A native <dialog> opened with showModal(), so focus stays
+	The app's dialog (lesson Round 2 rule): a bottom sheet in phone portrait, a centered 560px dialog on desktop
+	and in landscape, over a 70% Midnight scrim. A native <dialog> opened with showModal(), so focus stays
 	inside, the page behind is inert, Escape closes it and focus returns to the control that opened
 	it. A tap on the scrim closes it too. Slides up in 300 ms; with Reduce effects it only fades.
 -->
@@ -140,49 +140,54 @@
 		padding-top: var(--space-1);
 	}
 
-	/* Desktop: a centered dialog, no grabber, the action at the right. */
-	@media (min-width: 1024px) {
-		.sheet {
-			inset: 0;
-			margin: auto;
-			width: 560px;
-			max-height: calc(100dvh - 2 * var(--space-8));
-			border-bottom: 1px solid var(--color-border-default);
-			border-radius: var(--radius-sheet);
-		}
+	/* Desktop and landscape share the panel. Landscape keeps actions stacked. */
+	:global([data-dialog="centered"]) .sheet {
+		inset: 0;
+		margin: auto;
+		width: min(560px, calc(100% - 2 * max(var(--safe-left), var(--safe-right), 16px)));
+		max-height: calc(100dvh - 2 * var(--space-8));
+		border-bottom: 1px solid var(--color-border-default);
+		border-radius: var(--radius-sheet);
+	}
 
-		.sheet:not([open]),
-		.sheet[open] {
-			--rise: calc(var(--space-2) * var(--shift));
-		}
+	:global([data-dialog="centered"]) .sheet:not([open]),
+	:global([data-dialog="centered"]) .sheet[open] {
+		--rise: calc(var(--space-2) * var(--shift));
+	}
 
-		.sheet:not([open]) {
+	:global([data-dialog="centered"]) .sheet:not([open]) {
+		transform: translateY(var(--rise));
+	}
+
+	@starting-style {
+		:global([data-dialog="centered"]) .sheet[open] {
 			transform: translateY(var(--rise));
 		}
+	}
 
-		@starting-style {
-			.sheet[open] {
-				transform: translateY(var(--rise));
-			}
-		}
+	:global([data-dialog="centered"]) .panel {
+		gap: var(--space-4);
+		padding: var(--space-6);
+	}
 
-		.panel {
-			gap: var(--space-4);
-			padding: var(--space-6);
-		}
+	:global([data-dialog="centered"]) .grabber {
+		display: none;
+	}
 
-		.grabber {
-			display: none;
-		}
+	:global([data-layout="desktop"]) .actions {
+		flex-direction: row;
+		justify-content: flex-end;
+	}
 
-		.actions {
-			flex-direction: row;
-			justify-content: flex-end;
-		}
+	:global([data-layout="desktop"]) .actions :global(.button) {
+		width: auto;
+		min-width: 160px;
+	}
+	:global([data-layout="landscape"]) .panel {
+		gap: var(--space-3);
+	}
 
-		.actions :global(.button) {
-			width: auto;
-			min-width: 160px;
-		}
+	:global([data-layout="landscape"]) .actions {
+		padding-top: 0;
 	}
 </style>

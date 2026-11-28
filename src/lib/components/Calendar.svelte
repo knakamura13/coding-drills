@@ -71,11 +71,11 @@
 	}
 
 	.level-3 {
-		background: color-mix(in srgb, var(--accent-glow) 80%, var(--bg));
+		background: color-mix(in srgb, var(--legacy-link) 80%, var(--bg));
 	}
 
 	.level-4 {
-		background: var(--accent-glow);
+		background: var(--legacy-link);
 	}
 
 	figcaption {

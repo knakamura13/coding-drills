@@ -74,8 +74,8 @@
 		max-width: var(--column);
 		max-height: 90dvh;
 		margin: 0 auto;
-		padding: 11.5px max(var(--gutter), env(safe-area-inset-right)) max(20px, calc(env(safe-area-inset-bottom) + 5.5px))
-			max(var(--gutter), env(safe-area-inset-left));
+		padding: 11.5px max(var(--gutter), var(--safe-right)) max(20px, calc(env(safe-area-inset-bottom) + 5.5px))
+			max(var(--gutter), var(--safe-left));
 		overflow-y: auto;
 		border-radius: 16px 16px 0 0;
 		background: var(--bg);
@@ -105,8 +105,8 @@
 		max-width: none;
 		max-height: none;
 		height: 100%;
-		padding: max(20px, calc(env(safe-area-inset-top) + 12px)) max(20px, env(safe-area-inset-right))
-			max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+		padding: max(20px, calc(env(safe-area-inset-top) + 12px)) max(20px, var(--safe-right))
+			max(20px, env(safe-area-inset-bottom)) max(20px, var(--safe-left));
 		border-radius: 0 16px 16px 0;
 		animation: slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}

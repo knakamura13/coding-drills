@@ -137,7 +137,7 @@
 		padding: 3px 12px;
 		border-radius: 999px;
 		background: var(--accent-soft);
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font-size: 13px;
 		font-weight: 800;
 	}

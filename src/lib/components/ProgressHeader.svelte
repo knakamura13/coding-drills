@@ -28,8 +28,8 @@
 		display: flex;
 		align-items: center;
 		gap: 8.5px;
-		padding: max(24px, calc(env(safe-area-inset-top) + 12px)) max(27px, env(safe-area-inset-right)) 0
-			max(8.5px, env(safe-area-inset-left));
+		padding: max(24px, calc(env(safe-area-inset-top) + 12px)) max(27px, var(--safe-right)) 0
+			max(8.5px, var(--safe-left));
 	}
 
 	.close {
@@ -73,6 +73,6 @@
 		right: 6px;
 		height: 3.2px;
 		border-radius: 3px;
-		background: var(--accent-glow);
+		background: var(--legacy-link);
 	}
 </style>

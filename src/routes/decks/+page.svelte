@@ -155,7 +155,7 @@
 	}
 
 	.due {
-		color: var(--accent-glow);
+		color: var(--legacy-link);
 		font-size: 13px;
 		font-weight: 700;
 	}

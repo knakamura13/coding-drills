@@ -230,7 +230,7 @@
 	}
 
 	.switch:has(input:focus-visible) .track {
-		outline: 3px solid var(--accent-glow);
+		outline: 3px solid var(--legacy-link);
 		outline-offset: 2px;
 	}
 
@@ -280,7 +280,7 @@
 	}
 
 	.choice:has(input:focus-visible) {
-		outline: 3px solid var(--accent-glow);
+		outline: 3px solid var(--legacy-link);
 		outline-offset: 2px;
 	}
 
