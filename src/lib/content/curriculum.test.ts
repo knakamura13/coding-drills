@@ -65,38 +65,6 @@ const PATH_TITLES = [
 	'Method selection'
 ];
 
-const COUNTS: Record<string, Record<string, number>> = {
-	foundations: { keep: 0, rewrite: 0, exam: 0, retire: 12 },
-	'sequences-and-search': { keep: 0, rewrite: 0, exam: 0, retire: 24 },
-	'data-structures': { keep: 12, rewrite: 0, exam: 0, retire: 12 },
-	'trees-and-graphs': { keep: 0, rewrite: 0, exam: 0, retire: 18 },
-	'problem-solving-patterns': { keep: 0, rewrite: 0, exam: 0, retire: 22 }
-};
-
-/**
- * The 16 deck ids audited for #9. Fifteen still hold only their retired questions. `monotonic-stack`
- * was rewritten under its old id, so its current teaching cards are counted too. Every other deck
- * written later is mapped but stays out of these counts.
- */
-const AUDITED_DECKS = new Set([
-	'binary-search-on-answer',
-	'complexity-analysis',
-	'cost-python-data-model',
-	'graph-algorithms',
-	'graph-traversal-grids',
-	'hash-maps-prefix-sums',
-	'heaps-top-k',
-	'linked-lists',
-	'monotonic-stack',
-	'one-dimensional-dp',
-	'pattern-identification',
-	'recursion-backtracking',
-	'sorting-interval-sweeps',
-	'trees-traversals-bst',
-	'two-dimensional-dp-greedy',
-	'two-pointers-sliding-window'
-]);
-
 const ARRAYS_AND_STRINGS_DECKS = new Set(['arrays-and-strings', 'arrays-and-strings-review', 'arrays-and-strings-checkpoint']);
 
 function level(id: string) {
@@ -138,24 +106,9 @@ describe('shipped curriculum', () => {
 	const curriculum = loadCurriculum('content/curriculum', 'content/decks');
 	const decks = loadDecks('content/decks');
 	const paths = curriculum.branches.flatMap((item) => item.paths);
-	const audited = curriculum.drills.filter((drill) => AUDITED_DECKS.has(drill.deckId));
 
 	it('lists the 51 skill paths in plan order', () => {
 		expect(paths.map((item) => item.title)).toEqual(PATH_TITLES);
-	});
-
-	it('maps each of the 100 drills in the audited deck ids once, onto a real question', () => {
-		expect(audited).toHaveLength(100);
-		expect(new Set(audited.map((drill) => drill.questionId)).size).toBe(100);
-		const known = new Map(
-			decks
-				.filter((deck) => AUDITED_DECKS.has(deck.id))
-				.flatMap((deck) => deck.questions.map((question) => [question.id, deck.id]))
-		);
-		expect(known.size).toBe(100);
-		for (const drill of audited) {
-			expect(known.get(drill.questionId), drill.questionId).toBe(drill.deckId);
-		}
 	});
 
 	it('maps the 27 Arrays and strings drills onto that path', () => {
@@ -166,19 +119,6 @@ describe('shipped curriculum', () => {
 		for (const drill of added) {
 			expect(drill.pathId, drill.questionId).toBe('arrays-and-strings');
 			expect(drill.disposition, drill.questionId).toBe(drill.deckId === 'arrays-and-strings-checkpoint' ? 'exam' : 'keep');
-		}
-	});
-
-	it('matches the per-branch keep, rewrite, exam, and retire counts', () => {
-		for (const [branchId, expected] of Object.entries(COUNTS)) {
-			const counts: Record<string, number> = { keep: 0, rewrite: 0, exam: 0, retire: 0 };
-			for (const drill of audited.filter((item) => {
-				const path = paths.find((candidate) => candidate.id === item.pathId);
-				return path?.branchId === branchId;
-			})) {
-				counts[drill.disposition] += 1;
-			}
-			expect(counts, branchId).toEqual(expected);
 		}
 	});
 
@@ -219,24 +159,8 @@ describe('shipped curriculum', () => {
 		expect(monotonic.requires).toContain('count-operations');
 	});
 
-	it('records the follow-up exceptions and no others', () => {
-		expect(curriculum.followUps.map((item) => `${item.questionId}/${item.optionId} ${item.disposition} ${item.pathId}`)).toEqual([
-			'sorted-array-search-loop/lt-inclusive retire exact-search',
-			'sorted-array-search-loop/lo-equals-mid retire exact-search',
-			'binary-search-preconditions/linked-list-ok retire operation-costs',
-			'binary-search-preconditions/python-overflow retire exact-search',
-			'subarray-sum-k/sort-sweep retire method-selection',
-			'heapq-min-heap/plain-pops retire priority-order',
-			'grid-bounds-and-cost/quadratic retire reachability',
-			'count-components-edge-list/one-search retire reachability',
-			'shortest-path-grid/dijkstra retire weighted-paths',
-			'tiling-recurrence/empty-is-zero retire one-dimensional-tables'
-		]);
-	});
-
 	it('puts every teaching drill drafted for a path on one of its skills, each skill with several', () => {
-		// A path is drafted once any of its drills names a skill. Audited drills that predate skill ids
-		// stay positional, so they are skipped (for example the rewrites a new drill replaces).
+		// A path is drafted once any of its drills names a skill.
 		const drafted = new Set(curriculum.drills.filter((drill) => drill.skillId).map((drill) => drill.pathId));
 		expect([...drafted]).toEqual(expect.arrayContaining(['arrays-and-strings', 'pointer-scans']));
 		for (const pathId of drafted) {
@@ -246,7 +170,6 @@ describe('shipped curriculum', () => {
 			);
 			const perSkill = new Map(item.skills.map((skill) => [skill.id, 0]));
 			for (const drill of teaching) {
-				if (AUDITED_DECKS.has(drill.deckId) && !drill.skillId) continue;
 				expect(perSkill.has(drill.skillId ?? ''), drill.questionId).toBe(true);
 				perSkill.set(drill.skillId!, perSkill.get(drill.skillId!)! + 1);
 			}
@@ -282,13 +205,6 @@ describe('shipped curriculum', () => {
 				for (const tested of drill.tests!) expect(skillIds.has(tested), `${drill.questionId} tests ${tested}`).toBe(true);
 			}
 		}
-	});
-
-	it('keeps the retired drills mapped and does not drop them', () => {
-		const retired = curriculum.drills.find((drill) => drill.questionId === 'subarray-sum-k');
-		expect(retired).toMatchObject({ disposition: 'retire', pathId: 'prefix-counts' });
-		const keepDistinct = curriculum.drills.find((drill) => drill.questionId === 'slow-fast-keep-distinct');
-		expect(keepDistinct).toMatchObject({ disposition: 'retire', pathId: 'pointer-scans' });
 	});
 
 	it('lets Pointer scans start without Sort order, and keeps unique pairs and compaction in every exam', () => {

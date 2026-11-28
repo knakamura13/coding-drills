@@ -579,24 +579,20 @@ test.describe('tap the cell', () => {
 	});
 
 	test('markers sit under their cells, and the slot past the end is dashed with its own index', async ({ page }) => {
-		const seen = new Set<string>();
-		for (let index = 0; index < cellQuestions.length; index++) {
-			const question = (await onScreen(page, cellQuestions)) as TapCellQuestion;
-			const strip = page.getByRole('group', { name: /cells$/ });
-			for (const marker of question.markers ?? []) {
-				await expect(cell(page, marker.at)).toHaveAccessibleName(new RegExp(`marked .*\\b${marker.name}\\b`));
-				await expect(strip.getByText(marker.name, { exact: true })).toBeVisible();
-				seen.add('markers');
-			}
-			if (question.sequence.pastEnd) {
-				const slot = cell(page, question.sequence.cells.length);
-				await expect(slot).toHaveAccessibleName(`Index ${question.sequence.cells.length}, past the end`);
-				expect(await slot.evaluate((input) => getComputedStyle(input.parentElement!).borderStyle)).toBe('dashed');
-				seen.add('past end');
-			}
-			await answerRight(page, question);
+		// Two review decks that open on such a card, and have no worked example to open over it.
+		const marked = (await reach(page, 'heap-operations-review', 'sift-up-rest-review')) as TapCellQuestion;
+		expect(marked.markers?.length).toBeGreaterThan(0);
+		const strip = page.getByRole('group', { name: /cells$/ });
+		for (const marker of marked.markers!) {
+			await expect(cell(page, marker.at)).toHaveAccessibleName(new RegExp(`marked .*\\b${marker.name}\\b`));
+			await expect(strip.getByText(marker.name, { exact: true })).toBeVisible();
 		}
-		expect([...seen].sort()).toEqual(['markers', 'past end']);
+
+		const open = (await reach(page, 'boundary-search-review', 'insert-front-review')) as TapCellQuestion;
+		expect(open.sequence.pastEnd).toBe(true);
+		const slot = cell(page, open.sequence.cells.length);
+		await expect(slot).toHaveAccessibleName(`Index ${open.sequence.cells.length}, past the end`);
+		expect(await slot.evaluate((input) => getComputedStyle(input.parentElement!).borderStyle)).toBe('dashed');
 	});
 
 	test('a strip wider than a phone scrolls inside itself, not the page', async ({ page }) => {

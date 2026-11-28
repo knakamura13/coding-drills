@@ -19,6 +19,8 @@ import { openOldLesson } from './seed';
 // /play run the new screen (learn.spec.ts).
 
 const text = (markdown: string) => plainText(markdown, 1000);
+// The progress bar's value once one card of the deck's session is done.
+const ONE_DONE = String(Math.round(100 / deck.questions.length));
 
 test.describe('the lesson loop', () => {
 	test.beforeEach(async ({ page }) => {
@@ -35,7 +37,7 @@ test.describe('the lesson loop', () => {
 		await expect(sheet.getByRole('button', { name: 'See why again' })).toHaveCount(0);
 
 		await continueButton(page).click();
-		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
+		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', ONE_DONE);
 		await expect(page.getByText('Follow-up', { exact: true })).toHaveCount(0);
 	});
 
@@ -103,7 +105,7 @@ test.describe('the lesson loop', () => {
 		await expect(sheet.getByRole('heading', { name: 'Well done!' })).toBeVisible();
 		await expect(sheet).toContainText(text(question.followUps[wrongId].explanation).slice(0, 40));
 		await continueButton(page).click();
-		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
+		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', ONE_DONE);
 	});
 
 	test('a wrong follow-up shows the answer and explanation, with no further follow-up', async ({ page }) => {
@@ -123,7 +125,7 @@ test.describe('the lesson loop', () => {
 
 		await continueButton(page).click();
 		await expect(page.getByText('Follow-up', { exact: true })).toHaveCount(0);
-		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
+		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', ONE_DONE);
 	});
 
 	test('finishing shows the summary and records every attempt', async ({ page }) => {
@@ -248,7 +250,7 @@ test.describe('leaving and keyboard use', () => {
 		await page.keyboard.press('Enter');
 		await expect(page.getByRole('heading', { name: 'Well done!' })).toBeVisible();
 		await page.keyboard.press('Enter');
-		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
+		await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', ONE_DONE);
 	});
 
 	test('the Check button stays disabled until an option is picked', async ({ page }) => {

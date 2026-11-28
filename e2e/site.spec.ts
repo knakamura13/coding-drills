@@ -139,7 +139,7 @@ test.describe('accessibility', () => {
 test.describe('layout on a phone', () => {
 	// A tree or a call written out on one line is a long unbreakable string. It must wrap inside the
 	// card instead of widening the page, which on a phone shrinks everything and breaks taps.
-	for (const deckId of ['trees-traversals-bst', 'linked-lists', 'graph-algorithms', 'recursion-backtracking', 'two-dimensional-dp-greedy']) {
+	for (const deckId of ['tree-summaries', 'link-rewrites', 'dependency-order', 'search-state', 'grid-tables']) {
 		test(`${deckId}: no question or follow-up scrolls sideways`, async ({ page }) => {
 			await seenEveryDeck(page);
 			const pool = decks.find((candidate) => candidate.id === deckId)!.questions;

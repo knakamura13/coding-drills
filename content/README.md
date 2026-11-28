@@ -56,8 +56,8 @@ The four shipped formats went through design rounds and count as reviewed. When 
 ## Shape
 
 ```yaml
-id: pattern-identification # must match the file name
-title: Pattern identification
+id: method-selection # must match the file name
+title: Method selection
 description: One sentence shown on the deck card.
 heading: Which pattern best fits? # default line above each problem card (optional)
 
@@ -121,7 +121,7 @@ A learner who opens a worked example is stuck, so it walks through one inference
 A question with `format: tap-cell` asks the learner to tap one cell of an array or a string. Leave `format` off, or set it to `choice`, for a multiple-choice question. Existing decks do not need a `format` field.
 
 ```yaml
-- id: read-at-index
+- id: read-index-cell
   format: tap-cell
   tags: [python]
   prompt: Which cell does `nums[1]` read?
@@ -148,7 +148,7 @@ In portrait the snippet sits above the sequence. In landscape they sit side by s
 A question with `format: drag-pointers` asks the learner to move named pointers (`left`, `read`, `i`) to the cells they reach after the step the prompt describes. They drag a pointer, or tap it and then a cell, or focus it and use the arrow keys. They press Check, and the answer is right only when every pointer is on its cell.
 
 ```yaml
-- id: sum-step-too-small
+- id: move-small-sum-review
   format: drag-pointers
   tags: [python, two-pointers]
   prompt: Where do `l` and `r` sit when this pass ends?
@@ -177,7 +177,7 @@ Each wrong pointer explains itself where it was left, and its right cell is then
 A question with `format: step-trace` shows a numbered snippet with the running line highlighted, and an array with named pointers. The learner steps through and predicts each step before it is revealed: a pointer's cell (tap it) or a value (pick it). A wrong prediction explains itself in place, the true state is shown, and the trace carries on from the truth. The question is right only when every step was.
 
 ```yaml
-- id: trace-sum-to-target
+- id: trace-scan-to-target
   format: step-trace
   tags: [python, two-pointers]
   prompt: Predict each step before it is shown.
@@ -215,7 +215,7 @@ Highlight the line that starts a step, not the line that moves a pointer, or the
 Every question in `content/decks` is mapped to a skill path in `content/curriculum/<branch>.yaml`, under `drills:`. The build fails for a question that is not mapped. A path's main line holds two to four skills (`MAX_PATH_SKILLS` in `src/lib/content/curriculum.ts`), so its checkpoint comes after a short run of skills.
 
 ```yaml
-- questionId: trace-sum-to-target
+- questionId: trace-scan-to-target
   disposition: keep # keep or rewrite: a teaching drill. exam: reserved for a checkpoint. retire: counted nowhere.
   path: pointer-scans
   skill: choose-moving-end # keep and rewrite only: the skill it teaches. Without it, drills pair with skills by list position.

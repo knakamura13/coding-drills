@@ -5,8 +5,8 @@ import { issueBody, issueTitle, issueUrl } from './issueUrl';
 const flag: Flag = {
 	id: 'deck/q1/question',
 	at: '2026-10-10T12:00:00.000Z',
-	deckId: 'pattern-identification',
-	questionId: 'window-max-sum-k',
+	deckId: 'method-selection',
+	questionId: 'contrast-unsorted-scan',
 	stage: 'question',
 	note: 'Explanation says O(n) but the code is O(n log n).'
 };
@@ -35,11 +35,11 @@ describe('issueUrl', () => {
 
 describe('issue text', () => {
 	it('names the deck, question, and note for a main-question flag', () => {
-		expect(issueTitle(flag)).toBe('Content flag: pattern-identification / window-max-sum-k');
+		expect(issueTitle(flag)).toBe('Content flag: method-selection / contrast-unsorted-scan');
 		expect(issueBody(flag)).toBe(
 			[
-				'- Deck: `pattern-identification`',
-				'- Question: `window-max-sum-k`',
+				'- Deck: `method-selection`',
+				'- Question: `contrast-unsorted-scan`',
 				'- Where: the main question',
 				'',
 				'Explanation says O(n) but the code is O(n log n).'
@@ -49,7 +49,7 @@ describe('issue text', () => {
 
 	it('names the picked option for a follow-up flag and marks an empty note', () => {
 		expect(issueTitle(followUpFlag)).toBe(
-			'Content flag: pattern-identification / window-max-sum-k (follow-up)'
+			'Content flag: method-selection / contrast-unsorted-scan (follow-up)'
 		);
 		const body = issueBody(followUpFlag);
 		expect(body).toContain('- Follow-up shown after picking: `two-pointers`');

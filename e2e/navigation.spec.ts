@@ -73,7 +73,8 @@ test.describe('decks', () => {
 		await page.locator(`a[href="/play/${deck.id}"]`).click();
 		await expect(page).toHaveURL(DECK_URL);
 		const first = await current(page, choices);
-		await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.heading ?? deck.heading!);
+		// With no heading on the card or the deck, the screen names the card's place instead.
+		await expect(page.getByRole('heading', { level: 1 })).toHaveText(first.heading ?? deck.heading ?? `Question 1 of ${deck.questions.length}`);
 	});
 
 	test('filters by words in the title or description, and "/" moves to the filter', async ({ page }) => {

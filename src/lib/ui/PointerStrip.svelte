@@ -7,7 +7,7 @@
 	border and '!', and a dashed branch-color ghost tab shows where it belonged, in a row below.
 	Tabs never overlap: two on one cell, or long names on neighboring cells, stack in rows.
 	A step-trace strip (Trace A) shows its pointers the same way but only for reading: the cells are
-	picked as in tap-the-cell, and once a cell step is checked its pointer sits on the true cell in
+	picked as in a tap-cell question, and once a cell step is checked its pointer sits on the true cell in
 	the branch tint (`lit`).
 -->
 <script lang="ts">
@@ -34,7 +34,7 @@
 		name: string;
 		/** Placing pointers (drag-pointers). Without it the tabs are only shown and a cell is picked. */
 		onplace?: (pointer: string, at: number) => void;
-		/** Picking a cell (step-trace): as in tap-the-cell. */
+		/** Picking a cell (step-trace): as in a tap-cell question. */
 		selectedId?: string | null;
 		atOnce?: boolean;
 		onselect?: (id: string) => void;
