@@ -4,7 +4,8 @@ import { isCellStep, isChoiceQuestion, isDragPointersQuestion, isStepTraceQuesti
 import { markdownBlocks, plainText } from '../src/lib/markdown/render.ts';
 
 /** The shipped deck is the fixture, so these tests also guard the content. */
-export const deck = loadDecks('content/decks').find((candidate) => candidate.id === 'pattern-identification')!;
+// A review deck of ten multiple-choice cards with no worked examples, so nothing opens over its first card.
+export const deck = loadDecks('content/decks').find((candidate) => candidate.id === 'traversal-layers-review')!;
 
 export const allDecks = loadDecks('content/decks');
 

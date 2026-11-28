@@ -23,7 +23,8 @@ export const deck = decks.find((candidate) => candidate.id === 'boundary-search'
 export const questions = deck.questions.filter(isChoiceQuestion);
 export const shown = deck.questions;
 export const URL = `/play/${deck.id}`;
-export const cellsDeck = decks.find((candidate) => candidate.id === 'tap-the-cell')!;
+// Opens on three tap-cell cards, and no card in it has a worked example.
+export const cellsDeck = decks.find((candidate) => candidate.id === 'arrays-and-strings-review')!;
 export const cellQuestions = cellsDeck.questions.filter(isTapCellQuestion);
 
 export const tiles = (page: Page) => page.getByRole('group', { name: /./ }).locator('label, button');

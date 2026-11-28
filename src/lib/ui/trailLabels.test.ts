@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { DEPTHS } from '../content/depth.ts';
 import { loadCurriculum } from '../content/loadCurriculum.ts';
 import { loadDecks } from '../content/loadDecks.ts';
 import { lessonTrail } from '../domain/trail.ts';
 import { placeLabels } from './labelPlacement.ts';
 import { LABEL_FORMS, NODE_R, TREE_HEIGHT, TREE_WIDTH, fitLeaf, labelScene, trailLayout, treeBoxHeight } from './trailGeometry.ts';
 
-// Every trail the curriculum can produce, placed at every screen size the summary supports. The
+// Every trail the curriculum can produce at each depth level, placed at every screen size the summary supports. The
 // component measures real text; here widths are estimated on the wide side (0.62em per character,
 // greedy wrapping), so a pass here leaves room for the real font.
 
 const curriculum = loadCurriculum('content/curriculum', 'content/decks');
 const decks = loadDecks('content/decks');
-const trails = decks.map((deck) => lessonTrail(curriculum, [], deck.id, deck.title, 'deep'));
+// A deck only the deep level teaches has no visible path at Interview, so its trail is just the deck.
+const trails = DEPTHS.flatMap((level) => decks.map((deck) => lessonTrail(curriculum, [], deck.id, deck.title, level)));
 
 function measure(text: string, size: number, line: number, wrap: number | null) {
 	const char = size * 0.62;

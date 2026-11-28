@@ -2,7 +2,7 @@
 	A step-trace question's steps, below its code (Question formats, Trace A: stacked steps). Always in
 	this order: the answered steps as results (a check or '!', then what was true), 'Step n of m',
 	the current ask at 16/24 SemiBold, the strip with its pointers as tabs, then answer tiles when
-	the step asks for a value. A cell step is answered by picking a cell, as in tap-the-cell; beside a
+	the step asks for a value. A cell step is answered by picking a cell, as in a tap-cell question; beside a
 	value step the strip is only shown. Once a cell step is checked its pointer sits on the true cell
 	in the branch tint, so the trace goes on from the truth.
 -->

@@ -7,8 +7,8 @@ import { projectCurriculum, rollup } from './mastery';
 /**
  * The piece of the mastery tree on the lesson summary (lesson Round 6): the nodes that led to this
  * lesson, ending at it. A lesson is a path on its branch; the nodes before it are the branch, then
- * the branch's earlier paths, of which the summary shows the last two. An older topic deck can
- * hold drills from several paths: it is no one path, so it shows only its branch, when they share
+ * the branch's earlier paths, of which the summary shows the last two. A deck that holds drills
+ * from several paths is no one path, so it shows only its branch, when they share
  * one, before a leaf with the deck's own title. Only paths and drills visible at the learner's
  * depth `level` count (#155); `full` is the unfiltered curriculum.
  */

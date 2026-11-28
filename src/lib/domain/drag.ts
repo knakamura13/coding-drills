@@ -1,7 +1,7 @@
 import type { DragPointersQuestion } from '$lib/content/schema';
 
 /**
- * Checking a drag-the-pointers answer.
+ * Checking a drag-pointers answer.
  *
  * The picked id is the whole placement, one `name=index` pair per movable
  * pointer in the order the question lists them: `left=2,right=5`. That is what
