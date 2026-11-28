@@ -31,6 +31,7 @@
         path.pop()`;
 
 	let view = $state<'Settings' | 'Depth' | 'List'>('Settings');
+	let opener = $state<HTMLButtonElement>();
 	let viewOpen = $state(false);
 	let quitOpen = $state(false);
 	let exampleOpen = $state(false);
@@ -115,13 +116,13 @@
 	<section aria-labelledby="views">
 		<h2 id="views">Views</h2>
 		<div class="stack">
-			<Button variant="secondary" onclick={() => { view = 'Settings'; viewOpen = true; }}>Open Settings</Button>
-			<Button variant="secondary" onclick={() => { view = 'List'; viewOpen = true; }}>Open list</Button>
+			<Button variant="secondary" onclick={(event) => { opener = event.currentTarget; view = 'Settings'; viewOpen = true; }}>Open Settings</Button>
+			<Button variant="secondary" onclick={(event) => { opener = event.currentTarget; view = 'List'; viewOpen = true; }}>Open list</Button>
 		</div>
 	</section>
 </main>
 
-<ViewDrawer bind:open={viewOpen} title={view} surface={view === 'List' ? 'page' : 'card'}
+<ViewDrawer {opener} bind:open={viewOpen} title={view} surface={view === 'List' ? 'page' : 'card'}
 	onback={view === 'Depth' ? () => { view = 'Settings'; } : undefined}>
 	{#if view === 'Settings'}
 		<Button variant="secondary" onclick={() => { view = 'Depth'; }}>Depth</Button>

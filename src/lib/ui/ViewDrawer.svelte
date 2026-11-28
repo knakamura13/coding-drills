@@ -3,8 +3,8 @@
 	import HeaderButton from './HeaderButton.svelte';
 	import Icon from './Icon.svelte';
 
-	let { open = $bindable(false), title, onback, children, surface = 'card' }: {
-		open?: boolean; title: string; onback?: () => void; children: Snippet; surface?: 'card' | 'page';
+	let { open = $bindable(false), title, opener, onback, children, surface = 'card' }: {
+		opener: HTMLButtonElement | undefined; open?: boolean; title: string; onback?: () => void; children: Snippet; surface?: 'card' | 'page';
 	} = $props();
 	let dialog: HTMLDialogElement;
 	let heading: HTMLHeadingElement;
@@ -29,7 +29,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog bind:this={dialog} class:page={surface === 'page'} aria-labelledby={titleId}
-	onclose={() => (open = false)} onclick={(event) => { if (event.target === dialog) close(); }}>
+	onclose={() => { open = false; opener?.focus(); }} onclick={(event) => { if (event.target === dialog) close(); }}>
 	<div class="view">
 		<header>
 			{#if onback}
@@ -66,7 +66,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		padding: env(safe-area-inset-top) max(16px, var(--safe-right)) env(safe-area-inset-bottom) 16px;
+		padding: env(safe-area-inset-top) max(16px, var(--safe-right)) env(safe-area-inset-bottom) max(16px, calc(var(--safe-left) - (100vw - 100%)));
 	}
 	header { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
 	h2 { flex: 1; font-size: var(--text-heading-size); }

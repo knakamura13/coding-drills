@@ -105,6 +105,7 @@ test('views replace nested content in place and keep accessible controls', async
 	await expect(drawer).toHaveAccessibleName('Settings');
 	await drawer.getByRole('button', { name: 'Close' }).click();
 	await expect(drawer).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Open Settings' })).toBeFocused();
 });
 
 test('rotating and resizing an open surface selects its matching layout', async ({ page }) => {
