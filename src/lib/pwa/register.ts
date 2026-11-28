@@ -1,20 +1,28 @@
-import { dev } from '$app/env';
+import { dev, version } from '$app/env';
+import { VERSION_QUERY, VERSION_TIMEOUT_MS } from './protocol';
 
 /**
  * Registers the service worker (production only: in development it would cache
- * stale modules) and reloads when a new version takes over, so the page never
+ * stale modules) and reloads when a different build takes over, so the page never
  * runs old code against a new cache.
  */
 export function registerServiceWorker(): void {
 	if (dev || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
 
-	// The first install also changes the controller. That is not an update, so it must not reload.
-	const hadController = navigator.serviceWorker.controller !== null;
+	// The first install also changes the controller, and that must not reload: the reload would drop
+	// what the page has already taken from its URL, such as the sign-in notice. Neither the controller
+	// at mount nor the caches tell the cases apart reliably. Instrumented runs on WebKit showed the
+	// worker can claim the page just before mount and fire the event just after (#191). On an update
+	// the event can come before the new worker clears the old caches. So the page asks the worker.
 	let reloading = false;
 	navigator.serviceWorker.addEventListener('controllerchange', () => {
-		if (!hadController || reloading) return;
-		reloading = true;
-		location.reload();
+		const worker = navigator.serviceWorker.controller;
+		if (!worker) return;
+		void workerVersion(worker).then((theirs) => {
+			if (theirs === version || reloading) return;
+			reloading = true;
+			location.reload();
+		});
 	});
 
 	void navigator.serviceWorker
@@ -28,4 +36,24 @@ export function registerServiceWorker(): void {
 			});
 		})
 		.catch(() => undefined);
+}
+
+/** The build a worker was made from, or undefined when it does not answer in time. */
+function workerVersion(worker: ServiceWorker): Promise<string | undefined> {
+	return new Promise((resolve) => {
+		const channel = new MessageChannel();
+		const timer = setTimeout(() => resolve(undefined), VERSION_TIMEOUT_MS);
+		channel.port1.onmessage = (event) => {
+			clearTimeout(timer);
+			channel.port1.close();
+			resolve(typeof event.data === 'string' ? event.data : undefined);
+		};
+		try {
+			worker.postMessage(VERSION_QUERY, [channel.port2]);
+		} catch {
+			// A worker that was replaced before it could be asked cannot answer.
+			clearTimeout(timer);
+			resolve(undefined);
+		}
+	});
 }
